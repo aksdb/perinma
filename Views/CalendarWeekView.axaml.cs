@@ -116,6 +116,8 @@ public partial class CalendarWeekView : UserControl
                     EndSlot = vm.EndSlot,
                     DaySlot = vm.DaySlot,
                     Color = vm.Color,
+                    ColumnSlot = vm.ColumnSlot,
+                    TotalColumns = vm.TotalColumns,
                 };
                 ev.RefreshContent();
                 _canvas.Children.Add(ev);
@@ -127,13 +129,17 @@ public partial class CalendarWeekView : UserControl
         {
             Height = RowHeight * 24 * 4;
 
-            var colWidth = Bounds.Width / DayColumns;
+            var dayColWidth = Bounds.Width / DayColumns;
             foreach (var eventView in _canvas.Children.OfType<EventView>())
             {
                 eventView.SetValue(Canvas.TopProperty, eventView.StartSlot * RowHeight);
-                eventView.SetValue(Canvas.LeftProperty, eventView.DaySlot * colWidth);
-                eventView.Height = eventView.EndSlot * RowHeight;
-                eventView.Width = colWidth;
+                var innerWidth = dayColWidth / Math.Max(1, eventView.TotalColumns);
+                var left = eventView.DaySlot * dayColWidth + eventView.ColumnSlot * innerWidth;
+                eventView.SetValue(Canvas.LeftProperty, left);
+                // EndSlot is inclusive end index; height is number of slots spanned
+                var slotSpan = Math.Max(1, eventView.EndSlot - eventView.StartSlot + 1);
+                eventView.Height = slotSpan * RowHeight;
+                eventView.Width = innerWidth;
                 eventView.RefreshContent();
             }
         }
@@ -213,6 +219,8 @@ public partial class CalendarWeekView : UserControl
         public int EndSlot = 0;
         public int DaySlot = 0;
         public Color Color = Color.FromArgb(0x99, 0xFF, 0x00, 0x00);
+        public int ColumnSlot = 0;
+        public int TotalColumns = 1;
 
         private readonly TextBlock _titleTextBlock = new();
         private readonly TextBlock _startTimeTextBlock = new();

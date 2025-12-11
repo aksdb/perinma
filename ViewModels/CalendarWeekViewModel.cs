@@ -44,36 +44,122 @@ public sealed class CalendarWeekViewModel : ViewModelBase
 
         var tieBreaker = 0;
 
-        _calendarSource.GetCalendarEvents(start, end).Select(e =>
-        {
-            // Map start time
-            var dayIndex = (int)Math.Clamp((e.StartTime.Date - start.Date).TotalDays, 0, DayColumns - 1);
-
-            // Compute 15-minute slots relative to day start
-            var dayStart = start.AddDays(dayIndex);
-            var minutesFromDayStart = (int)(e.StartTime - dayStart).TotalMinutes;
-            if (minutesFromDayStart < 0) minutesFromDayStart = 0;
-            var startSlot = minutesFromDayStart / 15;
-
-            // Duration in 15-minute slots (ensure at least 1 slot)
-            var durationMinutes = (int)Math.Max(15, (e.EndTime - e.StartTime).TotalMinutes);
-            var durationSlots = Math.Max(1, durationMinutes / 15);
-
-            return new EventItemViewModel
+        // Build items
+        var items = _calendarSource.GetCalendarEvents(start, end).Select(e =>
             {
-                Title = e.Title ?? string.Empty,
-                DaySlot = dayIndex,
-                StartSlot = startSlot,
-                EndSlot = durationSlots,
-                Color = Color.Parse(e.Calendar.Color ?? string.Empty),
-                TieBreaker = tieBreaker++,
-            };
-        })
-        .OrderBy(e => e.DaySlot)
-        .ThenBy(e => e.StartSlot)
-        .ThenBy(e => e.TieBreaker)
-        .ToList()
-        .ForEach(e => Events.Add(e));
+                // Map start time
+                var dayIndex = (int)Math.Clamp((e.StartTime.Date - start.Date).TotalDays, 0, DayColumns - 1);
+
+                // Compute 15-minute slots relative to day start
+                var dayStart = start.AddDays(dayIndex);
+                var minutesFromDayStart = (int)(e.StartTime - dayStart).TotalMinutes;
+                if (minutesFromDayStart < 0) minutesFromDayStart = 0;
+                var startSlot = minutesFromDayStart / 15;
+
+                // Duration in 15-minute slots (ensure at least 1 slot)
+                var durationMinutes = (int)Math.Max(15, (e.EndTime - e.StartTime).TotalMinutes);
+                var durationSlots = Math.Max(1, durationMinutes / 15);
+
+                var vm = new EventItemViewModel
+                {
+                    Title = e.Title ?? string.Empty,
+                    DaySlot = dayIndex,
+                    StartSlot = startSlot,
+                    // EndSlot represents the inclusive end-slot index
+                    EndSlot = startSlot + durationSlots - 1,
+                    Color = Color.Parse(e.Calendar.Color ?? string.Empty),
+                    TieBreaker = tieBreaker++,
+                    ColumnSlot = 0,
+                    TotalColumns = 1,
+                };
+                return vm;
+            })
+            .OrderBy(e => e.DaySlot)
+            .ThenBy(e => e.StartSlot)
+            .ThenBy(e => e.TieBreaker)
+            .ToList();
+
+        AssignEventColumns(items);
+        
+        items.ForEach(Events.Add);
+    }
+
+    private static void AssignEventColumns(List<EventItemViewModel> items)
+    {
+        // Assign columns using competitor discovery.
+        EventItemViewModel? lastEvent = null;
+        foreach (var ew in items)
+        {
+            var competingEvent = lastEvent;
+            lastEvent = ew;
+
+            if (competingEvent == null || competingEvent.DaySlot != ew.DaySlot)
+            {
+                // No competition yet
+                continue;
+            }
+
+            var allCompetitors = FindCompetitors(ew, competingEvent, null);
+
+            // Find first free column among competitors
+            var usedColumns = allCompetitors.Select(c => c.ColumnSlot).OrderBy(i => i).ToList();
+            for (var i = 0; i < usedColumns.Count; i++)
+            {
+                if (usedColumns[i] != ew.ColumnSlot)
+                {
+                    break;
+                }
+
+                ew.ColumnSlot++;
+            }
+
+            // Link competitors that actually overlap in time
+            foreach (var competitor in allCompetitors)
+            {
+                if (competitor.EndSlot < ew.StartSlot)
+                {
+                    continue;
+                }
+
+                competitor.CompetingWidgets.Add(ew);
+                ew.CompetingWidgets.Add(competitor);
+            }
+        }
+
+        // Compute total columns based on overlapping competitors' assigned columns
+        foreach (var ew in items)
+        {
+            var maxColumn = (from c in ew.CompetingWidgets
+                    where !(c.EndSlot < ew.StartSlot || c.StartSlot > ew.EndSlot)
+                    select c.ColumnSlot)
+                .Prepend(ew.ColumnSlot)
+                .Max();
+            // Consider direct competitors for now
+            ew.TotalColumns = maxColumn + 1;
+        }
+    }
+
+    // Helpers for column assignment (Go-equivalent)
+    private static List<EventItemViewModel> FindCompetitors(
+        EventItemViewModel ew,
+        EventItemViewModel competitor,
+        HashSet<EventItemViewModel>? circuitBreaker)
+    {
+        circuitBreaker ??= [ew];
+        if (!circuitBreaker.Add(competitor)) return new List<EventItemViewModel>();
+
+        var result = new List<EventItemViewModel>();
+        if (ew.StartSlot <= competitor.EndSlot && ew.DaySlot == competitor.DaySlot)
+        {
+            result.Add(competitor);
+        }
+
+        foreach (var nextCompetitor in competitor.CompetingWidgets)
+        {
+            result.AddRange(FindCompetitors(ew, nextCompetitor, circuitBreaker));
+        }
+
+        return result;
     }
 }
 
@@ -81,8 +167,14 @@ public sealed class EventItemViewModel : ViewModelBase
 {
     public string Title { get; set; } = string.Empty;
     public int StartSlot { get; set; }
-    public int EndSlot { get; set; } // used as duration slots by current view
+    public int EndSlot { get; set; } // inclusive end-slot index
     public int DaySlot { get; set; }
     public Color Color { get; set; } = Color.FromArgb(0x99, 0x33, 0x99, 0xFF);
+
     public int TieBreaker { get; set; }
+
+    // Additional fields for column assignment
+    public int ColumnSlot { get; set; }
+    public int TotalColumns { get; set; } = 1;
+    public List<EventItemViewModel> CompetingWidgets { get; } = new();
 }
