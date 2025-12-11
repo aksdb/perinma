@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Media;
@@ -40,31 +42,38 @@ public sealed class CalendarWeekViewModel : ViewModelBase
         var start = WeekStartLocal;
         var end = start.AddDays(DayColumns);
 
-        var events = _calendarSource.GetCalendarEvents(start, end);
-        foreach (var e in events)
+        var tieBreaker = 0;
+
+        _calendarSource.GetCalendarEvents(start, end).Select(e =>
         {
             // Map start time
-            int dayIndex = (int)Math.Clamp((e.StartTime.Date - start.Date).TotalDays, 0, DayColumns - 1);
+            var dayIndex = (int)Math.Clamp((e.StartTime.Date - start.Date).TotalDays, 0, DayColumns - 1);
 
             // Compute 15-minute slots relative to day start
             var dayStart = start.AddDays(dayIndex);
             var minutesFromDayStart = (int)(e.StartTime - dayStart).TotalMinutes;
             if (minutesFromDayStart < 0) minutesFromDayStart = 0;
-            int startSlot = minutesFromDayStart / 15;
+            var startSlot = minutesFromDayStart / 15;
 
             // Duration in 15-minute slots (ensure at least 1 slot)
             var durationMinutes = (int)Math.Max(15, (e.EndTime - e.StartTime).TotalMinutes);
-            int durationSlots = Math.Max(1, durationMinutes / 15);
+            var durationSlots = Math.Max(1, durationMinutes / 15);
 
-            Events.Add(new EventItemViewModel
+            return new EventItemViewModel
             {
                 Title = e.Title ?? string.Empty,
                 DaySlot = dayIndex,
                 StartSlot = startSlot,
                 EndSlot = durationSlots,
-                Color =  Color.Parse(e.Calendar.Color ?? string.Empty),
-            });
-        }
+                Color = Color.Parse(e.Calendar.Color ?? string.Empty),
+                TieBreaker = tieBreaker++,
+            };
+        })
+        .OrderBy(e => e.DaySlot)
+        .ThenBy(e => e.StartSlot)
+        .ThenBy(e => e.TieBreaker)
+        .ToList()
+        .ForEach(e => Events.Add(e));
     }
 }
 
@@ -75,4 +84,5 @@ public sealed class EventItemViewModel : ViewModelBase
     public int EndSlot { get; set; } // used as duration slots by current view
     public int DaySlot { get; set; }
     public Color Color { get; set; } = Color.FromArgb(0x99, 0x33, 0x99, 0xFF);
+    public int TieBreaker { get; set; }
 }
