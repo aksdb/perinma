@@ -6,6 +6,7 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="perinma.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
+        xmlns:v="using:perinma.Views"
         Icon="/Assets/avalonia-logo.ico"
         Title="perinma: Personal Information Manager">
 
@@ -22,9 +23,6 @@
                 <MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"></MenuItem>
             </MenuItem>
         </Menu>
-        <TextBlock 
-            Text="{Binding Greeting}" 
-            HorizontalAlignment="Center" 
-            VerticalAlignment="Center"/>
+        <v:CalendarWeekView/>
     </DockPanel>
 </Window>
