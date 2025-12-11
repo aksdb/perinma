@@ -33,7 +33,7 @@ public sealed class CalendarWeekViewModel : ViewModelBase
         WeekStartLocal = today.AddDays(-diff);
     }
 
-    public async Task LoadAsync(CancellationToken ct = default)
+    public void Load()
     {
         Events.Clear();
 

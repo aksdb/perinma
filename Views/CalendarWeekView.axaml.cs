@@ -1,10 +1,10 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using perinma.ViewModels;
 
@@ -20,13 +20,13 @@ public partial class CalendarWeekView : UserControl
     {
         InitializeComponent();
         
-        var timeRowContainer = this.FindControl<ScrollViewer>("TimeRows");
-        this._timeRowGrid = new Grid();
-        timeRowContainer.Content = this._timeRowGrid;
-        this._timeRowGrid.ColumnDefinitions.Add(new ColumnDefinition(1.0,  GridUnitType.Star));
-        this._timeRowGrid.SetValue(Grid.IsSharedSizeScopeProperty, true);
+        var timeRowContainer = this.FindControl<ScrollViewer>("TimeRows")!;
+        _timeRowGrid = new Grid();
+        timeRowContainer.Content = _timeRowGrid;
+        _timeRowGrid.ColumnDefinitions.Add(new ColumnDefinition(1.0,  GridUnitType.Star));
+        _timeRowGrid.SetValue(Grid.IsSharedSizeScopeProperty, true);
 
-        RowDefinition newRow()
+        RowDefinition NewRow()
         {
             return new RowDefinition(1.0, GridUnitType.Star)
             {
@@ -42,30 +42,26 @@ public partial class CalendarWeekView : UserControl
             
             if (i > 0)
             {
-                _timeRowGrid.RowDefinitions.Add(newRow());
-                _timeRowGrid.RowDefinitions.Add(newRow());
+                _timeRowGrid.RowDefinitions.Add(NewRow());
+                _timeRowGrid.RowDefinitions.Add(NewRow());
                 _timeRowGrid.Children.Add(timeElement1);
                 timeElement1.SetValue(Grid.RowProperty, _timeRowGrid.RowDefinitions.Count - 1);
-                _timeRowGrid.RowDefinitions.Add(newRow());
+                _timeRowGrid.RowDefinitions.Add(NewRow());
             }
             
-            _timeRowGrid.RowDefinitions.Add(newRow());
+            _timeRowGrid.RowDefinitions.Add(NewRow());
             _timeRowGrid.Children.Add(timeElement2);
             timeElement2.SetValue(Grid.RowProperty, _timeRowGrid.RowDefinitions.Count - 1);
         }
         _timeRowGrid.RowDefinitions.Add(new RowDefinition(1.0, GridUnitType.Star));
         
-        var centerView = this.FindControl<ScrollViewer>("CenterView");
+        var centerView = this.FindControl<ScrollViewer>("CenterView")!;
         centerView.Content = _mainView;
 
-        this.AttachedToVisualTree += async (_, __) =>
-        {
-            // Load events when view is ready
-            await _viewModel.LoadAsync();
-            _mainView.DayColumns = _viewModel.DayColumns;
-            _mainView.SetEvents(_viewModel.Events);
-            _mainView.RefreshContent();
-        };
+        _viewModel.Load();
+        _mainView.DayColumns = _viewModel.DayColumns;
+        _mainView.SetEvents(_viewModel.Events);
+        _mainView.RefreshContent();
     }
     
     protected override void OnSizeChanged(SizeChangedEventArgs e)
@@ -83,11 +79,11 @@ public partial class CalendarWeekView : UserControl
         public int DayColumns = 5;
         public double RowHeight = 0;
 
-        private Canvas _canvas = new();
+        private readonly Canvas _canvas = new();
         
         public MainView()
         {
-            this.Content = _canvas;
+            Content = _canvas;
         }
 
         private ObservableCollection<EventItemViewModel>? _items;
@@ -102,7 +98,7 @@ public partial class CalendarWeekView : UserControl
             RebuildFromItems();
         }
 
-        private void ItemsOnCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private void ItemsOnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             RebuildFromItems();
         }
@@ -129,10 +125,10 @@ public partial class CalendarWeekView : UserControl
 
         public void RefreshContent()
         {
-            this.Height = RowHeight * 24 * 4;
+            Height = RowHeight * 24 * 4;
 
-            var colWidth = this.Bounds.Width / DayColumns;
-            foreach (var eventView in this._canvas.Children.OfType<EventView>())
+            var colWidth = Bounds.Width / DayColumns;
+            foreach (var eventView in _canvas.Children.OfType<EventView>())
             {
                 eventView.SetValue(Canvas.TopProperty, eventView.StartSlot * RowHeight);
                 eventView.SetValue(Canvas.LeftProperty, eventView.DaySlot * colWidth);
@@ -226,7 +222,7 @@ public partial class CalendarWeekView : UserControl
         
         public EventView()
         {
-            this.Content = _stackPanel;
+            Content = _stackPanel;
             _titleTextBlock.FontWeight = FontWeight.Bold;
             _titleTextBlock.Margin = new Thickness(5);
             _titleTextBlock.TextTrimming = TextTrimming.CharacterEllipsis;
