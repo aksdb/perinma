@@ -58,7 +58,9 @@ public class DummyCalendarSource : ICalendarSource
             LastSync = DateTime.Now
         };
 
-        _allEvents = BuildEvents(reference);
+        int diff = ((int)reference.DayOfWeek + 6) % 7; // Monday=0
+        var weekStart = reference.AddDays(-diff);
+        _allEvents = BuildEvents(weekStart);
     }
 
     public List<CalendarEvent> GetCalendarEvents(DateTime startTime, DateTime endTime)
