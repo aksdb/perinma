@@ -330,11 +330,15 @@ public partial class CalendarWeekView : UserControl
         private readonly TextBlock _startTimeTextBlock = new();
         private readonly TextBlock _endTimeTextBlock = new();
         
+        private readonly Border _background = new();
+        
         private readonly StackPanel _stackPanel = new();
         
         public EventView()
         {
-            Content = _stackPanel;
+            Content = _background;
+            _background.Child = _stackPanel;
+            _background.CornerRadius = new CornerRadius(10);
             _titleTextBlock.FontWeight = FontWeight.Bold;
             _titleTextBlock.Margin = new Thickness(5);
             _titleTextBlock.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -347,7 +351,7 @@ public partial class CalendarWeekView : UserControl
 
         public void RefreshContent()
         {
-            _stackPanel.Background = new SolidColorBrush(Color);
+            _background.Background = new SolidColorBrush(Color, 0.8);
             _titleTextBlock.Text = Title;
         }
     }
@@ -360,10 +364,13 @@ public partial class CalendarWeekView : UserControl
 
         private readonly TextBlock _titleTextBlock = new();
         private readonly StackPanel _stackPanel = new();
+        private readonly Border _background = new();
 
         public FullDayEventView()
         {
-            Content = _stackPanel;
+            Content = _background;
+            _background.CornerRadius = new CornerRadius(5);
+            _background.Child = _stackPanel;
             _titleTextBlock.FontWeight = FontWeight.Bold;
             _titleTextBlock.Margin = new Thickness(5);
             _titleTextBlock.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -373,7 +380,7 @@ public partial class CalendarWeekView : UserControl
 
         public void RefreshContent()
         {
-            _stackPanel.Background = new SolidColorBrush(Color);
+            _background.Background = new SolidColorBrush(Color, 0.8);
             _titleTextBlock.Text = Title;
         }
     }
