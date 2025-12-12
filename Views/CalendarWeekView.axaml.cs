@@ -14,6 +14,7 @@ public partial class CalendarWeekView : UserControl
 {
     private readonly Grid _timeRowGrid;
     private readonly MainView _mainView = new();
+    private readonly TopBarView _topBarView = new();
     private readonly CalendarWeekViewModel _viewModel = CalendarWeekViewModel.Instance;
     
     public CalendarWeekView()
@@ -58,10 +59,16 @@ public partial class CalendarWeekView : UserControl
         var centerView = this.FindControl<ScrollViewer>("CenterView")!;
         centerView.Content = _mainView;
 
+        var topView = this.FindControl<ScrollViewer>("TopView")!;
+        topView.Content = _topBarView;
+
         _viewModel.Load();
         _mainView.DayColumns = _viewModel.DayColumns;
-        _mainView.SetEvents(_viewModel.Events);
+        _topBarView.DayColumns = _viewModel.DayColumns;
+        _mainView.SetEvents(_viewModel.Events); // timed events only
+        _topBarView.SetEvents(_viewModel.FullDayEvents); // full-day events only
         _mainView.RefreshContent();
+        _topBarView.RefreshContent();
     }
     
     protected override void OnSizeChanged(SizeChangedEventArgs e)
@@ -71,6 +78,7 @@ public partial class CalendarWeekView : UserControl
         _timeRowGrid.RowDefinitions.Last().Height = new GridLength(_timeRowGrid.RowDefinitions[1].ActualHeight * 1.5);
         _mainView.RowHeight = _timeRowGrid.RowDefinitions[1].ActualHeight;
         _mainView.RefreshContent();
+        _topBarView.RefreshContent();
     }
     
     private class MainView : ContentControl
@@ -176,6 +184,100 @@ public partial class CalendarWeekView : UserControl
         }
     }
 
+    private class TopBarView : ContentControl
+    {
+        public int DayColumns = 5;
+        public double RowHeight = 24; // height for each full-day event row
+
+        private readonly Canvas _canvas = new();
+
+        public TopBarView()
+        {
+            Content = _canvas;
+        }
+
+        private ObservableCollection<EventItemViewModel>? _items;
+        public void SetEvents(ObservableCollection<EventItemViewModel> items)
+        {
+            if (_items != null)
+            {
+                _items.CollectionChanged -= ItemsOnCollectionChanged;
+            }
+            _items = items;
+            _items.CollectionChanged += ItemsOnCollectionChanged;
+            RebuildFromItems();
+        }
+
+        private void ItemsOnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            RebuildFromItems();
+        }
+
+        private void RebuildFromItems()
+        {
+            _canvas.Children.Clear();
+            if (_items == null) return;
+
+            foreach (var vm in _items)
+            {
+                var ev = new FullDayEventView
+                {
+                    Title = vm.Title,
+                    DaySlot = vm.DaySlot,
+                    Color = vm.Color,
+                };
+                ev.RefreshContent();
+                _canvas.Children.Add(ev);
+            }
+            RefreshContent();
+        }
+
+        public void RefreshContent()
+        {
+            var dayColWidth = Bounds.Width / Math.Max(1, DayColumns);
+            var perDayRowIndex = new int[Math.Max(1, DayColumns)];
+            var maxRows = 0;
+
+            foreach (var ev in _canvas.Children.OfType<FullDayEventView>())
+            {
+                var day = Math.Clamp(ev.DaySlot, 0, Math.Max(1, DayColumns) - 1);
+                var row = perDayRowIndex[day];
+                perDayRowIndex[day]++;
+                if (row + 1 > maxRows) maxRows = row + 1;
+
+                var left = day * dayColWidth;
+                ev.SetValue(Canvas.LeftProperty, left);
+                ev.SetValue(Canvas.TopProperty, row * RowHeight);
+                ev.Width = dayColWidth;
+                ev.Height = RowHeight - 4; // small spacing
+                ev.RefreshContent();
+            }
+
+            Height = Math.Max(1, maxRows) * RowHeight;
+            InvalidateVisual();
+        }
+
+        protected override void OnSizeChanged(SizeChangedEventArgs e)
+        {
+            base.OnSizeChanged(e);
+            RefreshContent();
+        }
+
+        public override void Render(DrawingContext context)
+        {
+            base.Render(context);
+
+            var thickPen = new Pen(Brushes.LightGray, 2);
+            var height = Bounds.Height;
+            var width = Bounds.Width;
+            var columnWidth = width / Math.Max(1, DayColumns);
+            for (int i = 1; i < DayColumns; i++)
+            {
+                context.DrawLine(thickPen, new Point(i * columnWidth, 0), new Point(i * columnWidth, height));
+            }
+        }
+    }
+
     private class TimeElement : ContentControl
     {
         public TimeElement(int hour, int minute)
@@ -239,6 +341,32 @@ public partial class CalendarWeekView : UserControl
             _stackPanel.Children.Add(_titleTextBlock);
             _stackPanel.Children.Add(_startTimeTextBlock);
             _stackPanel.Children.Add(_endTimeTextBlock);
+        }
+
+        public void RefreshContent()
+        {
+            _stackPanel.Background = new SolidColorBrush(Color);
+            _titleTextBlock.Text = Title;
+        }
+    }
+
+    private class FullDayEventView : ContentControl
+    {
+        public string Title = "";
+        public int DaySlot = 0;
+        public Color Color = Color.FromArgb(0x99, 0xFF, 0x00, 0x00);
+
+        private readonly TextBlock _titleTextBlock = new();
+        private readonly StackPanel _stackPanel = new();
+
+        public FullDayEventView()
+        {
+            Content = _stackPanel;
+            _titleTextBlock.FontWeight = FontWeight.Bold;
+            _titleTextBlock.Margin = new Thickness(5);
+            _titleTextBlock.TextTrimming = TextTrimming.CharacterEllipsis;
+            _stackPanel.Orientation = Orientation.Vertical;
+            _stackPanel.Children.Add(_titleTextBlock);
         }
 
         public void RefreshContent()

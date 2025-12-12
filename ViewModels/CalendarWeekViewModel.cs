@@ -14,6 +14,8 @@ public sealed class CalendarWeekViewModel : ViewModelBase
     private readonly ICalendarSource _calendarSource;
 
     public ObservableCollection<EventItemViewModel> Events { get; } = new();
+    // Full-day events are kept separate so they don't interfere with timed event column calculations
+    public ObservableCollection<EventItemViewModel> FullDayEvents { get; } = new();
 
     // Monday-based week start (local)
     public DateTime WeekStartLocal { get; private set; }
@@ -38,6 +40,7 @@ public sealed class CalendarWeekViewModel : ViewModelBase
     public void Load()
     {
         Events.Clear();
+        FullDayEvents.Clear();
 
         var start = WeekStartLocal;
         var end = start.AddDays(DayColumns);
@@ -45,7 +48,7 @@ public sealed class CalendarWeekViewModel : ViewModelBase
         var tieBreaker = 0;
 
         // Build items
-        var items = _calendarSource.GetCalendarEvents(start, end).Select(e =>
+        var allItems = _calendarSource.GetCalendarEvents(start, end).Select(e =>
             {
                 // Map start time
                 var dayIndex = (int)Math.Clamp((e.StartTime.Date - start.Date).TotalDays, 0, DayColumns - 1);
@@ -60,6 +63,9 @@ public sealed class CalendarWeekViewModel : ViewModelBase
                 var durationMinutes = (int)Math.Max(15, (e.EndTime - e.StartTime).TotalMinutes);
                 var durationSlots = Math.Max(1, durationMinutes / 15);
 
+                // Detect all-day events: modeled as midnight-to-midnight spans
+                var isFullDay = e.StartTime.TimeOfDay == TimeSpan.Zero && e.EndTime.TimeOfDay == TimeSpan.Zero;
+
                 var vm = new EventItemViewModel
                 {
                     Title = e.Title ?? string.Empty,
@@ -71,17 +77,32 @@ public sealed class CalendarWeekViewModel : ViewModelBase
                     TieBreaker = tieBreaker++,
                     ColumnSlot = 0,
                     TotalColumns = 1,
+                    IsFullDay = isFullDay,
                 };
                 return vm;
             })
+            .ToList();
+
+        // Partition into full-day and timed events
+        var fullDay = allItems
+            .Where(i => i.IsFullDay)
             .OrderBy(e => e.DaySlot)
             .ThenBy(e => e.StartSlot)
             .ThenBy(e => e.TieBreaker)
             .ToList();
 
-        AssignEventColumns(items);
-        
-        items.ForEach(Events.Add);
+        var timed = allItems
+            .Where(i => !i.IsFullDay)
+            .OrderBy(e => e.DaySlot)
+            .ThenBy(e => e.StartSlot)
+            .ThenBy(e => e.TieBreaker)
+            .ToList();
+
+        // Assign columns only for timed events
+        AssignEventColumns(timed);
+
+        timed.ForEach(Events.Add);
+        fullDay.ForEach(FullDayEvents.Add);
     }
 
     private static void AssignEventColumns(List<EventItemViewModel> items)
@@ -172,6 +193,7 @@ public sealed class EventItemViewModel : ViewModelBase
     public Color Color { get; set; } = Color.FromArgb(0x99, 0x33, 0x99, 0xFF);
 
     public int TieBreaker { get; set; }
+    public bool IsFullDay { get; set; }
 
     // Additional fields for column assignment
     public int ColumnSlot { get; set; }

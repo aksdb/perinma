@@ -6,10 +6,17 @@
              x:Class="perinma.Views.CalendarWeekView">
     
     <DockPanel>
-        <Canvas DockPanel.Dock="Top" Height="{Binding #TopView.Bounds.Height}">
-            <ScrollViewer Name="TopView" DockPanel.Dock="Top" MinHeight="50" Canvas.Left="{Binding #TimeRows.Bounds.Width}">
+        <!-- Top full-day events bar aligned to the right of the time column -->
+        <Grid DockPanel.Dock="Top">
+            <Grid.ColumnDefinitions>
+                <!-- Empty spacer that mirrors the width of the time rows on the left -->
+                <ColumnDefinition Width="{Binding #TimeRows.Bounds.Width}"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <!--Border Grid.Column="0"/-->
+            <ScrollViewer Name="TopView" Grid.Column="1" MinHeight="50" Background="Aqua">
             </ScrollViewer>
-        </Canvas>
+        </Grid>
         <ScrollViewer Name="TimeRows" DockPanel.Dock="Left"
                       VerticalScrollBarVisibility="Hidden"
                       Margin="5, 0, 5, 0">
