@@ -5,24 +5,15 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="perinma.Views.CalendarWeekView">
     
-    <DockPanel>
-        <!-- Top full-day events bar aligned to the right of the time column -->
-        <Grid DockPanel.Dock="Top">
-            <Grid.ColumnDefinitions>
-                <!-- Empty spacer that mirrors the width of the time rows on the left -->
-                <ColumnDefinition Width="{Binding #TimeRows.Bounds.Width}"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <!--Border Grid.Column="0"/-->
-            <ScrollViewer Name="TopView" Grid.Column="1" MinHeight="50" Background="Aqua">
-            </ScrollViewer>
-        </Grid>
-        <ScrollViewer Name="TimeRows" DockPanel.Dock="Left"
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,*">
+        <ScrollViewer Name="TopView" Grid.Column="1" Grid.Row="0" MinHeight="50">
+        </ScrollViewer>
+        <ScrollViewer Name="TimeRows" Grid.Column="0" Grid.Row="1"
                       VerticalScrollBarVisibility="Hidden"
                       Margin="5, 0, 5, 0">
         </ScrollViewer>
-        <ScrollViewer Name="CenterView" Offset="{Binding #TimeRows.Offset, Mode=TwoWay}" Effect="">
+        <ScrollViewer Name="CenterView" Grid.Column="1" Grid.Row="1" Offset="{Binding #TimeRows.Offset, Mode=TwoWay}" Effect="">
         </ScrollViewer>
-    </DockPanel>
+    </Grid>
     
 </UserControl>
