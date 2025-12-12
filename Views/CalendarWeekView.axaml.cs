@@ -352,6 +352,7 @@ public partial class CalendarWeekView : UserControl
         public void RefreshContent()
         {
             _background.Background = new SolidColorBrush(Color, 0.8);
+            _titleTextBlock.Foreground = new SolidColorBrush(ColorUtils.ContrastTextColor(Color));
             _titleTextBlock.Text = Title;
         }
     }
