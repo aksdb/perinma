@@ -6,7 +6,9 @@
              x:Class="perinma.Views.CalendarWeekView">
     
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,*">
-        <ScrollViewer Name="TopView" Grid.Column="1" Grid.Row="0" MinHeight="50">
+        <ScrollViewer Name="TopView" Grid.Column="1" Grid.Row="0"
+                      MinHeight="0"
+                      VerticalScrollBarVisibility="Auto">
         </ScrollViewer>
         <ScrollViewer Name="TimeRows" Grid.Column="0" Grid.Row="1"
                       VerticalScrollBarVisibility="Hidden"

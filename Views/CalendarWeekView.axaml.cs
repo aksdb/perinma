@@ -61,6 +61,8 @@ public partial class CalendarWeekView : UserControl
 
         var topView = this.FindControl<ScrollViewer>("TopView")!;
         topView.Content = _topBarView;
+        // Show at most 3 full-day rows; scroll if there are more
+        topView.MaxHeight = _topBarView.RowHeight * 3;
 
         _viewModel.Load();
         _mainView.DayColumns = _viewModel.DayColumns;
