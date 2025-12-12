@@ -4,18 +4,30 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="perinma.Views.CalendarWeekView">
-    
+
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,*">
-        <ScrollViewer Name="TopView" Grid.Column="1" Grid.Row="0"
-                      MinHeight="0"
-                      VerticalScrollBarVisibility="Auto">
-        </ScrollViewer>
+        <StackPanel Grid.Column="1" Grid.Row="0">
+            <ScrollViewer Name="TopView"
+                          MinHeight="0"
+                          VerticalScrollBarVisibility="Auto">
+            </ScrollViewer>
+            <Border Height="10" CornerRadius="0, 0, 10, 10">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
+                        <GradientStop Color="White" Offset="0"/>
+                        <GradientStop Color="DarkGray" Offset="0.2"/>
+                        <GradientStop Color="White" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+        </StackPanel>
         <ScrollViewer Name="TimeRows" Grid.Column="0" Grid.Row="1"
                       VerticalScrollBarVisibility="Hidden"
                       Margin="5, 0, 5, 0">
         </ScrollViewer>
-        <ScrollViewer Name="CenterView" Grid.Column="1" Grid.Row="1" Offset="{Binding #TimeRows.Offset, Mode=TwoWay}" Effect="">
+        <ScrollViewer Name="CenterView" Grid.Column="1" Grid.Row="1" Offset="{Binding #TimeRows.Offset, Mode=TwoWay}"
+                      Effect="">
         </ScrollViewer>
     </Grid>
-    
+
 </UserControl>
