@@ -50,12 +50,25 @@
                                        TextTrimming="CharacterEllipsis"
                                        FontSize="{DynamicResource CalendarTimeHourFontSize}"
                                        Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"/>
-                            <TextBlock Text="{Binding StartText, RelativeSource={RelativeSource TemplatedParent}}"
+
+                            <!-- Inline variant: single line with emoji and range -->
+                            <TextBlock IsVisible="{Binding ShowInlineTimes, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Text="{Binding InlineTimeText, RelativeSource={RelativeSource TemplatedParent}}"
                                        FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
-                                       Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"/>
-                            <TextBlock Text="{Binding EndText, RelativeSource={RelativeSource TemplatedParent}}"
-                                       FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
-                                       Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"/>
+                                       Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                                       TextTrimming="CharacterEllipsis"/>
+
+                            <!-- Stacked variant: start and end on separate lines -->
+                            <StackPanel Orientation="Vertical"
+                                        IsVisible="{Binding ShowStackedTimes, RelativeSource={RelativeSource TemplatedParent}}"
+                                        Spacing="0">
+                                <TextBlock Text="{Binding StartText, RelativeSource={RelativeSource TemplatedParent}}"
+                                           FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
+                                           Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"/>
+                                <TextBlock Text="{Binding EndText, RelativeSource={RelativeSource TemplatedParent}}"
+                                           FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
+                                           Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"/>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </ControlTemplate>
