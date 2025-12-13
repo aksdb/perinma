@@ -222,7 +222,7 @@ public partial class CalendarWeekView : UserControl
 
             foreach (var vm in _items)
             {
-                var ev = new FullDayEventView
+                var ev = new EventView()
                 {
                     Title = vm.Title,
                     DaySlot = vm.DaySlot,
@@ -240,7 +240,7 @@ public partial class CalendarWeekView : UserControl
             var perDayRowIndex = new int[Math.Max(1, DayColumns)];
             var maxRows = 0;
 
-            foreach (var ev in _canvas.Children.OfType<FullDayEventView>())
+            foreach (var ev in _canvas.Children.OfType<EventView>())
             {
                 var day = Math.Clamp(ev.DaySlot, 0, Math.Max(1, DayColumns) - 1);
                 var row = perDayRowIndex[day];
@@ -353,35 +353,6 @@ public partial class CalendarWeekView : UserControl
         {
             _background.Background = new SolidColorBrush(Color, 0.8);
             _titleTextBlock.Foreground = new SolidColorBrush(ColorUtils.ContrastTextColor(Color));
-            _titleTextBlock.Text = Title;
-        }
-    }
-
-    private class FullDayEventView : ContentControl
-    {
-        public string Title = "";
-        public int DaySlot = 0;
-        public Color Color = Color.FromArgb(0x99, 0xFF, 0x00, 0x00);
-
-        private readonly TextBlock _titleTextBlock = new();
-        private readonly StackPanel _stackPanel = new();
-        private readonly Border _background = new();
-
-        public FullDayEventView()
-        {
-            Content = _background;
-            _background.CornerRadius = new CornerRadius(5);
-            _background.Child = _stackPanel;
-            _titleTextBlock.FontWeight = FontWeight.Bold;
-            _titleTextBlock.Margin = new Thickness(5);
-            _titleTextBlock.TextTrimming = TextTrimming.CharacterEllipsis;
-            _stackPanel.Orientation = Orientation.Vertical;
-            _stackPanel.Children.Add(_titleTextBlock);
-        }
-
-        public void RefreshContent()
-        {
-            _background.Background = new SolidColorBrush(Color, 0.8);
             _titleTextBlock.Text = Title;
         }
     }

@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Avalonia.Media;
 using perinma.Storage;
 
@@ -20,7 +18,7 @@ public sealed class CalendarWeekViewModel : ViewModelBase
     // Monday-based week start (local)
     public DateTime WeekStartLocal { get; private set; }
 
-    public int DayColumns { get; set; } = 5; // Mon-Fri by default to match current view
+    public int DayColumns { get; set; } = 7;
 
     private CalendarWeekViewModel(ICalendarSource calendarSource)
     {
@@ -33,7 +31,7 @@ public sealed class CalendarWeekViewModel : ViewModelBase
     private void SetCurrentWeekStart()
     {
         var today = DateTime.Today;
-        int diff = ((int)today.DayOfWeek + 6) % 7; // Monday=0
+        var diff = ((int)today.DayOfWeek + 6) % 7; // Monday=0
         WeekStartLocal = today.AddDays(-diff);
     }
 
@@ -68,7 +66,7 @@ public sealed class CalendarWeekViewModel : ViewModelBase
 
                 var vm = new EventItemViewModel
                 {
-                    Title = e.Title ?? string.Empty,
+                    Title = string.IsNullOrEmpty(e.Title) ? "[no title]" : e.Title,
                     DaySlot = dayIndex,
                     StartSlot = startSlot,
                     // EndSlot represents the inclusive end-slot index
@@ -186,7 +184,7 @@ public sealed class CalendarWeekViewModel : ViewModelBase
 
 public sealed class EventItemViewModel : ViewModelBase
 {
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; set; } = "[no title]";
     public int StartSlot { get; set; }
     public int EndSlot { get; set; } // inclusive end-slot index
     public int DaySlot { get; set; }
@@ -199,4 +197,10 @@ public sealed class EventItemViewModel : ViewModelBase
     public int ColumnSlot { get; set; }
     public int TotalColumns { get; set; } = 1;
     public List<EventItemViewModel> CompetingWidgets { get; } = new();
+}
+
+public class TimeLabelViewModel : ViewModelBase
+{
+    public int Hour { get; set; }
+    public int Minute { get; set; }
 }
