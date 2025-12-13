@@ -119,17 +119,29 @@ public partial class CalendarWeekView : UserControl
             if (_items == null) return;
             foreach (var vm in _items)
             {
-                var ev = new EventView
+                var ev = new EventChip
                 {
                     Title = vm.Title,
                     StartSlot = vm.StartSlot,
                     EndSlot = vm.EndSlot,
                     DaySlot = vm.DaySlot,
-                    Color = vm.Color,
                     ColumnSlot = vm.ColumnSlot,
                     TotalColumns = vm.TotalColumns,
+                    BackgroundBrush = new SolidColorBrush(vm.Color, 0.8),
+                    ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(vm.Color))
                 };
-                ev.RefreshContent();
+
+                // Format times from 15-minute slots
+                static string SlotToTimeText(int slot)
+                {
+                    var hour = slot / 4;
+                    var minute = (slot % 4) * 15;
+                    return $"{hour:D2}:{minute:D2}";
+                }
+
+                ev.StartText = SlotToTimeText(vm.StartSlot);
+                ev.EndText = SlotToTimeText(vm.EndSlot);
+
                 _canvas.Children.Add(ev);
             }
             RefreshContent();
@@ -140,7 +152,7 @@ public partial class CalendarWeekView : UserControl
             Height = RowHeight * 24 * 4;
 
             var dayColWidth = Bounds.Width / DayColumns;
-            foreach (var eventView in _canvas.Children.OfType<EventView>())
+            foreach (var eventView in _canvas.Children.OfType<EventChip>())
             {
                 eventView.SetValue(Canvas.TopProperty, eventView.StartSlot * RowHeight);
                 var innerWidth = dayColWidth / Math.Max(1, eventView.TotalColumns);
@@ -150,7 +162,6 @@ public partial class CalendarWeekView : UserControl
                 var slotSpan = Math.Max(1, eventView.EndSlot - eventView.StartSlot + 1);
                 eventView.Height = slotSpan * RowHeight;
                 eventView.Width = innerWidth;
-                eventView.RefreshContent();
             }
         }
 
@@ -222,13 +233,13 @@ public partial class CalendarWeekView : UserControl
 
             foreach (var vm in _items)
             {
-                var ev = new EventView()
+                var ev = new EventChip
                 {
                     Title = vm.Title,
                     DaySlot = vm.DaySlot,
-                    Color = vm.Color,
+                    BackgroundBrush = new SolidColorBrush(vm.Color, 0.8),
+                    ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(vm.Color))
                 };
-                ev.RefreshContent();
                 _canvas.Children.Add(ev);
             }
             RefreshContent();
@@ -240,7 +251,7 @@ public partial class CalendarWeekView : UserControl
             var perDayRowIndex = new int[Math.Max(1, DayColumns)];
             var maxRows = 0;
 
-            foreach (var ev in _canvas.Children.OfType<EventView>())
+            foreach (var ev in _canvas.Children.OfType<EventChip>())
             {
                 var day = Math.Clamp(ev.DaySlot, 0, Math.Max(1, DayColumns) - 1);
                 var row = perDayRowIndex[day];
@@ -252,7 +263,6 @@ public partial class CalendarWeekView : UserControl
                 ev.SetValue(Canvas.TopProperty, row * RowHeight);
                 ev.Width = dayColWidth;
                 ev.Height = RowHeight - 4; // small spacing
-                ev.RefreshContent();
             }
 
             Height = Math.Max(1, maxRows) * RowHeight;
@@ -277,50 +287,6 @@ public partial class CalendarWeekView : UserControl
             {
                 context.DrawLine(thickPen, new Point(i * columnWidth, 0), new Point(i * columnWidth, height));
             }
-        }
-    }
-
-    private class EventView : ContentControl
-    {
-
-        public string Title = "";
-        public DateTime StartTime;
-        public DateTime EndTime;
-        public int StartSlot = 0;
-        public int EndSlot = 0;
-        public int DaySlot = 0;
-        public Color Color = Color.FromArgb(0x99, 0xFF, 0x00, 0x00);
-        public int ColumnSlot = 0;
-        public int TotalColumns = 1;
-
-        private readonly TextBlock _titleTextBlock = new();
-        private readonly TextBlock _startTimeTextBlock = new();
-        private readonly TextBlock _endTimeTextBlock = new();
-        
-        private readonly Border _background = new();
-        
-        private readonly StackPanel _stackPanel = new();
-        
-        public EventView()
-        {
-            Content = _background;
-            _background.Child = _stackPanel;
-            _background.CornerRadius = new CornerRadius(10);
-            _titleTextBlock.FontWeight = FontWeight.Bold;
-            _titleTextBlock.Margin = new Thickness(5);
-            _titleTextBlock.TextTrimming = TextTrimming.CharacterEllipsis;
-
-            _stackPanel.Orientation = Orientation.Vertical;
-            _stackPanel.Children.Add(_titleTextBlock);
-            _stackPanel.Children.Add(_startTimeTextBlock);
-            _stackPanel.Children.Add(_endTimeTextBlock);
-        }
-
-        public void RefreshContent()
-        {
-            _background.Background = new SolidColorBrush(Color, 0.8);
-            _titleTextBlock.Foreground = new SolidColorBrush(ColorUtils.ContrastTextColor(Color));
-            _titleTextBlock.Text = Title;
         }
     }
 }
