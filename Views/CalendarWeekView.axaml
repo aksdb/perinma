@@ -5,6 +5,12 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="perinma.Views.CalendarWeekView">
 
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <x:Double x:Key="CalendarRowFontSize">12</x:Double>        
+        </ResourceDictionary>
+    </UserControl.Resources>
+    
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,*">
         <StackPanel Grid.Column="1" Grid.Row="0">
             <ScrollViewer Name="TopView"

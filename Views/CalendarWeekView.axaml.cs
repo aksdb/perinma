@@ -38,8 +38,8 @@ public partial class CalendarWeekView : UserControl
         _timeRowGrid.RowDefinitions.Add(new RowDefinition(1.0, GridUnitType.Star));
         for (int i = 0; i < 24; i++)
         {
-            var timeElement1 = new TimeElement(i, 0);
-            var timeElement2 = new TimeElement(i, 30);
+            var timeElement1 = new TimeLabel { Hour = i, Minute = 0 };
+            var timeElement2 = new TimeLabel { Hour = i, Minute = 30 };
             
             if (i > 0)
             {
@@ -277,39 +277,6 @@ public partial class CalendarWeekView : UserControl
             {
                 context.DrawLine(thickPen, new Point(i * columnWidth, 0), new Point(i * columnWidth, height));
             }
-        }
-    }
-
-    private class TimeElement : ContentControl
-    {
-        public TimeElement(int hour, int minute)
-        {
-            var container = new StackPanel()
-            {
-                Orientation = Orientation.Horizontal,
-            };
-
-            var hourLabel = new TextBlock()
-            {
-                FontSize = 12,
-                Text = $"{hour:D2}",
-                VerticalAlignment = VerticalAlignment.Top,
-                Foreground = Brushes.Gray,
-            };
-            
-            var minuteLabel = new TextBlock()
-            {
-                FontSize = 9,
-                Text = $"{minute:D2}",
-                VerticalAlignment = VerticalAlignment.Top,
-                Foreground = Brushes.Gray,
-                Margin = new Thickness(2, 0, 0, 0),
-            };
-            
-            container.Children.Add(hourLabel);
-            container.Children.Add(minuteLabel);
-
-            Content = container;
         }
     }
 
