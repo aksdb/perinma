@@ -70,8 +70,12 @@
     </UserControl.Styles>
     
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,*">
+        <TextBlock Grid.Row="0" Grid.Column="0"
+                   FontSize="{DynamicResource CalendarTimeHourFontSize}"
+                   Foreground="Gray"
+                   VerticalAlignment="Center"
+                   Text="All-day"/>
         <StackPanel Grid.Column="1" Grid.Row="0">
-            <!--TextBlock></ä-->
             <ScrollViewer Name="TopView"
                           MinHeight="0"
                           VerticalScrollBarVisibility="Auto">
