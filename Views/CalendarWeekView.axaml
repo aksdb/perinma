@@ -3,7 +3,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:views="using:perinma.Views"
-             xmlns:ext="using:perinma.Extensions"
              xmlns:vm="using:perinma.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="perinma.Views.CalendarWeekView">
@@ -51,8 +50,7 @@
                                        Text="{Binding InlineTimeText, RelativeSource={RelativeSource TemplatedParent}}"
                                        FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
                                        Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                                       TextTrimming="CharacterEllipsis"
-                                       ext:TextBlockExtensions.IsTextTrimmed="{Binding IsTextTrimmed, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}"/>
+                                       TextTrimming="None"/>
 
                             <!-- Stacked variant: start and end on separate lines -->
                             <StackPanel Orientation="Vertical"

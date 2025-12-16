@@ -25,4 +25,8 @@
         <PackageReference Include="AvaSourceGenerators" Version="0.2.0" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1"/>
     </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Extensions\" />
+    </ItemGroup>
 </Project>

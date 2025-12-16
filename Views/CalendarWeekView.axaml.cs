@@ -210,14 +210,7 @@ public partial class CalendarWeekView : UserControl
 
             foreach (var vm in _items)
             {
-                var ev = new EventChip
-                {
-                    Title = vm.Title,
-                    DaySlot = vm.DaySlot,
-                    BackgroundBrush = new SolidColorBrush(vm.Color, 0.8),
-                    ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(vm.Color))
-                };
-                _canvas.Children.Add(ev);
+                _canvas.Children.Add(vm);
             }
             RefreshContent();
         }
@@ -228,7 +221,7 @@ public partial class CalendarWeekView : UserControl
             var perDayRowIndex = new int[Math.Max(1, DayColumns)];
             var maxRows = 0;
 
-            foreach (var ev in _canvas.Children.OfType<EventChip>())
+            foreach (var ev in _canvas.Children.OfType<EventItemViewModel>())
             {
                 var day = Math.Clamp(ev.DaySlot, 0, Math.Max(1, DayColumns) - 1);
                 var row = perDayRowIndex[day];
