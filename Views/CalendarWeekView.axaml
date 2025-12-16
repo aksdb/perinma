@@ -37,7 +37,8 @@
             <Setter Property="Template">
                 <ControlTemplate>
                     <Border CornerRadius="10"
-                            Background="{Binding BackgroundBrush, RelativeSource={RelativeSource TemplatedParent}}">
+                            Background="{Binding BackgroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                            Bounds="{Binding AvailableBounds, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}">
                         <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 2, 5, 2">
                             <TextBlock Text="{Binding Title, RelativeSource={RelativeSource TemplatedParent}}"
                                        FontWeight="Bold"

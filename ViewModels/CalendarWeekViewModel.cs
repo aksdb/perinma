@@ -264,7 +264,7 @@ public partial class EventItemViewModel : TemplatedControl
     private string _inlineTimeText = string.Empty;
 
     [AvaStyledProperty]
-    private bool _isTextTrimmed;
+    private Rect? _availableBounds;
 
     [AvaStyledProperty]
     private bool _showInlineTimes = true;
@@ -272,14 +272,16 @@ public partial class EventItemViewModel : TemplatedControl
     [AvaStyledProperty]
     private bool _showStackedTimes = false;
 
+    private double _inlineTimeTextWidth;
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
         
         switch (change.Property.Name)
         {
-            case nameof(IsTextTrimmed):
-                ShowInlineTimes = IsTextTrimmed;
+            case nameof(AvailableBounds):
+                ShowInlineTimes = AvailableBounds?.Width > _inlineTimeTextWidth;
                 ShowStackedTimes = !ShowInlineTimes;
                 break;
             case nameof(StartTimeText):
@@ -290,6 +292,34 @@ public partial class EventItemViewModel : TemplatedControl
                 BackgroundBrush = new SolidColorBrush(Color, 0.8);
                 ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(Color));
                 break;
+            case nameof(InlineTimeText):
+            case nameof(FontFamily):
+            case nameof(FontSize):
+            case nameof(FontStretch):
+            case nameof(FontStyle):
+            case nameof(FontWeight):
+                RecalculateInlineTimeWidth();
+                break;
         }
+    }
+
+    private void RecalculateInlineTimeWidth()
+    {
+        var text = InlineTimeText;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            _inlineTimeTextWidth = 0;
+            return;
+        }
+
+        // Measure the text using current font properties
+        var typeface = new Typeface(FontFamily, FontStyle, FontWeight, FontStretch);
+        var layout = new Avalonia.Media.TextFormatting.TextLayout(
+            text,
+            typeface,
+            FontSize,
+            ForegroundBrush);
+
+        _inlineTimeTextWidth = layout.Width;
     }
 }
