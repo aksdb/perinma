@@ -36,7 +36,7 @@ public partial class CalendarWeekView : UserControl
         }
         
         _timeRowGrid.RowDefinitions.Add(new RowDefinition(1.0, GridUnitType.Star));
-        for (int i = 0; i < 24; i++)
+        for (var i = 0; i < 24; i++)
         {
             var timeElement1 = new TimeLabel { Hour = i, Minute = 0 };
             var timeElement2 = new TimeLabel { Hour = i, Minute = 30 };
@@ -119,30 +119,7 @@ public partial class CalendarWeekView : UserControl
             if (_items == null) return;
             foreach (var vm in _items)
             {
-                var ev = new EventChip
-                {
-                    Title = vm.Title,
-                    StartSlot = vm.StartSlot,
-                    EndSlot = vm.EndSlot,
-                    DaySlot = vm.DaySlot,
-                    ColumnSlot = vm.ColumnSlot,
-                    TotalColumns = vm.TotalColumns,
-                    BackgroundBrush = new SolidColorBrush(vm.Color, 0.8),
-                    ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(vm.Color))
-                };
-
-                // Format times from 15-minute slots
-                static string SlotToTimeText(int slot)
-                {
-                    var hour = slot / 4;
-                    var minute = (slot % 4) * 15;
-                    return $"{hour:D2}:{minute:D2}";
-                }
-
-                ev.StartText = SlotToTimeText(vm.StartSlot);
-                ev.EndText = SlotToTimeText(vm.EndSlot);
-
-                _canvas.Children.Add(ev);
+                _canvas.Children.Add(vm);
             }
             RefreshContent();
         }
@@ -152,7 +129,7 @@ public partial class CalendarWeekView : UserControl
             Height = RowHeight * 24 * 4;
 
             var dayColWidth = Bounds.Width / DayColumns;
-            foreach (var eventView in _canvas.Children.OfType<EventChip>())
+            foreach (var eventView in _canvas.Children.OfType<EventItemViewModel>())
             {
                 eventView.SetValue(Canvas.TopProperty, eventView.StartSlot * RowHeight);
                 var innerWidth = dayColWidth / Math.Max(1, eventView.TotalColumns);
@@ -283,7 +260,7 @@ public partial class CalendarWeekView : UserControl
             var height = Bounds.Height;
             var width = Bounds.Width;
             var columnWidth = width / Math.Max(1, DayColumns);
-            for (int i = 1; i < DayColumns; i++)
+            for (var i = 1; i < DayColumns; i++)
             {
                 context.DrawLine(thickPen, new Point(i * columnWidth, 0), new Point(i * columnWidth, height));
             }

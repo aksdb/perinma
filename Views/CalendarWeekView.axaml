@@ -3,6 +3,8 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:views="using:perinma.Views"
+             xmlns:ext="using:perinma.Extensions"
+             xmlns:vm="using:perinma.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="perinma.Views.CalendarWeekView">
 
@@ -32,12 +34,12 @@
         </Style>
 
         <!-- Template for EventChip templated control -->
-        <Style Selector="views|EventChip">
+        <Style Selector="vm|EventItemViewModel">
             <Setter Property="Template">
                 <ControlTemplate>
                     <Border CornerRadius="10"
                             Background="{Binding BackgroundBrush, RelativeSource={RelativeSource TemplatedParent}}">
-                        <StackPanel Orientation="Vertical" Spacing="2" Margin="5">
+                        <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 2, 5, 2">
                             <TextBlock Text="{Binding Title, RelativeSource={RelativeSource TemplatedParent}}"
                                        FontWeight="Bold"
                                        TextTrimming="CharacterEllipsis"
@@ -49,16 +51,17 @@
                                        Text="{Binding InlineTimeText, RelativeSource={RelativeSource TemplatedParent}}"
                                        FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
                                        Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                                       TextTrimming="CharacterEllipsis"/>
+                                       TextTrimming="CharacterEllipsis"
+                                       ext:TextBlockExtensions.IsTextTrimmed="{Binding IsTextTrimmed, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}"/>
 
                             <!-- Stacked variant: start and end on separate lines -->
                             <StackPanel Orientation="Vertical"
                                         IsVisible="{Binding ShowStackedTimes, RelativeSource={RelativeSource TemplatedParent}}"
                                         Spacing="0">
-                                <TextBlock Text="{Binding StartText, RelativeSource={RelativeSource TemplatedParent}}"
+                                <TextBlock Text="{Binding StartTimeText, RelativeSource={RelativeSource TemplatedParent}}"
                                            FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
                                            Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"/>
-                                <TextBlock Text="{Binding EndText, RelativeSource={RelativeSource TemplatedParent}}"
+                                <TextBlock Text="{Binding EndTimeText, RelativeSource={RelativeSource TemplatedParent}}"
                                            FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
                                            Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"/>
                             </StackPanel>
@@ -76,6 +79,8 @@
                    VerticalAlignment="Center"
                    Text="All-day"/>
         <StackPanel Grid.Column="1" Grid.Row="0">
+            <!-- Weekday headers -->
+            <Grid Name="WeekdayNames"/>
             <ScrollViewer Name="TopView"
                           MinHeight="0"
                           VerticalScrollBarVisibility="Auto">
