@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
@@ -301,6 +303,29 @@ public partial class EventItemViewModel : TemplatedControl
                 RecalculateInlineTimeWidth();
                 break;
         }
+    }
+
+    protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
+    {
+        base.OnApplyTemplate(e);
+        var border = e.NameScope.Find<Border>("Border");
+
+        CancellationTokenSource? singleTapCtx = null;
+        border.Tapped += async (sender, args) =>
+        {
+            singleTapCtx?.Cancel();
+            singleTapCtx = new CancellationTokenSource();
+            try
+            {
+                await Task.Delay(150, singleTapCtx.Token);
+                FlyoutBase.ShowAttachedFlyout(border);
+            } catch (TaskCanceledException) { }
+        };
+        border.DoubleTapped += (sender, args) =>
+        {
+            singleTapCtx?.Cancel();
+            Console.Out.WriteLine("Double-tapped");
+        };
     }
 
     private void RecalculateInlineTimeWidth()
