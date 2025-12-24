@@ -1,15 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Lucdem.Avalonia.SourceGenerators.Attributes;
 using perinma.Models;
@@ -121,6 +120,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         StartTimeText = e.StartTime.ToString("HH:mm"),
                         EndTimeText = e.EndTime.ToString("HH:mm"),
                         ShowInlineTimes = true,
+                        CalendarEvent = e,
                     };
                     viewModels.Add(vm);
                 }
@@ -275,6 +275,9 @@ public partial class EventItemViewModel : TemplatedControl
     private bool _showStackedTimes = false;
 
     private double _inlineTimeTextWidth;
+    
+    [AvaStyledProperty]
+    private CalendarEvent _calendarEvent;
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -339,7 +342,7 @@ public partial class EventItemViewModel : TemplatedControl
 
         // Measure the text using current font properties
         var typeface = new Typeface(FontFamily, FontStyle, FontWeight, FontStretch);
-        var layout = new Avalonia.Media.TextFormatting.TextLayout(
+        var layout = new TextLayout(
             text,
             typeface,
             FontSize,
