@@ -87,6 +87,13 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         break;
                     }
 
+                    if (currentDate == effectiveEnd)
+                    {
+                        // The end of the event is exactly the start of the new day. So it effectively
+                        // ends at the last day.
+                        break;
+                    }
+
                     var startSlot = 0;
                     var endSlot = 0;
                     if (currentDate == startDate)

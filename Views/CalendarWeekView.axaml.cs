@@ -13,6 +13,7 @@ namespace perinma.Views;
 public partial class CalendarWeekView : UserControl
 {
     private readonly Grid _timeRowGrid;
+    private readonly Grid _weekdayNamesGrid;
     private readonly MainView _mainView = new();
     private readonly TopBarView _topBarView = new();
     private readonly CalendarWeekViewModel _viewModel = CalendarWeekViewModel.Instance;
@@ -20,12 +21,24 @@ public partial class CalendarWeekView : UserControl
     public CalendarWeekView()
     {
         InitializeComponent();
-        
+
+        _weekdayNamesGrid = this.FindControl<Grid>("WeekdayNames")!;
         var timeRowContainer = this.FindControl<ScrollViewer>("TimeRows")!;
         _timeRowGrid = new Grid();
         timeRowContainer.Content = _timeRowGrid;
         _timeRowGrid.ColumnDefinitions.Add(new ColumnDefinition(1.0,  GridUnitType.Star));
         _timeRowGrid.SetValue(Grid.IsSharedSizeScopeProperty, true);
+
+        for (var i = 0; i < _viewModel.DayColumns; i++)
+        {
+            var textBlock = new TextBlock();
+            textBlock.Text = $"{i}";
+            textBlock.SetValue(Grid.ColumnProperty, i);
+            textBlock.TextAlignment = TextAlignment.Center;
+            // TODO: Binding to day?
+            _weekdayNamesGrid.ColumnDefinitions.Add(new ColumnDefinition(1.0, GridUnitType.Star));
+            _weekdayNamesGrid.Children.Add(textBlock);
+        }
 
         RowDefinition NewRow()
         {
