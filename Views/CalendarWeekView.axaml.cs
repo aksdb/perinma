@@ -20,6 +20,7 @@ public partial class CalendarWeekView : UserControl
     
     public CalendarWeekView()
     {
+        DataContext = _viewModel;
         InitializeComponent();
 
         _weekdayNamesGrid = this.FindControl<Grid>("WeekdayNames")!;
@@ -84,7 +85,7 @@ public partial class CalendarWeekView : UserControl
 
     private void RebuildColumns()
     {
-        _weekdayNamesGrid.Children.Clear();
+        /*_weekdayNamesGrid.Children.Clear();
         for (var i = 0; i < _viewModel.DayColumns; i++)
         {
             var textBlock = new TextBlock();
@@ -94,7 +95,7 @@ public partial class CalendarWeekView : UserControl
             // TODO: Binding to day?
             _weekdayNamesGrid.ColumnDefinitions.Add(new ColumnDefinition(1.0, GridUnitType.Star));
             _weekdayNamesGrid.Children.Add(textBlock);
-        }
+        }*/
         
         _mainView.DayColumns = _viewModel.DayColumns;
         _topBarView.DayColumns = _viewModel.DayColumns;

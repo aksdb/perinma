@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:views="using:perinma.Views"
              xmlns:vm="using:perinma.ViewModels"
+             x:DataType="vm:CalendarWeekViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="perinma.Views.CalendarWeekView">
 
@@ -17,7 +18,7 @@
         <Style Selector="views|TimeLabel">
             <Setter Property="Template">
                 <ControlTemplate>
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <TextBlock FontSize="{DynamicResource CalendarTimeHourFontSize}"
                                    Foreground="Gray"
                                    VerticalAlignment="Top"
@@ -90,10 +91,29 @@
                    FontSize="{DynamicResource CalendarTimeHourFontSize}"
                    Foreground="Gray"
                    VerticalAlignment="Center"
-                   Text="All-day" />
+                   Text="All-day"
+                   Margin="4, 0, 4, 0"/>
         <StackPanel Grid.Column="1" Grid.Row="0">
             <!-- Weekday headers -->
-            <Grid Name="WeekdayNames" />
+            <!--<Grid Name="WeekdayNames" />-->
+            <ItemsControl ItemsSource="{Binding WeekDayHeaders}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="{Binding WeekDayHeaders.Count}"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0, 0, 0, 8">
+                            <TextBlock 
+                                Text="{Binding EffectiveDate.Day}"
+                                Margin="0, 0, 4, 0"
+                                FontWeight="Bold"/>
+                            <TextBlock Text="{Binding EffectiveDate.DayOfWeek}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <ScrollViewer Name="TopView"
                           MinHeight="0"
                           VerticalScrollBarVisibility="Auto">

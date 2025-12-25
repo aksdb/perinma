@@ -29,12 +29,16 @@ public partial class CalendarWeekViewModel : ViewModelBase
     public DateTime WeekStartLocal { get; private set; }
 
     [ObservableProperty]
-    private int dayColumns = 7;
+    private int _dayColumns;
+    
+    [ObservableProperty]
+    private List<WeekDayHeaderViewModel> _weekDayHeaders = [];
 
     private CalendarWeekViewModel(ICalendarSource calendarSource)
     {
         _calendarSource = calendarSource;
         SetCurrentWeekStart();
+        DayColumns = 7;
     }
 
     public static CalendarWeekViewModel Instance { get; } = new(new DummyCalendarSource(DateTime.Now));
@@ -235,6 +239,15 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
         return result;
     }
+
+    partial void OnDayColumnsChanged(int value)
+    {
+        _weekDayHeaders.Clear();
+        for (var i = 0; i < value; i++)
+        {
+            _weekDayHeaders.Add(new WeekDayHeaderViewModel {ReferenceDate = WeekStartLocal, Offset = i});
+        }
+    }
 }
 
 public partial class EventItemViewModel : TemplatedControl
@@ -357,4 +370,17 @@ public partial class EventItemViewModel : TemplatedControl
 
         _inlineTimeTextWidth = layout.Width;
     }
+}
+
+public partial class WeekDayHeaderViewModel : ObservableObject
+{
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EffectiveDate))]
+    private DateTime _referenceDate;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EffectiveDate))]
+    private int _offset;
+    
+    public DateTime EffectiveDate => ReferenceDate.AddDays(Offset);
 }
