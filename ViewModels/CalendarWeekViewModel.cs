@@ -25,8 +25,15 @@ public partial class CalendarWeekViewModel : ViewModelBase
     // Full-day events are kept separate so they don't interfere with timed event column calculations
     public ObservableCollection<EventItemViewModel> FullDayEvents { get; } = [];
 
-    // Monday-based week start (local)
-    public DateTime WeekStartLocal { get; private set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WeekStartOffset))]
+    private DateTime _weekStart;
+
+    public DateTimeOffset WeekStartOffset
+    {
+        get => new(WeekStart);
+        set => WeekStart = value.DateTime;
+    }
 
     [ObservableProperty]
     private int _dayColumns;
@@ -37,25 +44,26 @@ public partial class CalendarWeekViewModel : ViewModelBase
     private CalendarWeekViewModel(ICalendarSource calendarSource)
     {
         _calendarSource = calendarSource;
-        SetCurrentWeekStart();
+        WeekStart = DateTime.Now;
         DayColumns = 7;
     }
 
-    public static CalendarWeekViewModel Instance { get; } = new(new DummyCalendarSource(DateTime.Now));
-
-    private void SetCurrentWeekStart()
+    partial void OnWeekStartChanged(DateTime value)
     {
-        var today = DateTime.Today;
-        var diff = ((int)today.DayOfWeek + 6) % 7; // Monday=0
-        WeekStartLocal = today.AddDays(-diff);
+        var diff = ((int)value.DayOfWeek + 6) % 7; // Monday=0
+        var actualWeekStart = value.AddDays(-diff);
+        
+        WeekStart = actualWeekStart;
     }
+
+    public static CalendarWeekViewModel Instance { get; } = new(new DummyCalendarSource(DateTime.Now));
 
     public void Load()
     {
         Events.Clear();
         FullDayEvents.Clear();
 
-        var start = WeekStartLocal;
+        var start = WeekStart;
         var end = start.AddDays(DayColumns);
 
         var tieBreaker = 0;
@@ -242,11 +250,12 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
     partial void OnDayColumnsChanged(int value)
     {
-        _weekDayHeaders.Clear();
+        var newHeaders = new List<WeekDayHeaderViewModel>();
         for (var i = 0; i < value; i++)
         {
-            _weekDayHeaders.Add(new WeekDayHeaderViewModel {ReferenceDate = WeekStartLocal, Offset = i});
+            newHeaders.Add(new WeekDayHeaderViewModel {ReferenceDate = WeekStart, Offset = i});
         }
+        WeekDayHeaders = newHeaders;
     }
 }
 

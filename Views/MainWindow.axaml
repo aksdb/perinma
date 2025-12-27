@@ -23,6 +23,10 @@
                 <MenuItem Header="_Settings" Name="MnuSettings"></MenuItem>
                 <MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"></MenuItem>
             </MenuItem>
+            <StackPanel Orientation="Horizontal">
+                <NumericUpDown Value="{Binding CalendarWeekViewModel.DayColumns}" Minimum="1" Maximum="7"/>
+                <DatePicker SelectedDate="{Binding CalendarWeekViewModel.WeekStartOffset}"/>
+            </StackPanel>
         </Menu>
         <v:CalendarWeekView/>
     </DockPanel>
