@@ -10,6 +10,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Lucdem.Avalonia.SourceGenerators.Attributes;
 using perinma.Models;
 using perinma.Storage;
@@ -51,16 +52,31 @@ public partial class CalendarWeekViewModel : ViewModelBase
     partial void OnWeekStartChanged(DateTime value)
     {
         var diff = ((int)value.DayOfWeek + 6) % 7; // Monday=0
-        var actualWeekStart = value.AddDays(-diff);
+        var actualWeekStart = value.Date.AddDays(-diff);
 
         if (WeekStart == actualWeekStart)
         {
-            return;
+            // We didn't have to correct the DateTime, so we can load the data.
+            _weekDayHeaders.ForEach(vm => vm.ReferenceDate = actualWeekStart);
+            Load();
         }
-        
-        WeekStart = actualWeekStart;
-        _weekDayHeaders.ForEach(vm => vm.ReferenceDate = actualWeekStart);
-        Load();
+        else
+        {
+            // We had to adjust the DateTime, so we will trigger a new Change event.
+            WeekStart = actualWeekStart;
+        }
+    }
+
+    [RelayCommand]
+    private void NextWeek()
+    {
+        WeekStart = WeekStart.AddDays(7);
+    }
+
+    [RelayCommand]
+    private void PreviousWeek()
+    {
+        WeekStart = WeekStart.AddDays(-7);
     }
 
     public static CalendarWeekViewModel Instance { get; } = new(new DummyCalendarSource(DateTime.Now));

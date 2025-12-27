@@ -26,6 +26,8 @@
             <StackPanel Orientation="Horizontal">
                 <NumericUpDown Value="{Binding CalendarWeekViewModel.DayColumns}" Minimum="1" Maximum="7"/>
                 <DatePicker SelectedDate="{Binding CalendarWeekViewModel.WeekStartOffset}"/>
+                <Button Command="{Binding CalendarWeekViewModel.PreviousWeekCommand}">Previous</Button>
+                <Button Command="{Binding CalendarWeekViewModel.NextWeekCommand}">Next</Button>
             </StackPanel>
         </Menu>
         <v:CalendarWeekView/>
