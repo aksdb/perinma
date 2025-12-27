@@ -1,3 +1,4 @@
 <Solution>
-  <Project Path="perinma.csproj" />
+  <Project Path="src/perinma.csproj" />
+  <Project Path="tests/tests.csproj" />
 </Solution>
