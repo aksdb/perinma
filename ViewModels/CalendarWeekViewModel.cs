@@ -32,7 +32,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
     public DateTimeOffset WeekStartOffset
     {
         get => new(WeekStart);
-        set => WeekStart = value.DateTime;
+        set => WeekStart = value.Date;
     }
 
     [ObservableProperty]
@@ -44,21 +44,28 @@ public partial class CalendarWeekViewModel : ViewModelBase
     private CalendarWeekViewModel(ICalendarSource calendarSource)
     {
         _calendarSource = calendarSource;
-        WeekStart = DateTime.Now;
         DayColumns = 7;
+        WeekStart = DateTime.Now;
     }
 
     partial void OnWeekStartChanged(DateTime value)
     {
         var diff = ((int)value.DayOfWeek + 6) % 7; // Monday=0
         var actualWeekStart = value.AddDays(-diff);
+
+        if (WeekStart == actualWeekStart)
+        {
+            return;
+        }
         
         WeekStart = actualWeekStart;
+        _weekDayHeaders.ForEach(vm => vm.ReferenceDate = actualWeekStart);
+        Load();
     }
 
     public static CalendarWeekViewModel Instance { get; } = new(new DummyCalendarSource(DateTime.Now));
 
-    public void Load()
+    private void Load()
     {
         Events.Clear();
         FullDayEvents.Clear();
@@ -256,6 +263,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
             newHeaders.Add(new WeekDayHeaderViewModel {ReferenceDate = WeekStart, Offset = i});
         }
         WeekDayHeaders = newHeaders;
+        Load();
     }
 }
 

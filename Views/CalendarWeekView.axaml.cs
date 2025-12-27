@@ -67,7 +67,6 @@ public partial class CalendarWeekView : UserControl
         // Show at most 3 full-day rows; scroll if there are more
         topView.MaxHeight = _topBarView.RowHeight * 3;
 
-        _viewModel.Load();
         _mainView.SetEvents(_viewModel.Events); // timed events only
         _topBarView.SetEvents(_viewModel.FullDayEvents); // full-day events only
         
@@ -85,18 +84,6 @@ public partial class CalendarWeekView : UserControl
 
     private void RebuildColumns()
     {
-        /*_weekdayNamesGrid.Children.Clear();
-        for (var i = 0; i < _viewModel.DayColumns; i++)
-        {
-            var textBlock = new TextBlock();
-            textBlock.Text = $"{i}";
-            textBlock.SetValue(Grid.ColumnProperty, i);
-            textBlock.TextAlignment = TextAlignment.Center;
-            // TODO: Binding to day?
-            _weekdayNamesGrid.ColumnDefinitions.Add(new ColumnDefinition(1.0, GridUnitType.Star));
-            _weekdayNamesGrid.Children.Add(textBlock);
-        }*/
-        
         _mainView.DayColumns = _viewModel.DayColumns;
         _topBarView.DayColumns = _viewModel.DayColumns;
         _mainView.RefreshContent();
@@ -170,6 +157,8 @@ public partial class CalendarWeekView : UserControl
                 eventView.Height = slotSpan * RowHeight;
                 eventView.Width = innerWidth;
             }
+            
+            InvalidateVisual();
         }
 
         protected override void OnSizeChanged(SizeChangedEventArgs e)
