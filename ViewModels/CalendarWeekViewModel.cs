@@ -79,6 +79,12 @@ public partial class CalendarWeekViewModel : ViewModelBase
         WeekStart = WeekStart.AddDays(-7);
     }
 
+    [RelayCommand]
+    private void Today()
+    {
+        WeekStart = DateTime.Today;
+    }
+
     public static CalendarWeekViewModel Instance { get; } = new(new DummyCalendarSource(DateTime.Now));
 
     private void Load()
