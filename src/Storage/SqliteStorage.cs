@@ -1,12 +1,6 @@
 namespace perinma.Storage;
 
-public class SqliteStorage
+public class SqliteStorage(DatabaseService databaseService)
 {
-    private readonly DatabaseService _databaseService;
-
-    public SqliteStorage(DatabaseService databaseService)
-    {
-        _databaseService = databaseService;
-    }
-
+    private readonly DatabaseService _databaseService = databaseService;
 }
