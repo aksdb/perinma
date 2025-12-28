@@ -9,6 +9,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="Storage\Migrations\*.sql" />
+    </ItemGroup>
+
+    <ItemGroup>
         <AvaloniaResource Include="Assets\**"/>
     </ItemGroup>
 
@@ -24,6 +28,11 @@
         </PackageReference>
         <PackageReference Include="AvaSourceGenerators" Version="0.2.0" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+        <PackageReference Include="Dapper" Version="2.1.66" />
+        <PackageReference Include="Dapper.Extensions.SQLite" Version="5.4.2" />
+        <PackageReference Include="dbup-core" Version="6.0.15" />
+        <PackageReference Include="dbup-sqlite" Version="6.0.4" />
+        <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.2" />
     </ItemGroup>
 
     <ItemGroup>

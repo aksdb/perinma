@@ -1,9 +1,10 @@
+using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
-using System.Linq;
 using Avalonia.Markup.Xaml;
+using perinma.Storage;
 using perinma.ViewModels;
 using perinma.Views;
 
@@ -11,6 +12,8 @@ namespace perinma;
 
 public partial class App : Application
 {
+    private DatabaseService? _databaseService;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -18,6 +21,18 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        SQLitePCL.Batteries.Init();
+        try
+        {
+            _databaseService = new DatabaseService();
+        }
+        catch (Exception ex)
+        {
+            // For now, we just log to console or rethrow. 
+            Console.WriteLine($"Failed to initialize database: {ex}");
+            throw;
+        }
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
