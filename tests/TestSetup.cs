@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Headless;
 
+namespace tests;
+
 [assembly: AvaloniaTestApplication(typeof(TestAppBuilder))]
 
 public class TestAppBuilder
