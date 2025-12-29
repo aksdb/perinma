@@ -20,8 +20,9 @@
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">
-                <MenuItem Header="_Settings" Name="MnuSettings"></MenuItem>
-                <MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"></MenuItem>
+                <MenuItem Header="_Settings" Name="MnuSettings" x:DataType="vm:SettingsViewModel" Command="{Binding WaitForHttpCommand}"/>
+                <MenuItem Header="_Abort" Name="MnuAbort" x:DataType="vm:SettingsViewModel" Command="{Binding AbortCommand}"/>
+                <MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"/>
             </MenuItem>
             <StackPanel Orientation="Horizontal">
                 <NumericUpDown Value="{Binding CalendarWeekViewModel.DayColumns}" Minimum="1" Maximum="7"/>
