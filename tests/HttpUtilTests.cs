@@ -35,30 +35,27 @@ public class HttpUtilTests
     public async Task TestCanBeCancelled()
     {
         using var cts = new CancellationTokenSource();
+        var completionSource = new TaskCompletionSource<bool>();
         
         var url = HttpUtil.StartHttpCallbackListener(result =>
         {
+            completionSource.SetResult(result.IsSuccess);
         }, cts.Token);
         
         await cts.CancelAsync();
+        await completionSource.Task;
 
         var uri = new Uri(url);
-        
-        // The listener might take a moment to stop.
-        bool stopped = false;
-        for (int i = 0; i < 10; i++)
+
+        var stopped = false;
+        try
         {
-            try
-            {
-                using var client = new TcpClient();
-                await client.ConnectAsync(uri.Host, uri.Port);
-            }
-            catch (SocketException)
-            {
-                stopped = true;
-                break;
-            }
-            await Task.Delay(50);
+            using var client = new TcpClient();
+            await client.ConnectAsync(uri.Host, uri.Port);
+        }
+        catch (SocketException)
+        {
+            stopped = true;
         }
         
         Assert.That(stopped, Is.True, "Listener should have stopped after cancellation");
