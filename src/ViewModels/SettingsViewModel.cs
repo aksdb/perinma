@@ -36,16 +36,16 @@ public partial class SettingsViewModel(DatabaseService databaseService) : ViewMo
     }
 
     [RelayCommand(IncludeCancelCommand = true)]
-    public async Task<string> WaitForHttp(CancellationToken c)
+    public async Task<bool> WaitForHttp(CancellationToken c)
     {
-        var tcs = new TaskCompletionSource<string>();
+        var tcs = new TaskCompletionSource<bool>();
         await using var registration = c.Register(() => tcs.TrySetCanceled());
 
         var url = HttpUtil.StartHttpCallbackListener(result =>
         {
             if (result.IsSuccess)
             {
-                tcs.TrySetResult(result.Value ?? string.Empty);
+                tcs.TrySetResult(true);
             }
             else
             {

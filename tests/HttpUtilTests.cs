@@ -1,4 +1,4 @@
-using System.Net;
+using System.Collections.Specialized;
 using System.Net.Sockets;
 using System.Text;
 using perinma.Utils;
@@ -11,8 +11,8 @@ public class HttpUtilTests
     public async Task TestReturnsQueryParameterContent()
     {
         using var cts = new CancellationTokenSource();
-        var tcs = new TaskCompletionSource<string>();
-        
+        var tcs = new TaskCompletionSource<NameValueCollection?>();
+
         var url = HttpUtil.StartHttpCallbackListener(result =>
         {
             if (result.IsSuccess) tcs.SetResult(result.Value!);
@@ -27,8 +27,12 @@ public class HttpUtilTests
         await stream.WriteAsync(Encoding.ASCII.GetBytes(request));
 
         var result = await tcs.Task;
-        
-        Assert.That(result, Is.EqualTo("secret_token"));
+        Assert.That(result, Is.Not.Null);
+
+        Assert.That(result, Is.EquivalentTo(new NameValueCollection
+        {
+            { "code", "secret_token" }
+        }));
     }
 
     [Test]
@@ -36,12 +40,10 @@ public class HttpUtilTests
     {
         using var cts = new CancellationTokenSource();
         var completionSource = new TaskCompletionSource<bool>();
-        
-        var url = HttpUtil.StartHttpCallbackListener(result =>
-        {
-            completionSource.SetResult(result.IsSuccess);
-        }, cts.Token);
-        
+
+        var url = HttpUtil.StartHttpCallbackListener(result => { completionSource.SetResult(result.IsSuccess); },
+            cts.Token);
+
         await cts.CancelAsync();
         await completionSource.Task;
 
@@ -57,7 +59,7 @@ public class HttpUtilTests
         {
             stopped = true;
         }
-        
+
         Assert.That(stopped, Is.True, "Listener should have stopped after cancellation");
     }
 
@@ -65,8 +67,8 @@ public class HttpUtilTests
     public async Task TestHandlesNonHttpRequestsGracefully()
     {
         using var cts = new CancellationTokenSource();
-        var tcs = new TaskCompletionSource<string>();
-        
+        var tcs = new TaskCompletionSource<NameValueCollection?>();
+
         var url = HttpUtil.StartHttpCallbackListener(result =>
         {
             if (result.IsSuccess) tcs.SetResult(result.Value!);
@@ -80,7 +82,7 @@ public class HttpUtilTests
         await stream.WriteAsync(new byte[] { 0, 1, 2, 3, 4, 5, 13, 10 }); // Not a valid HTTP GET
 
         var result = await tcs.Task;
-        
-        Assert.That(result, Is.EqualTo(string.Empty));
+
+        Assert.That(result, Is.Null);
     }
 }

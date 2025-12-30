@@ -1,11 +1,11 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Specialized;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace perinma.Utils;
 
@@ -18,38 +18,39 @@ public record Result<T>(T? Value, Exception? Error)
 
 public static class HttpUtil
 {
-    public static string StartHttpCallbackListener(Action<Result<string>> callback, CancellationToken cancellationToken)
+    public static string StartHttpCallbackListener(Action<Result<NameValueCollection?>> callback,
+        CancellationToken cancellationToken)
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
         var url = $"http://localhost:{port}";
-        
+
         var started = new TaskCompletionSource<bool>();
 
         _ = Task.Run(async () =>
-        {
-            started.SetResult(true);
-            try
             {
-                await using (cancellationToken.Register(() => listener.Stop()))
+                started.SetResult(true);
+                try
                 {
-                    var result = await WaitForHttpCallbackInternalAsync(listener, cancellationToken);
-                    if (!cancellationToken.IsCancellationRequested)
+                    await using (cancellationToken.Register(() => listener.Stop()))
                     {
-                        callback(Result<string>.Success(result));
+                        var result = await WaitForHttpCallbackInternalAsync(listener, cancellationToken);
+                        if (!cancellationToken.IsCancellationRequested)
+                        {
+                            callback(Result<NameValueCollection?>.Success(result));
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                callback(Result<string>.Failure(ex));
-            }
-            finally
-            {
-                listener.Stop();
-            }
-        },
+                catch (Exception ex)
+                {
+                    callback(Result<NameValueCollection?>.Failure(ex));
+                }
+                finally
+                {
+                    listener.Stop();
+                }
+            },
             // The task should at least start, no matter what, so we can make sure
             // the callback only needs to be handled in there.
             CancellationToken.None);
@@ -59,70 +60,59 @@ public static class HttpUtil
         return url;
     }
 
-    private static async Task<string> WaitForHttpCallbackInternalAsync(TcpListener listener, CancellationToken cancellationToken)
+    private static async Task<NameValueCollection?> WaitForHttpCallbackInternalAsync(TcpListener listener,
+        CancellationToken cancellationToken)
     {
         try
         {
             var port = ((IPEndPoint)listener.LocalEndpoint).Port;
             Console.WriteLine($"Listening on port {port}");
 
-            return await Task.Run(async () =>
+            using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+
+            var stream = client.GetStream();
+
+            // read first line (stop at \r\n)
+            var buf = new byte[8192];
+            int total = 0, read;
+            while ((read = await stream.ReadAsync(buf, total, 1, cancellationToken)) > 0)
             {
-                using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+                total += read;
+                if (total >= 2 && buf[total - 2] == 13 && buf[total - 1] == 10)
+                    break;
+            }
 
-                var stream = client.GetStream();
+            if (total < 2) return null;
 
-                // 2. read first line (stop at \r\n)
-                var buf = new byte[8192];
-                int total = 0, read;
-                while ((read = await stream.ReadAsync(buf, total, 1, cancellationToken)) > 0)
-                {
-                    total += read;
-                    if (total >= 2 && buf[total - 2] == 13 && buf[total - 1] == 10)
-                        break;
-                }
+            // parse query
+            var line = Encoding.ASCII.GetString(buf, 0, total - 2);
+            var parts = line.Split(' ');
+            if (parts.Length < 2) return null;
 
-                if (total < 2) return string.Empty;
 
-                // 3. parse query
-                var line = Encoding.ASCII.GetString(buf, 0, total - 2);
-                var parts = line.Split(' ');
-                if (parts.Length < 2) return string.Empty;
+            var uri = new Uri(new Uri("http://localhost"), parts[1]); // "/path?foo=bar"
+            var queryParams = HttpUtility.ParseQueryString(uri.Query);
 
-                var uri = parts[1]; // "/path?foo=bar"
-                var q = uri.IndexOf('?') < 0
-                    ? new Dictionary<string, string>()
-                    : uri.Substring(uri.IndexOf('?') + 1)
-                        .Split('&', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(p => p.Split('=', 2))
-                        .ToDictionary(
-                            kv => Uri.UnescapeDataString(kv[0]),
-                            kv => Uri.UnescapeDataString(kv.Length > 1 ? kv[1] : ""));
+            // build response
+            var html =
+                $"<html><body>You can close this window now.</body></html>";
+            var bodyBytes = Encoding.UTF8.GetBytes(html);
+            var headerBytes = Encoding.ASCII.GetBytes(
+                "HTTP/1.1 200 OK\r\n" +
+                "Content-Type: text/html; charset=utf-8\r\n" +
+                $"Content-Length: {bodyBytes.Length}\r\n" +
+                "Connection: close\r\n\r\n");
 
-                // 4. build response
-                var html =
-                    $"<html><body><pre>{string.Join("\n", q.Select(kv => $"{kv.Key}={kv.Value}"))}</pre></body></html>";
-                var bodyBytes = Encoding.UTF8.GetBytes(html);
-                var headerBytes = Encoding.ASCII.GetBytes(
-                    "HTTP/1.1 200 OK\r\n" +
-                    "Content-Type: text/html; charset=utf-8\r\n" +
-                    $"Content-Length: {bodyBytes.Length}\r\n" +
-                    "Connection: close\r\n\r\n");
+            await stream.WriteAsync(headerBytes, cancellationToken);
+            await stream.WriteAsync(bodyBytes, cancellationToken);
+            client.Close();
 
-                await stream.WriteAsync(headerBytes, cancellationToken);
-                await stream.WriteAsync(bodyBytes, cancellationToken);
-                client.Close();
-                return "foobar";
-            }, cancellationToken);
+            return queryParams;
         }
         catch (OperationCanceledException)
         {
             // That's ok.
-            return string.Empty;
-        }
-        finally
-        {
-            Console.WriteLine("done");
+            return null;
         }
     }
 }
