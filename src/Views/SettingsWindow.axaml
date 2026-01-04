@@ -5,5 +5,11 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="perinma.Views.SettingsWindow"
         Title="Settings">
-    Welcome to Avalonia!
+    <DockPanel>
+        <TreeView DockPanel.Dock="Left" SelectionMode="AlwaysSelected">
+            <TreeViewItem Header="General" IsSelected="True">asd</TreeViewItem>
+            <TreeViewItem Header="Accounts">asd 2</TreeViewItem>
+        </TreeView>
+    </DockPanel>
+    
 </Window>

@@ -6,6 +6,9 @@
         <entry key="App.axaml" value="perinma.csproj" />
         <entry key="Views/CalendarWeekView.axaml" value="perinma.csproj" />
         <entry key="Views/MainWindow.axaml" value="perinma.csproj" />
+        <entry key="src/App.axaml" value="src/perinma.csproj" />
+        <entry key="src/Views/MainWindow.axaml" value="src/perinma.csproj" />
+        <entry key="src/Views/SettingsWindow.axaml" value="src/perinma.csproj" />
         <entry key="tests/App.axaml" value="tests/tests.csproj" />
       </map>
     </option>

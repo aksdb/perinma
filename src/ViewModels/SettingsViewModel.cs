@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using perinma.Storage;
@@ -16,6 +18,9 @@ namespace perinma.ViewModels;
 public partial class SettingsViewModel(DatabaseService databaseService) : ViewModelBase
 {
 
+    [ObservableProperty]
+    private AvaloniaList<AccountSettings> _accounts = [];
+    
     public enum AccountType
     {
         Google,

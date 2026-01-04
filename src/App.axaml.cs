@@ -41,11 +41,8 @@ public partial class App : Application
             DisableAvaloniaDataAnnotationValidation();
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainWindowViewModel(),
+                DataContext = new MainWindowViewModel(_databaseService),
             };
-            var foo = new SettingsViewModel(_databaseService);
-            desktop.MainWindow.FindControl<MenuItem>("MnuSettings")!.DataContext = foo;
-            desktop.MainWindow.FindControl<MenuItem>("MnuAbort")!.DataContext = foo;
         }
 
         base.OnFrameworkInitializationCompleted();
