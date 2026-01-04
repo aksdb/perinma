@@ -1,9 +1,9 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+﻿using CommunityToolkit.Mvvm.Input;
 using perinma.Storage;
-using perinma.Views;
+using perinma.ViewModels;
+using perinma.Views.Calendar;
 
-namespace perinma.ViewModels;
+namespace perinma.Views.Main;
 
 public partial class MainWindowViewModel(DatabaseService databaseService) : ViewModelBase
 {

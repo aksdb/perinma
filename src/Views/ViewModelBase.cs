@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace perinma.ViewModels;
+namespace perinma.Views;
 
 public class ViewModelBase : ObservableObject
 {

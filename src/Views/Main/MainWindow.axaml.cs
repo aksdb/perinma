@@ -1,9 +1,8 @@
 using System;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
-namespace perinma.Views;
+namespace perinma.Views.Main;
 
 public partial class MainWindow : Window
 {

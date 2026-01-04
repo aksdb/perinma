@@ -2,11 +2,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:views="using:perinma.Views"
-             xmlns:vm="using:perinma.ViewModels"
-             x:DataType="vm:CalendarWeekViewModel"
+             xmlns:cal="using:perinma.Views.Calendar"
+             x:DataType="cal:CalendarWeekViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="perinma.Views.CalendarWeekView">
+             x:Class="perinma.Views.Calendar.CalendarWeekView">
 
     <UserControl.Resources>
         <x:Double x:Key="CalendarTimeHourFontSize">12</x:Double>
@@ -15,7 +14,7 @@
 
     <UserControl.Styles>
         <!-- Template for TimeLabel templated control -->
-        <Style Selector="views|TimeLabel">
+        <Style Selector="cal|TimeLabel">
             <Setter Property="Template">
                 <ControlTemplate>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -34,7 +33,7 @@
         </Style>
 
         <!-- Template for EventChip templated control -->
-        <Style Selector="vm|EventItemViewModel">
+        <Style Selector="cal|EventItem">
             <Setter Property="Template">
                 <ControlTemplate>
                     <Border Name="Border"

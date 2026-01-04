@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.Primitives;
 
-namespace perinma.Views;
+namespace perinma.Views.Calendar;
 
 public class TimeLabel : TemplatedControl
 {

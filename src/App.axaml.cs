@@ -1,13 +1,12 @@
 using System;
 using System.Linq;
 using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using perinma.Storage;
-using perinma.ViewModels;
-using perinma.Views;
+using perinma.Views.Main;
+using SQLitePCL;
 
 namespace perinma;
 
@@ -22,7 +21,7 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        SQLitePCL.Batteries.Init();
+        Batteries.Init();
         try
         {
             _databaseService = new DatabaseService();

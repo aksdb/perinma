@@ -4,11 +4,9 @@ using System.Collections.Specialized;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Layout;
 using Avalonia.Media;
-using perinma.ViewModels;
 
-namespace perinma.Views;
+namespace perinma.Views.Calendar;
 
 public partial class CalendarWeekView : UserControl
 {
@@ -113,8 +111,8 @@ public partial class CalendarWeekView : UserControl
             Content = _canvas;
         }
 
-        private ObservableCollection<EventItemViewModel>? _items;
-        public void SetEvents(ObservableCollection<EventItemViewModel> items)
+        private ObservableCollection<EventItem>? _items;
+        public void SetEvents(ObservableCollection<EventItem> items)
         {
             if (_items != null)
             {
@@ -146,7 +144,7 @@ public partial class CalendarWeekView : UserControl
             Height = RowHeight * 24 * 4;
 
             var dayColWidth = Bounds.Width / DayColumns;
-            foreach (var eventView in _canvas.Children.OfType<EventItemViewModel>())
+            foreach (var eventView in _canvas.Children.OfType<EventItem>())
             {
                 eventView.SetValue(Canvas.TopProperty, eventView.StartSlot * RowHeight);
                 var innerWidth = dayColWidth / Math.Max(1, eventView.TotalColumns);
@@ -205,8 +203,8 @@ public partial class CalendarWeekView : UserControl
             Content = _canvas;
         }
 
-        private ObservableCollection<EventItemViewModel>? _items;
-        public void SetEvents(ObservableCollection<EventItemViewModel> items)
+        private ObservableCollection<EventItem>? _items;
+        public void SetEvents(ObservableCollection<EventItem> items)
         {
             if (_items != null)
             {
@@ -240,7 +238,7 @@ public partial class CalendarWeekView : UserControl
             var perDayRowIndex = new int[Math.Max(1, DayColumns)];
             var maxRows = 0;
 
-            foreach (var ev in _canvas.Children.OfType<EventItemViewModel>())
+            foreach (var ev in _canvas.Children.OfType<EventItem>())
             {
                 var day = Math.Clamp(ev.DaySlot, 0, Math.Max(1, DayColumns) - 1);
                 var row = perDayRowIndex[day];

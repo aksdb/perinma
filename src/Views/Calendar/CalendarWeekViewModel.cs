@@ -2,29 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Media;
-using Avalonia.Media.TextFormatting;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Lucdem.Avalonia.SourceGenerators.Attributes;
 using perinma.Models;
 using perinma.Storage;
+using perinma.ViewModels;
 
-namespace perinma.ViewModels;
+namespace perinma.Views.Calendar;
 
 public partial class CalendarWeekViewModel : ViewModelBase
 {
     private readonly ICalendarSource _calendarSource;
 
-    public ObservableCollection<EventItemViewModel> Events { get; } = [];
+    public ObservableCollection<EventItem> Events { get; } = [];
 
     // Full-day events are kept separate so they don't interfere with timed event column calculations
-    public ObservableCollection<EventItemViewModel> FullDayEvents { get; } = [];
+    public ObservableCollection<EventItem> FullDayEvents { get; } = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(WeekStartOffset))]
@@ -99,9 +93,9 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
         // Build items
         var allItems = _calendarSource.GetCalendarEvents(start, end)
-            .SelectMany<CalendarEvent, EventItemViewModel>(e =>
+            .SelectMany<CalendarEvent, EventItem>(e =>
             {
-                var viewModels = new List<EventItemViewModel>();
+                var viewModels = new List<EventItem>();
 
                 var effectiveStart = e.StartTime.Date >= start ? e.StartTime : start;
                 var startDate = effectiveStart.Date;
@@ -154,7 +148,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                     // Detect all-day events: modeled as midnight-to-midnight spans
                     var isFullDay = e.StartTime.TimeOfDay == TimeSpan.Zero && e.EndTime.TimeOfDay == TimeSpan.Zero;
 
-                    var vm = new EventItemViewModel
+                    var vm = new EventItem
                     {
                         Title = string.IsNullOrEmpty(e.Title) ? "[no title]" : e.Title,
                         DaySlot = dayIndex,
@@ -199,10 +193,10 @@ public partial class CalendarWeekViewModel : ViewModelBase
         fullDay.ForEach(FullDayEvents.Add);
     }
 
-    private static void AssignEventColumns(List<EventItemViewModel> items)
+    private static void AssignEventColumns(List<EventItem> items)
     {
         // Assign columns using competitor discovery.
-        EventItemViewModel? lastEvent = null;
+        EventItem? lastEvent = null;
         foreach (var ew in items)
         {
             var competingEvent = lastEvent;
@@ -255,15 +249,15 @@ public partial class CalendarWeekViewModel : ViewModelBase
     }
 
     // Helpers for column assignment (Go-equivalent)
-    private static List<EventItemViewModel> FindCompetitors(
-        EventItemViewModel ew,
-        EventItemViewModel competitor,
-        HashSet<EventItemViewModel>? circuitBreaker)
+    private static List<EventItem> FindCompetitors(
+        EventItem ew,
+        EventItem competitor,
+        HashSet<EventItem>? circuitBreaker)
     {
         circuitBreaker ??= [ew];
-        if (!circuitBreaker.Add(competitor)) return new List<EventItemViewModel>();
+        if (!circuitBreaker.Add(competitor)) return new List<EventItem>();
 
-        var result = new List<EventItemViewModel>();
+        var result = new List<EventItem>();
         if (ew.StartSlot <= competitor.EndSlot && ew.DaySlot == competitor.DaySlot)
         {
             result.Add(competitor);
@@ -286,128 +280,6 @@ public partial class CalendarWeekViewModel : ViewModelBase
         }
         WeekDayHeaders = newHeaders;
         Load();
-    }
-}
-
-public partial class EventItemViewModel : TemplatedControl
-{
-    [AvaStyledProperty]
-    private string _title = "[no title]";
-
-    [AvaStyledProperty]
-    private string _startTimeText = string.Empty;
-
-    [AvaStyledProperty]
-    private string _endTimeText = string.Empty;
-
-    public int StartSlot { get; set; }
-    public int EndSlot { get; set; } // inclusive end-slot index
-    public int DaySlot { get; set; }
-
-    [AvaStyledProperty]
-    private Color _color = Color.FromArgb(0x99, 0x33, 0x99, 0xFF);
-
-    [AvaStyledProperty]
-    private IBrush _backgroundBrush;
-
-    [AvaStyledProperty]
-    private IBrush _foregroundBrush;
-
-    public int TieBreaker { get; set; }
-    public bool IsFullDay { get; set; }
-
-    // Additional fields for column assignment
-    public int ColumnSlot { get; set; }
-    public int TotalColumns { get; set; } = 1;
-    public List<EventItemViewModel> CompetingWidgets { get; } = [];
-
-    [AvaStyledProperty]
-    private string _inlineTimeText = string.Empty;
-
-    [AvaStyledProperty]
-    private Rect? _availableBounds;
-
-    [AvaStyledProperty]
-    private bool _showInlineTimes = true;
-    
-    [AvaStyledProperty]
-    private bool _showStackedTimes = false;
-
-    private double _inlineTimeTextWidth;
-    
-    [AvaStyledProperty]
-    private CalendarEvent _calendarEvent;
-
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-    {
-        base.OnPropertyChanged(change);
-        
-        switch (change.Property.Name)
-        {
-            case nameof(AvailableBounds):
-                ShowInlineTimes = AvailableBounds?.Width > _inlineTimeTextWidth;
-                ShowStackedTimes = !ShowInlineTimes;
-                break;
-            case nameof(StartTimeText):
-            case nameof(EndTimeText):
-                InlineTimeText = $"🕐 {StartTimeText}-{EndTimeText}";
-                break;
-            case nameof(Color):
-                BackgroundBrush = new SolidColorBrush(Color, 0.8);
-                ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(Color));
-                break;
-            case nameof(InlineTimeText):
-            case nameof(FontFamily):
-            case nameof(FontSize):
-            case nameof(FontStretch):
-            case nameof(FontStyle):
-            case nameof(FontWeight):
-                RecalculateInlineTimeWidth();
-                break;
-        }
-    }
-
-    protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
-    {
-        base.OnApplyTemplate(e);
-        var border = e.NameScope.Find<Border>("Border");
-
-        CancellationTokenSource? singleTapCtx = null;
-        border.Tapped += async (sender, args) =>
-        {
-            singleTapCtx?.Cancel();
-            singleTapCtx = new CancellationTokenSource();
-            try
-            {
-                await Task.Delay(150, singleTapCtx.Token);
-                FlyoutBase.ShowAttachedFlyout(border);
-            } catch (TaskCanceledException) { }
-        };
-        border.DoubleTapped += (sender, args) =>
-        {
-            singleTapCtx?.Cancel();
-            Console.Out.WriteLine("Double-tapped");
-        };
-    }
-
-    private void RecalculateInlineTimeWidth()
-    {
-        var text = InlineTimeText;
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            _inlineTimeTextWidth = 0;
-            return;
-        }
-
-        // Measure the text using current font properties
-        var typeface = new Typeface(FontFamily, FontStyle, FontWeight, FontStretch);
-        var layout = new TextLayout(
-            text,
-            typeface,
-            FontSize,
-            ForegroundBrush);
-
-        _inlineTimeTextWidth = layout.Width;
     }
 }
 

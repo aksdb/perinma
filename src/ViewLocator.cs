@@ -2,6 +2,7 @@ using System;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using perinma.ViewModels;
+using perinma.Views;
 
 namespace perinma;
 

@@ -38,4 +38,19 @@
     <ItemGroup>
       <Folder Include="Extensions\" />
     </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Views\Calendar\CalendarWeekView.axaml.cs">
+        <DependentUpon>CalendarWeekView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Main\MainWindow.axaml.cs">
+        <DependentUpon>MainWindow.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Settings\SettingsWindow.axaml.cs">
+        <DependentUpon>SettingsWindow.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+    </ItemGroup>
 </Project>
