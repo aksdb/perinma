@@ -2,6 +2,7 @@
 using perinma.Storage;
 using perinma.ViewModels;
 using perinma.Views.Calendar;
+using perinma.Views.Settings;
 
 namespace perinma.Views.Main;
 

@@ -2,14 +2,26 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:settings="using:perinma.Views.Settings"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="perinma.Views.SettingsWindow"
-        Title="Settings">
+        x:Class="perinma.Views.Settings.SettingsWindow"
+        Title="Settings"
+        Width="800"
+        Height="600">
     <DockPanel>
-        <TreeView DockPanel.Dock="Left" SelectionMode="AlwaysSelected">
-            <TreeViewItem Header="General" IsSelected="True">asd</TreeViewItem>
-            <TreeViewItem Header="Accounts">asd 2</TreeViewItem>
+        <TreeView Name="SettingsTree"
+                  DockPanel.Dock="Left"
+                  SelectionMode="AlwaysSelected"
+                  Width="200"
+                  SelectionChanged="OnSettingsTreeSelectionChanged">
+            <TreeViewItem Header="General" IsSelected="True" Tag="General" />
+            <TreeViewItem Header="Accounts" Tag="Accounts" />
         </TreeView>
+
+        <ContentControl Name="ContentArea"
+                        DockPanel.Dock="Right">
+            <settings:GeneralSettingsView />
+        </ContentControl>
     </DockPanel>
-    
+
 </Window>

@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:settings="using:perinma.Views.Settings"
+             x:DataType="settings:GeneralSettingsViewModel"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="perinma.Views.Settings.GeneralSettingsView">
+
+    <StackPanel Margin="20">
+        <TextBlock Text="General Settings" FontSize="24" FontWeight="Bold" Margin="0,0,0,20" />
+
+        <!-- Add general settings controls here -->
+        <TextBlock Text="General settings will go here" />
+    </StackPanel>
+
+</UserControl>
