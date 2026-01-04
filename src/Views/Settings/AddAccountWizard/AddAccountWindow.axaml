@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:wizard="using:perinma.Views.Settings.AddAccountWizard"
+        x:DataType="wizard:AddAccountWizardViewModel"
+        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
+        x:Class="perinma.Views.Settings.AddAccountWizard.AddAccountWindow"
+        Title="Add Account"
+        Width="600"
+        Height="400"
+        CanResize="False">
+
+    <DockPanel>
+        <!-- Progress indicator at top -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,20,20,10" Spacing="10">
+            <TextBlock Text="Step 1: Account Details" FontWeight="{Binding CurrentStepIndex, Converter={x:Static wizard:StepToBoldConverter.Instance}, ConverterParameter=0}" />
+            <TextBlock Text="→" />
+            <TextBlock Text="Step 2: Connection" FontWeight="{Binding CurrentStepIndex, Converter={x:Static wizard:StepToBoldConverter.Instance}, ConverterParameter=1}" />
+        </StackPanel>
+
+        <!-- Navigation buttons at bottom -->
+        <Border DockPanel.Dock="Bottom" BorderBrush="LightGray" BorderThickness="0,1,0,0" Background="{DynamicResource SystemChromeLowColor}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20" Spacing="10">
+                <Button Content="Cancel" Command="{Binding CancelCommand}" Width="80" />
+                <Button Content="Back" Command="{Binding BackCommand}" IsVisible="{Binding CanGoBack}" Width="80" />
+                <Button Content="Next" Command="{Binding NextCommand}" IsVisible="{Binding !IsLastStep}" Width="80" />
+                <Button Content="Finish" Command="{Binding FinishCommand}" IsVisible="{Binding IsLastStep}" Width="80" />
+            </StackPanel>
+        </Border>
+
+        <!-- Content area (step views swap here) -->
+        <ContentControl Name="StepContent" Content="{Binding CurrentStepView}" DockPanel.Dock="Top" />
+    </DockPanel>
+
+</Window>

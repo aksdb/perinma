@@ -3,25 +3,29 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:settings="using:perinma.Views.Settings"
+        x:DataType="settings:SettingsViewModel"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="perinma.Views.Settings.SettingsWindow"
         Title="Settings"
         Width="800"
         Height="600">
     <DockPanel>
-        <TreeView Name="SettingsTree"
-                  DockPanel.Dock="Left"
-                  SelectionMode="AlwaysSelected"
-                  Width="200"
-                  SelectionChanged="OnSettingsTreeSelectionChanged">
-            <TreeViewItem Header="General" IsSelected="True" Tag="General" />
-            <TreeViewItem Header="Accounts" Tag="Accounts" />
-        </TreeView>
+        <ListBox Name="SettingsNav"
+                 DockPanel.Dock="Left"
+                 SelectionMode="AlwaysSelected"
+                 Width="200"
+                 ItemsSource="{Binding Pages}"
+                 SelectedItem="{Binding SelectedPage}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="settings:SettingsPage">
+                    <TextBlock Text="{Binding Name}" Padding="10,5" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
 
         <ContentControl Name="ContentArea"
-                        DockPanel.Dock="Right">
-            <settings:GeneralSettingsView />
-        </ContentControl>
+                        Content="{Binding SelectedPage.ViewModel}"
+                        DockPanel.Dock="Right" />
     </DockPanel>
 
 </Window>

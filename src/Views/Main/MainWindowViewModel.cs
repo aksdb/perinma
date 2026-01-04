@@ -21,7 +21,7 @@ public partial class MainWindowViewModel(DatabaseService databaseService) : View
             _settingsWindow.Activate();
             return;
         }
-        
+
         _settingsWindow = new SettingsWindow
         {
             DataContext = new SettingsViewModel(databaseService)

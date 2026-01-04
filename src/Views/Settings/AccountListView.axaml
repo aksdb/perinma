@@ -8,7 +8,13 @@
              x:Class="perinma.Views.Settings.AccountListView">
 
     <StackPanel Margin="20">
-        <TextBlock Text="Accounts" FontSize="24" FontWeight="Bold" Margin="0,0,0,20" />
+        <DockPanel Margin="0,0,0,20">
+            <TextBlock Text="Accounts" FontSize="24" FontWeight="Bold" DockPanel.Dock="Left" />
+            <Button Content="Add Account"
+                    Command="{Binding AddAccountCommand}"
+                    HorizontalAlignment="Right"
+                    DockPanel.Dock="Right" />
+        </DockPanel>
 
         <ItemsControl ItemsSource="{Binding Accounts}">
             <ItemsControl.ItemTemplate>

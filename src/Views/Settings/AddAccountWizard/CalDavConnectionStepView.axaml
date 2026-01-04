@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:wizard="using:perinma.Views.Settings.AddAccountWizard"
+             x:DataType="wizard:CalDavConnectionStepViewModel"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
+             x:Class="perinma.Views.Settings.AddAccountWizard.CalDavConnectionStepView">
+
+    <StackPanel Margin="20" Spacing="15">
+        <TextBlock Text="CalDAV Server Details" FontSize="18" FontWeight="SemiBold" />
+
+        <StackPanel Spacing="5">
+            <TextBlock Text="Server URL" />
+            <TextBox Text="{Binding ServerUrl}" Watermark="https://caldav.example.com" />
+        </StackPanel>
+
+        <StackPanel Spacing="5">
+            <TextBlock Text="Username" />
+            <TextBox Text="{Binding Username}" Watermark="user@example.com" />
+        </StackPanel>
+
+        <StackPanel Spacing="5">
+            <TextBlock Text="Password" />
+            <TextBox Text="{Binding Password}" PasswordChar="•" />
+        </StackPanel>
+    </StackPanel>
+
+</UserControl>
