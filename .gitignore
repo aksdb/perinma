@@ -5,3 +5,8 @@ riderModule.iml
 /_ReSharper.Caches/
 *.user
 /.idea/
+
+src/BuildSecrets.cs
+
+# Local mise configuration
+mise.local.toml

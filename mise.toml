@@ -1,0 +1,21 @@
+[tools]
+dotnet = "9"
+
+[env]
+GOOGLE_CLIENT_ID = { required = "Set the GOOGLE_CLIENT_ID to the client id you obtained from Google." }
+
+[tasks.prepare-secrets]
+description="Create the secrets file for compilation."
+run="""
+cat << EOF > src/BuildSecrets.cs
+namespace perinma;
+
+public static class BuildSecrets
+{
+   public const string GoogleClientId = "{{ env.GOOGLE_CLIENT_ID }}";
+}
+EOF
+"""
+
+[tasks.build-linux]
+run = "dotnet publish -r linux-x64 -c Release -p:PublishSingleFile=true -p:PublishTrimmed=true"

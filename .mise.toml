@@ -1,5 +1,0 @@
-[tools]
-dotnet = "9"
-
-[tasks.build-linux]
-run = "dotnet publish -r linux-x64 -c Release -p:PublishSingleFile=true -p:PublishTrimmed=true"

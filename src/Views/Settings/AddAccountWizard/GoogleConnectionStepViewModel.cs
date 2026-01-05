@@ -12,8 +12,6 @@ namespace perinma.Views.Settings.AddAccountWizard;
 
 public partial class GoogleConnectionStepViewModel : ViewModelBase
 {
-    // Placeholder Google OAuth client ID - replace with real one later
-    private const string GoogleClientId = "YOUR_CLIENT_ID_HERE.apps.googleusercontent.com";
     private const string GoogleScope = "https://www.googleapis.com/auth/calendar";
 
     [ObservableProperty]
@@ -85,7 +83,7 @@ public partial class GoogleConnectionStepViewModel : ViewModelBase
 
             // Build OAuth URL
             var oauthUrl = $"https://accounts.google.com/o/oauth2/v2/auth?" +
-                          $"client_id={Uri.EscapeDataString(GoogleClientId)}&" +
+                          $"client_id={Uri.EscapeDataString(BuildSecrets.GoogleClientId)}&" +
                           $"redirect_uri={Uri.EscapeDataString(callbackUrl)}&" +
                           $"response_type=code&" +
                           $"scope={Uri.EscapeDataString(GoogleScope)}&" +
