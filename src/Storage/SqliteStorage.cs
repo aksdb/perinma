@@ -101,4 +101,64 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
         return rowsAffected > 0;
     }
+
+    #region Calendar Methods
+
+    public async Task<IEnumerable<CalendarDbo>> GetCalendarsByAccountAsync(string accountId)
+    {
+        using var connection = databaseService.GetConnection();
+        return await connection.QueryAsync<CalendarDbo>(
+            "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
+            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
+            "FROM calendar WHERE account_id = @AccountId",
+            new { AccountId = accountId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<CalendarDbo?> GetCalendarByExternalIdAsync(string accountId, string externalId)
+    {
+        using var connection = databaseService.GetConnection();
+        return await connection.QuerySingleOrDefaultAsync<CalendarDbo>(
+            "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
+            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
+            "FROM calendar WHERE account_id = @AccountId AND external_id = @ExternalId",
+            new { AccountId = accountId, ExternalId = externalId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<bool> CreateOrUpdateCalendarAsync(CalendarDbo calendar)
+    {
+        using var connection = databaseService.GetConnection();
+
+        // Check if calendar already exists
+        var existing = await GetCalendarByExternalIdAsync(calendar.AccountId, calendar.ExternalId ?? string.Empty);
+
+        if (existing != null)
+        {
+            // Update existing calendar
+            var rowsAffected = await connection.ExecuteAsync(
+                "UPDATE calendar SET name = @Name, color = @Color, enabled = @Enabled, " +
+                "last_sync = @LastSync, data = @Data " +
+                "WHERE account_id = @AccountId AND external_id = @ExternalId",
+                calendar,
+                commandTimeout: 30
+            );
+            return rowsAffected > 0;
+        }
+        else
+        {
+            // Insert new calendar
+            var rowsAffected = await connection.ExecuteAsync(
+                "INSERT INTO calendar (account_id, calendar_id, external_id, name, color, enabled, last_sync, data) " +
+                "VALUES (@AccountId, @CalendarId, @ExternalId, @Name, @Color, @Enabled, @LastSync, @Data)",
+                calendar,
+                commandTimeout: 30
+            );
+            return rowsAffected > 0;
+        }
+    }
+
+    #endregion
 }

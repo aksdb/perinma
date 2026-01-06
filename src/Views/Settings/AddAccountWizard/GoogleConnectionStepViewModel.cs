@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using perinma.Services;
 using perinma.Storage.Models;
 using perinma.Utils;
 
@@ -12,7 +13,7 @@ namespace perinma.Views.Settings.AddAccountWizard;
 
 public partial class GoogleConnectionStepViewModel : ViewModelBase
 {
-    private const string GoogleScope = "https://www.googleapis.com/auth/calendar";
+    private const string GoogleScope = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
 
     [ObservableProperty]
     private string _statusMessage = "Click 'Connect' to authenticate with Google";
@@ -41,7 +42,8 @@ public partial class GoogleConnectionStepViewModel : ViewModelBase
             _expectedState = Guid.NewGuid().ToString("N");
 
             // Start HTTP callback listener
-            var callbackUrl = HttpUtil.StartHttpCallbackListener(result =>
+            string? redirectUri = null;
+            var callbackUrl = HttpUtil.StartHttpCallbackListener(async result =>
             {
                 if (result.IsSuccess && result.Value != null)
                 {
@@ -63,23 +65,38 @@ public partial class GoogleConnectionStepViewModel : ViewModelBase
                         return;
                     }
 
-                    // Store credentials
-                    // TODO: Exchange authorization code for access/refresh tokens
-                    // For now, just store the authorization code
-                    _credentials = new GoogleCredentials
+                    try
                     {
-                        Type = "Google",
-                        AuthorizationCode = code,
-                        Scope = GoogleScope
-                    };
+                        // Create credentials with auth code
+                        var creds = new GoogleCredentials
+                        {
+                            Type = "Google",
+                            AuthorizationCode = code,
+                            Scope = GoogleScope
+                        };
 
-                    tcs.TrySetResult(true);
+                        // Immediately exchange authorization code for tokens and store them
+                        var googleService = new GoogleCalendarService();
+                        await googleService.ExchangeAuthorizationCodeAsync(creds, ct, redirectUri);
+
+                        // Ensure we store tokens, not the authorization code
+                        _credentials = creds;
+
+                        tcs.TrySetResult(true);
+                    }
+                    catch (Exception ex)
+                    {
+                        tcs.TrySetException(ex);
+                    }
                 }
                 else if (result.Error != null)
                 {
                     tcs.TrySetException(result.Error);
                 }
             }, ct);
+
+            // Assign redirectUri after listener creation; the callback will run later
+            redirectUri = callbackUrl;
 
             // Build OAuth URL
             var oauthUrl = $"https://accounts.google.com/o/oauth2/v2/auth?" +

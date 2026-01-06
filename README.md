@@ -12,13 +12,14 @@ This project uses mise to manage environment variables. Set up your Google OAuth
 
 ```bash
 mise set -E local GOOGLE_CLIENT_ID=your-client-id-here.apps.googleusercontent.com
+mise set -E local GOOGLE_CLIENT_SECRET=the-matching-secret
 ```
 
 To get a Google OAuth Client ID:
 1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 2. Create a new OAuth 2.0 Client ID
 3. Set the application type to "Desktop app"
-4. Copy the Client ID
+4. Copy the Client ID and secret
 
 ### Prepare build
 

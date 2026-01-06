@@ -1,4 +1,8 @@
-﻿using CommunityToolkit.Mvvm.Input;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using perinma.Services;
 using perinma.Storage;
 using perinma.ViewModels;
@@ -7,9 +11,26 @@ using perinma.Views.Settings;
 
 namespace perinma.Views.Main;
 
-public partial class MainWindowViewModel(DatabaseService databaseService, CredentialManagerService credentialManager) : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase
 {
+    private readonly DatabaseService _databaseService;
+    private readonly CredentialManagerService _credentialManager;
+    private readonly SyncService _syncService;
+
+    [ObservableProperty]
+    private bool _isSyncing;
+
     public CalendarWeekViewModel CalendarWeekViewModel => CalendarWeekViewModel.Instance;
+
+    public MainWindowViewModel(
+        DatabaseService databaseService,
+        CredentialManagerService credentialManager,
+        SyncService syncService)
+    {
+        _databaseService = databaseService;
+        _credentialManager = credentialManager;
+        _syncService = syncService;
+    }
 
     #region Settings
     private SettingsWindow? _settingsWindow;
@@ -25,10 +46,48 @@ public partial class MainWindowViewModel(DatabaseService databaseService, Creden
 
         _settingsWindow = new SettingsWindow
         {
-            DataContext = new SettingsViewModel(databaseService, credentialManager)
+            DataContext = new SettingsViewModel(_databaseService, _credentialManager)
         };
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
+    }
+    #endregion
+
+    #region Sync
+    [RelayCommand(IncludeCancelCommand = true)]
+    private async Task Sync(CancellationToken cancellationToken)
+    {
+        if (IsSyncing)
+            return;
+
+        IsSyncing = true;
+
+        try
+        {
+            Console.WriteLine("Starting sync...");
+            var result = await _syncService.SyncAllAccountsAsync(cancellationToken);
+
+            if (result.Success)
+            {
+                Console.WriteLine($"Sync completed successfully. Synced {result.SyncedAccounts} accounts.");
+            }
+            else
+            {
+                Console.WriteLine($"Sync completed with errors. Synced: {result.SyncedAccounts}, Failed: {result.FailedAccounts}");
+                foreach (var error in result.Errors)
+                {
+                    Console.WriteLine($"  - {error}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Sync failed: {ex.Message}");
+        }
+        finally
+        {
+            IsSyncing = false;
+        }
     }
     #endregion
 }

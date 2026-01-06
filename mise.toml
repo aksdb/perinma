@@ -3,6 +3,7 @@ dotnet = "9"
 
 [env]
 GOOGLE_CLIENT_ID = { required = "Set the GOOGLE_CLIENT_ID to the client id you obtained from Google." }
+GOOGLE_CLIENT_SECRET = { required = "Set the GOOGLE_CLIENT_SECRET to the client id you obtained from Google." }
 
 [tasks.prepare-secrets]
 description="Create the secrets file for compilation."
@@ -13,6 +14,7 @@ namespace perinma;
 public static class BuildSecrets
 {
    public const string GoogleClientId = "{{ env.GOOGLE_CLIENT_ID }}";
+   public const string GoogleClientSecret = "{{ env.GOOGLE_CLIENT_SECRET }}";
 }
 EOF
 """
