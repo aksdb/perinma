@@ -32,6 +32,7 @@
         <PackageReference Include="Dapper.Extensions.SQLite" Version="5.4.2" />
         <PackageReference Include="dbup-core" Version="6.0.15" />
         <PackageReference Include="dbup-sqlite" Version="6.0.4" />
+        <PackageReference Include="Devlooped.CredentialManager" Version="2.6.1.1" />
         <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.2" />
     </ItemGroup>
 

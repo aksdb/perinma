@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
+using perinma.Services;
 using perinma.Storage;
 using perinma.Views.Main;
 using SQLitePCL;
@@ -13,6 +14,7 @@ namespace perinma;
 public partial class App : Application
 {
     private DatabaseService? _databaseService;
+    private CredentialManagerService? _credentialManager;
 
     public override void Initialize()
     {
@@ -25,22 +27,23 @@ public partial class App : Application
         try
         {
             _databaseService = new DatabaseService();
+            _credentialManager = new CredentialManagerService();
         }
         catch (Exception ex)
         {
-            // For now, we just log to console or rethrow. 
-            Console.WriteLine($"Failed to initialize database: {ex}");
+            // For now, we just log to console or rethrow.
+            Console.WriteLine($"Failed to initialize services: {ex}");
             throw;
         }
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
+            // Avoid duplicate validations from both Avalonia and the CommunityToolkit.
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainWindowViewModel(_databaseService),
+                DataContext = new MainWindowViewModel(_databaseService, _credentialManager),
             };
         }
 

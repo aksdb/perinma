@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.Input;
+using perinma.Services;
 using perinma.Storage;
 using perinma.ViewModels;
 using perinma.Views.Calendar;
@@ -6,13 +7,13 @@ using perinma.Views.Settings;
 
 namespace perinma.Views.Main;
 
-public partial class MainWindowViewModel(DatabaseService databaseService) : ViewModelBase
+public partial class MainWindowViewModel(DatabaseService databaseService, CredentialManagerService credentialManager) : ViewModelBase
 {
     public CalendarWeekViewModel CalendarWeekViewModel => CalendarWeekViewModel.Instance;
-    
+
     #region Settings
     private SettingsWindow? _settingsWindow;
-    
+
     [RelayCommand]
     private void ShowSettings()
     {
@@ -24,7 +25,7 @@ public partial class MainWindowViewModel(DatabaseService databaseService) : View
 
         _settingsWindow = new SettingsWindow
         {
-            DataContext = new SettingsViewModel(databaseService)
+            DataContext = new SettingsViewModel(databaseService, credentialManager)
         };
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();

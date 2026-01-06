@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Dapper;
+using perinma.Services;
 using perinma.Storage.Models;
 
 namespace perinma.Storage;
 
-public class SqliteStorage(DatabaseService databaseService)
+public class SqliteStorage(DatabaseService databaseService, CredentialManagerService credentialManager)
 {
     public async Task<IEnumerable<AccountDbo>> GetAllAccountsAsync()
     {
@@ -91,6 +92,12 @@ public class SqliteStorage(DatabaseService databaseService)
             new { AccountId = accountId },
             commandTimeout: 30
         );
+
+        // Also delete credentials from platform keyring
+        if (rowsAffected > 0)
+        {
+            credentialManager.DeleteCredentials(accountId);
+        }
 
         return rowsAffected > 0;
     }

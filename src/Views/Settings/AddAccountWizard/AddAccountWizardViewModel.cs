@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using perinma.Services;
 using perinma.Storage;
 using perinma.Storage.Models;
 
@@ -11,6 +12,7 @@ namespace perinma.Views.Settings.AddAccountWizard;
 public partial class AddAccountWizardViewModel : ViewModelBase
 {
     private readonly SqliteStorage _storage;
+    private readonly CredentialManagerService _credentialManager;
 
     [ObservableProperty]
     private int _currentStepIndex = 0;
@@ -34,9 +36,10 @@ public partial class AddAccountWizardViewModel : ViewModelBase
     // Event raised when account is successfully added
     public event EventHandler? AccountAdded;
 
-    public AddAccountWizardViewModel(SqliteStorage storage)
+    public AddAccountWizardViewModel(SqliteStorage storage, CredentialManagerService credentialManager)
     {
         _storage = storage;
+        _credentialManager = credentialManager;
 
         // Initialize first step
         _accountDetailsStep = new AccountDetailsStepViewModel(storage);
@@ -121,13 +124,30 @@ public partial class AddAccountWizardViewModel : ViewModelBase
 
         try
         {
-            // Create account in database
+            var accountId = Guid.NewGuid().ToString();
+
+            // Store credentials in platform keyring
+            if (AccountType == Settings.AccountType.Google && _googleConnectionStep != null)
+            {
+                var credentials = _googleConnectionStep.GetCredentials();
+                if (credentials != null)
+                {
+                    _credentialManager.StoreGoogleCredentials(accountId, credentials);
+                }
+            }
+            else if (AccountType == Settings.AccountType.CalDav && _calDavConnectionStep != null)
+            {
+                var credentials = _calDavConnectionStep.GetCredentials();
+                _credentialManager.StoreCalDavCredentials(accountId, credentials);
+            }
+
+            // Create account in database (without credentials)
             var accountDbo = new AccountDbo
             {
-                AccountId = Guid.NewGuid().ToString(),
+                AccountId = accountId,
                 Name = AccountName ?? "Unnamed Account",
                 Type = AccountType?.ToString() ?? "Google",
-                Data = null // TODO: Serialize credentials to JSON blob when secret management is implemented
+                Data = null // Credentials are now stored in platform keyring, not in DB
             };
 
             var success = await _storage.CreateAccountAsync(accountDbo);
@@ -137,8 +157,13 @@ public partial class AddAccountWizardViewModel : ViewModelBase
                 // Raise event to notify AccountListViewModel
                 AccountAdded?.Invoke(this, EventArgs.Empty);
 
-                // TODO: Close window (will be handled by window code-behind)
+                // Close window (will be handled by window code-behind)
                 CloseRequested?.Invoke(this, EventArgs.Empty);
+            }
+            else
+            {
+                // If account creation failed, clean up credentials
+                _credentialManager.DeleteCredentials(accountId);
             }
         }
         catch (Exception ex)

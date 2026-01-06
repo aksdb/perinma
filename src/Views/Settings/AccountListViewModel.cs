@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using perinma.Services;
 using perinma.Storage;
 using perinma.Views.Settings.AddAccountWizard;
 
@@ -12,14 +13,16 @@ namespace perinma.Views.Settings;
 public partial class AccountListViewModel : ViewModelBase
 {
     private readonly SqliteStorage _storage;
+    private readonly CredentialManagerService _credentialManager;
     private AddAccountWindow? _addAccountWindow;
 
     [ObservableProperty]
     private AvaloniaList<AccountViewModel> _accounts = [];
 
-    public AccountListViewModel(SqliteStorage storage)
+    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager)
     {
         _storage = storage;
+        _credentialManager = credentialManager;
         _ = LoadAccountsAsync(); // Fire and forget initial load
     }
 
@@ -32,7 +35,7 @@ public partial class AccountListViewModel : ViewModelBase
             return;
         }
 
-        var wizardVm = new AddAccountWizardViewModel(_storage);
+        var wizardVm = new AddAccountWizardViewModel(_storage, _credentialManager);
         wizardVm.AccountAdded += OnAccountAdded;
 
         _addAccountWindow = new AddAccountWindow

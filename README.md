@@ -11,7 +11,7 @@
 This project uses mise to manage environment variables. Set up your Google OAuth Client ID:
 
 ```bash
-mise set --file mise.local.toml GOOGLE_CLIENT_ID=your-client-id-here.apps.googleusercontent.com
+mise set -E local GOOGLE_CLIENT_ID=your-client-id-here.apps.googleusercontent.com
 ```
 
 To get a Google OAuth Client ID:

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using perinma.Services;
 using perinma.Storage;
 using perinma.Utils;
 using perinma.ViewModels;
@@ -26,15 +27,15 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private SettingsPage? _selectedPage;
 
-    public SettingsViewModel(DatabaseService databaseService)
+    public SettingsViewModel(DatabaseService databaseService, CredentialManagerService credentialManager)
     {
-        _storage = new SqliteStorage(databaseService);
+        _storage = new SqliteStorage(databaseService, credentialManager);
 
         // Define available settings pages
         Pages = new List<SettingsPage>
         {
             new SettingsPage { Name = "General", ViewModel = new GeneralSettingsViewModel() },
-            new SettingsPage { Name = "Accounts", ViewModel = new AccountListViewModel(_storage) }
+            new SettingsPage { Name = "Accounts", ViewModel = new AccountListViewModel(_storage, credentialManager) }
         };
 
         // Select first page by default
