@@ -77,4 +77,33 @@ public partial class AccountListViewModel : ViewModelBase
     {
         _ = LoadAccountsAsync(); // Refresh list
     }
+
+    [RelayCommand]
+    private async Task DeleteAccount(Guid accountId)
+    {
+        try
+        {
+            var success = await _storage.DeleteAccountAsync(accountId.ToString());
+
+            if (success)
+            {
+                // Remove from UI
+                var account = Accounts.FirstOrDefault(a => a.Id == accountId);
+                if (account != null)
+                {
+                    Accounts.Remove(account);
+                }
+            }
+            else
+            {
+                // TODO: Show error to user
+                Console.WriteLine($"Failed to delete account: {accountId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            // TODO: Show error to user
+            Console.WriteLine($"Error deleting account: {ex.Message}");
+        }
+    }
 }
