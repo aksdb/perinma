@@ -58,10 +58,9 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
     {
         using var connection = databaseService.GetConnection();
 
-        // TODO: Serialize credentials to JSON for the data blob
-        // For now, we're storing accounts without credentials (data = null)
+        // Data field is stored as NULL - we use it for sync metadata via SetAccountData/GetAccountData
         var rowsAffected = await connection.ExecuteAsync(
-            "INSERT INTO account (account_id, name, type, data) VALUES (@AccountId, @Name, @Type, @Data)",
+            "INSERT INTO account (account_id, name, type) VALUES (@AccountId, @Name, @Type)",
             account,
             commandTimeout: 30
         );

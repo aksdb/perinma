@@ -12,15 +12,21 @@ namespace perinma.Services;
 /// </summary>
 public class CredentialManagerService
 {
-    private readonly ICredentialStore _store;
+    private readonly ICredentialStore? _store;
     private const string Namespace = "perinma";
 
-    public CredentialManagerService()
+    public CredentialManagerService() : this(testMode: false)
     {
-        // Programmatically configure the credential store based on platform
-        ConfigureCredentialStore();
+    }
 
-        _store = CredentialManager.Create(Namespace);
+    protected CredentialManagerService(bool testMode)
+    {
+        if (!testMode)
+        {
+            // Programmatically configure the credential store based on platform
+            ConfigureCredentialStore();
+            _store = CredentialManager.Create(Namespace);
+        }
     }
 
     private static void ConfigureCredentialStore()
@@ -63,8 +69,9 @@ public class CredentialManagerService
     /// </summary>
     /// <param name="accountId">Unique identifier for the account</param>
     /// <param name="credentials">Google credentials to store</param>
-    public void StoreGoogleCredentials(string accountId, GoogleCredentials credentials)
+    public virtual void StoreGoogleCredentials(string accountId, GoogleCredentials credentials)
     {
+        if (_store == null) return;
         var service = GetServiceName(accountId);
         var json = JsonSerializer.Serialize(credentials);
         _store.AddOrUpdate(service, accountId, json);
@@ -75,8 +82,9 @@ public class CredentialManagerService
     /// </summary>
     /// <param name="accountId">Unique identifier for the account</param>
     /// <returns>Google credentials if found, null otherwise</returns>
-    public GoogleCredentials? GetGoogleCredentials(string accountId)
+    public virtual GoogleCredentials? GetGoogleCredentials(string accountId)
     {
+        if (_store == null) return null;
         var service = GetServiceName(accountId);
         var credential = _store.Get(service, accountId);
 
@@ -100,8 +108,9 @@ public class CredentialManagerService
     /// </summary>
     /// <param name="accountId">Unique identifier for the account</param>
     /// <param name="credentials">CalDAV credentials to store</param>
-    public void StoreCalDavCredentials(string accountId, CalDavCredentials credentials)
+    public virtual void StoreCalDavCredentials(string accountId, CalDavCredentials credentials)
     {
+        if (_store == null) return;
         var service = GetServiceName(accountId);
         var json = JsonSerializer.Serialize(credentials);
         _store.AddOrUpdate(service, accountId, json);
@@ -112,8 +121,9 @@ public class CredentialManagerService
     /// </summary>
     /// <param name="accountId">Unique identifier for the account</param>
     /// <returns>CalDAV credentials if found, null otherwise</returns>
-    public CalDavCredentials? GetCalDavCredentials(string accountId)
+    public virtual CalDavCredentials? GetCalDavCredentials(string accountId)
     {
+        if (_store == null) return null;
         var service = GetServiceName(accountId);
         var credential = _store.Get(service, accountId);
 
@@ -137,8 +147,9 @@ public class CredentialManagerService
     /// </summary>
     /// <param name="accountId">Unique identifier for the account</param>
     /// <returns>True if credentials were deleted, false if they didn't exist</returns>
-    public bool DeleteCredentials(string accountId)
+    public virtual bool DeleteCredentials(string accountId)
     {
+        if (_store == null) return false;
         var service = GetServiceName(accountId);
         return _store.Remove(service, accountId);
     }
@@ -148,8 +159,9 @@ public class CredentialManagerService
     /// </summary>
     /// <param name="accountId">Unique identifier for the account</param>
     /// <returns>True if credentials exist, false otherwise</returns>
-    public bool HasCredentials(string accountId)
+    public virtual bool HasCredentials(string accountId)
     {
+        if (_store == null) return false;
         var service = GetServiceName(accountId);
         var credential = _store.Get(service, accountId);
         return credential != null;

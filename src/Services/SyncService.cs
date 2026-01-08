@@ -12,12 +12,12 @@ public class SyncService
 {
     private readonly SqliteStorage _storage;
     private readonly CredentialManagerService _credentialManager;
-    private readonly GoogleCalendarService _googleCalendarService;
+    private readonly IGoogleCalendarService _googleCalendarService;
 
     public SyncService(
         SqliteStorage storage,
         CredentialManagerService credentialManager,
-        GoogleCalendarService googleCalendarService)
+        IGoogleCalendarService googleCalendarService)
     {
         _storage = storage;
         _credentialManager = credentialManager;

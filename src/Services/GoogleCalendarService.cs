@@ -14,7 +14,7 @@ using perinma.Storage.Models;
 
 namespace perinma.Services;
 
-public class GoogleCalendarService
+public class GoogleCalendarService : IGoogleCalendarService
 {
     /// <summary>
     /// Creates a CalendarService from GoogleCredentials

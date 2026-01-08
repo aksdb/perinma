@@ -7,22 +7,44 @@ using Microsoft.Data.Sqlite;
 
 namespace perinma.Storage;
 
-public class DatabaseService
+public class DatabaseService : IDisposable
 {
     private readonly string _connectionString;
+    private readonly bool _isInMemory;
+    private SqliteConnection? _persistentConnection;
 
-    public DatabaseService()
+    public DatabaseService() : this(inMemory: false)
     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        var dbDirectory = Path.Combine(appData, "perinma");
-        
-        if (!Directory.Exists(dbDirectory))
+    }
+
+    public DatabaseService(bool inMemory)
+    {
+        _isInMemory = inMemory;
+
+        if (inMemory)
         {
-            Directory.CreateDirectory(dbDirectory);
+            // Use shared cache in-memory database for testing
+            var dbName = $"test_{Guid.NewGuid():N}";
+            _connectionString = $"Data Source={dbName};Mode=Memory;Cache=Shared";
+
+            // Keep a persistent connection open to maintain the in-memory database
+            _persistentConnection = new SqliteConnection(_connectionString);
+            _persistentConnection.Open();
+        }
+        else
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var dbDirectory = Path.Combine(appData, "perinma");
+
+            if (!Directory.Exists(dbDirectory))
+            {
+                Directory.CreateDirectory(dbDirectory);
+            }
+
+            var databasePath = Path.Combine(dbDirectory, "perinma.db");
+            _connectionString = $"Data Source={databasePath}";
         }
 
-        var databasePath = Path.Combine(dbDirectory, "perinma.db");
-        _connectionString = $"Data Source={databasePath}";
         InitializeDatabase();
     }
 
@@ -44,6 +66,13 @@ public class DatabaseService
 
     public IDbConnection GetConnection()
     {
+        // For both in-memory and file-based modes, return a new connection
+        // The in-memory database persists because we keep _persistentConnection open
         return new SqliteConnection(_connectionString);
+    }
+
+    public void Dispose()
+    {
+        _persistentConnection?.Dispose();
     }
 }
