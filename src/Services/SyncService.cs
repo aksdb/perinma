@@ -129,7 +129,7 @@ public class SyncService
                 ExternalId = calendar.Id,
                 Name = calendar.Summary ?? "Unnamed Calendar",
                 Color = calendar.BackgroundColor,
-                Enabled = 1, // Enable by default
+                Enabled = calendar.Selected == true ? 1 : 0,
                 LastSync = currentSyncTime,
                 Data = null // Future: Could store per-calendar sync data here
             };
