@@ -73,14 +73,43 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
     {
         using var connection = databaseService.GetConnection();
 
-        // TODO: Serialize credentials to JSON for the data blob
         var rowsAffected = await connection.ExecuteAsync(
-            "UPDATE account SET name = @Name, type = @Type, data = @Data WHERE account_id = @AccountId",
+            "UPDATE account SET name = @Name, type = @Type WHERE account_id = @AccountId",
             account,
             commandTimeout: 30
         );
 
         return rowsAffected > 0;
+    }
+
+    public async Task<bool> SetAccountData(AccountDbo account, string key, string value)
+    {
+        using var connection = databaseService.GetConnection();
+
+        var rowsAffected = await connection.ExecuteAsync(
+            """
+                UPDATE account 
+                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
+                WHERE account_id = @account_id
+            """,
+            param: new { key = $"$.{key}", value, account_id = account.AccountId },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
+    public async Task<string?> GetAccountData(AccountDbo account, string key)
+    {
+        using var connection = databaseService.GetConnection();
+
+        return await connection.QuerySingleAsync<string?>(
+            """
+            SELECT coalesce(data ->> @key, '') as value
+            FROM account
+            WHERE account_id = @account_id
+            """,
+            param: new { key = $"$.{key}", account_id = account.AccountId });
     }
 
     public async Task<bool> DeleteAccountAsync(string accountId)
@@ -132,30 +161,58 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
     {
         using var connection = databaseService.GetConnection();
 
-        // Check if calendar already exists
+        // Check if calendar already exists by external_id
         var existing = await GetCalendarByExternalIdAsync(calendar.AccountId, calendar.ExternalId ?? string.Empty);
 
         if (existing != null)
         {
-            // Update existing calendar
+            // Update existing calendar - keep the existing calendar_id (UUID)
             var rowsAffected = await connection.ExecuteAsync(
                 "UPDATE calendar SET name = @Name, color = @Color, enabled = @Enabled, " +
                 "last_sync = @LastSync, data = @Data " +
                 "WHERE account_id = @AccountId AND external_id = @ExternalId",
-                calendar,
+                new
+                {
+                    calendar.Name,
+                    calendar.Color,
+                    calendar.Enabled,
+                    calendar.LastSync,
+                    calendar.Data,
+                    calendar.AccountId,
+                    calendar.ExternalId
+                },
                 commandTimeout: 30
             );
+
+            // Update the calendar object with the existing UUID for the caller
+            calendar.CalendarId = existing.CalendarId;
+
             return rowsAffected > 0;
         }
         else
         {
-            // Insert new calendar
+            // Insert new calendar with a generated UUID
+            var calendarId = System.Guid.NewGuid().ToString();
             var rowsAffected = await connection.ExecuteAsync(
                 "INSERT INTO calendar (account_id, calendar_id, external_id, name, color, enabled, last_sync, data) " +
                 "VALUES (@AccountId, @CalendarId, @ExternalId, @Name, @Color, @Enabled, @LastSync, @Data)",
-                calendar,
+                new
+                {
+                    calendar.AccountId,
+                    CalendarId = calendarId,
+                    calendar.ExternalId,
+                    calendar.Name,
+                    calendar.Color,
+                    calendar.Enabled,
+                    calendar.LastSync,
+                    calendar.Data
+                },
                 commandTimeout: 30
             );
+
+            // Update the calendar object with the generated ID for the caller
+            calendar.CalendarId = calendarId;
+
             return rowsAffected > 0;
         }
     }

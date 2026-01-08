@@ -7,7 +7,6 @@ public class AccountDbo
     public required string AccountId { get; set; }
     public required string Name { get; set; }
     public required string Type { get; set; }
-    public byte[]? Data { get; set; }
 }
 
 public class CalendarDbo
@@ -54,4 +53,20 @@ public class ReminderDbo
     public required string target_id { get; set; }
     public long target_time { get; set; }
     public long trigger_time { get; set; }
+}
+
+/// <summary>
+/// Sync data stored in calendar.data field as JSON
+/// </summary>
+public class CalendarSyncData
+{
+    /// <summary>
+    /// Sync token from Google Calendar API for incremental sync
+    /// </summary>
+    public string? SyncToken { get; set; }
+
+    /// <summary>
+    /// Page token for paginated results
+    /// </summary>
+    public string? PageToken { get; set; }
 }

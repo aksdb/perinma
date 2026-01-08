@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using perinma.Storage;
@@ -66,7 +67,7 @@ public class SyncService
     }
 
     /// <summary>
-    /// Syncs calendars from a single Google account
+    /// Syncs calendars from a single Google account using incremental sync when possible
     /// </summary>
     private async Task SyncAccountAsync(AccountDbo account, CancellationToken cancellationToken)
     {
@@ -79,35 +80,53 @@ public class SyncService
             throw new InvalidOperationException($"No credentials found for account {account.Name}");
         }
 
+        // Load sync token from account data for incremental sync
+        string? syncToken = await _storage.GetAccountData(account, "calendarSyncToken");
+
         // Create Google Calendar service
         var service = await _googleCalendarService.CreateServiceAsync(credentials, cancellationToken);
 
         // Update credentials in case tokens were refreshed
         _credentialManager.StoreGoogleCredentials(account.AccountId, credentials);
 
-        // Fetch calendars
-        var calendars = await _googleCalendarService.GetCalendarsAsync(service, cancellationToken);
-        Console.WriteLine($"Found {calendars.Count} calendars for account {account.Name}");
+        // Fetch calendars with optional sync token for incremental sync
+        var result = await _googleCalendarService.GetCalendarsAsync(service, syncToken, cancellationToken);
+        Console.WriteLine($"Found {result.Calendars.Count} calendar changes for account {account.Name}");
 
         // Save calendars to database
-        foreach (var calendar in calendars)
+        foreach (var calendar in result.Calendars)
         {
+            // Check if calendar was deleted (Google returns deleted calendars with deleted=true)
+            if (calendar.Deleted == true)
+            {
+                Console.WriteLine($"Calendar {calendar.Summary} was deleted, skipping");
+                // TODO: Handle calendar deletion in database
+                continue;
+            }
+
             var calendarDbo = new CalendarDbo
             {
                 AccountId = account.AccountId,
-                CalendarId = calendar.Id ?? Guid.NewGuid().ToString(),
+                CalendarId = string.Empty, // Will be set by CreateOrUpdateCalendarAsync
                 ExternalId = calendar.Id,
                 Name = calendar.Summary ?? "Unnamed Calendar",
                 Color = calendar.BackgroundColor,
                 Enabled = 1, // Enable by default
                 LastSync = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                Data = null // Could store additional metadata here if needed
+                Data = null // Future: Could store per-calendar sync data here
             };
 
             await _storage.CreateOrUpdateCalendarAsync(calendarDbo);
         }
 
-        Console.WriteLine($"Synced {calendars.Count} calendars for account {account.Name}");
+        // Store the new sync token for next incremental sync
+        if (!string.IsNullOrEmpty(result.SyncToken))
+        {
+            await _storage.SetAccountData(account, "calendarSyncToken", result.SyncToken);
+            Console.WriteLine($"Stored new sync token for next sync");
+        }
+
+        Console.WriteLine($"Synced {result.Calendars.Count} calendars for account {account.Name}");
     }
 }
 

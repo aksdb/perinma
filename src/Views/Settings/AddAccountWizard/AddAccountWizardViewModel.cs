@@ -147,7 +147,6 @@ public partial class AddAccountWizardViewModel : ViewModelBase
                 AccountId = accountId,
                 Name = AccountName ?? "Unnamed Account",
                 Type = AccountType?.ToString() ?? "Google",
-                Data = null // Credentials are now stored in platform keyring, not in DB
             };
 
             var success = await _storage.CreateAccountAsync(accountDbo);

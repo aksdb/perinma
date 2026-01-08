@@ -180,15 +180,61 @@ public class GoogleCalendarService
     }
 
     /// <summary>
-    /// Fetches all calendars for the authenticated user
+    /// Fetches calendars for the authenticated user, optionally using incremental sync
     /// </summary>
-    public async Task<IList<Google.Apis.Calendar.v3.Data.CalendarListEntry>> GetCalendarsAsync(
+    /// <param name="service">Authenticated CalendarService</param>
+    /// <param name="syncToken">Optional sync token for incremental sync</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Result containing calendars and new sync token</returns>
+    public async Task<CalendarSyncResult> GetCalendarsAsync(
         CalendarService service,
+        string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        var request = service.CalendarList.List();
-        var response = await request.ExecuteAsync(cancellationToken);
-        return response.Items ?? new List<Google.Apis.Calendar.v3.Data.CalendarListEntry>();
+        var allCalendars = new List<Google.Apis.Calendar.v3.Data.CalendarListEntry>();
+        string? pageToken = null;
+        string? newSyncToken = null;
+
+        do
+        {
+            var request = service.CalendarList.List();
+            request.MaxResults = 100; // Max allowed by Google API
+
+            // Use sync token for incremental sync if provided
+            if (!string.IsNullOrEmpty(syncToken))
+            {
+                request.SyncToken = syncToken;
+            }
+
+            // Handle pagination
+            if (!string.IsNullOrEmpty(pageToken))
+            {
+                request.PageToken = pageToken;
+            }
+
+            var response = await request.ExecuteAsync(cancellationToken);
+
+            if (response.Items != null)
+            {
+                allCalendars.AddRange(response.Items);
+            }
+
+            pageToken = response.NextPageToken;
+            newSyncToken = response.NextSyncToken;
+
+        } while (!string.IsNullOrEmpty(pageToken));
+
+        return new CalendarSyncResult
+        {
+            Calendars = allCalendars,
+            SyncToken = newSyncToken
+        };
+    }
+
+    public class CalendarSyncResult
+    {
+        public required IList<Google.Apis.Calendar.v3.Data.CalendarListEntry> Calendars { get; init; }
+        public string? SyncToken { get; init; }
     }
 
     private class TokenExchangeResponse
