@@ -217,5 +217,31 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         }
     }
 
+    public async Task<bool> DeleteCalendarAsync(string calendarId)
+    {
+        using var connection = databaseService.GetConnection();
+
+        var rowsAffected = await connection.ExecuteAsync(
+            "DELETE FROM calendar WHERE calendar_id = @CalendarId",
+            new { CalendarId = calendarId },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
+    public async Task<int> DeleteCalendarsNotSyncedAsync(string accountId, long currentSyncTime)
+    {
+        using var connection = databaseService.GetConnection();
+
+        var rowsAffected = await connection.ExecuteAsync(
+            "DELETE FROM calendar WHERE account_id = @AccountId AND last_sync < @CurrentSyncTime",
+            new { AccountId = accountId, CurrentSyncTime = currentSyncTime },
+            commandTimeout: 30
+        );
+
+        return rowsAffected;
+    }
+
     #endregion
 }

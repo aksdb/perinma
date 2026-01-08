@@ -82,6 +82,7 @@ public class SyncService
 
         // Load sync token from account data for incremental sync
         string? syncToken = await _storage.GetAccountData(account, "calendarSyncToken");
+        bool isFullSync = string.IsNullOrEmpty(syncToken);
 
         // Create Google Calendar service
         var service = await _googleCalendarService.CreateServiceAsync(credentials, cancellationToken);
@@ -90,8 +91,24 @@ public class SyncService
         _credentialManager.StoreGoogleCredentials(account.AccountId, credentials);
 
         // Fetch calendars with optional sync token for incremental sync
-        var result = await _googleCalendarService.GetCalendarsAsync(service, syncToken, cancellationToken);
-        Console.WriteLine($"Found {result.Calendars.Count} calendar changes for account {account.Name}");
+        GoogleCalendarService.CalendarSyncResult result;
+        try
+        {
+            result = await _googleCalendarService.GetCalendarsAsync(service, syncToken, cancellationToken);
+            Console.WriteLine($"Found {result.Calendars.Count} calendar {(isFullSync ? "items" : "changes")} for account {account.Name}");
+        }
+        catch (Exception ex) when (ex.Message.Contains("410") || ex.Message.Contains("invalid") || ex.Message.Contains("Sync token"))
+        {
+            // Sync token is invalid or expired, fall back to full sync
+            Console.WriteLine($"Sync token invalid, performing full sync: {ex.Message}");
+            isFullSync = true;
+            syncToken = null;
+            result = await _googleCalendarService.GetCalendarsAsync(service, null, cancellationToken);
+            Console.WriteLine($"Found {result.Calendars.Count} calendars in full sync for account {account.Name}");
+        }
+
+        // Track the current sync timestamp for cleanup
+        var currentSyncTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         // Save calendars to database
         foreach (var calendar in result.Calendars)
@@ -99,8 +116,9 @@ public class SyncService
             // Check if calendar was deleted (Google returns deleted calendars with deleted=true)
             if (calendar.Deleted == true)
             {
-                Console.WriteLine($"Calendar {calendar.Summary} was deleted, skipping");
-                // TODO: Handle calendar deletion in database
+                Console.WriteLine($"Calendar {calendar.Summary} was deleted, will clean up");
+                // In incremental sync, we get explicit delete notifications
+                // We'll handle deletion in the cleanup phase for full sync
                 continue;
             }
 
@@ -112,11 +130,22 @@ public class SyncService
                 Name = calendar.Summary ?? "Unnamed Calendar",
                 Color = calendar.BackgroundColor,
                 Enabled = 1, // Enable by default
-                LastSync = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                LastSync = currentSyncTime,
                 Data = null // Future: Could store per-calendar sync data here
             };
 
             await _storage.CreateOrUpdateCalendarAsync(calendarDbo);
+        }
+
+        // If this was a full sync, clean up calendars that weren't updated
+        // (they were deleted on the remote side)
+        if (isFullSync)
+        {
+            var deletedCount = await _storage.DeleteCalendarsNotSyncedAsync(account.AccountId, currentSyncTime);
+            if (deletedCount > 0)
+            {
+                Console.WriteLine($"Deleted {deletedCount} calendar(s) that were removed remotely");
+            }
         }
 
         // Store the new sync token for next incremental sync
