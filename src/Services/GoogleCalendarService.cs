@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Auth.OAuth2;
@@ -53,9 +54,10 @@ public class GoogleCalendarService
         {
             ClientSecrets = new ClientSecrets
             {
-                ClientId = BuildSecrets.GoogleClientId
+                ClientId = BuildSecrets.GoogleClientId,
+                ClientSecret = BuildSecrets.GoogleClientSecret,
             },
-            Scopes = new[] { CalendarService.Scope.CalendarReadonly }
+            Scopes = [CalendarService.Scope.CalendarReadonly]
         });
 
         var credential = new UserCredential(flow, "user", tokenResponse);
@@ -114,10 +116,10 @@ public class GoogleCalendarService
         }
 
         // Update credentials with tokens
-        credentials.AccessToken = tokenResponse.access_token;
-        credentials.RefreshToken = tokenResponse.refresh_token;
-        credentials.TokenType = tokenResponse.token_type;
-        credentials.ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.expires_in);
+        credentials.AccessToken = tokenResponse.AccessToken;
+        credentials.RefreshToken = tokenResponse.RefreshToken;
+        credentials.TokenType = tokenResponse.TokenType;
+        credentials.ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
         // Clear the authorization code once exchanged
         credentials.AuthorizationCode = null;
     }
@@ -126,7 +128,7 @@ public class GoogleCalendarService
     /// Uses the refresh token to obtain a new access token. Does not modify the refresh token unless
     /// the server returns a new one (rare for Google).
     /// </summary>
-    public async Task RefreshAccessTokenAsync(GoogleCredentials credentials, CancellationToken cancellationToken)
+    private async Task RefreshAccessTokenAsync(GoogleCredentials credentials, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(credentials.RefreshToken))
         {
@@ -164,16 +166,16 @@ public class GoogleCalendarService
         }
 
         // Update credentials with new access token
-        credentials.AccessToken = tokenResponse.access_token;
-        credentials.TokenType = tokenResponse.token_type;
-        if (tokenResponse.expires_in > 0)
+        credentials.AccessToken = tokenResponse.AccessToken;
+        credentials.TokenType = tokenResponse.TokenType;
+        if (tokenResponse.ExpiresIn > 0)
         {
-            credentials.ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.expires_in);
+            credentials.ExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
         }
         // Some providers (not Google) might return a new refresh_token; keep if provided and non-empty
-        if (!string.IsNullOrEmpty(tokenResponse.refresh_token))
+        if (!string.IsNullOrEmpty(tokenResponse.RefreshToken))
         {
-            credentials.RefreshToken = tokenResponse.refresh_token;
+            credentials.RefreshToken = tokenResponse.RefreshToken;
         }
     }
 
@@ -191,9 +193,13 @@ public class GoogleCalendarService
 
     private class TokenExchangeResponse
     {
-        public string access_token { get; set; } = string.Empty;
-        public string refresh_token { get; set; } = string.Empty;
-        public int expires_in { get; set; }
-        public string token_type { get; set; } = string.Empty;
+        [JsonPropertyName( "access_token")]
+        public string AccessToken { get; set; } = string.Empty;
+        [JsonPropertyName( "refresh_token")]
+        public string RefreshToken { get; set; } = string.Empty;
+        [JsonPropertyName( "expires_in")]
+        public int ExpiresIn { get; set; }
+        [JsonPropertyName( "token_type")]
+        public string TokenType { get; set; } = string.Empty;
     }
 }
