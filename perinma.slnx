@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="CredentialStore/CredentialStore.csproj" />
   <Project Path="src/perinma.csproj" />
   <Project Path="tests/tests.csproj" />
 </Solution>

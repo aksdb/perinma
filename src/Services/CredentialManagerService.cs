@@ -1,8 +1,5 @@
-using System;
-using System.Runtime.InteropServices;
 using System.Text.Json;
-using Avalonia.Logging;
-using GitCredentialManager;
+using CredentialStore;
 using perinma.Storage.Models;
 
 namespace perinma.Services;
@@ -23,45 +20,8 @@ public class CredentialManagerService
     {
         if (!testMode)
         {
-            // Programmatically configure the credential store based on platform
-            ConfigureCredentialStore();
-            _store = CredentialManager.Create(Namespace);
+            _store = CredentialStore.CredentialStore.Create(Namespace);
         }
-    }
-
-    private static void ConfigureCredentialStore()
-    {
-        // Set the GCM_CREDENTIAL_STORE environment variable based on platform
-        // This tells Git Credential Manager which backing store to use
-        string credentialStore;
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            // Use Windows Credential Manager
-            credentialStore = "wincredman";
-            Console.WriteLine("Using Windows Credential Manager");
-        }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            // Use macOS Keychain
-            credentialStore = "keychain";
-            Console.WriteLine("Using macOS Keychain");
-        }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            // Use freedesktop.org Secret Service (GNOME Keyring, KDE Wallet, etc.)
-            // Falls back to cache if secret service is not available
-            credentialStore = "secretservice";
-            Console.WriteLine("Using freedesktop.org Secret Service");
-        }
-        else
-        {
-            // Fallback to in-memory cache for unknown platforms
-            credentialStore = "cache";
-            Console.WriteLine("Using in-memory cache");
-        }
-
-        Environment.SetEnvironmentVariable("GCM_CREDENTIAL_STORE", credentialStore);
     }
 
     /// <summary>
