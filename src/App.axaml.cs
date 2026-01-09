@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
+using CredentialStore;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Views.Main;
@@ -27,7 +28,7 @@ public partial class App : Application
         try
         {
             _databaseService = new DatabaseService();
-            _credentialManager = new CredentialManagerService();
+            _credentialManager = new CredentialManagerService(CredentialStoreFactory.Create("perinma"));
 
             // Initialize storage and services
             var storage = new SqliteStorage(_databaseService, _credentialManager);

@@ -18,7 +18,7 @@ namespace CredentialStore
         /// <param name="service">Name of the service to match against. Use null to match all values.</param>
         /// <param name="account">Account name to match against. Use null to match all values.</param>
         /// <returns>First matching credential or null if none are found.</returns>
-        ICredential Get(string service, string account);
+        ICredential? Get(string service, string account);
 
         /// <summary>
         /// Add or update credential in the store with the specified key.

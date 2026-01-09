@@ -1,3 +1,4 @@
+using CredentialStore;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Storage.Models;
@@ -12,7 +13,7 @@ public class SyncServiceTests
     {
         // Arrange - Use real DatabaseService in memory mode
         using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new TestCredentialManager();
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
         var storage = new SqliteStorage(database, credentialManager);
 
         var fakeGoogleService = new FakeGoogleCalendarService();
