@@ -24,6 +24,15 @@ public interface IGoogleCalendarService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Fetches events for a specific calendar, optionally using incremental sync
+    /// </summary>
+    Task<GoogleCalendarService.EventSyncResult> GetEventsAsync(
+        CalendarService service,
+        string calendarId,
+        string? syncToken = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Exchanges authorization code for access and refresh tokens
     /// </summary>
     Task ExchangeAuthorizationCodeAsync(

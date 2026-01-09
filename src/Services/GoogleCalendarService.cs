@@ -231,9 +231,70 @@ public class GoogleCalendarService : IGoogleCalendarService
         };
     }
 
+    /// <summary>
+    /// Fetches events for a specific calendar, optionally using incremental sync
+    /// </summary>
+    /// <param name="service">Authenticated CalendarService</param>
+    /// <param name="calendarId">Calendar ID to fetch events from</param>
+    /// <param name="syncToken">Optional sync token for incremental sync</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Result containing events and new sync token</returns>
+    public async Task<EventSyncResult> GetEventsAsync(
+        CalendarService service,
+        string calendarId,
+        string? syncToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        var allEvents = new List<Google.Apis.Calendar.v3.Data.Event>();
+        string? pageToken = null;
+        string? newSyncToken = null;
+
+        do
+        {
+            var request = service.Events.List(calendarId);
+            request.MaxResults = 250; // Max allowed by Google API
+            request.SingleEvents = true; // Expand recurring events
+
+            // Use sync token for incremental sync if provided
+            if (!string.IsNullOrEmpty(syncToken))
+            {
+                request.SyncToken = syncToken;
+            }
+
+            // Handle pagination
+            if (!string.IsNullOrEmpty(pageToken))
+            {
+                request.PageToken = pageToken;
+            }
+
+            var response = await request.ExecuteAsync(cancellationToken);
+
+            if (response.Items != null)
+            {
+                allEvents.AddRange(response.Items);
+            }
+
+            pageToken = response.NextPageToken;
+            newSyncToken = response.NextSyncToken;
+
+        } while (!string.IsNullOrEmpty(pageToken));
+
+        return new EventSyncResult
+        {
+            Events = allEvents,
+            SyncToken = newSyncToken
+        };
+    }
+
     public class CalendarSyncResult
     {
         public required IList<Google.Apis.Calendar.v3.Data.CalendarListEntry> Calendars { get; init; }
+        public string? SyncToken { get; init; }
+    }
+
+    public class EventSyncResult
+    {
+        public required IList<Google.Apis.Calendar.v3.Data.Event> Events { get; init; }
         public string? SyncToken { get; init; }
     }
 

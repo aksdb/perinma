@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Dapper;
@@ -236,6 +237,127 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         var rowsAffected = await connection.ExecuteAsync(
             "DELETE FROM calendar WHERE account_id = @AccountId AND last_sync < @CurrentSyncTime",
             new { AccountId = accountId, CurrentSyncTime = currentSyncTime },
+            commandTimeout: 30
+        );
+
+        return rowsAffected;
+    }
+
+    public async Task<bool> SetCalendarData(CalendarDbo calendar, string key, string value)
+    {
+        using var connection = databaseService.GetConnection();
+
+        var rowsAffected = await connection.ExecuteAsync(
+            """
+                UPDATE calendar
+                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
+                WHERE calendar_id = @calendar_id
+            """,
+            param: new { key = $"$.{key}", value, calendar_id = calendar.CalendarId },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
+    public async Task<string?> GetCalendarData(CalendarDbo calendar, string key)
+    {
+        using var connection = databaseService.GetConnection();
+
+        return await connection.QuerySingleAsync<string?>(
+            """
+            SELECT coalesce(data ->> @key, '') as value
+            FROM calendar
+            WHERE calendar_id = @calendar_id
+            """,
+            param: new { key = $"$.{key}", calendar_id = calendar.CalendarId });
+    }
+
+    #endregion
+
+    #region Calendar Events
+
+    public async Task<IEnumerable<CalendarEventDbo>> GetEventsByCalendarAsync(string calendarId)
+    {
+        using var connection = databaseService.GetConnection();
+        return await connection.QueryAsync<CalendarEventDbo>(
+            "SELECT calendar_id, event_id, external_id, start_time, end_time, title, changed_at, data " +
+            "FROM calendar_event WHERE calendar_id = @CalendarId",
+            new { CalendarId = calendarId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<CalendarEventDbo?> GetEventByExternalIdAsync(string calendarId, string externalId)
+    {
+        using var connection = databaseService.GetConnection();
+        return await connection.QuerySingleOrDefaultAsync<CalendarEventDbo>(
+            "SELECT calendar_id, event_id, external_id, start_time, end_time, title, changed_at, data " +
+            "FROM calendar_event WHERE calendar_id = @CalendarId AND external_id = @ExternalId",
+            new { CalendarId = calendarId, ExternalId = externalId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<bool> CreateOrUpdateEventAsync(CalendarEventDbo eventDbo)
+    {
+        using var connection = databaseService.GetConnection();
+
+        // Check if event already exists by external_id
+        var existing = await GetEventByExternalIdAsync(eventDbo.calendar_id, eventDbo.external_id ?? string.Empty);
+
+        if (existing != null)
+        {
+            // Update existing event - keep the existing event_id
+            var rowsAffected = await connection.ExecuteAsync(
+                "UPDATE calendar_event SET start_time = @start_time, end_time = @end_time, " +
+                "title = @title, changed_at = @changed_at " +
+                "WHERE calendar_id = @calendar_id AND external_id = @external_id",
+                new
+                {
+                    eventDbo.calendar_id,
+                    eventDbo.external_id,
+                    eventDbo.start_time,
+                    eventDbo.end_time,
+                    eventDbo.title,
+                    eventDbo.changed_at
+                },
+                commandTimeout: 30
+            );
+
+            return rowsAffected > 0;
+        }
+        else
+        {
+            // Insert new event with generated UUID
+            var newEventId = Guid.NewGuid().ToString();
+            var rowsAffected = await connection.ExecuteAsync(
+                "INSERT INTO calendar_event (calendar_id, event_id, external_id, start_time, end_time, title, changed_at) " +
+                "VALUES (@calendar_id, @event_id, @external_id, @start_time, @end_time, @title, @changed_at)",
+                new
+                {
+                    eventDbo.calendar_id,
+                    event_id = newEventId,
+                    eventDbo.external_id,
+                    eventDbo.start_time,
+                    eventDbo.end_time,
+                    eventDbo.title,
+                    eventDbo.changed_at
+                },
+                commandTimeout: 30
+            );
+
+            return rowsAffected > 0;
+        }
+    }
+
+    public async Task<int> DeleteEventsNotSyncedAsync(string calendarId, long currentSyncTime)
+    {
+        using var connection = databaseService.GetConnection();
+
+        var rowsAffected = await connection.ExecuteAsync(
+            "DELETE FROM calendar_event WHERE calendar_id = @CalendarId AND changed_at < @CurrentSyncTime",
+            new { CalendarId = calendarId, CurrentSyncTime = currentSyncTime },
             commandTimeout: 30
         );
 

@@ -156,6 +156,128 @@ public class SyncService
         }
 
         Console.WriteLine($"Synced {result.Calendars.Count} calendars for account {account.Name}");
+
+        // Sync events for each enabled calendar
+        var calendars = await _storage.GetCalendarsByAccountAsync(account.AccountId);
+        foreach (var calendar in calendars.Where(c => c.Enabled == 1))
+        {
+            try
+            {
+                await SyncCalendarEventsAsync(service, calendar, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error syncing events for calendar {calendar.Name}: {ex.Message}");
+                // Continue with other calendars
+            }
+        }
+    }
+
+    /// <summary>
+    /// Syncs events for a single calendar using incremental sync when possible
+    /// </summary>
+    private async Task SyncCalendarEventsAsync(Google.Apis.Calendar.v3.CalendarService service, CalendarDbo calendar, CancellationToken cancellationToken)
+    {
+        Console.WriteLine($"Syncing events for calendar: {calendar.Name}");
+
+        // Load sync token from calendar data for incremental sync
+        string? syncToken = await _storage.GetCalendarData(calendar, "eventSyncToken");
+        bool isFullSync = string.IsNullOrEmpty(syncToken);
+
+        // Fetch events with optional sync token for incremental sync
+        GoogleCalendarService.EventSyncResult result;
+        try
+        {
+            result = await _googleCalendarService.GetEventsAsync(service, calendar.ExternalId ?? string.Empty, syncToken, cancellationToken);
+            Console.WriteLine($"Found {result.Events.Count} event {(isFullSync ? "items" : "changes")} for calendar {calendar.Name}");
+        }
+        catch (Exception ex) when (ex.Message.Contains("410") || ex.Message.Contains("invalid") || ex.Message.Contains("Sync token"))
+        {
+            // Sync token is invalid or expired, fall back to full sync
+            Console.WriteLine($"Event sync token invalid, performing full sync: {ex.Message}");
+            isFullSync = true;
+            syncToken = null;
+            result = await _googleCalendarService.GetEventsAsync(service, calendar.ExternalId ?? string.Empty, null, cancellationToken);
+            Console.WriteLine($"Found {result.Events.Count} events in full sync for calendar {calendar.Name}");
+        }
+
+        // Track the current sync timestamp for cleanup
+        var currentSyncTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        // Save events to database
+        foreach (var evt in result.Events)
+        {
+            // Check if event was deleted or cancelled
+            if (evt.Status == "cancelled")
+            {
+                Console.WriteLine($"Event {evt.Summary} was cancelled, will clean up");
+                // In incremental sync, we get explicit delete notifications
+                // We'll handle deletion in the cleanup phase for full sync
+                continue;
+            }
+
+            // Skip events without start/end times (e.g., all-day events without proper dates)
+            if (evt.Start == null || evt.End == null)
+            {
+                continue;
+            }
+
+            // Parse start and end times
+            long? startTime = null;
+            long? endTime = null;
+
+            if (evt.Start.DateTimeRaw != null && DateTime.TryParse(evt.Start.DateTimeRaw, out var startDateTime))
+            {
+                startTime = new DateTimeOffset(startDateTime).ToUnixTimeSeconds();
+            }
+            else if (evt.Start.Date != null && DateTime.TryParse(evt.Start.Date, out var startDate))
+            {
+                startTime = new DateTimeOffset(startDate).ToUnixTimeSeconds();
+            }
+
+            if (evt.End.DateTimeRaw != null && DateTime.TryParse(evt.End.DateTimeRaw, out var endDateTime))
+            {
+                endTime = new DateTimeOffset(endDateTime).ToUnixTimeSeconds();
+            }
+            else if (evt.End.Date != null && DateTime.TryParse(evt.End.Date, out var endDate))
+            {
+                endTime = new DateTimeOffset(endDate).ToUnixTimeSeconds();
+            }
+
+            var eventDbo = new CalendarEventDbo
+            {
+                calendar_id = calendar.CalendarId,
+                event_id = string.Empty, // Will be set by CreateOrUpdateEventAsync
+                external_id = evt.Id,
+                start_time = startTime,
+                end_time = endTime,
+                title = evt.Summary ?? "Untitled Event",
+                changed_at = currentSyncTime,
+                data = null
+            };
+
+            await _storage.CreateOrUpdateEventAsync(eventDbo);
+        }
+
+        // If this was a full sync, clean up events that weren't updated
+        // (they were deleted on the remote side)
+        if (isFullSync)
+        {
+            var deletedCount = await _storage.DeleteEventsNotSyncedAsync(calendar.CalendarId, currentSyncTime);
+            if (deletedCount > 0)
+            {
+                Console.WriteLine($"Deleted {deletedCount} event(s) that were removed remotely");
+            }
+        }
+
+        // Store the new sync token for next incremental sync
+        if (!string.IsNullOrEmpty(result.SyncToken))
+        {
+            await _storage.SetCalendarData(calendar, "eventSyncToken", result.SyncToken);
+            Console.WriteLine($"Stored new event sync token for next sync");
+        }
+
+        Console.WriteLine($"Synced {result.Events.Count} events for calendar {calendar.Name}");
     }
 }
 

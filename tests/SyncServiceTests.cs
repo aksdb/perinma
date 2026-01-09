@@ -292,4 +292,66 @@ public class SyncServiceTests
         Assert.That(calendarList.Any(c => c.ExternalId == "cal1"), Is.True);
         Assert.That(calendarList.Any(c => c.ExternalId == "cal2"), Is.False);
     }
+
+    [Test]
+    public async Task SyncsEventsForEnabledCalendars()
+    {
+        // Arrange
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+
+        // Create test account
+        var accountId = Guid.NewGuid().ToString();
+        var account = new AccountDbo
+        {
+            AccountId = accountId,
+            Name = "Test Account",
+            Type = "Google"
+        };
+        await storage.CreateAccountAsync(account);
+
+        // Store test credentials
+        var credentials = new GoogleCredentials
+        {
+            Type = "Google",
+            AccessToken = "test_token",
+            RefreshToken = "test_refresh",
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
+            TokenType = "Bearer",
+            Scope = "calendar.readonly"
+        };
+        credentialManager.StoreGoogleCredentials(accountId, credentials);
+
+        // Set up fake service with calendar and events
+        var fakeGoogleService = new FakeGoogleCalendarService();
+        fakeGoogleService.SetCalendars(
+            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        );
+
+        var eventStart = DateTime.UtcNow.AddHours(1);
+        var eventEnd = DateTime.UtcNow.AddHours(2);
+        fakeGoogleService.SetEvents("cal1",
+            FakeGoogleCalendarService.CreateEvent("event1", "Team Meeting", eventStart, eventEnd),
+            FakeGoogleCalendarService.CreateEvent("event2", "Lunch Break", eventStart.AddHours(2), eventEnd.AddHours(2))
+        );
+
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService);
+
+        // Act
+        await syncService.SyncAllAccountsAsync();
+
+        // Assert - Verify calendar was created
+        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendar = calendars.First();
+        Assert.That(calendar.ExternalId, Is.EqualTo("cal1"));
+
+        // Verify events were synced
+        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var eventList = events.ToList();
+
+        Assert.That(eventList, Has.Count.EqualTo(2));
+        Assert.That(eventList.Any(e => e.external_id == "event1" && e.title == "Team Meeting"), Is.True);
+        Assert.That(eventList.Any(e => e.external_id == "event2" && e.title == "Lunch Break"), Is.True);
+    }
 }
