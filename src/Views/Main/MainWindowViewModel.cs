@@ -34,7 +34,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _syncService = syncService;
 
         var storage = new SqliteStorage(databaseService, credentialManager);
-        CalendarListViewModel = new CalendarListViewModel(storage);
+        var googleCalendarService = new GoogleCalendarService();
+        CalendarListViewModel = new CalendarListViewModel(storage, googleCalendarService, credentialManager);
     }
 
     #region Settings

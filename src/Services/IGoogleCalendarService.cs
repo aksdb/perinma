@@ -33,6 +33,15 @@ public interface IGoogleCalendarService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Updates a calendar's selected (enabled/disabled) state in Google Calendar
+    /// </summary>
+    Task UpdateCalendarSelectedAsync(
+        CalendarService service,
+        string calendarId,
+        bool selected,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Exchanges authorization code for access and refresh tokens
     /// </summary>
     Task ExchangeAuthorizationCodeAsync(

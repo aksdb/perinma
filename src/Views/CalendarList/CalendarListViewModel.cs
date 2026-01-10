@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using perinma.Services;
 using perinma.Storage;
 using perinma.Views.Calendar;
 
@@ -10,12 +11,19 @@ namespace perinma.Views.CalendarList;
 public partial class CalendarListViewModel : ViewModelBase
 {
     private readonly SqliteStorage _storage;
+    private readonly IGoogleCalendarService _googleCalendarService;
+    private readonly CredentialManagerService _credentialManager;
 
     public ObservableCollection<AccountGroupViewModel> AccountGroups { get; } = new();
 
-    public CalendarListViewModel(SqliteStorage storage)
+    public CalendarListViewModel(
+        SqliteStorage storage,
+        IGoogleCalendarService googleCalendarService,
+        CredentialManagerService credentialManager)
     {
         _storage = storage;
+        _googleCalendarService = googleCalendarService;
+        _credentialManager = credentialManager;
         _ = LoadCalendarsAsync();
     }
 
@@ -70,6 +78,60 @@ public partial class CalendarListViewModel : ViewModelBase
 
         try
         {
+            // Get the full calendar record from database
+            var calendarDbo = await _storage.GetCalendarByIdAsync(calendar.Id.ToString());
+            if (calendarDbo == null)
+            {
+                Console.WriteLine($"Calendar not found: {calendar.Id}");
+                calendar.Enabled = !enabled;
+                return;
+            }
+
+            // Get the account to check if it's a Google account
+            var account = await _storage.GetAccountByIdAsync(calendarDbo.AccountId);
+            if (account == null)
+            {
+                Console.WriteLine($"Account not found: {calendarDbo.AccountId}");
+                calendar.Enabled = !enabled;
+                return;
+            }
+
+            // Only sync with Google for Google accounts
+            if (account.Type == "Google" && !string.IsNullOrEmpty(calendarDbo.ExternalId) && (calendarDbo.Enabled == 1) != enabled)
+            {
+                try
+                {
+                    // Get credentials for the account
+                    var credentials = _credentialManager.GetGoogleCredentials(account.AccountId);
+                    if (credentials == null)
+                    {
+                        Console.WriteLine($"No credentials found for account: {account.AccountId}");
+                        calendar.Enabled = !enabled;
+                        return;
+                    }
+
+                    // Create Google Calendar service
+                    var service = await _googleCalendarService.CreateServiceAsync(credentials);
+
+                    // Update the selected state in Google Calendar
+                    await _googleCalendarService.UpdateCalendarSelectedAsync(
+                        service,
+                        calendarDbo.ExternalId,
+                        enabled
+                    );
+
+                    Console.WriteLine($"Successfully synced calendar '{calendar.Name}' enabled state to Google Calendar");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to sync calendar enabled state to Google: {ex.Message}");
+                    // Revert the UI change since Google update failed
+                    calendar.Enabled = !enabled;
+                    return;
+                }
+            }
+
+            // Update local database
             var success = await _storage.UpdateCalendarEnabledAsync(
                 calendar.Id.ToString(),
                 enabled
@@ -77,11 +139,12 @@ public partial class CalendarListViewModel : ViewModelBase
 
             if (!success)
             {
-                Console.WriteLine($"Failed to update calendar enabled state: {calendar.Id}");
+                Console.WriteLine($"Failed to update calendar enabled state in database: {calendar.Id}");
                 calendar.Enabled = !enabled;
                 return;
             }
 
+            // Refresh the calendar view to show/hide events
             CalendarWeekViewModel.Instance.Load();
         }
         catch (Exception ex)

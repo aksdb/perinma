@@ -57,7 +57,7 @@ public class GoogleCalendarService : IGoogleCalendarService
                 ClientId = BuildSecrets.GoogleClientId,
                 ClientSecret = BuildSecrets.GoogleClientSecret,
             },
-            Scopes = [CalendarService.Scope.CalendarReadonly]
+            Scopes = [CalendarService.Scope.CalendarCalendarlist]
         });
 
         var credential = new UserCredential(flow, "user", tokenResponse);
@@ -284,6 +284,29 @@ public class GoogleCalendarService : IGoogleCalendarService
             Events = allEvents,
             SyncToken = newSyncToken
         };
+    }
+
+    /// <summary>
+    /// Updates a calendar's selected (enabled/disabled) state in Google Calendar
+    /// </summary>
+    /// <param name="service">Authenticated CalendarService</param>
+    /// <param name="calendarId">External calendar ID (e.g., email address or calendar identifier)</param>
+    /// <param name="selected">True to show the calendar, false to hide it</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    public async Task UpdateCalendarSelectedAsync(
+        CalendarService service,
+        string calendarId,
+        bool selected,
+        CancellationToken cancellationToken = default)
+    {
+        // Get the current calendar list entry
+        var calendarListEntry = await service.CalendarList.Get(calendarId).ExecuteAsync(cancellationToken);
+
+        // Update the Selected property
+        calendarListEntry.Selected = selected;
+
+        // Send the update to Google
+        await service.CalendarList.Update(calendarListEntry, calendarId).ExecuteAsync(cancellationToken);
     }
 
     public class CalendarSyncResult

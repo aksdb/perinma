@@ -104,6 +104,22 @@ public class FakeGoogleCalendarService : IGoogleCalendarService
         return Task.FromResult(result);
     }
 
+    public Task UpdateCalendarSelectedAsync(
+        CalendarService service,
+        string calendarId,
+        bool selected,
+        CancellationToken cancellationToken = default)
+    {
+        // Update the selected state of the calendar in the fake list
+        var calendar = _calendars.Find(c => c.Id == calendarId);
+        if (calendar != null)
+        {
+            calendar.Selected = selected;
+        }
+
+        return Task.CompletedTask;
+    }
+
     public Task ExchangeAuthorizationCodeAsync(
         GoogleCredentials credentials,
         CancellationToken cancellationToken,

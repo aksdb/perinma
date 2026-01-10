@@ -157,6 +157,18 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         );
     }
 
+    public async Task<CalendarDbo?> GetCalendarByIdAsync(string calendarId)
+    {
+        using var connection = databaseService.GetConnection();
+        return await connection.QuerySingleOrDefaultAsync<CalendarDbo>(
+            "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
+            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
+            "FROM calendar WHERE calendar_id = @CalendarId",
+            new { CalendarId = calendarId },
+            commandTimeout: 30
+        );
+    }
+
     public async Task<bool> CreateOrUpdateCalendarAsync(CalendarDbo calendar)
     {
         using var connection = databaseService.GetConnection();
