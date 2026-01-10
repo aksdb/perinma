@@ -353,5 +353,12 @@ public class SyncServiceTests
         Assert.That(eventList, Has.Count.EqualTo(2));
         Assert.That(eventList.Any(e => e.external_id == "event1" && e.title == "Team Meeting"), Is.True);
         Assert.That(eventList.Any(e => e.external_id == "event2" && e.title == "Lunch Break"), Is.True);
+
+        // Verify raw event data is stored
+        var event1 = eventList.First(e => e.external_id == "event1");
+        var rawData = await storage.GetEventData(event1, "rawData");
+        Assert.That(rawData, Is.Not.Null.And.Not.Empty);
+        Assert.That(rawData, Does.Contain("Team Meeting"));
+        Assert.That(rawData, Does.Contain("event1"));
     }
 }

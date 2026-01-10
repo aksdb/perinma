@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Apis.Json;
 using perinma.Storage;
 using perinma.Storage.Models;
 
@@ -257,6 +258,10 @@ public class SyncService
             };
 
             await _storage.CreateOrUpdateEventAsync(eventDbo);
+
+            // Store raw Google event data for later use
+            var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(evt);
+            await _storage.SetEventDataJson(eventDbo, "rawData", rawEventJson);
         }
 
         // If this was a full sync, clean up events that weren't updated

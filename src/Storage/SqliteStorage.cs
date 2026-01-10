@@ -364,5 +364,52 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         return rowsAffected;
     }
 
+    public async Task<bool> SetEventData(CalendarEventDbo eventDbo, string key, string value)
+    {
+        using var connection = databaseService.GetConnection();
+
+        var rowsAffected = await connection.ExecuteAsync(
+            """
+                UPDATE calendar_event
+                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
+                WHERE calendar_id = @calendar_id AND external_id = @external_id
+            """,
+            param: new { key = $"$.{key}", value, calendar_id = eventDbo.calendar_id, external_id = eventDbo.external_id },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+    
+    public async Task<bool> SetEventDataJson(CalendarEventDbo eventDbo, string key, string jsonValue)
+    {
+        using var connection = databaseService.GetConnection();
+
+        var rowsAffected = await connection.ExecuteAsync(
+            """
+                UPDATE calendar_event
+                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, jsonb(@jsonValue))
+                WHERE calendar_id = @calendar_id AND external_id = @external_id
+            """,
+            param: new { key = $"$.{key}", jsonValue, calendar_id = eventDbo.calendar_id, external_id = eventDbo.external_id },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
+    public async Task<string?> GetEventData(CalendarEventDbo eventDbo, string key)
+    {
+        using var connection = databaseService.GetConnection();
+
+        return await connection.QuerySingleAsync<string?>(
+            """
+            SELECT coalesce(data ->> @key, '') as value
+            FROM calendar_event
+            WHERE calendar_id = @calendar_id AND external_id = @external_id
+            """,
+            param: new { key = $"$.{key}", calendar_id = eventDbo.calendar_id, external_id = eventDbo.external_id });
+    }
+
     #endregion
 }
