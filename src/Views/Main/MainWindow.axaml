@@ -3,9 +3,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:cal="using:perinma.Views.Calendar"
+        xmlns:callist="using:perinma.Views.CalendarList"
         xmlns:main="using:perinma.Views.Main"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        Width="1200" Height="600" 
+        Width="1200" Height="600"
         x:Class="perinma.Views.Main.MainWindow"
         x:DataType="main:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
@@ -33,6 +34,15 @@
                 <Button Command="{Binding CalendarWeekViewModel.NextWeekCommand}">Next</Button>
             </StackPanel>
         </Menu>
+
+        <!-- Calendar List Sidebar -->
+        <Border DockPanel.Dock="Left"
+                Width="250"
+                BorderBrush="Gray"
+                BorderThickness="0,0,1,0">
+            <callist:CalendarListView DataContext="{Binding CalendarListViewModel}"/>
+        </Border>
+
         <cal:CalendarWeekView/>
     </DockPanel>
 </Window>

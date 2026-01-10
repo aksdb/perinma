@@ -28,7 +28,7 @@ public partial class App : Application
         try
         {
             _databaseService = new DatabaseService();
-            _credentialManager = new CredentialManagerService(CredentialStoreFactory.Create("perinma"));
+            _credentialManager = new CredentialManagerService(PlatformCredentialStore.Create("perinma"));
 
             // Initialize storage and services
             var storage = new SqliteStorage(_databaseService, _credentialManager);

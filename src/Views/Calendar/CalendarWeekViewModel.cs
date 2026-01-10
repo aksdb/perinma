@@ -81,7 +81,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
     public static CalendarWeekViewModel Instance { get; } = new(new DummyCalendarSource(DateTime.Now));
 
-    private void Load()
+    public void Load()
     {
         Events.Clear();
         FullDayEvents.Clear();

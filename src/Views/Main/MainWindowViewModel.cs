@@ -7,6 +7,7 @@ using perinma.Services;
 using perinma.Storage;
 using perinma.ViewModels;
 using perinma.Views.Calendar;
+using perinma.Views.CalendarList;
 using perinma.Views.Settings;
 
 namespace perinma.Views.Main;
@@ -21,6 +22,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _isSyncing;
 
     public CalendarWeekViewModel CalendarWeekViewModel => CalendarWeekViewModel.Instance;
+    public CalendarListViewModel CalendarListViewModel { get; }
 
     public MainWindowViewModel(
         DatabaseService databaseService,
@@ -30,6 +32,9 @@ public partial class MainWindowViewModel : ViewModelBase
         _databaseService = databaseService;
         _credentialManager = credentialManager;
         _syncService = syncService;
+
+        var storage = new SqliteStorage(databaseService, credentialManager);
+        CalendarListViewModel = new CalendarListViewModel(storage);
     }
 
     #region Settings
@@ -70,6 +75,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (result.Success)
             {
                 Console.WriteLine($"Sync completed successfully. Synced {result.SyncedAccounts} accounts.");
+                await CalendarListViewModel.LoadCalendarsAsync();
             }
             else
             {

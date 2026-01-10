@@ -273,6 +273,19 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
             param: new { key = $"$.{key}", calendar_id = calendar.CalendarId });
     }
 
+    public async Task<bool> UpdateCalendarEnabledAsync(string calendarId, bool enabled)
+    {
+        using var connection = databaseService.GetConnection();
+
+        var rowsAffected = await connection.ExecuteAsync(
+            "UPDATE calendar SET enabled = @Enabled WHERE calendar_id = @CalendarId",
+            new { CalendarId = calendarId, Enabled = enabled ? 1 : 0 },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
     #endregion
 
     #region Calendar Events

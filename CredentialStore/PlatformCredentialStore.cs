@@ -4,7 +4,7 @@ using CredentialStore.Interop.Windows;
 
 namespace CredentialStore;
 
-public static class CredentialStoreFactory
+public static class PlatformCredentialStore
 {
     public static ICredentialStore Create(string @namespace)
     {
