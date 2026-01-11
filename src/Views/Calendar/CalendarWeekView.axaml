@@ -71,12 +71,7 @@
                         </StackPanel>
                         <FlyoutBase.AttachedFlyout>
                             <Flyout Placement="Right">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Title, RelativeSource={RelativeSource TemplatedParent}}" FontWeight="Bold" />
-                                    <Separator/>
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="Start: "/><TextBlock Text="{Binding CalendarEvent.StartTime, RelativeSource={RelativeSource TemplatedParent}}"/></StackPanel>
-                                    <StackPanel Orientation="Horizontal"><TextBlock Text="End: "/><TextBlock Text="{Binding CalendarEvent.EndTime, RelativeSource={RelativeSource TemplatedParent}}"/></StackPanel>
-                                </StackPanel>
+                                <ContentControl Name="EventFlyoutContent" />
                             </Flyout>
                         </FlyoutBase.AttachedFlyout>
                     </Border>

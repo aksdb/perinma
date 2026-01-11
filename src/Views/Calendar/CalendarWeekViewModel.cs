@@ -14,6 +14,7 @@ namespace perinma.Views.Calendar;
 public partial class CalendarWeekViewModel : ViewModelBase
 {
     private readonly ICalendarSource _calendarSource;
+    private readonly SqliteStorage? _storage;
 
     public ObservableCollection<EventItem> Events { get; } = [];
 
@@ -32,13 +33,14 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
     [ObservableProperty]
     private int _dayColumns;
-    
+
     [ObservableProperty]
     private List<WeekDayHeaderViewModel> _weekDayHeaders = [];
 
-    public CalendarWeekViewModel(ICalendarSource calendarSource)
+    public CalendarWeekViewModel(ICalendarSource calendarSource, SqliteStorage? storage = null)
     {
         _calendarSource = calendarSource;
+        _storage = storage;
         DayColumns = 7;
         WeekStart = DateTime.Now;
     }
@@ -168,6 +170,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         EndTimeText = e.EndTime.ToString("HH:mm"),
                         ShowInlineTimes = true,
                         CalendarEvent = e,
+                        Storage = _storage,
                     };
                     viewModels.Add(vm);
                 }

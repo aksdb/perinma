@@ -40,7 +40,7 @@ public partial class MainWindowViewModel : ViewModelBase
         //var calendarSource = new DummyCalendarSource(DateTime.Now);
         _googleCalendarService = new GoogleCalendarService();
         _googleOAuthService = new GoogleOAuthService(_googleCalendarService);
-        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource);
+        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, storage);
         CalendarListViewModel = new CalendarListViewModel(storage, _googleCalendarService, credentialManager, CalendarWeekViewModel);
     }
 

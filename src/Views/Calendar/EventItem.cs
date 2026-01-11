@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Lucdem.Avalonia.SourceGenerators.Attributes;
 using perinma.Models;
+using perinma.Storage;
 using perinma.ViewModels;
 
 namespace perinma.Views.Calendar;
@@ -62,6 +63,9 @@ public partial class EventItem : TemplatedControl
     [AvaStyledProperty]
     private CalendarEvent _calendarEvent;
 
+    [AvaStyledProperty]
+    private SqliteStorage _storage;
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -104,7 +108,7 @@ public partial class EventItem : TemplatedControl
             try
             {
                 await Task.Delay(150, singleTapCtx.Token);
-                FlyoutBase.ShowAttachedFlyout(border);
+                ShowFlyout(border);
             } catch (TaskCanceledException) { }
         };
         border.DoubleTapped += (sender, args) =>
@@ -112,6 +116,39 @@ public partial class EventItem : TemplatedControl
             singleTapCtx?.Cancel();
             Console.Out.WriteLine("Double-tapped");
         };
+    }
+
+    private void ShowFlyout(Border border)
+    {
+        if (Storage == null || CalendarEvent == null)
+        {
+            FlyoutBase.ShowAttachedFlyout(border);
+            return;
+        }
+
+        var flyout = FlyoutBase.GetAttachedFlyout(border);
+        if (flyout is Flyout fly && fly.Content is ContentControl contentControl)
+        {
+            var viewModel = CreateViewModel();
+            contentControl.Content = viewModel;
+        }
+
+        FlyoutBase.ShowAttachedFlyout(border);
+    }
+
+    private object? CreateViewModel()
+    {
+        if (Storage == null || CalendarEvent == null)
+        {
+            return null;
+        }
+
+        if (CalendarEvent.Calendar.Account.Type.Equals("Google", StringComparison.OrdinalIgnoreCase))
+        {
+            return new GoogleCalendarEventViewModel(CalendarEvent, Storage);
+        }
+
+        return new CalendarEventViewModel(CalendarEvent);
     }
 
     private void RecalculateInlineTimeWidth()

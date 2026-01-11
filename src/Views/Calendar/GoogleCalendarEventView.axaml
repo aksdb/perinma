@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cal="using:perinma.Views.Calendar"
+             x:DataType="cal:GoogleCalendarEventViewModel"
+             mc:Ignorable="d" d:DesignWidth="350" d:DesignHeight="200"
+             x:Class="perinma.Views.Calendar.GoogleCalendarEventView">
+
+    <StackPanel Spacing="8" Margin="12">
+        <TextBlock Text="Loading event details..." IsVisible="{Binding IsLoading}" />
+
+        <StackPanel Spacing="8" IsVisible="{Binding !IsLoading}">
+            <TextBlock Text="{Binding CalendarEvent.Title}" FontWeight="Bold" FontSize="14" />
+
+            <Separator />
+
+            <StackPanel Spacing="4" IsVisible="{Binding GoogleMeetLink, Mode=OneWay}">
+                <TextBlock Text="Google Meet" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding GoogleMeetLink}" Foreground="Blue" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding Location, Mode=OneWay}">
+                <TextBlock Text="Location" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding Location}" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding Description, Mode=OneWay}">
+                <TextBlock Text="Description" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding Description}" TextWrapping="Wrap" MaxHeight="150" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding Organizer, Mode=OneWay}">
+                <TextBlock Text="Organizer" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding Organizer}" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding Creator, Mode=OneWay}">
+                <TextBlock Text="Created by" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding Creator}" />
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+
+</UserControl>
