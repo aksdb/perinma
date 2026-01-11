@@ -15,9 +15,13 @@ public partial class AccountListViewModel : ViewModelBase
     private readonly SqliteStorage _storage;
     private readonly CredentialManagerService _credentialManager;
     private AddAccountWindow? _addAccountWindow;
+    private ReauthenticateAccountWindow? _reauthenticateWindow;
 
     [ObservableProperty]
     private AvaloniaList<AccountViewModel> _accounts = [];
+
+    [ObservableProperty]
+    private bool _canReauthenticate = true;
 
     public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager)
     {
@@ -105,5 +109,50 @@ public partial class AccountListViewModel : ViewModelBase
             // TODO: Show error to user
             Console.WriteLine($"Error deleting account: {ex.Message}");
         }
+    }
+
+    [RelayCommand]
+    private void ReauthenticateAccount(Guid accountId)
+    {
+        if (_reauthenticateWindow != null)
+        {
+            _reauthenticateWindow.Activate();
+            return;
+        }
+
+        // Find the account
+        var account = Accounts.FirstOrDefault(a => a.Id == accountId);
+        if (account == null)
+        {
+            Console.WriteLine($"Account not found: {accountId}");
+            return;
+        }
+
+        // Only Google accounts support OAuth reauthentication
+        if (account.Type != AccountType.Google)
+        {
+            Console.WriteLine($"Only Google accounts support OAuth reauthentication. Account type: {account.Type}");
+            return;
+        }
+
+        var reauthVm = new ReauthenticateAccountViewModel(accountId.ToString(), account.Name, _credentialManager);
+        reauthVm.ReauthenticationCompleted += (_, _) =>
+        {
+            // Optionally trigger a sync or show a success message
+            Console.WriteLine($"Account {account.Name} has been reauthenticated");
+        };
+
+        _reauthenticateWindow = new ReauthenticateAccountWindow
+        {
+            DataContext = reauthVm
+        };
+        _reauthenticateWindow.Closed += (_, _) =>
+        {
+            reauthVm.ReauthenticationCompleted -= (_, _) => { };
+            _reauthenticateWindow = null;
+            CanReauthenticate = true;
+        };
+        _reauthenticateWindow.Show();
+        CanReauthenticate = false;
     }
 }
