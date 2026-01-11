@@ -7,7 +7,10 @@
         <entry key="Views/CalendarWeekView.axaml" value="perinma.csproj" />
         <entry key="Views/MainWindow.axaml" value="perinma.csproj" />
         <entry key="src/App.axaml" value="src/perinma.csproj" />
+        <entry key="src/Views/Calendar/CalendarEventView.axaml" value="src/perinma.csproj" />
+        <entry key="src/Views/Calendar/CalendarTopBarView.axaml" value="src/perinma.csproj" />
         <entry key="src/Views/Calendar/CalendarWeekView.axaml" value="src/perinma.csproj" />
+        <entry key="src/Views/Calendar/GoogleCalendarEventView.axaml" value="src/perinma.csproj" />
         <entry key="src/Views/CalendarWeekView.axaml" value="src/perinma.csproj" />
         <entry key="src/Views/Main/MainWindow.axaml" value="src/perinma.csproj" />
         <entry key="src/Views/MainWindow.axaml" value="src/perinma.csproj" />

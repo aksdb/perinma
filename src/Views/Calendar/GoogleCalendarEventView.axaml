@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cal="using:perinma.Views.Calendar"
+             xmlns:html="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
              x:DataType="cal:GoogleCalendarEventViewModel"
              mc:Ignorable="d" d:DesignWidth="350" d:DesignHeight="200"
              x:Class="perinma.Views.Calendar.GoogleCalendarEventView">
@@ -27,7 +28,7 @@
 
             <StackPanel Spacing="4" IsVisible="{Binding Description, Mode=OneWay}">
                 <TextBlock Text="Description" FontWeight="SemiBold" FontSize="12" />
-                <TextBlock Text="{Binding Description}" TextWrapping="Wrap" MaxHeight="150" />
+                <html:HtmlPanel Text="{Binding Description}" MaxHeight="200" />
             </StackPanel>
 
             <StackPanel Spacing="4" IsVisible="{Binding Organizer, Mode=OneWay}">
