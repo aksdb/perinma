@@ -23,7 +23,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSyncing;
 
-    public CalendarWeekViewModel CalendarWeekViewModel => CalendarWeekViewModel.Instance;
+    public CalendarWeekViewModel CalendarWeekViewModel { get; }
     public CalendarListViewModel CalendarListViewModel { get; }
 
     public MainWindowViewModel(
@@ -36,9 +36,12 @@ public partial class MainWindowViewModel : ViewModelBase
         _syncService = syncService;
 
         var storage = new SqliteStorage(databaseService, credentialManager);
+        //var calendarSource = new DatabaseCalendarSource(storage);
+        var calendarSource = new DummyCalendarSource(DateTime.Now);
         _googleCalendarService = new GoogleCalendarService();
         _googleOAuthService = new GoogleOAuthService(_googleCalendarService);
-        CalendarListViewModel = new CalendarListViewModel(storage, _googleCalendarService, credentialManager);
+        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource);
+        CalendarListViewModel = new CalendarListViewModel(storage, _googleCalendarService, credentialManager, CalendarWeekViewModel);
     }
 
     #region Settings

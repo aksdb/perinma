@@ -13,17 +13,20 @@ public partial class CalendarListViewModel : ViewModelBase
     private readonly SqliteStorage _storage;
     private readonly IGoogleCalendarService _googleCalendarService;
     private readonly CredentialManagerService _credentialManager;
+    private readonly CalendarWeekViewModel _calendarWeekViewModel;
 
     public ObservableCollection<AccountGroupViewModel> AccountGroups { get; } = new();
 
     public CalendarListViewModel(
         SqliteStorage storage,
         IGoogleCalendarService googleCalendarService,
-        CredentialManagerService credentialManager)
+        CredentialManagerService credentialManager,
+        CalendarWeekViewModel calendarWeekViewModel)
     {
         _storage = storage;
         _googleCalendarService = googleCalendarService;
         _credentialManager = credentialManager;
+        _calendarWeekViewModel = calendarWeekViewModel;
         _ = LoadCalendarsAsync();
     }
 
@@ -145,7 +148,7 @@ public partial class CalendarListViewModel : ViewModelBase
             }
 
             // Refresh the calendar view to show/hide events
-            CalendarWeekViewModel.Instance.Load();
+            _calendarWeekViewModel.Load();
         }
         catch (Exception ex)
         {

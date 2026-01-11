@@ -36,7 +36,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
     [ObservableProperty]
     private List<WeekDayHeaderViewModel> _weekDayHeaders = [];
 
-    private CalendarWeekViewModel(ICalendarSource calendarSource)
+    public CalendarWeekViewModel(ICalendarSource calendarSource)
     {
         _calendarSource = calendarSource;
         DayColumns = 7;
@@ -78,8 +78,6 @@ public partial class CalendarWeekViewModel : ViewModelBase
     {
         WeekStart = DateTime.Today;
     }
-
-    public static CalendarWeekViewModel Instance { get; } = new(new DummyCalendarSource(DateTime.Now));
 
     public void Load()
     {

@@ -43,6 +43,6 @@
             <callist:CalendarListView DataContext="{Binding CalendarListViewModel}"/>
         </Border>
 
-        <cal:CalendarWeekView/>
+        <cal:CalendarWeekView DataContext="{Binding CalendarWeekViewModel}"/>
     </DockPanel>
 </Window>

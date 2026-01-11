@@ -14,16 +14,22 @@ public partial class CalendarWeekView : UserControl
     private readonly Grid _weekdayNamesGrid;
     private readonly MainView _mainView = new();
     private readonly TopBarView _topBarView = new();
-    private readonly CalendarWeekViewModel _viewModel = CalendarWeekViewModel.Instance;
+    private CalendarWeekViewModel _viewModel;
     
     public CalendarWeekView()
     {
-        DataContext = _viewModel;
         InitializeComponent();
-
         _weekdayNamesGrid = this.FindControl<Grid>("WeekdayNames")!;
-        var timeRowContainer = this.FindControl<ScrollViewer>("TimeRows")!;
         _timeRowGrid = new Grid();
+    }
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        _viewModel = (CalendarWeekViewModel)DataContext!;
+        
+        
+        var timeRowContainer = this.FindControl<ScrollViewer>("TimeRows")!;
         timeRowContainer.Content = _timeRowGrid;
         _timeRowGrid.ColumnDefinitions.Add(new ColumnDefinition(1.0,  GridUnitType.Star));
         _timeRowGrid.SetValue(Grid.IsSharedSizeScopeProperty, true);
