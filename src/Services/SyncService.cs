@@ -132,7 +132,6 @@ public class SyncService
                 Color = calendar.BackgroundColor,
                 Enabled = calendar.Selected == true ? 1 : 0,
                 LastSync = currentSyncTime,
-                Data = null // Future: Could store per-calendar sync data here
             };
 
             await _storage.CreateOrUpdateCalendarAsync(calendarDbo);
@@ -247,14 +246,13 @@ public class SyncService
 
             var eventDbo = new CalendarEventDbo
             {
-                calendar_id = calendar.CalendarId,
-                event_id = string.Empty, // Will be set by CreateOrUpdateEventAsync
-                external_id = evt.Id,
-                start_time = startTime,
-                end_time = endTime,
-                title = evt.Summary ?? "Untitled Event",
-                changed_at = currentSyncTime,
-                data = null
+                CalendarId = calendar.CalendarId,
+                EventId = string.Empty, // Will be set by CreateOrUpdateEventAsync
+                ExternalId = evt.Id,
+                StartTime = startTime,
+                EndTime = endTime,
+                Title = evt.Summary ?? "Untitled Event",
+                ChangedAt = currentSyncTime,
             };
 
             await _storage.CreateOrUpdateEventAsync(eventDbo);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using perinma.Models;
+using perinma.Storage.Models;
 
 namespace perinma.Storage;
 
@@ -166,5 +167,53 @@ public class DummyCalendarSource : ICalendarSource
             Title = title,
             ChangedAt = DateTime.Now
         };
+    }
+}
+
+public class DatabaseCalendarSource : ICalendarSource
+{
+    private readonly SqliteStorage _storage;
+
+    public DatabaseCalendarSource(SqliteStorage storage)
+    {
+        _storage = storage;
+    }
+
+    public List<CalendarEvent> GetCalendarEvents(DateTime startTime, DateTime endTime)
+    {
+        var events = _storage.GetEventsByTimeRangeAsync(startTime, endTime).GetAwaiter().GetResult();
+
+        return events.Select(e => new CalendarEvent
+        {
+            Calendar = new Calendar
+            {
+                Account = new Account
+                {
+                    Id = Guid.Parse(e.AccountId),
+                    Name = e.AccountName,
+                    Type = e.AccountType
+                },
+                Id = Guid.Parse(e.CalendarId),
+                ExternalId = e.CalendarExternalId,
+                Name = e.CalendarName,
+                Color = e.CalendarColor,
+                Enabled = e.CalendarEnabled == 1,
+                LastSync = e.CalendarLastSync.HasValue
+                    ? DateTimeOffset.FromUnixTimeSeconds(e.CalendarLastSync.Value).DateTime
+                    : null
+            },
+            Id = Guid.Parse(e.EventId),
+            ExternalId = e.ExternalId,
+            StartTime = e.StartTime.HasValue
+                ? DateTimeOffset.FromUnixTimeSeconds(e.StartTime.Value).DateTime
+                : DateTime.MinValue,
+            EndTime = e.EndTime.HasValue
+                ? DateTimeOffset.FromUnixTimeSeconds(e.EndTime.Value).DateTime
+                : DateTime.MinValue,
+            Title = e.Title,
+            ChangedAt = e.ChangedAt.HasValue
+                ? DateTimeOffset.FromUnixTimeSeconds(e.ChangedAt.Value).DateTime
+                : null
+        }).ToList();
     }
 }

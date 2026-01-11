@@ -181,7 +181,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
             // Update existing calendar - keep the existing calendar_id (UUID)
             var rowsAffected = await connection.ExecuteAsync(
                 "UPDATE calendar SET name = @Name, color = @Color, enabled = @Enabled, " +
-                "last_sync = @LastSync, data = @Data " +
+                "last_sync = @LastSync " +
                 "WHERE account_id = @AccountId AND external_id = @ExternalId",
                 new
                 {
@@ -189,7 +189,6 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
                     calendar.Color,
                     calendar.Enabled,
                     calendar.LastSync,
-                    calendar.Data,
                     calendar.AccountId,
                     calendar.ExternalId
                 },
@@ -206,8 +205,8 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
             // Insert new calendar with a generated UUID
             var calendarId = System.Guid.NewGuid().ToString();
             var rowsAffected = await connection.ExecuteAsync(
-                "INSERT INTO calendar (account_id, calendar_id, external_id, name, color, enabled, last_sync, data) " +
-                "VALUES (@AccountId, @CalendarId, @ExternalId, @Name, @Color, @Enabled, @LastSync, @Data)",
+                "INSERT INTO calendar (account_id, calendar_id, external_id, name, color, enabled, last_sync) " +
+                "VALUES (@AccountId, @CalendarId, @ExternalId, @Name, @Color, @Enabled, @LastSync)",
                 new
                 {
                     calendar.AccountId,
@@ -217,7 +216,6 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
                     calendar.Color,
                     calendar.Enabled,
                     calendar.LastSync,
-                    calendar.Data
                 },
                 commandTimeout: 30
             );
@@ -329,7 +327,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         using var connection = databaseService.GetConnection();
 
         // Check if event already exists by external_id
-        var existing = await GetEventByExternalIdAsync(eventDbo.calendar_id, eventDbo.external_id ?? string.Empty);
+        var existing = await GetEventByExternalIdAsync(eventDbo.CalendarId, eventDbo.ExternalId ?? string.Empty);
 
         if (existing != null)
         {
@@ -340,12 +338,12 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
                 "WHERE calendar_id = @calendar_id AND external_id = @external_id",
                 new
                 {
-                    eventDbo.calendar_id,
-                    eventDbo.external_id,
-                    eventDbo.start_time,
-                    eventDbo.end_time,
-                    eventDbo.title,
-                    eventDbo.changed_at
+                    calendar_id = eventDbo.CalendarId,
+                    external_id = eventDbo.ExternalId,
+                    start_time = eventDbo.StartTime,
+                    end_time = eventDbo.EndTime,
+                    title = eventDbo.Title,
+                    changed_at = eventDbo.ChangedAt
                 },
                 commandTimeout: 30
             );
@@ -361,13 +359,13 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
                 "VALUES (@calendar_id, @event_id, @external_id, @start_time, @end_time, @title, @changed_at)",
                 new
                 {
-                    eventDbo.calendar_id,
+                    calendar_id = eventDbo.CalendarId,
                     event_id = newEventId,
-                    eventDbo.external_id,
-                    eventDbo.start_time,
-                    eventDbo.end_time,
-                    eventDbo.title,
-                    eventDbo.changed_at
+                    external_id = eventDbo.ExternalId,
+                    start_time = eventDbo.StartTime,
+                    end_time = eventDbo.EndTime,
+                    title = eventDbo.Title,
+                    changed_at = eventDbo.ChangedAt
                 },
                 commandTimeout: 30
             );
@@ -399,7 +397,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
                 SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
                 WHERE calendar_id = @calendar_id AND external_id = @external_id
             """,
-            param: new { key = $"$.{key}", value, calendar_id = eventDbo.calendar_id, external_id = eventDbo.external_id },
+            param: new { key = $"$.{key}", value, calendar_id = eventDbo.CalendarId, external_id = eventDbo.ExternalId },
             commandTimeout: 30
         );
 
@@ -416,7 +414,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
                 SET data = jsonb_set(coalesce(data, jsonb_object()), @key, jsonb(@jsonValue))
                 WHERE calendar_id = @calendar_id AND external_id = @external_id
             """,
-            param: new { key = $"$.{key}", jsonValue, calendar_id = eventDbo.calendar_id, external_id = eventDbo.external_id },
+            param: new { key = $"$.{key}", jsonValue, calendar_id = eventDbo.CalendarId, external_id = eventDbo.ExternalId },
             commandTimeout: 30
         );
 
@@ -433,8 +431,50 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
             FROM calendar_event
             WHERE calendar_id = @calendar_id AND external_id = @external_id
             """,
-            param: new { key = $"$.{key}", calendar_id = eventDbo.calendar_id, external_id = eventDbo.external_id });
+            param: new { key = $"$.{key}", calendar_id = eventDbo.CalendarId, external_id = eventDbo.ExternalId });
     }
 
     #endregion
+
+    public async Task<IEnumerable<CalendarEventQueryResult>> GetEventsByTimeRangeAsync(DateTime startTime, DateTime endTime)
+    {
+        using var connection = databaseService.GetConnection();
+
+        var startTimestamp = new DateTimeOffset(startTime).ToUnixTimeSeconds();
+        var endTimestamp = new DateTimeOffset(endTime).ToUnixTimeSeconds();
+
+        var query = @"
+            SELECT
+                ce.event_id AS EventId,
+                ce.external_id AS ExternalId,
+                ce.start_time AS StartTime,
+                ce.end_time AS EndTime,
+                ce.title AS Title,
+                ce.changed_at AS ChangedAt,
+                c.calendar_id AS CalendarId,
+                c.external_id AS CalendarExternalId,
+                c.name AS CalendarName,
+                c.color AS CalendarColor,
+                c.enabled AS CalendarEnabled,
+                c.last_sync AS CalendarLastSync,
+                a.account_id AS AccountId,
+                a.name AS AccountName,
+                a.type AS AccountType
+            FROM calendar_event ce
+            INNER JOIN calendar c ON ce.calendar_id = c.calendar_id
+            INNER JOIN account a ON c.account_id = a.account_id
+            WHERE c.enabled = 1
+              AND (
+                  (ce.start_time IS NOT NULL AND ce.start_time < @EndTimestamp) OR
+                  (ce.end_time IS NOT NULL AND ce.end_time > @StartTimestamp) OR
+                  (ce.start_time IS NULL AND ce.end_time IS NULL)
+              )
+            ORDER BY ce.start_time";
+
+        return await connection.QueryAsync<CalendarEventQueryResult>(
+            query,
+            new { StartTimestamp = startTimestamp, EndTimestamp = endTimestamp },
+            commandTimeout: 30
+        );
+    }
 }

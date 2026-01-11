@@ -18,55 +18,34 @@ public class CalendarDbo
     public string? Color { get; set; }
     public int Enabled { get; set; }
     public long? LastSync { get; set; }
-    public byte[]? Data { get; set; }
 }
 
 public class CalendarEventDbo
 {
-    public required string calendar_id { get; set; }
-    public required string event_id { get; set; }
-    public string? external_id { get; set; }
-    public long? start_time { get; set; }
-    public long? end_time { get; set; }
-    public string? title { get; set; }
-    public long? changed_at { get; set; }
-    public byte[]? data { get; set; }
+    public string CalendarId { get; set; } = string.Empty;
+    public string EventId { get; set; } = string.Empty;
+    public string? ExternalId { get; set; }
+    public long? StartTime { get; set; }
+    public long? EndTime { get; set; }
+    public string? Title { get; set; }
+    public long? ChangedAt { get; set; }
 }
 
-public class CalendarEventRelationDbo
+public class CalendarEventQueryResult
 {
-    public required string parent_event_id { get; set; }
-    public required string child_event_id { get; set; }
-}
-
-public class CalendarEventRelationBacklogDbo
-{
-    public required string calendar_id { get; set; }
-    public required string parent_external_id { get; set; }
-    public required string child_external_id { get; set; }
-}
-
-public class ReminderDbo
-{
-    public required string reminder_id { get; set; }
-    public int target_type { get; set; }
-    public required string target_id { get; set; }
-    public long target_time { get; set; }
-    public long trigger_time { get; set; }
-}
-
-/// <summary>
-/// Sync data stored in calendar.data field as JSON
-/// </summary>
-public class CalendarSyncData
-{
-    /// <summary>
-    /// Sync token from Google Calendar API for incremental sync
-    /// </summary>
-    public string? SyncToken { get; set; }
-
-    /// <summary>
-    /// Page token for paginated results
-    /// </summary>
-    public string? PageToken { get; set; }
+    public required string EventId { get; init; }
+    public string? ExternalId { get; init; }
+    public long? StartTime { get; init; }
+    public long? EndTime { get; init; }
+    public string? Title { get; init; }
+    public long? ChangedAt { get; init; }
+    public required string CalendarId { get; init; }
+    public string? CalendarExternalId { get; init; }
+    public required string CalendarName { get; init; }
+    public string? CalendarColor { get; init; }
+    public int CalendarEnabled { get; init; }
+    public long? CalendarLastSync { get; init; }
+    public required string AccountId { get; init; }
+    public required string AccountName { get; init; }
+    public required string AccountType { get; init; }
 }
