@@ -13,6 +13,7 @@ public partial class AddAccountWizardViewModel : ViewModelBase
 {
     private readonly SqliteStorage _storage;
     private readonly CredentialManagerService _credentialManager;
+    private readonly GoogleOAuthService _oauthService;
 
     [ObservableProperty]
     private int _currentStepIndex = 0;
@@ -36,10 +37,11 @@ public partial class AddAccountWizardViewModel : ViewModelBase
     // Event raised when account is successfully added
     public event EventHandler? AccountAdded;
 
-    public AddAccountWizardViewModel(SqliteStorage storage, CredentialManagerService credentialManager)
+    public AddAccountWizardViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService)
     {
         _storage = storage;
         _credentialManager = credentialManager;
+        _oauthService = oauthService;
 
         // Initialize first step
         _accountDetailsStep = new AccountDetailsStepViewModel(storage);
@@ -65,7 +67,7 @@ public partial class AddAccountWizardViewModel : ViewModelBase
             // Create step 2 based on account type
             if (AccountType == Settings.AccountType.Google)
             {
-                _googleConnectionStep = new GoogleConnectionStepViewModel();
+                _googleConnectionStep = new GoogleConnectionStepViewModel(_oauthService);
                 CurrentStepView = new GoogleConnectionStepView
                 {
                     DataContext = _googleConnectionStep

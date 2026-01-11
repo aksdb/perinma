@@ -27,7 +27,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private SettingsPage? _selectedPage;
 
-    public SettingsViewModel(DatabaseService databaseService, CredentialManagerService credentialManager)
+    public SettingsViewModel(DatabaseService databaseService, CredentialManagerService credentialManager, GoogleOAuthService oauthService)
     {
         _storage = new SqliteStorage(databaseService, credentialManager);
 
@@ -35,7 +35,7 @@ public partial class SettingsViewModel : ViewModelBase
         Pages = new List<SettingsPage>
         {
             new SettingsPage { Name = "General", ViewModel = new GeneralSettingsViewModel() },
-            new SettingsPage { Name = "Accounts", ViewModel = new AccountListViewModel(_storage, credentialManager) }
+            new SettingsPage { Name = "Accounts", ViewModel = new AccountListViewModel(_storage, credentialManager, oauthService) }
         };
 
         // Select first page by default

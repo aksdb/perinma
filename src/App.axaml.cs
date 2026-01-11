@@ -33,6 +33,7 @@ public partial class App : Application
             // Initialize storage and services
             var storage = new SqliteStorage(_databaseService, _credentialManager);
             var googleCalendarService = new GoogleCalendarService();
+            var googleOAuthService = new GoogleOAuthService(googleCalendarService);
             var syncService = new SyncService(storage, _credentialManager, googleCalendarService);
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

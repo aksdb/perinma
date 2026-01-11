@@ -16,7 +16,7 @@
         <Border DockPanel.Dock="Top" Background="{DynamicResource SystemChromeMediumColor}" Padding="20">
             <StackPanel Spacing="10">
                 <TextBlock Text="Reauthenticate Account" FontSize="20" FontWeight="Bold" />
-                <TextBlock Text="{Binding AccountName}" FontSize="14" Foreground="Gray" />
+                <TextBlock Text="Google Account" FontSize="14" Foreground="Gray" />
             </StackPanel>
         </Border>
 

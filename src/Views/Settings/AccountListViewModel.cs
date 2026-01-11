@@ -14,6 +14,7 @@ public partial class AccountListViewModel : ViewModelBase
 {
     private readonly SqliteStorage _storage;
     private readonly CredentialManagerService _credentialManager;
+    private readonly GoogleOAuthService _oauthService;
     private AddAccountWindow? _addAccountWindow;
     private ReauthenticateAccountWindow? _reauthenticateWindow;
 
@@ -23,10 +24,11 @@ public partial class AccountListViewModel : ViewModelBase
     [ObservableProperty]
     private bool _canReauthenticate = true;
 
-    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager)
+    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService)
     {
         _storage = storage;
         _credentialManager = credentialManager;
+        _oauthService = oauthService;
         _ = LoadAccountsAsync(); // Fire and forget initial load
     }
 
@@ -39,7 +41,7 @@ public partial class AccountListViewModel : ViewModelBase
             return;
         }
 
-        var wizardVm = new AddAccountWizardViewModel(_storage, _credentialManager);
+        var wizardVm = new AddAccountWizardViewModel(_storage, _credentialManager, _oauthService);
         wizardVm.AccountAdded += OnAccountAdded;
 
         _addAccountWindow = new AddAccountWindow
@@ -135,7 +137,7 @@ public partial class AccountListViewModel : ViewModelBase
             return;
         }
 
-        var reauthVm = new ReauthenticateAccountViewModel(accountId.ToString(), account.Name, _credentialManager);
+        var reauthVm = new ReauthenticateAccountViewModel(accountId.ToString(), account.Name, _credentialManager, _oauthService);
         reauthVm.ReauthenticationCompleted += (_, _) =>
         {
             // Optionally trigger a sync or show a success message
