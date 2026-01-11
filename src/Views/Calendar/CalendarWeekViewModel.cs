@@ -83,6 +83,13 @@ public partial class CalendarWeekViewModel : ViewModelBase
     {
         Events.Clear();
         FullDayEvents.Clear();
+        
+        // TODO: why the fuck is this even initialized to year 0 at one point?!
+        //   Make sure we don't actually set that; for now, this is good enough as a workaround.
+        if (WeekStart.Year < 1900)
+        {
+            return;
+        }
 
         var start = WeekStart;
         var end = start.AddDays(DayColumns);
