@@ -110,8 +110,7 @@ public partial class GoogleConnectionStepViewModel : ViewModelBase
 
             StatusMessage = "Opening browser for authentication...";
 
-            // Open browser (platform-specific)
-            OpenBrowser(oauthUrl);
+            PlatformUtil.OpenBrowser(oauthUrl);
 
             StatusMessage = $"Waiting for authentication callback...\nIf the browser didn't open, navigate to:\n{callbackUrl}";
 
@@ -134,29 +133,6 @@ public partial class GoogleConnectionStepViewModel : ViewModelBase
         finally
         {
             IsConnecting = false;
-        }
-    }
-
-    private static void OpenBrowser(string url)
-    {
-        try
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                Process.Start("xdg-open", url);
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                Process.Start("open", url);
-            }
-        }
-        catch
-        {
-            // If browser opening fails, the user can still use the callback URL displayed in the status message
         }
     }
 
