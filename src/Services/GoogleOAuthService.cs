@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Apis.Calendar.v3;
 using perinma.Storage.Models;
 using perinma.Utils;
 
@@ -8,7 +9,10 @@ namespace perinma.Services;
 
 public class GoogleOAuthService
 {
-    private const string GoogleScope = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
+    private static readonly string RequiredScopes = string.Join(separator: " ",
+        CalendarService.Scope.Calendar,
+        CalendarService.Scope.CalendarEvents
+    );
 
     private readonly GoogleCalendarService _googleCalendarService;
 
@@ -16,7 +20,7 @@ public class GoogleOAuthService
     {
         _googleCalendarService = googleCalendarService;
     }
-    
+
     public async Task<GoogleCredentials> AuthenticateAsync(CancellationToken cancellationToken = default)
     {
         var tcs = new TaskCompletionSource<GoogleCredentials>();
@@ -56,7 +60,7 @@ public class GoogleOAuthService
                     {
                         Type = "Google",
                         AuthorizationCode = code,
-                        Scope = GoogleScope
+                        Scope = RequiredScopes,
                     };
 
                     // Exchange authorization code for tokens
@@ -91,7 +95,7 @@ public class GoogleOAuthService
                $"client_id={Uri.EscapeDataString(BuildSecrets.GoogleClientId)}&" +
                $"redirect_uri={Uri.EscapeDataString(redirectUri)}&" +
                $"response_type=code&" +
-               $"scope={Uri.EscapeDataString(GoogleScope)}&" +
+               $"scope={Uri.EscapeDataString(RequiredScopes)}&" +
                $"state={Uri.EscapeDataString(state)}&" +
                $"access_type=offline&" +
                $"prompt=consent";
