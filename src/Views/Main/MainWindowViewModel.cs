@@ -36,8 +36,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _syncService = syncService;
 
         var storage = new SqliteStorage(databaseService, credentialManager);
-        //var calendarSource = new DatabaseCalendarSource(storage);
-        var calendarSource = new DummyCalendarSource(DateTime.Now);
+        var calendarSource = new DatabaseCalendarSource(storage);
+        //var calendarSource = new DummyCalendarSource(DateTime.Now);
         _googleCalendarService = new GoogleCalendarService();
         _googleOAuthService = new GoogleOAuthService(_googleCalendarService);
         CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource);

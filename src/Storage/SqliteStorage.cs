@@ -304,7 +304,8 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
     {
         using var connection = databaseService.GetConnection();
         return await connection.QueryAsync<CalendarEventDbo>(
-            "SELECT calendar_id, event_id, external_id, start_time, end_time, title, changed_at, data " +
+            "SELECT calendar_id AS CalendarId, event_id AS EventId, external_id AS ExternalId, " +
+            "start_time AS StartTime, end_time AS EndTime, title AS Title, changed_at AS ChangedAt " +
             "FROM calendar_event WHERE calendar_id = @CalendarId",
             new { CalendarId = calendarId },
             commandTimeout: 30
@@ -315,7 +316,8 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
     {
         using var connection = databaseService.GetConnection();
         return await connection.QuerySingleOrDefaultAsync<CalendarEventDbo>(
-            "SELECT calendar_id, event_id, external_id, start_time, end_time, title, changed_at, data " +
+            "SELECT calendar_id AS CalendarId, event_id AS EventId, external_id AS ExternalId, " +
+            "start_time AS StartTime, end_time AS EndTime, title AS Title, changed_at AS ChangedAt " +
             "FROM calendar_event WHERE calendar_id = @CalendarId AND external_id = @ExternalId",
             new { CalendarId = calendarId, ExternalId = externalId },
             commandTimeout: 30
@@ -465,9 +467,8 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
             INNER JOIN account a ON c.account_id = a.account_id
             WHERE c.enabled = 1
               AND (
-                  (ce.start_time IS NOT NULL AND ce.start_time < @EndTimestamp) OR
-                  (ce.end_time IS NOT NULL AND ce.end_time > @StartTimestamp) OR
-                  (ce.start_time IS NULL AND ce.end_time IS NULL)
+                  (ce.start_time IS NULL OR ce.start_time < @EndTimestamp) AND
+                  (ce.end_time IS NULL OR ce.end_time > @StartTimestamp)
               )
             ORDER BY ce.start_time";
 
