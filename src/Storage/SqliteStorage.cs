@@ -453,6 +453,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
                 ce.end_time AS EndTime,
                 ce.title AS Title,
                 ce.changed_at AS ChangedAt,
+                json_extract(ce.data, '$.rawData') AS RawData,
                 c.calendar_id AS CalendarId,
                 c.external_id AS CalendarExternalId,
                 c.name AS CalendarName,

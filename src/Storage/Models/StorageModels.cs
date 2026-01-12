@@ -39,6 +39,7 @@ public class CalendarEventQueryResult
     public long? EndTime { get; init; }
     public string? Title { get; init; }
     public long? ChangedAt { get; init; }
+    public string? RawData { get; init; }
     public required string CalendarId { get; init; }
     public string? CalendarExternalId { get; init; }
     public required string CalendarName { get; init; }

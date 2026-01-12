@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Google.Apis.Json;
 using perinma.Models;
 using perinma.Storage.Models;
+using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
+using GoogleEventDateTime = Google.Apis.Calendar.v3.Data.EventDateTime;
 
 namespace perinma.Storage;
 
@@ -183,37 +186,126 @@ public class DatabaseCalendarSource : ICalendarSource
     {
         var events = _storage.GetEventsByTimeRangeAsync(startTime, endTime).GetAwaiter().GetResult();
 
-        return events.Select(e => new CalendarEvent
+        return events.Select(e =>
         {
-            Calendar = new Calendar
+            // Parse raw event once based on account type
+            var googleEvent = e.AccountType == "Google" ? TryParseGoogleEvent(e.RawData) : null;
+            var (eventStartTime, eventEndTime) = ExtractEventTimes(e, googleEvent);
+
+            return new CalendarEvent
             {
-                Account = new Account
+                Calendar = new Calendar
                 {
-                    Id = Guid.Parse(e.AccountId),
-                    Name = e.AccountName,
-                    Type = e.AccountType
+                    Account = new Account
+                    {
+                        Id = Guid.Parse(e.AccountId),
+                        Name = e.AccountName,
+                        Type = e.AccountType
+                    },
+                    Id = Guid.Parse(e.CalendarId),
+                    ExternalId = e.CalendarExternalId,
+                    Name = e.CalendarName,
+                    Color = e.CalendarColor,
+                    Enabled = e.CalendarEnabled == 1,
+                    LastSync = e.CalendarLastSync.HasValue
+                        ? DateTimeOffset.FromUnixTimeSeconds(e.CalendarLastSync.Value).DateTime
+                        : null
                 },
-                Id = Guid.Parse(e.CalendarId),
-                ExternalId = e.CalendarExternalId,
-                Name = e.CalendarName,
-                Color = e.CalendarColor,
-                Enabled = e.CalendarEnabled == 1,
-                LastSync = e.CalendarLastSync.HasValue
-                    ? DateTimeOffset.FromUnixTimeSeconds(e.CalendarLastSync.Value).DateTime
+                Id = Guid.Parse(e.EventId),
+                ExternalId = e.ExternalId,
+                StartTime = eventStartTime,
+                EndTime = eventEndTime,
+                Title = e.Title,
+                ChangedAt = e.ChangedAt.HasValue
+                    ? DateTimeOffset.FromUnixTimeSeconds(e.ChangedAt.Value).DateTime
                     : null
-            },
-            Id = Guid.Parse(e.EventId),
-            ExternalId = e.ExternalId,
-            StartTime = e.StartTime.HasValue
-                ? DateTimeOffset.FromUnixTimeSeconds(e.StartTime.Value).DateTime
-                : DateTime.MinValue,
-            EndTime = e.EndTime.HasValue
-                ? DateTimeOffset.FromUnixTimeSeconds(e.EndTime.Value).DateTime
-                : DateTime.MinValue,
-            Title = e.Title,
-            ChangedAt = e.ChangedAt.HasValue
-                ? DateTimeOffset.FromUnixTimeSeconds(e.ChangedAt.Value).DateTime
-                : null
+            };
         }).ToList();
+    }
+
+    private (DateTime startTime, DateTime endTime) ExtractEventTimes(
+        CalendarEventQueryResult result,
+        GoogleEvent? googleEvent)
+    {
+        DateTime startTime;
+        DateTime endTime;
+
+        // Try to extract from Google Event first (if available)
+        if (googleEvent?.Start != null)
+        {
+            var parsedStartTime = ParseEventDateTime(googleEvent.Start);
+            startTime = parsedStartTime ?? GetFallbackStartTime(result);
+        }
+        else
+        {
+            startTime = GetFallbackStartTime(result);
+        }
+
+        if (googleEvent?.End != null)
+        {
+            var parsedEndTime = ParseEventDateTime(googleEvent.End);
+            endTime = parsedEndTime ?? GetFallbackEndTime(result);
+        }
+        else
+        {
+            endTime = GetFallbackEndTime(result);
+        }
+
+        return (startTime, endTime);
+    }
+
+    private DateTime GetFallbackStartTime(CalendarEventQueryResult result)
+    {
+        return result.StartTime.HasValue
+            ? DateTimeOffset.FromUnixTimeSeconds(result.StartTime.Value).DateTime
+            : DateTime.MinValue;
+    }
+
+    private DateTime GetFallbackEndTime(CalendarEventQueryResult result)
+    {
+        return result.EndTime.HasValue
+            ? DateTimeOffset.FromUnixTimeSeconds(result.EndTime.Value).DateTime
+            : DateTime.MinValue;
+    }
+
+    private GoogleEvent? TryParseGoogleEvent(string? rawData)
+    {
+        if (string.IsNullOrEmpty(rawData))
+        {
+            return null;
+        }
+
+        try
+        {
+            return NewtonsoftJsonSerializer.Instance.Deserialize<GoogleEvent>(rawData);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to parse Google Calendar event: {ex.Message}");
+            return null;
+        }
+    }
+
+    private DateTime? ParseEventDateTime(GoogleEventDateTime eventDateTime)
+    {
+        // Handle specific date/time with timezone (most events)
+        if (!string.IsNullOrEmpty(eventDateTime.DateTimeRaw))
+        {
+            if (DateTime.TryParse(eventDateTime.DateTimeRaw, out var parsedDateTime))
+            {
+                return parsedDateTime;
+            }
+        }
+
+        // Handle all-day events (date only)
+        if (!string.IsNullOrEmpty(eventDateTime.Date))
+        {
+            if (DateTime.TryParse(eventDateTime.Date, out var parsedDate))
+            {
+                return parsedDate;
+            }
+        }
+
+        return null;
     }
 }
