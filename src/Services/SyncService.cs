@@ -14,19 +14,22 @@ public class SyncService
     private readonly SqliteStorage _storage;
     private readonly CredentialManagerService _credentialManager;
     private readonly IGoogleCalendarService _googleCalendarService;
+    private readonly ICalDavService _calDavService;
 
     public SyncService(
         SqliteStorage storage,
         CredentialManagerService credentialManager,
-        IGoogleCalendarService googleCalendarService)
+        IGoogleCalendarService googleCalendarService,
+        ICalDavService calDavService)
     {
         _storage = storage;
         _credentialManager = credentialManager;
         _googleCalendarService = googleCalendarService;
+        _calDavService = calDavService;
     }
 
     /// <summary>
-    /// Syncs calendars from all Google accounts
+    /// Syncs calendars from all accounts (Google and CalDAV)
     /// </summary>
     public async Task<SyncResult> SyncAllAccountsAsync(CancellationToken cancellationToken = default)
     {
@@ -37,19 +40,37 @@ public class SyncService
             // Get all accounts
             var accounts = await _storage.GetAllAccountsAsync();
             var googleAccounts = accounts.Where(a => a.Type.Equals("Google", StringComparison.OrdinalIgnoreCase)).ToList();
+            var caldavAccounts = accounts.Where(a => a.Type.Equals("CalDav", StringComparison.OrdinalIgnoreCase)).ToList();
 
-            Console.WriteLine($"Found {googleAccounts.Count} Google accounts to sync");
+            Console.WriteLine($"Found {googleAccounts.Count} Google accounts and {caldavAccounts.Count} CalDAV accounts to sync");
 
+            // Sync Google accounts
             foreach (var account in googleAccounts)
             {
                 try
                 {
-                    await SyncAccountAsync(account, cancellationToken);
+                    await SyncGoogleAccountAsync(account, cancellationToken);
                     result.SyncedAccounts++;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error syncing account {account.Name}: {ex.Message}");
+                    Console.WriteLine($"Error syncing Google account {account.Name}: {ex.Message}");
+                    result.FailedAccounts++;
+                    result.Errors.Add($"{account.Name}: {ex.Message}");
+                }
+            }
+
+            // Sync CalDAV accounts
+            foreach (var account in caldavAccounts)
+            {
+                try
+                {
+                    await SyncCalDavAccountAsync(account, cancellationToken);
+                    result.SyncedAccounts++;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error syncing CalDAV account {account.Name}: {ex.Message}");
                     result.FailedAccounts++;
                     result.Errors.Add($"{account.Name}: {ex.Message}");
                 }
@@ -70,7 +91,7 @@ public class SyncService
     /// <summary>
     /// Syncs calendars from a single Google account using incremental sync when possible
     /// </summary>
-    private async Task SyncAccountAsync(AccountDbo account, CancellationToken cancellationToken)
+    private async Task SyncGoogleAccountAsync(AccountDbo account, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Syncing account: {account.Name}");
 
@@ -264,6 +285,184 @@ public class SyncService
 
         // If this was a full sync, clean up events that weren't updated
         // (they were deleted on the remote side)
+        if (isFullSync)
+        {
+            var deletedCount = await _storage.DeleteEventsNotSyncedAsync(calendar.CalendarId, currentSyncTime);
+            if (deletedCount > 0)
+            {
+                Console.WriteLine($"Deleted {deletedCount} event(s) that were removed remotely");
+            }
+        }
+
+        // Store the new sync token for next incremental sync
+        if (!string.IsNullOrEmpty(result.SyncToken))
+        {
+            await _storage.SetCalendarData(calendar, "eventSyncToken", result.SyncToken);
+            Console.WriteLine($"Stored new event sync token for next sync");
+        }
+
+        Console.WriteLine($"Synced {result.Events.Count} events for calendar {calendar.Name}");
+    }
+
+    /// <summary>
+    /// Syncs calendars from a single CalDAV account using incremental sync when possible
+    /// </summary>
+    private async Task SyncCalDavAccountAsync(AccountDbo account, CancellationToken cancellationToken)
+    {
+        Console.WriteLine($"Syncing CalDAV account: {account.Name}");
+
+        // Get credentials from credential manager
+        var credentials = _credentialManager.GetCalDavCredentials(account.AccountId);
+        if (credentials == null)
+        {
+            throw new InvalidOperationException($"No credentials found for account {account.Name}");
+        }
+
+        // Load sync token from account data for incremental sync
+        string? syncToken = await _storage.GetAccountData(account, "calendarSyncToken");
+        bool isFullSync = string.IsNullOrEmpty(syncToken);
+
+        // Fetch calendars with optional sync token for incremental sync
+        ICalDavService.CalendarSyncResult result;
+        try
+        {
+            result = await _calDavService.GetCalendarsAsync(credentials, syncToken, cancellationToken);
+            Console.WriteLine($"Found {result.Calendars.Count} calendar {(isFullSync ? "items" : "changes")} for account {account.Name}");
+        }
+        catch (Exception ex) when (ex.Message.Contains("410") || ex.Message.Contains("invalid"))
+        {
+            // Sync token is invalid or expired, fall back to full sync
+            Console.WriteLine($"Sync token invalid, performing full sync: {ex.Message}");
+            isFullSync = true;
+            syncToken = null;
+            result = await _calDavService.GetCalendarsAsync(credentials, null, cancellationToken);
+            Console.WriteLine($"Found {result.Calendars.Count} calendars in full sync for account {account.Name}");
+        }
+
+        // Track the current sync timestamp for cleanup
+        var currentSyncTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        // Save calendars to database
+        foreach (var calendar in result.Calendars)
+        {
+            // Check if calendar was deleted
+            if (calendar.Deleted)
+            {
+                Console.WriteLine($"Calendar {calendar.DisplayName} was deleted, will clean up");
+                continue;
+            }
+
+            var calendarDbo = new CalendarDbo
+            {
+                AccountId = account.AccountId,
+                CalendarId = string.Empty, // Will be set by CreateOrUpdateCalendarAsync
+                ExternalId = calendar.Url,
+                Name = calendar.DisplayName,
+                Color = calendar.Color,
+                Enabled = 1, // Default enabled for CalDAV calendars
+                LastSync = currentSyncTime,
+            };
+
+            await _storage.CreateOrUpdateCalendarAsync(calendarDbo);
+        }
+
+        // If this was a full sync, clean up calendars that weren't updated
+        if (isFullSync)
+        {
+            var deletedCount = await _storage.DeleteCalendarsNotSyncedAsync(account.AccountId, currentSyncTime);
+            if (deletedCount > 0)
+            {
+                Console.WriteLine($"Deleted {deletedCount} calendar(s) that were removed remotely");
+            }
+        }
+
+        // Store the new sync token for next incremental sync
+        if (!string.IsNullOrEmpty(result.SyncToken))
+        {
+            await _storage.SetAccountData(account, "calendarSyncToken", result.SyncToken);
+            Console.WriteLine($"Stored new sync token for next sync");
+        }
+
+        Console.WriteLine($"Synced {result.Calendars.Count} calendars for account {account.Name}");
+
+        // Sync events for each enabled calendar
+        var calendars = await _storage.GetCalendarsByAccountAsync(account.AccountId);
+        foreach (var calendar in calendars.Where(c => c.Enabled == 1))
+        {
+            try
+            {
+                await SyncCalDavEventsAsync(credentials, calendar, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error syncing events for calendar {calendar.Name}: {ex.Message}");
+                // Continue with other calendars
+            }
+        }
+    }
+
+    /// <summary>
+    /// Syncs events for a single CalDAV calendar using incremental sync when possible
+    /// </summary>
+    private async Task SyncCalDavEventsAsync(CalDavCredentials credentials, CalendarDbo calendar, CancellationToken cancellationToken)
+    {
+        Console.WriteLine($"Syncing events for CalDAV calendar: {calendar.Name}");
+
+        // Load sync token from calendar data for incremental sync
+        string? syncToken = await _storage.GetCalendarData(calendar, "eventSyncToken");
+        bool isFullSync = string.IsNullOrEmpty(syncToken);
+
+        // Fetch events with optional sync token for incremental sync
+        ICalDavService.EventSyncResult result;
+        try
+        {
+            result = await _calDavService.GetEventsAsync(credentials, calendar.ExternalId ?? string.Empty, syncToken, cancellationToken);
+            Console.WriteLine($"Found {result.Events.Count} event {(isFullSync ? "items" : "changes")} for calendar {calendar.Name}");
+        }
+        catch (Exception ex) when (ex.Message.Contains("410") || ex.Message.Contains("invalid"))
+        {
+            // Sync token is invalid or expired, fall back to full sync
+            Console.WriteLine($"Event sync token invalid, performing full sync: {ex.Message}");
+            isFullSync = true;
+            syncToken = null;
+            result = await _calDavService.GetEventsAsync(credentials, calendar.ExternalId ?? string.Empty, null, cancellationToken);
+            Console.WriteLine($"Found {result.Events.Count} events in full sync for calendar {calendar.Name}");
+        }
+
+        // Track the current sync timestamp for cleanup
+        var currentSyncTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        // Save events to database
+        foreach (var evt in result.Events)
+        {
+            // Check if event was deleted or cancelled
+            if (evt.Status == "CANCELLED" || evt.Deleted)
+            {
+                Console.WriteLine($"Event {evt.Summary} was cancelled/deleted, will clean up");
+                continue;
+            }
+
+            var eventDbo = new CalendarEventDbo
+            {
+                CalendarId = calendar.CalendarId,
+                EventId = string.Empty, // Will be set by CreateOrUpdateEventAsync
+                ExternalId = evt.Uid,
+                StartTime = evt.StartTime.HasValue ? new DateTimeOffset(evt.StartTime.Value).ToUnixTimeSeconds() : null,
+                EndTime = evt.EndTime.HasValue ? new DateTimeOffset(evt.EndTime.Value).ToUnixTimeSeconds() : null,
+                Title = evt.Summary ?? "Untitled Event",
+                ChangedAt = currentSyncTime,
+            };
+
+            await _storage.CreateOrUpdateEventAsync(eventDbo);
+
+            // Store raw iCalendar data for later use
+            if (!string.IsNullOrEmpty(evt.RawICalendar))
+            {
+                await _storage.SetEventData(eventDbo, "rawData", evt.RawICalendar);
+            }
+        }
+
+        // If this was a full sync, clean up events that weren't updated
         if (isFullSync)
         {
             var deletedCount = await _storage.DeleteEventsNotSyncedAsync(calendar.CalendarId, currentSyncTime);

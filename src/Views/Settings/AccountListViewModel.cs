@@ -15,6 +15,7 @@ public partial class AccountListViewModel : ViewModelBase
     private readonly SqliteStorage _storage;
     private readonly CredentialManagerService _credentialManager;
     private readonly GoogleOAuthService _oauthService;
+    private readonly ICalDavService _calDavService;
     private AddAccountWindow? _addAccountWindow;
     private ReauthenticateAccountWindow? _reauthenticateWindow;
 
@@ -24,11 +25,12 @@ public partial class AccountListViewModel : ViewModelBase
     [ObservableProperty]
     private bool _canReauthenticate = true;
 
-    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService)
+    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService)
     {
         _storage = storage;
         _credentialManager = credentialManager;
         _oauthService = oauthService;
+        _calDavService = calDavService;
         _ = LoadAccountsAsync(); // Fire and forget initial load
     }
 
@@ -41,7 +43,7 @@ public partial class AccountListViewModel : ViewModelBase
             return;
         }
 
-        var wizardVm = new AddAccountWizardViewModel(_storage, _credentialManager, _oauthService);
+        var wizardVm = new AddAccountWizardViewModel(_storage, _credentialManager, _oauthService, _calDavService);
         wizardVm.AccountAdded += OnAccountAdded;
 
         _addAccountWindow = new AddAccountWindow

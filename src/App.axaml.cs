@@ -34,7 +34,8 @@ public partial class App : Application
             var storage = new SqliteStorage(_databaseService, _credentialManager);
             var googleCalendarService = new GoogleCalendarService();
             var googleOAuthService = new GoogleOAuthService(googleCalendarService);
-            var syncService = new SyncService(storage, _credentialManager, googleCalendarService);
+            var calDavService = new CalDavService();
+            var syncService = new SyncService(storage, _credentialManager, googleCalendarService, calDavService);
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
@@ -43,7 +44,7 @@ public partial class App : Application
                 DisableAvaloniaDataAnnotationValidation();
                 desktop.MainWindow = new MainWindow
                 {
-                    DataContext = new MainWindowViewModel(_databaseService, _credentialManager, syncService),
+                    DataContext = new MainWindowViewModel(_databaseService, _credentialManager, syncService, calDavService),
                 };
             }
         }

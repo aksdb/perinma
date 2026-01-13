@@ -14,6 +14,7 @@ public partial class AddAccountWizardViewModel : ViewModelBase
     private readonly SqliteStorage _storage;
     private readonly CredentialManagerService _credentialManager;
     private readonly GoogleOAuthService _oauthService;
+    private readonly ICalDavService _calDavService;
 
     [ObservableProperty]
     private int _currentStepIndex = 0;
@@ -37,11 +38,12 @@ public partial class AddAccountWizardViewModel : ViewModelBase
     // Event raised when account is successfully added
     public event EventHandler? AccountAdded;
 
-    public AddAccountWizardViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService)
+    public AddAccountWizardViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService)
     {
         _storage = storage;
         _credentialManager = credentialManager;
         _oauthService = oauthService;
+        _calDavService = calDavService;
 
         // Initialize first step
         _accountDetailsStep = new AccountDetailsStepViewModel(storage);
@@ -75,7 +77,7 @@ public partial class AddAccountWizardViewModel : ViewModelBase
             }
             else if (AccountType == Settings.AccountType.CalDav)
             {
-                _calDavConnectionStep = new CalDavConnectionStepViewModel();
+                _calDavConnectionStep = new CalDavConnectionStepViewModel(_calDavService);
                 CurrentStepView = new CalDavConnectionStepView
                 {
                     DataContext = _calDavConnectionStep

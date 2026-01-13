@@ -161,7 +161,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         DaySlot = dayIndex,
                         StartSlot = startSlot,
                         EndSlot = endSlot,
-                        Color = Color.Parse(e.Calendar.Color ?? string.Empty),
+                        Color = string.IsNullOrEmpty(e.Calendar.Color) ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF) : Color.Parse(e.Calendar.Color),
                         TieBreaker = tieBreaker++,
                         ColumnSlot = 0,
                         TotalColumns = 1,

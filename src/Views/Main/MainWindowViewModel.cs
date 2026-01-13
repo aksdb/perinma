@@ -19,6 +19,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly SyncService _syncService;
     private readonly GoogleCalendarService _googleCalendarService;
     private readonly GoogleOAuthService _googleOAuthService;
+    private readonly ICalDavService _calDavService;
 
     [ObservableProperty]
     private bool _isSyncing;
@@ -29,11 +30,13 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel(
         DatabaseService databaseService,
         CredentialManagerService credentialManager,
-        SyncService syncService)
+        SyncService syncService,
+        ICalDavService calDavService)
     {
         _databaseService = databaseService;
         _credentialManager = credentialManager;
         _syncService = syncService;
+        _calDavService = calDavService;
 
         var storage = new SqliteStorage(databaseService, credentialManager);
         var calendarSource = new DatabaseCalendarSource(storage);
@@ -58,7 +61,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _settingsWindow = new SettingsWindow
         {
-            DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService)
+            DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService, _calDavService)
         };
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
