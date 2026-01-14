@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Google.Apis.Json;
+using Ical.Net.DataTypes;
 using perinma.Models;
 using perinma.Storage.Models;
 using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
 using GoogleEventDateTime = Google.Apis.Calendar.v3.Data.EventDateTime;
+using ICalCalendar = Ical.Net.Calendar;
+using ICalCalendarEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
 namespace perinma.Storage;
 
@@ -69,10 +72,11 @@ public class DummyCalendarSource : ICalendarSource
 
     public List<CalendarEvent> GetCalendarEvents(DateTime startTime, DateTime endTime)
     {
-        return (from ev in _allEvents 
+        return (from ev in _allEvents
             let startInside = ev.StartTime > startTime && ev.StartTime < endTime
             let endInside = ev.EndTime > startTime && ev.EndTime < endTime
-            where startInside || endInside select ev).ToList();
+            where startInside || endInside
+            select ev).ToList();
     }
 
     private static DateTime TruncateDay(DateTime dt)
@@ -94,72 +98,73 @@ public class DummyCalendarSource : ICalendarSource
         var events = new List<CalendarEvent>
         {
             // Day 1
-            Ev(_calRed,  day1.AddHours(-5),               day1.AddHours(2),                ""),
-            Ev(_calBlue, day1.AddHours(9),                day1.AddHours(12),               "Customer Meeting"),
-            Ev(_calBlue, day1.AddHours(13).AddMinutes(15),day1.AddHours(13).AddMinutes(45),"Recap"),
-            Ev(_calBlue, day1.AddHours(15),               day1.AddHours(16).AddMinutes(25),"Chapter 1"),
-            Ev(_calBlue, day1.AddHours(16).AddMinutes(30),day1.AddHours(17).AddMinutes(30),"Chapter 2"),
+            Ev(_calRed, day1.AddHours(-5), day1.AddHours(2), ""),
+            Ev(_calBlue, day1.AddHours(9), day1.AddHours(12), "Customer Meeting"),
+            Ev(_calBlue, day1.AddHours(13).AddMinutes(15), day1.AddHours(13).AddMinutes(45), "Recap"),
+            Ev(_calBlue, day1.AddHours(15), day1.AddHours(16).AddMinutes(25), "Chapter 1"),
+            Ev(_calBlue, day1.AddHours(16).AddMinutes(30), day1.AddHours(17).AddMinutes(30), "Chapter 2"),
 
             // Day 2
-            Ev(_calYellow, day2.AddHours(14),                day2.AddHours(15),                 "Meeting 1"),
-            Ev(_calBlue,   day2.AddHours(14).AddMinutes(30), day2.AddHours(15).AddMinutes(30),  "Meeting 2"),
-            Ev(_calBlue,   day2.AddHours(16).AddMinutes(30), day2.AddHours(17).AddMinutes(30),  "Chapter 3"),
+            Ev(_calYellow, day2.AddHours(14), day2.AddHours(15), "Meeting 1"),
+            Ev(_calBlue, day2.AddHours(14).AddMinutes(30), day2.AddHours(15).AddMinutes(30), "Meeting 2"),
+            Ev(_calBlue, day2.AddHours(16).AddMinutes(30), day2.AddHours(17).AddMinutes(30), "Chapter 3"),
 
             // Day 3
-            Ev(_calBlue,   day3.AddHours(9),                 day3.AddHours(14),                 "Team Event"),
-            Ev(_calBlue,   day3.AddHours(10),                day3.AddHours(12),                 "Get-Together"),
-            Ev(_calBlue,   day3.AddHours(11),                day3.AddHours(13),                 "Lunch"),
-            Ev(_calYellow, day3.AddHours(13).AddMinutes(30), day3.AddHours(15),                 "Customer Meeting"),
+            Ev(_calBlue, day3.AddHours(9), day3.AddHours(14), "Team Event"),
+            Ev(_calBlue, day3.AddHours(10), day3.AddHours(12), "Get-Together"),
+            Ev(_calBlue, day3.AddHours(11), day3.AddHours(13), "Lunch"),
+            Ev(_calYellow, day3.AddHours(13).AddMinutes(30), day3.AddHours(15), "Customer Meeting"),
 
             // Day 4 (dense overlaps)
-            Ev(_calYellow, day4.AddHours(9),                 day4.AddHours(10),                 "E1"),
-            Ev(_calBlue,   day4.AddHours(9).AddMinutes(30),  day4.AddHours(10).AddMinutes(30),  "E2"),
-            Ev(_calBlue,   day4.AddHours(10),                day4.AddHours(11),                 "E3"),
-            Ev(_calRed,    day4.AddHours(10).AddMinutes(30), day4.AddHours(11).AddMinutes(30),  "E4"),
-            Ev(_calBlue,   day4.AddHours(11).AddMinutes(30), day4.AddHours(12),                 "E5"),
-            Ev(_calRed,    day4.AddHours(14),                day4.AddHours(18),                 "E6"),
-            Ev(_calRed,    day4.AddHours(14),                day4.AddHours(15),                 "E7"),
-            Ev(_calRed,    day4.AddHours(14),                day4.AddHours(15),                 "E8"),
-            Ev(_calRed,    day4.AddHours(14),                day4.AddHours(17),                 "E9"),
-            Ev(_calBlue,   day4.AddHours(15),                day4.AddHours(16),                 "E10"),
-            Ev(_calYellow, day4.AddHours(17),                day4.AddHours(18),                 "E11"),
-            Ev(_calRed,    day4.AddHours(19),                day4.AddHours(22),                 "E12"),
-            Ev(_calRed,    day4.AddHours(19),                day4.AddHours(20),                 "E13"),
-            Ev(_calRed,    day4.AddHours(19),                day4.AddHours(20),                 "E14"),
-            Ev(_calRed,    day4.AddHours(19),                day4.AddHours(23),                 "E15"),
-            Ev(_calBlue,   day4.AddHours(20),                day4.AddHours(21),                 "E16"),
-            Ev(_calYellow, day4.AddHours(22),                day4.AddHours(23),                 "E17"),
+            Ev(_calYellow, day4.AddHours(9), day4.AddHours(10), "E1"),
+            Ev(_calBlue, day4.AddHours(9).AddMinutes(30), day4.AddHours(10).AddMinutes(30), "E2"),
+            Ev(_calBlue, day4.AddHours(10), day4.AddHours(11), "E3"),
+            Ev(_calRed, day4.AddHours(10).AddMinutes(30), day4.AddHours(11).AddMinutes(30), "E4"),
+            Ev(_calBlue, day4.AddHours(11).AddMinutes(30), day4.AddHours(12), "E5"),
+            Ev(_calRed, day4.AddHours(14), day4.AddHours(18), "E6"),
+            Ev(_calRed, day4.AddHours(14), day4.AddHours(15), "E7"),
+            Ev(_calRed, day4.AddHours(14), day4.AddHours(15), "E8"),
+            Ev(_calRed, day4.AddHours(14), day4.AddHours(17), "E9"),
+            Ev(_calBlue, day4.AddHours(15), day4.AddHours(16), "E10"),
+            Ev(_calYellow, day4.AddHours(17), day4.AddHours(18), "E11"),
+            Ev(_calRed, day4.AddHours(19), day4.AddHours(22), "E12"),
+            Ev(_calRed, day4.AddHours(19), day4.AddHours(20), "E13"),
+            Ev(_calRed, day4.AddHours(19), day4.AddHours(20), "E14"),
+            Ev(_calRed, day4.AddHours(19), day4.AddHours(23), "E15"),
+            Ev(_calBlue, day4.AddHours(20), day4.AddHours(21), "E16"),
+            Ev(_calYellow, day4.AddHours(22), day4.AddHours(23), "E17"),
 
             // Day 5
-            Ev(_calBlue,   day5.AddHours(9),                 day5.AddHours(15),                 "E1"),
-            Ev(_calYellow, day5.AddHours(9),                 day5.AddHours(11),                 "E2"),
-            Ev(_calBlue,   day5.AddHours(10),                day5.AddHours(12),                 "E3"),
-            Ev(_calRed,    day5.AddHours(11),                day5.AddHours(16),                 "E4"),
-            Ev(_calYellow, day5.AddHours(15),                day5.AddHours(17),                 "E5"),
-            Ev(_calBlue,   day5.AddHours(15),                day5.AddHours(17),                 "E6"),
-            Ev(_calRed,    day5.AddHours(22),                day6.AddHours(2),                  "Party"),
+            Ev(_calBlue, day5.AddHours(9), day5.AddHours(15), "E1"),
+            Ev(_calYellow, day5.AddHours(9), day5.AddHours(11), "E2"),
+            Ev(_calBlue, day5.AddHours(10), day5.AddHours(12), "E3"),
+            Ev(_calRed, day5.AddHours(11), day5.AddHours(16), "E4"),
+            Ev(_calYellow, day5.AddHours(15), day5.AddHours(17), "E5"),
+            Ev(_calBlue, day5.AddHours(15), day5.AddHours(17), "E6"),
+            Ev(_calRed, day5.AddHours(22), day6.AddHours(2), "Party"),
 
             // Day 7
-            Ev(_calRed,    day7.AddHours(10),                day7.AddHours(11),                 "Trekking"),
-            Ev(_calRed,    day7.AddHours(10).AddMinutes(45), day7.AddHours(11).AddMinutes(20),  "Phonecall"),
-            Ev(_calRed,    day7.AddHours(22),                day7.AddHours(28),                 "Party"),
+            Ev(_calRed, day7.AddHours(10), day7.AddHours(11), "Trekking"),
+            Ev(_calRed, day7.AddHours(10).AddMinutes(45), day7.AddHours(11).AddMinutes(20), "Phonecall"),
+            Ev(_calRed, day7.AddHours(22), day7.AddHours(28), "Party"),
         };
 
         // All-day events: model as midnight-to-midnight spanning events
         events.AddRange([
             Ev(_calYellow, day1.AddDays(-2), day2, "Conference"),
-            Ev(_calRed,    day1,             day1.AddDays(1), "New Week"),
-            Ev(_calRed,    day3,             day3.AddDays(1), "FD1"),
-            Ev(_calRed,    day3,             day4,            "FD2"),
-            Ev(_calYellow, day3,             day5,            "FD3"),
-            Ev(_calBlue,   day3,             day3.AddDays(1), "FD4"),
-            Ev(_calBlue,   day3,             day3.AddDays(1), "FD5")
+            Ev(_calRed, day1, day1.AddDays(1), "New Week"),
+            Ev(_calRed, day3, day3.AddDays(1), "FD1"),
+            Ev(_calRed, day3, day4, "FD2"),
+            Ev(_calYellow, day3, day5, "FD3"),
+            Ev(_calBlue, day3, day3.AddDays(1), "FD4"),
+            Ev(_calBlue, day3, day3.AddDays(1), "FD5")
         ]);
 
         return events;
     }
 
-    private static CalendarEvent Ev(Calendar cal, DateTime start, DateTime end, string title)
+    private static CalendarEvent Ev(Calendar cal, DateTime start, DateTime end,
+        string title)
     {
         return new CalendarEvent
         {
@@ -189,8 +194,10 @@ public class DatabaseCalendarSource : ICalendarSource
         return events.Select(e =>
         {
             // Parse raw event once based on account type
+            // TODO switch statement; combine parsing end extraction; one method per type
             var googleEvent = e.AccountType == "Google" ? TryParseGoogleEvent(e.RawData) : null;
-            var (eventStartTime, eventEndTime) = ExtractEventTimes(e, googleEvent);
+            var calDavEvent = e.AccountType == "CalDav" ? TryParseCalDavEvent(e.RawData) : null;
+            var (eventStartTime, eventEndTime) = ExtractEventTimes(e, googleEvent, calDavEvent);
 
             return new CalendarEvent
             {
@@ -225,7 +232,8 @@ public class DatabaseCalendarSource : ICalendarSource
 
     private (DateTime startTime, DateTime endTime) ExtractEventTimes(
         CalendarEventQueryResult result,
-        GoogleEvent? googleEvent)
+        GoogleEvent? googleEvent,
+        ICalCalendarEvent? calDavEvent)
     {
         DateTime startTime;
         DateTime endTime;
@@ -236,6 +244,11 @@ public class DatabaseCalendarSource : ICalendarSource
             var parsedStartTime = ParseEventDateTime(googleEvent.Start);
             startTime = parsedStartTime ?? GetFallbackStartTime(result);
         }
+        // Try to extract from CalDAV Event (if available)
+        else if (calDavEvent?.Start != null)
+        {
+            startTime = ParseCalDavDateTime(calDavEvent.Start) ?? GetFallbackStartTime(result);
+        }
         else
         {
             startTime = GetFallbackStartTime(result);
@@ -245,6 +258,11 @@ public class DatabaseCalendarSource : ICalendarSource
         {
             var parsedEndTime = ParseEventDateTime(googleEvent.End);
             endTime = parsedEndTime ?? GetFallbackEndTime(result);
+        }
+        // Try to extract from CalDAV Event (if available)
+        else if (calDavEvent?.End != null)
+        {
+            endTime = ParseCalDavDateTime(calDavEvent.End) ?? GetFallbackEndTime(result);
         }
         else
         {
@@ -286,6 +304,25 @@ public class DatabaseCalendarSource : ICalendarSource
         }
     }
 
+    private ICalCalendarEvent? TryParseCalDavEvent(string? rawData)
+    {
+        if (string.IsNullOrEmpty(rawData))
+        {
+            return null;
+        }
+
+        try
+        {
+            var calendar = ICalCalendar.Load(rawData);
+            return calendar.Events.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to parse CalDAV iCalendar event: {ex.Message}");
+            return null;
+        }
+    }
+
     private DateTime? ParseEventDateTime(GoogleEventDateTime eventDateTime)
     {
         // Handle specific date/time with timezone (most events)
@@ -307,5 +344,25 @@ public class DatabaseCalendarSource : ICalendarSource
         }
 
         return null;
+    }
+
+    private DateTime? ParseCalDavDateTime(CalDateTime? calDavDateTime)
+    {
+        if (calDavDateTime == null)
+        {
+            return null;
+        }
+
+        // Use AsUtc to get UTC time, then convert to local time
+        // This properly handles timezone information from the iCalendar data
+        var utcDateTime = calDavDateTime.AsUtc;
+
+        if (utcDateTime == DateTime.MinValue)
+        {
+            // If AsUtc fails, fall back to the Value property
+            return calDavDateTime.Value;
+        }
+
+        return utcDateTime.ToLocalTime();
     }
 }
