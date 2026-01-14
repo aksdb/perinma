@@ -193,11 +193,12 @@ public class DatabaseCalendarSource : ICalendarSource
 
         return events.Select(e =>
         {
-            // Parse raw event once based on account type
-            // TODO switch statement; combine parsing end extraction; one method per type
-            var googleEvent = e.AccountType == "Google" ? TryParseGoogleEvent(e.RawData) : null;
-            var calDavEvent = e.AccountType == "CalDav" ? TryParseCalDavEvent(e.RawData) : null;
-            var (eventStartTime, eventEndTime) = ExtractEventTimes(e, googleEvent, calDavEvent);
+            var (eventStartTime, eventEndTime) = e.AccountType switch
+            {
+                "Google" => ExtractGoogleEventTimes(e),
+                "CalDav" => ExtractCalDavEventTimes(e),
+                _ => GetFallbackTimes(e)
+            };
 
             return new CalendarEvent
             {
@@ -230,46 +231,47 @@ public class DatabaseCalendarSource : ICalendarSource
         }).ToList();
     }
 
-    private (DateTime startTime, DateTime endTime) ExtractEventTimes(
-        CalendarEventQueryResult result,
-        GoogleEvent? googleEvent,
-        ICalCalendarEvent? calDavEvent)
+    private (DateTime startTime, DateTime endTime) ExtractGoogleEventTimes(CalendarEventQueryResult result)
     {
-        DateTime startTime;
-        DateTime endTime;
-
-        // Try to extract from Google Event first (if available)
-        if (googleEvent?.Start != null)
+        var googleEvent = TryParseGoogleEvent(result.RawData);
+        if (googleEvent == null)
         {
-            var parsedStartTime = ParseEventDateTime(googleEvent.Start);
-            startTime = parsedStartTime ?? GetFallbackStartTime(result);
-        }
-        // Try to extract from CalDAV Event (if available)
-        else if (calDavEvent?.Start != null)
-        {
-            startTime = ParseCalDavDateTime(calDavEvent.Start) ?? GetFallbackStartTime(result);
-        }
-        else
-        {
-            startTime = GetFallbackStartTime(result);
+            return GetFallbackTimes(result);
         }
 
-        if (googleEvent?.End != null)
-        {
-            var parsedEndTime = ParseEventDateTime(googleEvent.End);
-            endTime = parsedEndTime ?? GetFallbackEndTime(result);
-        }
-        // Try to extract from CalDAV Event (if available)
-        else if (calDavEvent?.End != null)
-        {
-            endTime = ParseCalDavDateTime(calDavEvent.End) ?? GetFallbackEndTime(result);
-        }
-        else
-        {
-            endTime = GetFallbackEndTime(result);
-        }
+        var startTime = googleEvent.Start != null
+            ? ParseGoogleEventDateTime(googleEvent.Start) ?? GetFallbackStartTime(result)
+            : GetFallbackStartTime(result);
+
+        var endTime = googleEvent.End != null
+            ? ParseGoogleEventDateTime(googleEvent.End) ?? GetFallbackEndTime(result)
+            : GetFallbackEndTime(result);
 
         return (startTime, endTime);
+    }
+
+    private (DateTime startTime, DateTime endTime) ExtractCalDavEventTimes(CalendarEventQueryResult result)
+    {
+        var calDavEvent = TryParseCalDavEvent(result.RawData);
+        if (calDavEvent == null)
+        {
+            return GetFallbackTimes(result);
+        }
+
+        var startTime = calDavEvent.Start != null
+            ? ParseCalDavDateTime(calDavEvent.Start) ?? GetFallbackStartTime(result)
+            : GetFallbackStartTime(result);
+
+        var endTime = calDavEvent.End != null
+            ? ParseCalDavDateTime(calDavEvent.End) ?? GetFallbackEndTime(result)
+            : GetFallbackEndTime(result);
+
+        return (startTime, endTime);
+    }
+
+    private (DateTime startTime, DateTime endTime) GetFallbackTimes(CalendarEventQueryResult result)
+    {
+        return (GetFallbackStartTime(result), GetFallbackEndTime(result));
     }
 
     private DateTime GetFallbackStartTime(CalendarEventQueryResult result)
@@ -323,7 +325,7 @@ public class DatabaseCalendarSource : ICalendarSource
         }
     }
 
-    private DateTime? ParseEventDateTime(GoogleEventDateTime eventDateTime)
+    private DateTime? ParseGoogleEventDateTime(GoogleEventDateTime eventDateTime)
     {
         // Handle specific date/time with timezone (most events)
         if (!string.IsNullOrEmpty(eventDateTime.DateTimeRaw))
