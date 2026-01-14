@@ -23,7 +23,8 @@ public class SyncServiceTests
             FakeGoogleCalendarService.CreateCalendar("cal3", "Disabled Calendar", selected: false)
         );
 
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService);
+        var fakeCalDavService = new FakeCalDavService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
 
         // Create test account
         var accountId = Guid.NewGuid().ToString();
@@ -141,7 +142,8 @@ public class SyncServiceTests
         // Simulate invalid sync token on first call, then succeed on retry with full sync
         fakeGoogleService.SetInvalidSyncTokenBehavior(true);
 
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService);
+        var fakeCalDavService = new FakeCalDavService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -208,7 +210,8 @@ public class SyncServiceTests
             FakeGoogleCalendarService.CreateCalendar("cal3", "Calendar 3")
         );
 
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService);
+        var fakeCalDavService = new FakeCalDavService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
 
         // Perform first sync
         await syncService.SyncAllAccountsAsync();
@@ -279,7 +282,8 @@ public class SyncServiceTests
             FakeGoogleCalendarService.CreateDeletedCalendar("cal2")
         );
 
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService);
+        var fakeCalDavService = new FakeCalDavService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -336,7 +340,8 @@ public class SyncServiceTests
             FakeGoogleCalendarService.CreateEvent("event2", "Lunch Break", eventStart.AddHours(2), eventEnd.AddHours(2))
         );
 
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService);
+        var fakeCalDavService = new FakeCalDavService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
