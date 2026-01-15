@@ -316,7 +316,7 @@ public class DatabaseCalendarSource : ICalendarSource
         try
         {
             var calendar = ICalCalendar.Load(rawData);
-            return calendar.Events.FirstOrDefault();
+            return calendar?.Events.FirstOrDefault();
         }
         catch (Exception ex)
         {

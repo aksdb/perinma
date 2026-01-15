@@ -14,7 +14,7 @@ public partial class CalendarWeekView : UserControl
     private readonly Grid _weekdayNamesGrid;
     private readonly MainView _mainView = new();
     private readonly TopBarView _topBarView = new();
-    private CalendarWeekViewModel _viewModel;
+    private CalendarWeekViewModel? _viewModel;
     
     public CalendarWeekView()
     {
@@ -88,6 +88,7 @@ public partial class CalendarWeekView : UserControl
 
     private void RebuildColumns()
     {
+        if (_viewModel == null) return;
         _mainView.DayColumns = _viewModel.DayColumns;
         _topBarView.DayColumns = _viewModel.DayColumns;
         _mainView.RefreshContent();

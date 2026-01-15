@@ -100,9 +100,16 @@ public class CalDavService : ICalDavService
             try
             {
                 var calendar = client.ParseICalendar(item.CalendarData);
+                if (calendar == null)
+                    continue;
 
                 foreach (var evt in calendar.Events)
                 {
+                    if (evt.Uid == null)
+                    {
+                        Console.WriteLine("Skipping CalDAV event without UID");
+                        continue;
+                    }
                     events.Add(new CalDavEvent
                     {
                         Uid = evt.Uid,

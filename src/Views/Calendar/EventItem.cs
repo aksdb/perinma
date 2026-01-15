@@ -16,6 +16,10 @@ namespace perinma.Views.Calendar;
 
 public partial class EventItem : TemplatedControl
 {
+    // Disable false-positive warnings in relation to the code generator.
+#pragma warning disable CS0169 // Field is never used
+#pragma warning disable CS0414 // Field is assigned but never used
+    
     [AvaStyledProperty]
     private string _title = "[no title]";
 
@@ -33,10 +37,10 @@ public partial class EventItem : TemplatedControl
     private Color _color = Color.FromArgb(0x99, 0x33, 0x99, 0xFF);
 
     [AvaStyledProperty]
-    private IBrush _backgroundBrush;
+    private IBrush _backgroundBrush = Brushes.Transparent;
 
     [AvaStyledProperty]
-    private IBrush _foregroundBrush;
+    private IBrush _foregroundBrush = Brushes.Black;
 
     public int TieBreaker { get; set; }
     public bool IsFullDay { get; set; }
@@ -61,10 +65,13 @@ public partial class EventItem : TemplatedControl
     private double _inlineTimeTextWidth;
     
     [AvaStyledProperty]
-    private CalendarEvent _calendarEvent;
+    private CalendarEvent? _calendarEvent;
 
     [AvaStyledProperty]
-    private SqliteStorage _storage;
+    private SqliteStorage? _storage;
+
+#pragma warning restore CS0169
+#pragma warning restore CS0414
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -99,6 +106,7 @@ public partial class EventItem : TemplatedControl
     {
         base.OnApplyTemplate(e);
         var border = e.NameScope.Find<Border>("Border");
+        if (border == null) return;
 
         CancellationTokenSource? singleTapCtx = null;
         border.Tapped += async (sender, args) =>

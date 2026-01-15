@@ -139,7 +139,7 @@ public class CalDavClient
         return await response.Content.ReadAsStringAsync(cancellationToken);
     }
 
-    public Calendar ParseICalendar(string icalData)
+    public Calendar? ParseICalendar(string icalData)
     {
         return Calendar.Load(icalData);
     }
