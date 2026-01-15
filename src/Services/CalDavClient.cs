@@ -18,6 +18,8 @@ public class CalDavClient
     private const string DavNamespace = "DAV:";
     private const string CalDavNamespace = "urn:ietf:params:xml:ns:caldav";
     private const string CalendarServerNamespace = "http://calendarserver.org/ns/";
+    // Apple iCal namespace - used by SOGo, Apple Calendar, and many other CalDAV servers for calendar-color
+    private const string AppleIcalNamespace = "http://apple.com/ns/ical/";
 
     public CalDavClient(HttpClient? httpClient = null)
     {
@@ -69,6 +71,7 @@ public class CalDavClient
             new XAttribute(XNamespace.Xmlns + "d", DavNamespace),
             new XAttribute(XNamespace.Xmlns + "c", CalDavNamespace),
             new XAttribute(XNamespace.Xmlns + "cs", CalendarServerNamespace),
+            new XAttribute(XNamespace.Xmlns + "a", AppleIcalNamespace),
             new XElement(xd + "prop", properties)
         );
 
@@ -146,6 +149,7 @@ public class CalDavClient
         var xd = XNamespace.Get(DavNamespace);
         var xc = XNamespace.Get(CalDavNamespace);
         var xcs = XNamespace.Get(CalendarServerNamespace);
+        var xa = XNamespace.Get(AppleIcalNamespace);
 
         var responses = new List<PropfindItem>();
 
@@ -172,7 +176,10 @@ public class CalDavClient
             var displayName = prop.Element(xd + "displayname")?.Value;
             var resourceType = prop.Element(xd + "resourcetype");
             var isCalendar = resourceType?.Element(xc + "calendar") != null;
-            var color = prop.Element(xcs + "calendar-color")?.Value;
+            // Check both CalendarServer and Apple iCal namespaces for calendar-color
+            // SOGo and many other servers use the Apple iCal namespace
+            var color = prop.Element(xa + "calendar-color")?.Value
+                        ?? prop.Element(xcs + "calendar-color")?.Value;
             var ctag = prop.Element(xcs + "getctag")?.Value;
             var syncToken = prop.Element(xd + "sync-token")?.Value;
             var calendarHomeSet = prop.Element(xc + "calendar-home-set")?.Element(xd + "href")?.Value;

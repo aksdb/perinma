@@ -13,6 +13,8 @@ public class CalDavService : ICalDavService
     private const string DavNamespace = "DAV:";
     private const string CalDavNamespace = "urn:ietf:params:xml:ns:caldav";
     private const string CalendarServerNamespace = "http://calendarserver.org/ns/";
+    // Apple iCal namespace - used by SOGo, Apple Calendar, and many other CalDAV servers for calendar-color
+    private const string AppleIcalNamespace = "http://apple.com/ns/ical/";
 
     public async Task<ICalDavService.CalendarSyncResult> GetCalendarsAsync(
         CalDavCredentials credentials,
@@ -194,11 +196,15 @@ public class CalDavService : ICalDavService
         var xd = XNamespace.Get(DavNamespace);
         var xc = XNamespace.Get(CalDavNamespace);
         var xcs = XNamespace.Get(CalendarServerNamespace);
+        var xa = XNamespace.Get(AppleIcalNamespace);
 
         var properties = new[]
         {
             new XElement(xd + "displayname"),
             new XElement(xd + "resourcetype"),
+            // Request calendar-color from both namespaces for maximum compatibility
+            // SOGo and Apple Calendar use the Apple iCal namespace
+            new XElement(xa + "calendar-color"),
             new XElement(xcs + "calendar-color"),
             new XElement(xcs + "getctag"),
             new XElement(xd + "sync-token")
@@ -261,10 +267,13 @@ public class CalDavService : ICalDavService
             {
                 var xd = XNamespace.Get(DavNamespace);
                 var xcs = XNamespace.Get(CalendarServerNamespace);
+                var xa = XNamespace.Get(AppleIcalNamespace);
 
                 var properties = new[]
                 {
                     new XElement(xd + "displayname"),
+                    // Request calendar-color from both namespaces for maximum compatibility
+                    new XElement(xa + "calendar-color"),
                     new XElement(xcs + "calendar-color"),
                     new XElement(xcs + "getctag")
                 };
