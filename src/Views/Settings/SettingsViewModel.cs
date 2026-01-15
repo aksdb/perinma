@@ -8,7 +8,6 @@ using CommunityToolkit.Mvvm.Input;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Utils;
-using perinma.ViewModels;
 
 namespace perinma.Views.Settings;
 

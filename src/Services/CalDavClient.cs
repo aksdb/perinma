@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Ical.Net;
 using perinma.Storage.Models;
+using perinma.Utils;
 
 namespace perinma.Services;
 
@@ -178,8 +179,10 @@ public class CalDavClient
             var isCalendar = resourceType?.Element(xc + "calendar") != null;
             // Check both CalendarServer and Apple iCal namespaces for calendar-color
             // SOGo and many other servers use the Apple iCal namespace
-            var color = prop.Element(xa + "calendar-color")?.Value
-                        ?? prop.Element(xcs + "calendar-color")?.Value;
+            var rawColor = prop.Element(xa + "calendar-color")?.Value
+                           ?? prop.Element(xcs + "calendar-color")?.Value;
+            // Normalize to #RRGGBB format, stripping alpha channel if present
+            var color = ColorUtils.NormalizeHexColor(rawColor);
             var ctag = prop.Element(xcs + "getctag")?.Value;
             var syncToken = prop.Element(xd + "sync-token")?.Value;
             var calendarHomeSet = prop.Element(xc + "calendar-home-set")?.Element(xd + "href")?.Value;

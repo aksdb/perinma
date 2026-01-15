@@ -1,11 +1,10 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using perinma.Services;
 using perinma.Storage;
-using perinma.ViewModels;
 using perinma.Views.Calendar;
 using perinma.Views.CalendarList;
 using perinma.Views.Settings;

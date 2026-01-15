@@ -7,7 +7,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using perinma.Models;
 using perinma.Storage;
-using perinma.ViewModels;
 
 namespace perinma.Views.Calendar;
 

@@ -10,7 +10,7 @@ using Avalonia.Media.TextFormatting;
 using Lucdem.Avalonia.SourceGenerators.Attributes;
 using perinma.Models;
 using perinma.Storage;
-using perinma.ViewModels;
+using perinma.Utils;
 
 namespace perinma.Views.Calendar;
 
