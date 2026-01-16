@@ -178,4 +178,55 @@ public class FakeGoogleCalendarService : IGoogleCalendarService
             Status = "cancelled"
         };
     }
+
+    /// <summary>
+    /// Creates a recurring event with RRULE.
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <param name="summary">Event summary/title</param>
+    /// <param name="start">Start time of the first occurrence</param>
+    /// <param name="end">End time of the first occurrence</param>
+    /// <param name="recurrence">List of recurrence rules (e.g., "RRULE:FREQ=WEEKLY;COUNT=10")</param>
+    public static Event CreateRecurringEvent(string id, string summary, DateTime start, DateTime end, params string[] recurrence)
+    {
+        return new Event
+        {
+            Id = id,
+            Summary = summary,
+            Status = "confirmed",
+            Start = new EventDateTime { DateTimeRaw = start.ToString("o") },
+            End = new EventDateTime { DateTimeRaw = end.ToString("o") },
+            Recurrence = recurrence.Length > 0 ? new List<string>(recurrence) : null
+        };
+    }
+
+    /// <summary>
+    /// Creates a recurring event with timezone-aware times.
+    /// </summary>
+    public static Event CreateRecurringEventWithTimezone(
+        string id,
+        string summary,
+        DateTime start,
+        DateTime end,
+        string timeZone,
+        params string[] recurrence)
+    {
+        return new Event
+        {
+            Id = id,
+            Summary = summary,
+            Status = "confirmed",
+            Start = new EventDateTime
+            {
+                DateTimeRaw = start.ToString("o"),
+                TimeZone = timeZone
+            },
+            End = new EventDateTime
+            {
+                DateTimeRaw = end.ToString("o"),
+                TimeZone = timeZone
+            },
+            Recurrence = recurrence.Length > 0 ? new List<string>(recurrence) : null
+        };
+    }
 }

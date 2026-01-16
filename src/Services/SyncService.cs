@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Google.Apis.Json;
 using perinma.Storage;
 using perinma.Storage.Models;
+using perinma.Utils;
 
 namespace perinma.Services;
 
@@ -246,23 +247,43 @@ public class SyncService
             // Parse start and end times
             long? startTime = null;
             long? endTime = null;
+            DateTime? startDateTime = null;
+            DateTime? endDateTime = null;
 
-            if (evt.Start.DateTimeRaw != null && DateTime.TryParse(evt.Start.DateTimeRaw, out var startDateTime))
+            if (evt.Start.DateTimeRaw != null && DateTime.TryParse(evt.Start.DateTimeRaw, out var parsedStartDateTime))
             {
-                startTime = new DateTimeOffset(startDateTime).ToUnixTimeSeconds();
+                startDateTime = parsedStartDateTime;
+                startTime = new DateTimeOffset(parsedStartDateTime).ToUnixTimeSeconds();
             }
             else if (evt.Start.Date != null && DateTime.TryParse(evt.Start.Date, out var startDate))
             {
+                startDateTime = startDate;
                 startTime = new DateTimeOffset(startDate).ToUnixTimeSeconds();
             }
 
-            if (evt.End.DateTimeRaw != null && DateTime.TryParse(evt.End.DateTimeRaw, out var endDateTime))
+            if (evt.End.DateTimeRaw != null && DateTime.TryParse(evt.End.DateTimeRaw, out var parsedEndDateTime))
             {
-                endTime = new DateTimeOffset(endDateTime).ToUnixTimeSeconds();
+                endDateTime = parsedEndDateTime;
+                endTime = new DateTimeOffset(parsedEndDateTime).ToUnixTimeSeconds();
             }
             else if (evt.End.Date != null && DateTime.TryParse(evt.End.Date, out var endDate))
             {
+                endDateTime = endDate;
                 endTime = new DateTimeOffset(endDate).ToUnixTimeSeconds();
+            }
+
+            // For recurring events, calculate the recurrence end time and store it in EndTime
+            if (evt.Recurrence != null && evt.Recurrence.Count > 0 && startDateTime.HasValue && endDateTime.HasValue)
+            {
+                var recurrenceEndTime = RecurrenceParser.GetRecurrenceEndTime(
+                    evt.Recurrence,
+                    startDateTime.Value,
+                    endDateTime.Value);
+
+                if (recurrenceEndTime.HasValue)
+                {
+                    endTime = new DateTimeOffset(recurrenceEndTime.Value).ToUnixTimeSeconds();
+                }
             }
 
             var eventDbo = new CalendarEventDbo
@@ -442,13 +463,26 @@ public class SyncService
                 continue;
             }
 
+            // Calculate end time, considering recurrence rules if present
+            long? endTime = evt.EndTime.HasValue ? new DateTimeOffset(evt.EndTime.Value).ToUnixTimeSeconds() : null;
+
+            // Parse recurrence end time from raw iCalendar data
+            if (!string.IsNullOrEmpty(evt.RawICalendar))
+            {
+                var recurrenceEndTime = ParseCalDavRecurrenceEndTime(evt.RawICalendar);
+                if (recurrenceEndTime.HasValue)
+                {
+                    endTime = new DateTimeOffset(recurrenceEndTime.Value).ToUnixTimeSeconds();
+                }
+            }
+
             var eventDbo = new CalendarEventDbo
             {
                 CalendarId = calendar.CalendarId,
                 EventId = string.Empty, // Will be set by CreateOrUpdateEventAsync
                 ExternalId = evt.Uid,
                 StartTime = evt.StartTime.HasValue ? new DateTimeOffset(evt.StartTime.Value).ToUnixTimeSeconds() : null,
-                EndTime = evt.EndTime.HasValue ? new DateTimeOffset(evt.EndTime.Value).ToUnixTimeSeconds() : null,
+                EndTime = endTime,
                 Title = evt.Summary ?? "Untitled Event",
                 ChangedAt = currentSyncTime,
             };
@@ -480,6 +514,29 @@ public class SyncService
         }
 
         Console.WriteLine($"Synced {result.Events.Count} events for calendar {calendar.Name}");
+    }
+
+    /// <summary>
+    /// Parses recurrence end time from raw iCalendar data.
+    /// </summary>
+    private static DateTime? ParseCalDavRecurrenceEndTime(string rawICalendar)
+    {
+        try
+        {
+            var calendar = Ical.Net.Calendar.Load(rawICalendar);
+            var calendarEvent = calendar?.Events.FirstOrDefault();
+
+            if (calendarEvent != null)
+            {
+                return RecurrenceParser.CalculateRecurrenceEndTime(calendarEvent);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error parsing CalDAV recurrence: {ex.Message}");
+        }
+
+        return null;
     }
 }
 

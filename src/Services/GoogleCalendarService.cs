@@ -253,7 +253,7 @@ public class GoogleCalendarService : IGoogleCalendarService
         {
             var request = service.Events.List(calendarId);
             request.MaxResults = 250; // Max allowed by Google API
-            request.SingleEvents = true; // Expand recurring events
+            request.SingleEvents = false; // Get master recurring events with RRULE data
 
             // Use sync token for incremental sync if provided
             if (!string.IsNullOrEmpty(syncToken))

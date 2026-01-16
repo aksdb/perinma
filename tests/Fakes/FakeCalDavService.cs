@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -63,5 +64,121 @@ public class FakeCalDavService : ICalDavService
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult(true);
+    }
+
+    /// <summary>
+    /// Creates a simple CalDAV event without recurrence.
+    /// </summary>
+    public static CalDavEvent CreateEvent(string uid, string url, string summary, DateTime start, DateTime end)
+    {
+        var rawICalendar = $@"BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:{uid}
+DTSTART:{FormatDateTime(start)}
+DTEND:{FormatDateTime(end)}
+SUMMARY:{summary}
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR";
+
+        return new CalDavEvent
+        {
+            Uid = uid,
+            Url = url,
+            Summary = summary,
+            StartTime = start,
+            EndTime = end,
+            Status = "CONFIRMED",
+            RawICalendar = rawICalendar,
+            Deleted = false
+        };
+    }
+
+    /// <summary>
+    /// Creates a recurring CalDAV event with RRULE in the raw iCalendar data.
+    /// </summary>
+    public static CalDavEvent CreateRecurringEvent(
+        string uid,
+        string url,
+        string summary,
+        DateTime start,
+        DateTime end,
+        string rrule)
+    {
+        var rawICalendar = $@"BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:{uid}
+DTSTART:{FormatDateTime(start)}
+DTEND:{FormatDateTime(end)}
+SUMMARY:{summary}
+STATUS:CONFIRMED
+{rrule}
+END:VEVENT
+END:VCALENDAR";
+
+        return new CalDavEvent
+        {
+            Uid = uid,
+            Url = url,
+            Summary = summary,
+            StartTime = start,
+            EndTime = end,
+            Status = "CONFIRMED",
+            RawICalendar = rawICalendar,
+            Deleted = false
+        };
+    }
+
+    /// <summary>
+    /// Creates a recurring CalDAV event with timezone-aware times.
+    /// </summary>
+    public static CalDavEvent CreateRecurringEventWithTimezone(
+        string uid,
+        string url,
+        string summary,
+        DateTime start,
+        DateTime end,
+        string tzid,
+        string rrule)
+    {
+        var rawICalendar = $@"BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VTIMEZONE
+TZID:{tzid}
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:{uid}
+DTSTART;TZID={tzid}:{FormatDateTimeLocal(start)}
+DTEND;TZID={tzid}:{FormatDateTimeLocal(end)}
+SUMMARY:{summary}
+STATUS:CONFIRMED
+{rrule}
+END:VEVENT
+END:VCALENDAR";
+
+        return new CalDavEvent
+        {
+            Uid = uid,
+            Url = url,
+            Summary = summary,
+            StartTime = start,
+            EndTime = end,
+            Status = "CONFIRMED",
+            RawICalendar = rawICalendar,
+            Deleted = false
+        };
+    }
+
+    private static string FormatDateTime(DateTime dt)
+    {
+        var utc = dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
+        return utc.ToString("yyyyMMdd'T'HHmmss'Z'");
+    }
+
+    private static string FormatDateTimeLocal(DateTime dt)
+    {
+        return dt.ToString("yyyyMMdd'T'HHmmss");
     }
 }
