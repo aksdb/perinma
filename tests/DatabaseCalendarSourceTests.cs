@@ -1,5 +1,8 @@
 using System;
+using System.Linq;
 using CredentialStore;
+using Google.Apis.Json;
+using Google.Apis.Calendar.v3.Data;
 using NUnit.Framework;
 using perinma.Models;
 using perinma.Services;
@@ -409,4 +412,358 @@ public class DatabaseCalendarSourceTests
         Assert.That(calendarData.Enabled, Is.True);
         Assert.That(calendarData.LastSync, Is.EqualTo(lastSync));
     }
+
+    #region Recurrence Tests
+
+    [Test]
+    public async Task GetCalendarEvents_GoogleRecurringEvent_ReturnsOccurrencesInRange()
+    {
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+        var calendarSource = new DatabaseCalendarSource(storage);
+
+        var now = DateTime.UtcNow;
+        var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
+        var weekEnd = weekStart.AddDays(7);
+
+        var accountId = Guid.NewGuid().ToString();
+        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "Google" });
+
+        var calendar = new CalendarDbo
+        {
+            AccountId = accountId,
+            Name = "Test Calendar",
+            CalendarId = "",
+            Enabled = 1
+        };
+        await storage.CreateOrUpdateCalendarAsync(calendar);
+
+        var eventStart = weekStart.AddHours(10);
+        var eventEnd = weekStart.AddHours(11);
+        var eventId = Guid.NewGuid().ToString();
+
+        var eventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendar.CalendarId,
+            EventId = eventId,
+            ExternalId = "recurring_event",
+            StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(weekEnd.AddDays(30)).ToUnixTimeSeconds(),
+            Title = "Weekly Meeting",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        await storage.CreateOrUpdateEventAsync(eventDbo);
+
+        var googleEvent = new Event
+        {
+            Id = "recurring_event",
+            Summary = "Weekly Meeting",
+            Status = "confirmed",
+            Start = new EventDateTime { DateTimeRaw = eventStart.ToString("o") },
+            End = new EventDateTime { DateTimeRaw = eventEnd.ToString("o") },
+            Recurrence = new List<string> { "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR" }
+        };
+
+        var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
+        await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
+
+        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+
+        Assert.That(events.Count, Is.GreaterThan(0));
+        foreach (var evt in events)
+        {
+            Assert.That(evt.Title, Is.EqualTo("Weekly Meeting"));
+        }
+    }
+
+    [Test]
+    public async Task GetCalendarEvents_GoogleNonRecurringEvent_ReturnsSingleEvent()
+    {
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+        var calendarSource = new DatabaseCalendarSource(storage);
+
+        var now = DateTime.UtcNow;
+        var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
+        var weekEnd = weekStart.AddDays(7);
+
+        var accountId = Guid.NewGuid().ToString();
+        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "Google" });
+
+        var calendar = new CalendarDbo
+        {
+            AccountId = accountId,
+            Name = "Test Calendar",
+            CalendarId = "",
+            Enabled = 1
+        };
+        await storage.CreateOrUpdateCalendarAsync(calendar);
+
+        var eventStart = weekStart.AddHours(10);
+        var eventEnd = weekStart.AddHours(11);
+        var eventId = Guid.NewGuid().ToString();
+
+        var eventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendar.CalendarId,
+            EventId = eventId,
+            ExternalId = "single_event",
+            StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(eventEnd).ToUnixTimeSeconds(),
+            Title = "One-time Meeting",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        await storage.CreateOrUpdateEventAsync(eventDbo);
+
+        var googleEvent = new Event
+        {
+            Id = "single_event",
+            Summary = "One-time Meeting",
+            Status = "confirmed",
+            Start = new EventDateTime { DateTimeRaw = eventStart.ToString("o") },
+            End = new EventDateTime { DateTimeRaw = eventEnd.ToString("o") }
+        };
+
+        var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
+        await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
+
+        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+
+        Assert.That(events, Has.Count.EqualTo(1));
+        Assert.That(events[0].Title, Is.EqualTo("One-time Meeting"));
+        Assert.That(events[0].StartTime, Is.EqualTo(eventStart));
+        Assert.That(events[0].EndTime, Is.EqualTo(eventEnd));
+    }
+
+    [Test]
+    public async Task GetCalendarEvents_CalDavRecurringEvent_ReturnsOccurrencesInRange()
+    {
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+        var calendarSource = new DatabaseCalendarSource(storage);
+
+        var now = DateTime.UtcNow;
+        var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
+        var weekEnd = weekStart.AddDays(7);
+
+        var accountId = Guid.NewGuid().ToString();
+        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "CalDAV" });
+
+        var calendar = new CalendarDbo
+        {
+            AccountId = accountId,
+            Name = "Test Calendar",
+            CalendarId = "",
+            Enabled = 1
+        };
+        await storage.CreateOrUpdateCalendarAsync(calendar);
+
+        var eventStart = weekStart.AddHours(10);
+        var eventEnd = weekStart.AddHours(11);
+        var eventId = Guid.NewGuid().ToString();
+
+        var eventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendar.CalendarId,
+            EventId = eventId,
+            ExternalId = "uid_123",
+            StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(weekEnd.AddDays(30)).ToUnixTimeSeconds(),
+            Title = "Daily Standup",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        await storage.CreateOrUpdateEventAsync(eventDbo);
+
+        var rawICalendar = $@"BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:uid_123
+DTSTART:{eventStart:yyyyMMdd'T'HHmmss'Z'}
+DTEND:{eventEnd:yyyyMMdd'T'HHmmss'Z'}
+SUMMARY:Daily Standup
+STATUS:CONFIRMED
+RRULE:FREQ=DAILY;INTERVAL=1
+END:VEVENT
+END:VCALENDAR";
+
+        await storage.SetEventData(eventId, "rawData", rawICalendar);
+
+        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+
+        Assert.That(events.Count, Is.GreaterThan(0));
+        foreach (var evt in events)
+        {
+            Assert.That(evt.Title, Is.EqualTo("Daily Standup"));
+        }
+    }
+
+    [Test]
+    public async Task GetCalendarEvents_CalDavNonRecurringEvent_ReturnsSingleEvent()
+    {
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+        var calendarSource = new DatabaseCalendarSource(storage);
+
+        var now = DateTime.UtcNow;
+        var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
+        var weekEnd = weekStart.AddDays(7);
+
+        var accountId = Guid.NewGuid().ToString();
+        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "CalDAV" });
+
+        var calendar = new CalendarDbo
+        {
+            AccountId = accountId,
+            Name = "Test Calendar",
+            CalendarId = "",
+            Enabled = 1
+        };
+        await storage.CreateOrUpdateCalendarAsync(calendar);
+
+        var eventStart = weekStart.AddHours(10);
+        var eventEnd = weekStart.AddHours(11);
+        var eventId = Guid.NewGuid().ToString();
+
+        var eventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendar.CalendarId,
+            EventId = eventId,
+            ExternalId = "uid_456",
+            StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(eventEnd).ToUnixTimeSeconds(),
+            Title = "One-time Event",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        await storage.CreateOrUpdateEventAsync(eventDbo);
+
+        var rawICalendar = $@"BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:uid_456
+DTSTART:{eventStart:yyyyMMdd'T'HHmmss'Z'}
+DTEND:{eventEnd:yyyyMMdd'T'HHmmss'Z'}
+SUMMARY:One-time Event
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR";
+
+        await storage.SetEventData(eventId, "rawData", rawICalendar);
+
+        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+
+        Assert.That(events, Has.Count.EqualTo(1));
+        Assert.That(events[0].Title, Is.EqualTo("One-time Event"));
+        Assert.That(events[0].StartTime, Is.EqualTo(eventStart));
+        Assert.That(events[0].EndTime, Is.EqualTo(eventEnd));
+    }
+
+    [Test]
+    public async Task GetCalendarEvents_RecurringEventOutsideRange_ReturnsEmptyList()
+    {
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+        var calendarSource = new DatabaseCalendarSource(storage);
+
+        var now = DateTime.UtcNow;
+        var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
+        var weekEnd = weekStart.AddDays(7);
+
+        var accountId = Guid.NewGuid().ToString();
+        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "Google" });
+
+        var calendar = new CalendarDbo
+        {
+            AccountId = accountId,
+            Name = "Test Calendar",
+            CalendarId = "",
+            Enabled = 1
+        };
+        await storage.CreateOrUpdateCalendarAsync(calendar);
+
+        var eventStart = weekStart.AddDays(-14);
+        var eventEnd = weekStart.AddDays(-14).AddHours(1);
+        var eventId = Guid.NewGuid().ToString();
+
+        var eventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendar.CalendarId,
+            EventId = eventId,
+            ExternalId = "past_recurring",
+            StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(eventStart.AddDays(7)).ToUnixTimeSeconds(),
+            Title = "Past Event",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        await storage.CreateOrUpdateEventAsync(eventDbo);
+
+        var googleEvent = new Event
+        {
+            Id = "past_recurring",
+            Summary = "Past Event",
+            Status = "confirmed",
+            Start = new EventDateTime { DateTimeRaw = eventStart.ToString("o") },
+            End = new EventDateTime { DateTimeRaw = eventEnd.ToString("o") },
+            Recurrence = new List<string> { "RRULE:FREQ=WEEKLY;COUNT=3" }
+        };
+
+        var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
+        await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
+
+        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+
+        Assert.That(events, Has.Count.EqualTo(0));
+    }
+
+    [Test]
+    public async Task GetCalendarEvents_UnknownAccountType_ReturnsFallbackEvent()
+    {
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+        var calendarSource = new DatabaseCalendarSource(storage);
+
+        var now = DateTime.UtcNow;
+        var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
+        var weekEnd = weekStart.AddDays(7);
+
+        var accountId = Guid.NewGuid().ToString();
+        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "Unknown" });
+
+        var calendar = new CalendarDbo
+        {
+            AccountId = accountId,
+            Name = "Test Calendar",
+            CalendarId = "",
+            Enabled = 1
+        };
+        await storage.CreateOrUpdateCalendarAsync(calendar);
+
+        var eventStart = weekStart.AddHours(10);
+        var eventEnd = weekStart.AddHours(11);
+        var eventId = Guid.NewGuid().ToString();
+
+        var eventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendar.CalendarId,
+            EventId = eventId,
+            ExternalId = "unknown_event",
+            StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(eventEnd).ToUnixTimeSeconds(),
+            Title = "Unknown Type Event",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        await storage.CreateOrUpdateEventAsync(eventDbo);
+
+        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+
+        Assert.That(events, Has.Count.EqualTo(1));
+        Assert.That(events[0].Title, Is.EqualTo("Unknown Type Event"));
+    }
+
+    #endregion
 }
