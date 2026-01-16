@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Google.Apis.Json;
 using Ical.Net.DataTypes;
+using Ical.Net.Evaluation;
 using perinma.Models;
 using perinma.Storage.Models;
 using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
@@ -191,44 +192,21 @@ public class DatabaseCalendarSource : ICalendarSource
     {
         var events = _storage.GetEventsByTimeRangeAsync(startTime, endTime).GetAwaiter().GetResult();
 
-        return events.Select(e =>
+        var calendarEvents = new List<CalendarEvent>();
+
+        foreach (var e in events)
         {
-            var (eventStartTime, eventEndTime) = e.AccountType switch
+            var occurrences = e.AccountType switch
             {
-                "Google" => ExtractGoogleEventTimes(e),
-                "CalDAV" => ExtractCalDavEventTimes(e),
-                _ => GetFallbackTimes(e)
+                "Google" => GetGoogleEventOccurrences(e, startTime, endTime),
+                "CalDAV" => GetCalDavEventOccurrences(e, startTime, endTime),
+                _ => GetFallbackOccurrences(e, startTime, endTime)
             };
 
-            return new CalendarEvent
-            {
-                Calendar = new Calendar
-                {
-                    Account = new Account
-                    {
-                        Id = Guid.Parse(e.AccountId),
-                        Name = e.AccountName,
-                        Type = e.AccountType
-                    },
-                    Id = Guid.Parse(e.CalendarId),
-                    ExternalId = e.CalendarExternalId,
-                    Name = e.CalendarName,
-                    Color = e.CalendarColor,
-                    Enabled = e.CalendarEnabled == 1,
-                    LastSync = e.CalendarLastSync.HasValue
-                        ? DateTimeOffset.FromUnixTimeSeconds(e.CalendarLastSync.Value).DateTime
-                        : null
-                },
-                Id = Guid.Parse(e.EventId),
-                ExternalId = e.ExternalId,
-                StartTime = eventStartTime,
-                EndTime = eventEndTime,
-                Title = e.Title,
-                ChangedAt = e.ChangedAt.HasValue
-                    ? DateTimeOffset.FromUnixTimeSeconds(e.ChangedAt.Value).DateTime
-                    : null
-            };
-        }).ToList();
+            calendarEvents.AddRange(occurrences);
+        }
+
+        return calendarEvents;
     }
 
     private (DateTime startTime, DateTime endTime) ExtractGoogleEventTimes(CalendarEventQueryResult result)
@@ -267,6 +245,184 @@ public class DatabaseCalendarSource : ICalendarSource
             : GetFallbackEndTime(result);
 
         return (startTime, endTime);
+    }
+
+    private List<CalendarEvent> GetGoogleEventOccurrences(CalendarEventQueryResult e, DateTime queryStart, DateTime queryEnd)
+    {
+        var googleEvent = TryParseGoogleEvent(e.RawData);
+        if (googleEvent == null)
+        {
+            return GetFallbackOccurrences(e, queryStart, queryEnd);
+        }
+
+        if (googleEvent.Recurrence == null || googleEvent.Recurrence.Count == 0)
+        {
+            var (eventStartTime, eventEndTime) = ExtractGoogleEventTimes(e);
+            return CreateCalendarEvent(e, eventStartTime, eventEndTime);
+        }
+
+        var baseStartTime = ParseGoogleEventDateTime(googleEvent.Start) ?? GetFallbackStartTime(e);
+        var baseEndTime = ParseGoogleEventDateTime(googleEvent.End) ?? GetFallbackEndTime(e);
+
+        return GetRecurringOccurrences(e, googleEvent.Recurrence, baseStartTime, baseEndTime, queryStart, queryEnd);
+    }
+
+    private List<CalendarEvent> GetCalDavEventOccurrences(CalendarEventQueryResult e, DateTime queryStart, DateTime queryEnd)
+    {
+        var calDavEvent = TryParseCalDavEvent(e.RawData);
+        if (calDavEvent == null)
+        {
+            return GetFallbackOccurrences(e, queryStart, queryEnd);
+        }
+
+        if (calDavEvent.RecurrenceRules == null || calDavEvent.RecurrenceRules.Count == 0)
+        {
+            var (eventStartTime, eventEndTime) = ExtractCalDavEventTimes(e);
+            return CreateCalendarEvent(e, eventStartTime, eventEndTime);
+        }
+
+        var baseStartTime = ParseCalDavDateTime(calDavEvent.Start) ?? GetFallbackStartTime(e);
+        var baseEndTime = ParseCalDavDateTime(calDavEvent.End) ?? GetFallbackEndTime(e);
+
+        return GetOccurrencesFromICalendarEvent(e, calDavEvent, baseStartTime, baseEndTime, queryStart, queryEnd);
+    }
+
+    private List<CalendarEvent> GetFallbackOccurrences(CalendarEventQueryResult e, DateTime queryStart, DateTime queryEnd)
+    {
+        var (baseStartTime, baseEndTime) = GetFallbackTimes(e);
+        return CreateCalendarEvent(e, baseStartTime, baseEndTime);
+    }
+
+    private List<CalendarEvent> CreateCalendarEvent(CalendarEventQueryResult e, DateTime eventStartTime, DateTime eventEndTime)
+    {
+        return new List<CalendarEvent>
+        {
+            new CalendarEvent
+            {
+                Calendar = new Calendar
+                {
+                    Account = new Account
+                    {
+                        Id = Guid.Parse(e.AccountId),
+                        Name = e.AccountName,
+                        Type = e.AccountType
+                    },
+                    Id = Guid.Parse(e.CalendarId),
+                    ExternalId = e.CalendarExternalId,
+                    Name = e.CalendarName,
+                    Color = e.CalendarColor,
+                    Enabled = e.CalendarEnabled == 1,
+                    LastSync = e.CalendarLastSync.HasValue
+                        ? DateTimeOffset.FromUnixTimeSeconds(e.CalendarLastSync.Value).DateTime
+                        : null
+                },
+                Id = Guid.Parse(e.EventId),
+                ExternalId = e.ExternalId,
+                StartTime = eventStartTime,
+                EndTime = eventEndTime,
+                Title = e.Title,
+                ChangedAt = e.ChangedAt.HasValue
+                    ? DateTimeOffset.FromUnixTimeSeconds(e.ChangedAt.Value).DateTime
+                    : null
+            }
+        };
+    }
+
+    private List<CalendarEvent> GetRecurringOccurrences(CalendarEventQueryResult e, IList<string> recurrence, DateTime eventStart, DateTime eventEnd, DateTime queryStart, DateTime queryEnd)
+    {
+        try
+        {
+            var icalBuilder = new System.Text.StringBuilder();
+            icalBuilder.AppendLine("BEGIN:VCALENDAR");
+            icalBuilder.AppendLine("VERSION:2.0");
+            icalBuilder.AppendLine("BEGIN:VEVENT");
+            icalBuilder.AppendLine($"DTSTART:{FormatDateTime(eventStart)}");
+            icalBuilder.AppendLine($"DTEND:{FormatDateTime(eventEnd)}");
+            icalBuilder.AppendLine("UID:temp-uid@perinma");
+
+            foreach (var rule in recurrence)
+            {
+                icalBuilder.AppendLine(rule);
+            }
+
+            icalBuilder.AppendLine("END:VEVENT");
+            icalBuilder.AppendLine("END:VCALENDAR");
+
+            var calendar = ICalCalendar.Load(icalBuilder.ToString());
+            var calendarEvent = calendar?.Events.FirstOrDefault();
+
+            if (calendarEvent != null)
+            {
+                return GetOccurrencesFromICalendarEvent(e, calendarEvent, eventStart, eventEnd, queryStart, queryEnd);
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Console.WriteLine($"Error parsing Google recurrence rule: {ex.Message}");
+        }
+
+        return CreateCalendarEvent(e, eventStart, eventEnd);
+    }
+
+    private List<CalendarEvent> GetOccurrencesFromICalendarEvent(CalendarEventQueryResult e, ICalCalendarEvent calDavEvent, DateTime eventStart, DateTime eventEnd, DateTime queryStart, DateTime queryEnd)
+    {
+        try
+        {
+            var result = new List<CalendarEvent>();
+            var duration = eventEnd - eventStart;
+            var queryStartUtc = queryStart.ToUniversalTime();
+            var queryEndUtc = queryEnd.ToUniversalTime();
+            
+            var occurrences = calDavEvent.GetOccurrences(startTime: new CalDateTime(queryStartUtc));
+
+            var filteredOccurrences = occurrences
+                .TakeWhile(o => o.Period.StartTime.Value <= queryEndUtc)
+                .Where(o => o.Period.StartTime.Value >= queryStartUtc);
+
+            foreach (var occurrence in filteredOccurrences)
+            {
+                var occStart = occurrence.Period.StartTime.Value;
+                var occEnd = occStart.Add(duration);
+
+                var calendarEvent = new CalendarEvent
+                {
+                    Calendar = new Calendar
+                    {
+                        Account = new Account
+                        {
+                            Id = Guid.Parse(e.AccountId),
+                            Name = e.AccountName,
+                            Type = e.AccountType
+                        },
+                        Id = Guid.Parse(e.CalendarId),
+                        ExternalId = e.CalendarExternalId,
+                        Name = e.CalendarName,
+                        Color = e.CalendarColor,
+                        Enabled = e.CalendarEnabled == 1,
+                        LastSync = e.CalendarLastSync.HasValue
+                            ? DateTimeOffset.FromUnixTimeSeconds(e.CalendarLastSync.Value).DateTime
+                            : null
+                    },
+                    Id = Guid.Parse(e.EventId),
+                    ExternalId = e.ExternalId,
+                    StartTime = occStart,
+                    EndTime = occEnd,
+                    Title = e.Title,
+                    ChangedAt = e.ChangedAt.HasValue
+                        ? DateTimeOffset.FromUnixTimeSeconds(e.ChangedAt.Value).DateTime
+                        : null
+                };
+
+                result.Add(calendarEvent);
+            }
+
+            return result;
+        }
+        catch (System.Exception ex)
+        {
+            Console.WriteLine($"Error getting occurrences for event: {ex.Message}");
+            return CreateCalendarEvent(e, eventStart, eventEnd);
+        }
     }
 
     private (DateTime startTime, DateTime endTime) GetFallbackTimes(CalendarEventQueryResult result)
@@ -366,5 +522,11 @@ public class DatabaseCalendarSource : ICalendarSource
         }
 
         return utcDateTime.ToLocalTime();
+    }
+
+    private string FormatDateTime(DateTime dt)
+    {
+        var utc = dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
+        return utc.ToString("yyyyMMdd'T'HHmmss'Z'");
     }
 }
