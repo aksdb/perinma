@@ -131,6 +131,29 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         return rowsAffected > 0;
     }
 
+    /// <summary>
+    /// Clears all sync data for an account, preparing it for a full resync.
+    /// Deletes all calendars (and their events via cascade) and clears the calendar sync token.
+    /// </summary>
+    public async Task ClearAccountSyncDataAsync(string accountId)
+    {
+        using var connection = databaseService.GetConnection();
+
+        // Delete all calendars for this account (events are cascade-deleted)
+        await connection.ExecuteAsync(
+            "DELETE FROM calendar WHERE account_id = @AccountId",
+            new { AccountId = accountId },
+            commandTimeout: 30
+        );
+
+        // Clear only the account's calendar sync token
+        await connection.ExecuteAsync(
+            "UPDATE account SET data = jsonb_remove(coalesce(data, jsonb_object()), '$.calendarSyncToken') WHERE account_id = @AccountId",
+            new { AccountId = accountId },
+            commandTimeout: 30
+        );
+    }
+
     #region Calendar Methods
 
     public async Task<IEnumerable<CalendarDbo>> GetCalendarsByAccountAsync(string accountId)

@@ -30,6 +30,71 @@ public class SyncService
     }
 
     /// <summary>
+    /// Forces a complete resync of an account by clearing all local data and sync tokens,
+    /// then performing a full sync from the remote server.
+    /// </summary>
+    public async Task<SyncResult> ForceResyncAccountAsync(string accountId, CancellationToken cancellationToken = default)
+    {
+        var result = new SyncResult();
+
+        try
+        {
+            var account = await _storage.GetAccountByIdAsync(accountId);
+            if (account == null)
+            {
+                result.Success = false;
+                result.Errors.Add($"Account with id {accountId} not found");
+                return result;
+            }
+
+            Console.WriteLine($"Force resync requested for account: {account.Name}");
+
+            // Clear all sync data (calendars, events, sync tokens)
+            await _storage.ClearAccountSyncDataAsync(accountId);
+            Console.WriteLine($"Cleared all sync data for account: {account.Name}");
+
+            // Perform a fresh sync
+            try
+            {
+                if (account.Type.Equals("Google", StringComparison.OrdinalIgnoreCase))
+                {
+                    await SyncGoogleAccountAsync(account, cancellationToken);
+                }
+                else if (account.Type.Equals("CalDAV", StringComparison.OrdinalIgnoreCase))
+                {
+                    await SyncCalDavAccountAsync(account, cancellationToken);
+                }
+                else
+                {
+                    result.Errors.Add($"Unknown account type: {account.Type}");
+                    result.FailedAccounts++;
+                    result.Success = false;
+                    return result;
+                }
+
+                result.SyncedAccounts++;
+                result.Success = true;
+                Console.WriteLine($"Force resync completed for account: {account.Name}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during force resync for account {account.Name}: {ex.Message}");
+                result.FailedAccounts++;
+                result.Errors.Add($"{account.Name}: {ex.Message}");
+                result.Success = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during force resync: {ex.Message}");
+            result.Success = false;
+            result.Errors.Add(ex.Message);
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Syncs calendars from all accounts (Google and CalDAV)
     /// </summary>
     public async Task<SyncResult> SyncAllAccountsAsync(CancellationToken cancellationToken = default)

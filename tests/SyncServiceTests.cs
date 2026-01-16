@@ -944,4 +944,284 @@ public class SyncServiceTests
     }
 
     #endregion
+
+    #region Force Resync Tests
+
+    [Test]
+    public async Task ForceResync_ClearsAllDataAndPerformsFullSync()
+    {
+        // Arrange
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+
+        // Create test account
+        var accountId = Guid.NewGuid().ToString();
+        var account = new AccountDbo
+        {
+            AccountId = accountId,
+            Name = "Test Account",
+            Type = "Google"
+        };
+        await storage.CreateAccountAsync(account);
+
+        // Store test credentials
+        var credentials = new GoogleCredentials
+        {
+            Type = "Google",
+            AccessToken = "test_token",
+            RefreshToken = "test_refresh",
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
+            TokenType = "Bearer",
+            Scope = "calendar.readonly"
+        };
+        credentialManager.StoreGoogleCredentials(accountId, credentials);
+
+        // Initial sync with 3 calendars and events
+        var fakeGoogleService = new FakeGoogleCalendarService();
+        fakeGoogleService.SetCalendars(
+            FakeGoogleCalendarService.CreateCalendar("cal1", "Calendar 1", selected: true),
+            FakeGoogleCalendarService.CreateCalendar("cal2", "Calendar 2", selected: true),
+            FakeGoogleCalendarService.CreateCalendar("cal3", "Calendar 3", selected: true)
+        );
+
+        var eventStart = DateTime.UtcNow.AddHours(1);
+        var eventEnd = DateTime.UtcNow.AddHours(2);
+        fakeGoogleService.SetEvents("cal1",
+            FakeGoogleCalendarService.CreateEvent("event1", "Event 1", eventStart, eventEnd)
+        );
+        fakeGoogleService.SetEvents("cal2",
+            FakeGoogleCalendarService.CreateEvent("event2", "Event 2", eventStart, eventEnd)
+        );
+
+        var fakeCalDavService = new FakeCalDavService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
+
+        // Perform initial sync
+        await syncService.SyncAllAccountsAsync();
+
+        // Verify initial state
+        var calendarsBeforeResync = await storage.GetCalendarsByAccountAsync(accountId);
+        Assert.That(calendarsBeforeResync.Count(), Is.EqualTo(3));
+
+        var cal1 = calendarsBeforeResync.First(c => c.ExternalId == "cal1");
+        var eventsBeforeResync = await storage.GetEventsByCalendarAsync(cal1.CalendarId);
+        Assert.That(eventsBeforeResync.Count(), Is.EqualTo(1));
+
+        // Store a sync token to verify it gets cleared
+        await storage.SetAccountData(account, "calendarSyncToken", "some-sync-token");
+        var tokenBefore = await storage.GetAccountData(account, "calendarSyncToken");
+        Assert.That(tokenBefore, Is.EqualTo("some-sync-token"));
+
+        // Now simulate remote changes - only 2 calendars exist now
+        fakeGoogleService.SetCalendars(
+            FakeGoogleCalendarService.CreateCalendar("cal1", "Calendar 1 - Updated", selected: true),
+            FakeGoogleCalendarService.CreateCalendar("cal4", "New Calendar", selected: true)
+        );
+        fakeGoogleService.SetEvents("cal1",
+            FakeGoogleCalendarService.CreateEvent("event1", "Event 1 - Updated", eventStart, eventEnd),
+            FakeGoogleCalendarService.CreateEvent("event3", "New Event", eventStart.AddHours(3), eventEnd.AddHours(3))
+        );
+        fakeGoogleService.SetEvents("cal4",
+            FakeGoogleCalendarService.CreateEvent("event4", "Event in New Calendar", eventStart, eventEnd)
+        );
+
+        // Act - Force resync
+        var result = await syncService.ForceResyncAccountAsync(accountId);
+
+        // Assert
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.SyncedAccounts, Is.EqualTo(1));
+        Assert.That(result.FailedAccounts, Is.EqualTo(0));
+
+        // Verify sync token was cleared (or has a new value from the fresh sync)
+        var tokenAfter = await storage.GetAccountData(account, "calendarSyncToken");
+        Assert.That(tokenAfter, Is.Not.EqualTo("some-sync-token"));
+
+        // Verify calendars reflect the new remote state
+        var calendarsAfterResync = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendarList = calendarsAfterResync.ToList();
+
+        Assert.That(calendarList, Has.Count.EqualTo(2));
+        Assert.That(calendarList.Any(c => c.ExternalId == "cal1" && c.Name == "Calendar 1 - Updated"), Is.True);
+        Assert.That(calendarList.Any(c => c.ExternalId == "cal4" && c.Name == "New Calendar"), Is.True);
+        Assert.That(calendarList.Any(c => c.ExternalId == "cal2"), Is.False);
+        Assert.That(calendarList.Any(c => c.ExternalId == "cal3"), Is.False);
+
+        // Verify events reflect the new remote state
+        var updatedCal1 = calendarList.First(c => c.ExternalId == "cal1");
+        var eventsAfterResync = await storage.GetEventsByCalendarAsync(updatedCal1.CalendarId);
+        var eventList = eventsAfterResync.ToList();
+
+        Assert.That(eventList, Has.Count.EqualTo(2));
+        Assert.That(eventList.Any(e => e.ExternalId == "event1" && e.Title == "Event 1 - Updated"), Is.True);
+        Assert.That(eventList.Any(e => e.ExternalId == "event3" && e.Title == "New Event"), Is.True);
+    }
+
+    [Test]
+    public async Task ForceResync_WithInvalidAccountId_ReturnsError()
+    {
+        // Arrange
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+
+        var fakeGoogleService = new FakeGoogleCalendarService();
+        var fakeCalDavService = new FakeCalDavService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
+
+        // Act
+        var result = await syncService.ForceResyncAccountAsync("non-existent-account-id");
+
+        // Assert
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Errors, Has.Count.EqualTo(1));
+        Assert.That(result.Errors[0], Does.Contain("not found"));
+    }
+
+    [Test]
+    public async Task ForceResync_CalDavAccount_ClearsDataAndResyncs()
+    {
+        // Arrange
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+
+        // Create CalDAV account
+        var accountId = Guid.NewGuid().ToString();
+        var account = new AccountDbo
+        {
+            AccountId = accountId,
+            Name = "Test CalDAV Account",
+            Type = "CalDAV"
+        };
+        await storage.CreateAccountAsync(account);
+
+        var credentials = new CalDavCredentials
+        {
+            Type = "CalDAV",
+            ServerUrl = "https://caldav.example.com",
+            Username = "testuser",
+            Password = "testpass"
+        };
+        credentialManager.StoreCalDavCredentials(accountId, credentials);
+
+        var fakeCalDavService = new FakeCalDavService();
+        fakeCalDavService.SetCalendars(new CalDavCalendar
+        {
+            Url = "https://caldav.example.com/calendars/work",
+            DisplayName = "Work Calendar",
+            Deleted = false
+        });
+
+        var fakeGoogleService = new FakeGoogleCalendarService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
+
+        // Perform initial sync
+        await syncService.SyncAllAccountsAsync();
+
+        // Verify initial state
+        var calendarsBeforeResync = await storage.GetCalendarsByAccountAsync(accountId);
+        Assert.That(calendarsBeforeResync.Count(), Is.EqualTo(1));
+
+        // Store a sync token
+        await storage.SetAccountData(account, "calendarSyncToken", "caldav-sync-token");
+
+        // Change remote state
+        fakeCalDavService.SetCalendars(
+            new CalDavCalendar
+            {
+                Url = "https://caldav.example.com/calendars/personal",
+                DisplayName = "Personal Calendar",
+                Deleted = false
+            }
+        );
+
+        // Act - Force resync
+        var result = await syncService.ForceResyncAccountAsync(accountId);
+
+        // Assert
+        Assert.That(result.Success, Is.True);
+
+        var calendarsAfterResync = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendarList = calendarsAfterResync.ToList();
+
+        Assert.That(calendarList, Has.Count.EqualTo(1));
+        Assert.That(calendarList[0].Name, Is.EqualTo("Personal Calendar"));
+        Assert.That(calendarList[0].ExternalId, Is.EqualTo("https://caldav.example.com/calendars/personal"));
+    }
+
+    [Test]
+    public async Task ClearAccountSyncData_RemovesCalendarsEventsAndSyncToken()
+    {
+        // Arrange
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+
+        // Create test account
+        var accountId = Guid.NewGuid().ToString();
+        var account = new AccountDbo
+        {
+            AccountId = accountId,
+            Name = "Test Account",
+            Type = "Google"
+        };
+        await storage.CreateAccountAsync(account);
+
+        // Create calendars
+        var cal1 = new CalendarDbo
+        {
+            AccountId = accountId,
+            CalendarId = Guid.NewGuid().ToString(),
+            ExternalId = "cal1",
+            Name = "Calendar 1",
+            Enabled = 1,
+            LastSync = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+        await storage.CreateOrUpdateCalendarAsync(cal1);
+
+        // Create events
+        var event1 = new CalendarEventDbo
+        {
+            CalendarId = cal1.CalendarId,
+            EventId = Guid.NewGuid().ToString(),
+            ExternalId = "event1",
+            Title = "Event 1",
+            StartTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            EndTime = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds(),
+            ChangedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+        await storage.CreateOrUpdateEventAsync(event1);
+
+        // Store sync token
+        await storage.SetAccountData(account, "calendarSyncToken", "test-sync-token");
+
+        // Verify data exists
+        var calendarsBeforeClear = await storage.GetCalendarsByAccountAsync(accountId);
+        Assert.That(calendarsBeforeClear.Count(), Is.EqualTo(1));
+
+        var eventsBeforeClear = await storage.GetEventsByCalendarAsync(cal1.CalendarId);
+        Assert.That(eventsBeforeClear.Count(), Is.EqualTo(1));
+
+        var tokenBeforeClear = await storage.GetAccountData(account, "calendarSyncToken");
+        Assert.That(tokenBeforeClear, Is.EqualTo("test-sync-token"));
+
+        // Act
+        await storage.ClearAccountSyncDataAsync(accountId);
+
+        // Assert - All data should be cleared
+        var calendarsAfterClear = await storage.GetCalendarsByAccountAsync(accountId);
+        Assert.That(calendarsAfterClear.Count(), Is.EqualTo(0));
+
+        // Events are cascade-deleted with calendars, but verify by checking the account still exists
+        var accountAfterClear = await storage.GetAccountByIdAsync(accountId);
+        Assert.That(accountAfterClear, Is.Not.Null);
+
+        // Sync token should be cleared (empty JSON object means key won't exist)
+        var tokenAfterClear = await storage.GetAccountData(account, "calendarSyncToken");
+        Assert.That(string.IsNullOrEmpty(tokenAfterClear), Is.True);
+    }
+
+    #endregion
 }

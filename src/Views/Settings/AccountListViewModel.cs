@@ -16,6 +16,7 @@ public partial class AccountListViewModel : ViewModelBase
     private readonly CredentialManagerService _credentialManager;
     private readonly GoogleOAuthService _oauthService;
     private readonly ICalDavService _calDavService;
+    private readonly SyncService _syncService;
     private AddAccountWindow? _addAccountWindow;
     private ReauthenticateAccountWindow? _reauthenticateWindow;
 
@@ -25,12 +26,13 @@ public partial class AccountListViewModel : ViewModelBase
     [ObservableProperty]
     private bool _canReauthenticate = true;
 
-    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService)
+    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, SyncService syncService)
     {
         _storage = storage;
         _credentialManager = credentialManager;
         _oauthService = oauthService;
         _calDavService = calDavService;
+        _syncService = syncService;
         _ = LoadAccountsAsync(); // Fire and forget initial load
     }
 
@@ -158,5 +160,39 @@ public partial class AccountListViewModel : ViewModelBase
         };
         _reauthenticateWindow.Show();
         CanReauthenticate = false;
+    }
+
+    [RelayCommand]
+    private async Task ForceResync(Guid accountId)
+    {
+        var account = Accounts.FirstOrDefault(a => a.Id == accountId);
+        if (account == null)
+        {
+            Console.WriteLine($"Account not found: {accountId}");
+            return;
+        }
+
+        try
+        {
+            Console.WriteLine($"Force resyncing account: {account.Name}");
+            var result = await _syncService.ForceResyncAccountAsync(accountId.ToString());
+
+            if (result.Success)
+            {
+                Console.WriteLine($"Force resync completed for account: {account.Name}");
+            }
+            else
+            {
+                Console.WriteLine($"Force resync failed for account: {account.Name}");
+                foreach (var error in result.Errors)
+                {
+                    Console.WriteLine($"  - {error}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during force resync: {ex.Message}");
+        }
     }
 }

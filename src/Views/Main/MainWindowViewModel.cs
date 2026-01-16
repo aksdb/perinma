@@ -60,7 +60,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _settingsWindow = new SettingsWindow
         {
-            DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService, _calDavService)
+            DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService, _calDavService, _syncService)
         };
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
