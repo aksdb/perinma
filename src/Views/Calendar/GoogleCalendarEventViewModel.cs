@@ -46,14 +46,7 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase
     {
         try
         {
-            var eventDbo = new CalendarEventDbo
-            {
-                CalendarId = _calendarEvent.Calendar.Id.ToString(),
-                EventId = _calendarEvent.Id.ToString(),
-                ExternalId = _calendarEvent.ExternalId
-            };
-
-            var rawData = await _storage.GetEventData(eventDbo, "rawData");
+            var rawData = await _storage.GetEventData(_calendarEvent.Id.ToString(), "rawData");
             if (!string.IsNullOrEmpty(rawData))
             {
                 var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(rawData);

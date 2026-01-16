@@ -156,6 +156,11 @@ public partial class EventItem : TemplatedControl
             return new GoogleCalendarEventViewModel(CalendarEvent, Storage);
         }
 
+        if (CalendarEvent.Calendar.Account.Type.Equals("CalDav", StringComparison.OrdinalIgnoreCase))
+        {
+            return new CalDavEventViewModel(CalendarEvent, Storage);
+        }
+
         return new CalendarEventViewModel(CalendarEvent);
     }
 

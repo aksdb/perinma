@@ -361,7 +361,7 @@ public class SyncServiceTests
 
         // Verify raw event data is stored
         var event1 = eventList.First(e => e.ExternalId == "event1");
-        var rawData = await storage.GetEventData(event1, "rawData");
+        var rawData = await storage.GetEventData(event1.EventId, "rawData");
         Assert.That(rawData, Is.Not.Null.And.Not.Empty);
         Assert.That(rawData, Does.Contain("Team Meeting"));
         Assert.That(rawData, Does.Contain("event1"));

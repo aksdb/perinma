@@ -324,7 +324,13 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         );
     }
 
-    public async Task<bool> CreateOrUpdateEventAsync(CalendarEventDbo eventDbo)
+    /// <summary>
+    /// Create or update the given event. A possible update is determined by the combination
+    /// of calendarId and externalId.
+    /// </summary>
+    /// <param name="eventDbo"></param>
+    /// <returns>The id of the event.</returns>
+    public async Task<string> CreateOrUpdateEventAsync(CalendarEventDbo eventDbo)
     {
         using var connection = databaseService.GetConnection();
 
@@ -334,7 +340,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         if (existing != null)
         {
             // Update existing event - keep the existing event_id
-            var rowsAffected = await connection.ExecuteAsync(
+            await connection.ExecuteAsync(
                 "UPDATE calendar_event SET start_time = @start_time, end_time = @end_time, " +
                 "title = @title, changed_at = @changed_at " +
                 "WHERE calendar_id = @calendar_id AND external_id = @external_id",
@@ -350,13 +356,13 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
                 commandTimeout: 30
             );
 
-            return rowsAffected > 0;
+            return existing.EventId;
         }
         else
         {
             // Insert new event with generated UUID
             var newEventId = Guid.NewGuid().ToString();
-            var rowsAffected = await connection.ExecuteAsync(
+            await connection.ExecuteAsync(
                 "INSERT INTO calendar_event (calendar_id, event_id, external_id, start_time, end_time, title, changed_at) " +
                 "VALUES (@calendar_id, @event_id, @external_id, @start_time, @end_time, @title, @changed_at)",
                 new
@@ -372,7 +378,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
                 commandTimeout: 30
             );
 
-            return rowsAffected > 0;
+            return newEventId;
         }
     }
 
@@ -389,7 +395,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         return rowsAffected;
     }
 
-    public async Task<bool> SetEventData(CalendarEventDbo eventDbo, string key, string value)
+    public async Task<bool> SetEventData(string eventId, string key, string value)
     {
         using var connection = databaseService.GetConnection();
 
@@ -397,16 +403,16 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
             """
                 UPDATE calendar_event
                 SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
-                WHERE calendar_id = @calendar_id AND external_id = @external_id
+                WHERE event_id = @eventId
             """,
-            param: new { key = $"$.{key}", value, calendar_id = eventDbo.CalendarId, external_id = eventDbo.ExternalId },
+            param: new { key = $"$.{key}", value, @eventId },
             commandTimeout: 30
         );
 
         return rowsAffected > 0;
     }
     
-    public async Task<bool> SetEventDataJson(CalendarEventDbo eventDbo, string key, string jsonValue)
+    public async Task<bool> SetEventDataJson(string eventId, string key, string jsonValue)
     {
         using var connection = databaseService.GetConnection();
 
@@ -414,16 +420,16 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
             """
                 UPDATE calendar_event
                 SET data = jsonb_set(coalesce(data, jsonb_object()), @key, jsonb(@jsonValue))
-                WHERE calendar_id = @calendar_id AND external_id = @external_id
+                WHERE event_id = @eventId
             """,
-            param: new { key = $"$.{key}", jsonValue, calendar_id = eventDbo.CalendarId, external_id = eventDbo.ExternalId },
+            param: new { key = $"$.{key}", jsonValue, eventId },
             commandTimeout: 30
         );
 
         return rowsAffected > 0;
     }
 
-    public async Task<string?> GetEventData(CalendarEventDbo eventDbo, string key)
+    public async Task<string?> GetEventData(string eventId, string key)
     {
         using var connection = databaseService.GetConnection();
 
@@ -431,9 +437,9 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
             """
             SELECT coalesce(data ->> @key, '') as value
             FROM calendar_event
-            WHERE calendar_id = @calendar_id AND external_id = @external_id
+            WHERE event_id = @eventId
             """,
-            param: new { key = $"$.{key}", calendar_id = eventDbo.CalendarId, external_id = eventDbo.ExternalId });
+            param: new { key = $"$.{key}", eventId });
     }
 
     #endregion

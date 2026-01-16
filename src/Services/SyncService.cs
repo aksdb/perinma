@@ -276,11 +276,11 @@ public class SyncService
                 ChangedAt = currentSyncTime,
             };
 
-            await _storage.CreateOrUpdateEventAsync(eventDbo);
+            var eventId = await _storage.CreateOrUpdateEventAsync(eventDbo);
 
             // Store raw Google event data for later use
             var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(evt);
-            await _storage.SetEventDataJson(eventDbo, "rawData", rawEventJson);
+            await _storage.SetEventDataJson(eventId, "rawData", rawEventJson);
         }
 
         // If this was a full sync, clean up events that weren't updated
@@ -453,12 +453,12 @@ public class SyncService
                 ChangedAt = currentSyncTime,
             };
 
-            await _storage.CreateOrUpdateEventAsync(eventDbo);
+            var eventId = await _storage.CreateOrUpdateEventAsync(eventDbo);
 
             // Store raw iCalendar data for later use
             if (!string.IsNullOrEmpty(evt.RawICalendar))
             {
-                await _storage.SetEventData(eventDbo, "rawData", evt.RawICalendar);
+                await _storage.SetEventData(eventId, "rawData", evt.RawICalendar);
             }
         }
 

@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cal="using:perinma.Views.Calendar"
+             x:DataType="cal:CalDavEventViewModel"
+             mc:Ignorable="d" d:DesignWidth="350" d:DesignHeight="200"
+             x:Class="perinma.Views.Calendar.CalDavEventView">
+
+    <StackPanel Spacing="8" Margin="12">
+        <TextBlock Text="Loading event details..." IsVisible="{Binding IsLoading}" />
+
+        <StackPanel Spacing="8" IsVisible="{Binding !IsLoading}">
+            <TextBlock Text="{Binding CalendarEvent.Title}" FontWeight="Bold" FontSize="14" />
+
+            <Separator />
+
+            <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="Start: " FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding CalendarEvent.StartTime}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="End: " FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding CalendarEvent.EndTime}" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="Status" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding Status}" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding Location, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="Location" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding Location}" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="Description" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding Description}" TextWrapping="Wrap" MaxHeight="200" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding Organizer, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="Organizer" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding Organizer}" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding Attendees, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="Attendees" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding Attendees}" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding Categories, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="Categories" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding Categories}" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding Url, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="URL" FontWeight="SemiBold" FontSize="12" />
+                <TextBlock Text="{Binding Url}" Foreground="Blue" TextWrapping="Wrap" />
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+
+</UserControl>
