@@ -196,7 +196,7 @@ public class DatabaseCalendarSource : ICalendarSource
             var (eventStartTime, eventEndTime) = e.AccountType switch
             {
                 "Google" => ExtractGoogleEventTimes(e),
-                "CalDav" => ExtractCalDavEventTimes(e),
+                "CalDAV" => ExtractCalDavEventTimes(e),
                 _ => GetFallbackTimes(e)
             };
 

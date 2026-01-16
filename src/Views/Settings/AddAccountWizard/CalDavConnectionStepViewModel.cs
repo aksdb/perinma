@@ -53,7 +53,7 @@ public partial class CalDavConnectionStepViewModel : ObservableValidator
     {
         return new CalDavCredentials
         {
-            Type = "CalDav",
+            Type = "CalDAV",
             ServerUrl = ServerUrl,
             Username = Username,
             Password = Password

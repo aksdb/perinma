@@ -40,7 +40,7 @@ public class SyncService
             // Get all accounts
             var accounts = await _storage.GetAllAccountsAsync();
             var googleAccounts = accounts.Where(a => a.Type.Equals("Google", StringComparison.OrdinalIgnoreCase)).ToList();
-            var caldavAccounts = accounts.Where(a => a.Type.Equals("CalDav", StringComparison.OrdinalIgnoreCase)).ToList();
+            var caldavAccounts = accounts.Where(a => a.Type.Equals("CalDAV", StringComparison.OrdinalIgnoreCase)).ToList();
 
             Console.WriteLine($"Found {googleAccounts.Count} Google accounts and {caldavAccounts.Count} CalDAV accounts to sync");
 
