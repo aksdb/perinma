@@ -39,7 +39,7 @@
 
             <StackPanel Spacing="4" IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                 <TextBlock Text="Description" FontWeight="SemiBold" FontSize="12" />
-                <html:HtmlPanel x:Name="DescriptionHtmlPanel" Text="{Binding Description}" MaxHeight="200" />
+                <html:HtmlPanel x:Name="DescriptionHtmlPanel" Text="{Binding Description}" MaxHeight="200" MaxWidth="400" />
             </StackPanel>
 
             <StackPanel Spacing="4" IsVisible="{Binding Organizer, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
