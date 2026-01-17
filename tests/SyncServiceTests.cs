@@ -1,4 +1,5 @@
 using CredentialStore;
+using Dapper;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Storage.Models;
@@ -1212,6 +1213,450 @@ public class SyncServiceTests
         // Sync token should be cleared (empty JSON object means key won't exist)
         var tokenAfterClear = await storage.GetAccountData(account, "calendarSyncToken");
         Assert.That(string.IsNullOrEmpty(tokenAfterClear), Is.True);
+    }
+
+    #endregion
+
+    #region Google Calendar Override Tests
+
+    [Test]
+    public async Task GoogleCancelledOverride_StoresWithOriginalStartAsStartAndEnd()
+    {
+        // Arrange
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+
+        var accountId = Guid.NewGuid().ToString();
+        var account = new AccountDbo
+        {
+            AccountId = accountId,
+            Name = "Test Account",
+            Type = "Google"
+        };
+        await storage.CreateAccountAsync(account);
+
+        var credentials = new GoogleCredentials
+        {
+            Type = "Google",
+            AccessToken = "test_token",
+            RefreshToken = "test_refresh",
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
+            TokenType = "Bearer"
+        };
+        credentialManager.StoreGoogleCredentials(accountId, credentials);
+
+        var fakeGoogleService = new FakeGoogleCalendarService();
+        fakeGoogleService.SetCalendars(
+            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        );
+
+        var recurringStart = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+        var recurringEnd = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc);
+
+        var overrideTime = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
+
+        fakeGoogleService.SetEvents("cal1",
+            FakeGoogleCalendarService.CreateRecurringEvent(
+                "recurring1",
+                "Weekly Meeting",
+                recurringStart,
+                recurringEnd,
+                "RRULE:FREQ=WEEKLY;BYDAY=WE"
+            ),
+            FakeGoogleCalendarService.CreateCancelledOverride(
+                "override1",
+                "recurring1",
+                overrideTime
+            )
+        );
+
+        var fakeCalDavService = new FakeCalDavService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
+
+        // Act
+        await syncService.SyncAllAccountsAsync();
+
+        // Assert
+        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendar = calendars.First();
+        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var eventList = events.ToList();
+
+        Assert.That(eventList, Has.Count.EqualTo(2));
+
+        var overrideEvent = eventList.FirstOrDefault(e => e.ExternalId == "override1");
+        Assert.That(overrideEvent, Is.Not.Null);
+
+        // For cancelled override, start and end should both be the original start time
+        var startTimestamp = overrideEvent!.StartTime!.Value;
+        var endTimestamp = overrideEvent.EndTime!.Value;
+        var startUtc = DateTimeOffset.FromUnixTimeSeconds(startTimestamp).UtcDateTime;
+        var endUtc = DateTimeOffset.FromUnixTimeSeconds(endTimestamp).UtcDateTime;
+
+        Assert.That(startUtc, Is.EqualTo(overrideTime));
+        Assert.That(endUtc, Is.EqualTo(overrideTime));
+    }
+
+    [Test]
+    public async Task GoogleModifiedOverride_WithTimeOutsideBounds_ExpandsBounds()
+    {
+        // Arrange
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+
+        var accountId = Guid.NewGuid().ToString();
+        var account = new AccountDbo
+        {
+            AccountId = accountId,
+            Name = "Test Account",
+            Type = "Google"
+        };
+        await storage.CreateAccountAsync(account);
+
+        var credentials = new GoogleCredentials
+        {
+            Type = "Google",
+            AccessToken = "test_token",
+            RefreshToken = "test_refresh",
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
+            TokenType = "Bearer"
+        };
+        credentialManager.StoreGoogleCredentials(accountId, credentials);
+
+        var fakeGoogleService = new FakeGoogleCalendarService();
+        fakeGoogleService.SetCalendars(
+            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        );
+
+        var recurringStart = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+        var recurringEnd = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc);
+
+        var originalStartTime = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
+        var newStart = new DateTime(2025, 1, 8, 9, 0, 0, DateTimeKind.Utc); // Earlier than original
+        var newEnd = new DateTime(2025, 1, 8, 10, 30, 0, DateTimeKind.Utc);
+
+        fakeGoogleService.SetEvents("cal1",
+            FakeGoogleCalendarService.CreateRecurringEvent(
+                "recurring1",
+                "Weekly Meeting",
+                recurringStart,
+                recurringEnd,
+                "RRULE:FREQ=WEEKLY;BYDAY=WE"
+            ),
+            FakeGoogleCalendarService.CreateModifiedOverride(
+                "override1",
+                "recurring1",
+                "Extended Meeting",
+                originalStartTime,
+                newStart,
+                newEnd
+            )
+        );
+
+        var fakeCalDavService = new FakeCalDavService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
+
+        // Act
+        await syncService.SyncAllAccountsAsync();
+
+        // Assert
+        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendar = calendars.First();
+        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var eventList = events.ToList();
+
+        Assert.That(eventList, Has.Count.EqualTo(2));
+
+        var overrideEvent = eventList.FirstOrDefault(e => e.ExternalId == "override1");
+        Assert.That(overrideEvent, Is.Not.Null);
+
+        // Bounds should be expanded to include original start time (10:00)
+        var startTimestamp = overrideEvent!.StartTime!.Value;
+        var startUtc = DateTimeOffset.FromUnixTimeSeconds(startTimestamp).UtcDateTime;
+
+        Assert.That(startUtc, Is.EqualTo(newStart)); // Starts at 9:00 (original new start)
+        Assert.That(startUtc, Is.LessThan(originalStartTime)); // Includes original start time
+    }
+
+    [Test]
+    public async Task GoogleOverride_WithExistingParent_CreatesRelation()
+    {
+        // Arrange
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+
+        var accountId = Guid.NewGuid().ToString();
+        var account = new AccountDbo
+        {
+            AccountId = accountId,
+            Name = "Test Account",
+            Type = "Google"
+        };
+        await storage.CreateAccountAsync(account);
+
+        var credentials = new GoogleCredentials
+        {
+            Type = "Google",
+            AccessToken = "test_token",
+            RefreshToken = "test_refresh",
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
+            TokenType = "Bearer"
+        };
+        credentialManager.StoreGoogleCredentials(accountId, credentials);
+
+        var fakeGoogleService = new FakeGoogleCalendarService();
+        fakeGoogleService.SetCalendars(
+            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        );
+
+        var recurringStart = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+        var recurringEnd = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc);
+        var overrideTime = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
+        var newStart = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
+        var newEnd = new DateTime(2025, 1, 8, 11, 30, 0, DateTimeKind.Utc);
+
+        fakeGoogleService.SetEvents("cal1",
+            FakeGoogleCalendarService.CreateRecurringEvent(
+                "recurring1",
+                "Weekly Meeting",
+                recurringStart,
+                recurringEnd,
+                "RRULE:FREQ=WEEKLY;BYDAY=WE"
+            ),
+            FakeGoogleCalendarService.CreateModifiedOverride(
+                "override1",
+                "recurring1",
+                "Rescheduled Meeting",
+                overrideTime,
+                newStart,
+                newEnd
+            )
+        );
+
+        var fakeCalDavService = new FakeCalDavService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
+
+        // Act
+        await syncService.SyncAllAccountsAsync();
+
+        // Assert
+        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendar = calendars.First();
+        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var eventList = events.ToList();
+
+        Assert.That(eventList, Has.Count.EqualTo(2));
+
+        var parentEvent = eventList.FirstOrDefault(e => e.ExternalId == "recurring1");
+        var overrideEvent = eventList.FirstOrDefault(e => e.ExternalId == "override1");
+        Assert.That(parentEvent, Is.Not.Null);
+        Assert.That(overrideEvent, Is.Not.Null);
+
+        // Verify relation was created
+        using var connection = database.GetConnection();
+        var relation = await connection.QuerySingleOrDefaultAsync<(string ParentEventId, string ChildEventId)>(
+            "SELECT parent_event_id, child_event_id FROM calendar_event_relation WHERE parent_event_id = @ParentEventId AND child_event_id = @ChildEventId",
+            new { ParentEventId = parentEvent!.EventId, ChildEventId = overrideEvent!.EventId }
+        );
+
+        Assert.That(relation.ParentEventId, Is.EqualTo(parentEvent.EventId));
+        Assert.That(relation.ChildEventId, Is.EqualTo(overrideEvent.EventId));
+    }
+
+    [Test]
+    public async Task GoogleOverride_WithParentAfterOverride_CreatesRelationAfterBacklogProcessing()
+    {
+        // Arrange
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+
+        var accountId = Guid.NewGuid().ToString();
+        var account = new AccountDbo
+        {
+            AccountId = accountId,
+            Name = "Test Account",
+            Type = "Google"
+        };
+        await storage.CreateAccountAsync(account);
+
+        var credentials = new GoogleCredentials
+        {
+            Type = "Google",
+            AccessToken = "test_token",
+            RefreshToken = "test_refresh",
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
+            TokenType = "Bearer"
+        };
+        credentialManager.StoreGoogleCredentials(accountId, credentials);
+
+        var fakeGoogleService = new FakeGoogleCalendarService();
+        fakeGoogleService.SetCalendars(
+            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        );
+
+        var recurringStart = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+        var recurringEnd = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc);
+        var overrideTime = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
+        var newStart = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
+        var newEnd = new DateTime(2025, 1, 8, 11, 30, 0, DateTimeKind.Utc);
+
+        // First sync: Override arrives before parent
+        fakeGoogleService.SetEvents("cal1",
+            FakeGoogleCalendarService.CreateModifiedOverride(
+                "override1",
+                "recurring1",
+                "Rescheduled Meeting",
+                overrideTime,
+                newStart,
+                newEnd
+            )
+        );
+
+        var fakeCalDavService = new FakeCalDavService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
+
+        // Act - First sync
+        await syncService.SyncAllAccountsAsync();
+
+        // Assert - Override exists but no parent yet
+        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendar = calendars.First();
+        var eventsAfterFirstSync = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var eventListAfterFirstSync = eventsAfterFirstSync.ToList();
+
+        Assert.That(eventListAfterFirstSync, Has.Count.EqualTo(1));
+        Assert.That(eventListAfterFirstSync[0].ExternalId, Is.EqualTo("override1"));
+
+        // Second sync: Parent arrives
+        fakeGoogleService.SetEvents("cal1",
+            FakeGoogleCalendarService.CreateRecurringEvent(
+                "recurring1",
+                "Weekly Meeting",
+                recurringStart,
+                recurringEnd,
+                "RRULE:FREQ=WEEKLY;BYDAY=WE"
+            ),
+            FakeGoogleCalendarService.CreateModifiedOverride(
+                "override1",
+                "recurring1",
+                "Rescheduled Meeting",
+                overrideTime,
+                newStart,
+                newEnd
+            )
+        );
+
+        // Act - Second sync
+        await syncService.SyncAllAccountsAsync();
+
+        // Assert - Both events exist with relation
+        var eventsAfterSecondSync = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var eventListAfterSecondSync = eventsAfterSecondSync.ToList();
+
+        Assert.That(eventListAfterSecondSync, Has.Count.EqualTo(2));
+
+        var parentEvent = eventListAfterSecondSync.FirstOrDefault(e => e.ExternalId == "recurring1");
+        var overrideEvent = eventListAfterSecondSync.FirstOrDefault(e => e.ExternalId == "override1");
+        Assert.That(parentEvent, Is.Not.Null);
+        Assert.That(overrideEvent, Is.Not.Null);
+
+        using var connection = database.GetConnection();
+        var relation = await connection.QuerySingleOrDefaultAsync<(string ParentEventId, string ChildEventId)>(
+            "SELECT parent_event_id, child_event_id FROM calendar_event_relation WHERE parent_event_id = @ParentEventId AND child_event_id = @ChildEventId",
+            new { ParentEventId = parentEvent!.EventId, ChildEventId = overrideEvent!.EventId }
+        );
+
+        Assert.That(relation.ParentEventId, Is.EqualTo(parentEvent.EventId));
+        Assert.That(relation.ChildEventId, Is.EqualTo(overrideEvent.EventId));
+    }
+
+    [Test]
+    public async Task GoogleOverride_WithParentNeverArrived_StaysInBacklog()
+    {
+        // Arrange
+        using var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var storage = new SqliteStorage(database, credentialManager);
+
+        var accountId = Guid.NewGuid().ToString();
+        var account = new AccountDbo
+        {
+            AccountId = accountId,
+            Name = "Test Account",
+            Type = "Google"
+        };
+        await storage.CreateAccountAsync(account);
+
+        var credentials = new GoogleCredentials
+        {
+            Type = "Google",
+            AccessToken = "test_token",
+            RefreshToken = "test_refresh",
+            ExpiresAt = DateTime.UtcNow.AddHours(1),
+            TokenType = "Bearer"
+        };
+        credentialManager.StoreGoogleCredentials(accountId, credentials);
+
+        var fakeGoogleService = new FakeGoogleCalendarService();
+        fakeGoogleService.SetCalendars(
+            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        );
+
+        var overrideTime = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
+        var newStart = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
+        var newEnd = new DateTime(2025, 1, 8, 11, 30, 0, DateTimeKind.Utc);
+
+        // Sync with only the override, parent never arrives
+        fakeGoogleService.SetEvents("cal1",
+            FakeGoogleCalendarService.CreateModifiedOverride(
+                "override1",
+                "recurring1",
+                "Rescheduled Meeting",
+                overrideTime,
+                newStart,
+                newEnd
+            )
+        );
+
+        var fakeCalDavService = new FakeCalDavService();
+        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService);
+
+        // Act
+        await syncService.SyncAllAccountsAsync();
+
+        // Assert
+        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendar = calendars.First();
+
+        // Override should be stored
+        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var eventList = events.ToList();
+        Assert.That(eventList, Has.Count.EqualTo(1));
+        Assert.That(eventList[0].ExternalId, Is.EqualTo("override1"));
+
+        // Backlog should contain the pending relation
+        using var connection = database.GetConnection();
+        var backlogItems = await connection.QueryAsync<(string ParentExternalId, string ChildExternalId)>(
+            "SELECT parent_external_id, child_external_id FROM calendar_event_relation_backlog WHERE calendar_id = @CalendarId",
+            new { CalendarId = calendar.CalendarId }
+        );
+
+        var backlogList = backlogItems.ToList();
+        Assert.That(backlogList, Has.Count.EqualTo(1));
+        Assert.That(backlogList[0].ParentExternalId, Is.EqualTo("recurring1"));
+        Assert.That(backlogList[0].ChildExternalId, Is.EqualTo("override1"));
+
+        // No relation should exist yet
+        var relations = await connection.QueryAsync<string>(
+            "SELECT child_event_id FROM calendar_event_relation WHERE parent_event_id = @EventId OR child_event_id = @EventId",
+            new { EventId = eventList[0].EventId }
+        );
+
+        Assert.That(relations.Any(), Is.False);
     }
 
     #endregion

@@ -295,8 +295,11 @@ public class SyncService
         // Save events to database
         foreach (var evt in result.Events)
         {
-            // Check if event was deleted or cancelled
-            if (evt.Status == "cancelled")
+            // Check if this is an override event (references a recurring event)
+            var isOverride = !string.IsNullOrEmpty(evt.RecurringEventId);
+
+            // Check if event was deleted or cancelled (but keep override cancelled events)
+            if (!isOverride && evt.Status == "cancelled")
             {
                 Console.WriteLine($"Event {evt.Summary} was cancelled, will clean up");
                 // In incremental sync, we get explicit delete notifications
@@ -304,51 +307,121 @@ public class SyncService
                 continue;
             }
 
-            // Skip events without start/end times (e.g., all-day events without proper dates)
-            if (evt.Start == null || evt.End == null)
-            {
-                continue;
-            }
-
-            // Parse start and end times
             long? startTime = null;
             long? endTime = null;
             DateTime? startDateTime = null;
             DateTime? endDateTime = null;
+            DateTime? originalStartTime = null;
 
-            if (evt.Start.DateTimeRaw != null && DateTime.TryParse(evt.Start.DateTimeRaw, out var parsedStartDateTime))
+            // Handle override events
+            if (isOverride)
             {
-                startDateTime = parsedStartDateTime;
-                startTime = new DateTimeOffset(parsedStartDateTime).ToUnixTimeSeconds();
-            }
-            else if (evt.Start.Date != null && DateTime.TryParse(evt.Start.Date, out var startDate))
-            {
-                startDateTime = startDate;
-                startTime = new DateTimeOffset(startDate).ToUnixTimeSeconds();
-            }
-
-            if (evt.End.DateTimeRaw != null && DateTime.TryParse(evt.End.DateTimeRaw, out var parsedEndDateTime))
-            {
-                endDateTime = parsedEndDateTime;
-                endTime = new DateTimeOffset(parsedEndDateTime).ToUnixTimeSeconds();
-            }
-            else if (evt.End.Date != null && DateTime.TryParse(evt.End.Date, out var endDate))
-            {
-                endDateTime = endDate;
-                endTime = new DateTimeOffset(endDate).ToUnixTimeSeconds();
-            }
-
-            // For recurring events, calculate the recurrence end time and store it in EndTime
-            if (evt.Recurrence is { Count: > 0 } && startDateTime.HasValue && endDateTime.HasValue)
-            {
-                var recurrenceEndTime = RecurrenceParser.GetRecurrenceEndTime(
-                    evt.Recurrence,
-                    startDateTime.Value,
-                    endDateTime.Value);
-
-                if (recurrenceEndTime.HasValue)
+                // Parse OriginalStartTime (this is when the override replaces)
+                if (evt.OriginalStartTime?.DateTimeRaw != null && DateTime.TryParse(evt.OriginalStartTime.DateTimeRaw, out var parsedOriginalStart))
                 {
-                    endTime = new DateTimeOffset(recurrenceEndTime.Value).ToUnixTimeSeconds();
+                    originalStartTime = parsedOriginalStart;
+                }
+                else if (evt.OriginalStartTime?.Date != null && DateTime.TryParse(evt.OriginalStartTime.Date, out var parsedOriginalStartDate))
+                {
+                    originalStartTime = parsedOriginalStartDate;
+                }
+
+                // For cancelled overrides, use OriginalStartTime as both start and end
+                if (evt.Status == "cancelled")
+                {
+                    if (originalStartTime.HasValue)
+                    {
+                        startDateTime = originalStartTime;
+                        endDateTime = originalStartTime;
+                        startTime = new DateTimeOffset(originalStartTime.Value).ToUnixTimeSeconds();
+                        endTime = startTime;
+                    }
+                }
+                else
+                {
+                    // For modified overrides, parse start/end from the event itself
+                    if (evt.Start?.DateTimeRaw != null && DateTime.TryParse(evt.Start.DateTimeRaw, out var parsedStart))
+                    {
+                        startDateTime = parsedStart;
+                        startTime = new DateTimeOffset(parsedStart).ToUnixTimeSeconds();
+                    }
+                    else if (evt.Start?.Date != null && DateTime.TryParse(evt.Start.Date, out var startDate))
+                    {
+                        startDateTime = startDate;
+                        startTime = new DateTimeOffset(startDate).ToUnixTimeSeconds();
+                    }
+
+                    if (evt.End?.DateTimeRaw != null && DateTime.TryParse(evt.End.DateTimeRaw, out var parsedEnd))
+                    {
+                        endDateTime = parsedEnd;
+                        endTime = new DateTimeOffset(parsedEnd).ToUnixTimeSeconds();
+                    }
+                    else if (evt.End?.Date != null && DateTime.TryParse(evt.End.Date, out var endDate))
+                    {
+                        endDateTime = endDate;
+                        endTime = new DateTimeOffset(endDate).ToUnixTimeSeconds();
+                    }
+
+                    // Ensure OriginalStartTime is within the event bounds
+                    if (originalStartTime.HasValue && startDateTime.HasValue && endDateTime.HasValue)
+                    {
+                        if (originalStartTime.Value < startDateTime.Value)
+                        {
+                            // Expand start time
+                            startDateTime = originalStartTime;
+                            startTime = new DateTimeOffset(originalStartTime.Value).ToUnixTimeSeconds();
+                        }
+                        else if (originalStartTime.Value > endDateTime.Value)
+                        {
+                            // Expand end time
+                            endDateTime = originalStartTime;
+                            endTime = new DateTimeOffset(originalStartTime.Value).ToUnixTimeSeconds();
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Regular events (not overrides)
+                if (evt.Start == null || evt.End == null)
+                {
+                    continue;
+                }
+
+                if (evt.Start.DateTimeRaw != null && DateTime.TryParse(evt.Start.DateTimeRaw, out var parsedStartDateTime))
+                {
+                    startDateTime = parsedStartDateTime;
+                    startTime = new DateTimeOffset(parsedStartDateTime).ToUnixTimeSeconds();
+                }
+                else if (evt.Start.Date != null && DateTime.TryParse(evt.Start.Date, out var startDate))
+                {
+                    startDateTime = startDate;
+                    startTime = new DateTimeOffset(startDate).ToUnixTimeSeconds();
+                }
+
+                if (evt.End.DateTimeRaw != null && DateTime.TryParse(evt.End.DateTimeRaw, out var parsedEndDateTime))
+                {
+                    endDateTime = parsedEndDateTime;
+                    endTime = new DateTimeOffset(parsedEndDateTime).ToUnixTimeSeconds();
+                }
+                else if (evt.End.Date != null && DateTime.TryParse(evt.End.Date, out var endDate))
+                {
+                    endDateTime = endDate;
+                    endTime = new DateTimeOffset(endDate).ToUnixTimeSeconds();
+                }
+
+                // For recurring events, calculate the recurrence end time and store it in EndTime
+                if (evt.Recurrence is { Count: > 0 } && startDateTime.HasValue && endDateTime.HasValue)
+                {
+                    var recurrenceEndTime = RecurrenceParser.GetRecurrenceEndTime(
+                        evt.Recurrence,
+                        startDateTime.Value,
+                        endDateTime.Value);
+
+                    if (recurrenceEndTime.HasValue)
+                    {
+                        endTime = new DateTimeOffset(recurrenceEndTime.Value).ToUnixTimeSeconds();
+                    }
                 }
             }
 
@@ -368,7 +441,27 @@ public class SyncService
             // Store raw Google event data for later use
             var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(evt);
             await _storage.SetEventDataJson(eventId, "rawData", rawEventJson);
+
+            // Handle override relationship
+            if (isOverride && !string.IsNullOrEmpty(evt.RecurringEventId))
+            {
+                var parentEventId = await _storage.GetEventIdByExternalIdAsync(calendar.CalendarId, evt.RecurringEventId);
+
+                if (parentEventId != null)
+                {
+                    // Parent already exists, create the relation
+                    await _storage.CreateEventRelationAsync(parentEventId, eventId);
+                }
+                else
+                {
+                    // Parent doesn't exist yet, add to backlog
+                    await _storage.AddEventRelationToBacklogAsync(calendar.CalendarId, evt.RecurringEventId, evt.Id);
+                }
+            }
         }
+
+        // Process backlog - check if any parents now exist
+        await _storage.ProcessEventRelationBacklogAsync(calendar.CalendarId);
 
         // If this was a full sync, clean up events that weren't updated
         // (they were deleted on the remote side)

@@ -479,6 +479,63 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
             param: new { key = $"$.{key}", eventId });
     }
 
+    public async Task<string?> GetEventIdByExternalIdAsync(string calendarId, string externalId)
+    {
+        using var connection = databaseService.GetConnection();
+        return await connection.QuerySingleOrDefaultAsync<string?>(
+            "SELECT event_id FROM calendar_event WHERE calendar_id = @CalendarId AND external_id = @ExternalId",
+            new { CalendarId = calendarId, ExternalId = externalId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task CreateEventRelationAsync(string parentEventId, string childEventId)
+    {
+        using var connection = databaseService.GetConnection();
+        await connection.ExecuteAsync(
+            "INSERT OR REPLACE INTO calendar_event_relation (parent_event_id, child_event_id) VALUES (@ParentEventId, @ChildEventId)",
+            new { ParentEventId = parentEventId, ChildEventId = childEventId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task AddEventRelationToBacklogAsync(string calendarId, string parentExternalId, string childExternalId)
+    {
+        using var connection = databaseService.GetConnection();
+        await connection.ExecuteAsync(
+            "INSERT OR REPLACE INTO calendar_event_relation_backlog (calendar_id, parent_external_id, child_external_id) VALUES (@CalendarId, @ParentExternalId, @ChildExternalId)",
+            new { CalendarId = calendarId, ParentExternalId = parentExternalId, ChildExternalId = childExternalId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task ProcessEventRelationBacklogAsync(string calendarId)
+    {
+        using var connection = databaseService.GetConnection();
+
+        var backlogItems = await connection.QueryAsync<(string ParentExternalId, string ChildExternalId)>(
+            "SELECT parent_external_id, child_external_id FROM calendar_event_relation_backlog WHERE calendar_id = @CalendarId",
+            new { CalendarId = calendarId },
+            commandTimeout: 30
+        );
+
+        foreach (var (parentExternalId, childExternalId) in backlogItems)
+        {
+            var parentEventId = await GetEventIdByExternalIdAsync(calendarId, parentExternalId);
+            var childEventId = await GetEventIdByExternalIdAsync(calendarId, childExternalId);
+
+            if (parentEventId != null && childEventId != null)
+            {
+                await CreateEventRelationAsync(parentEventId, childEventId);
+                await connection.ExecuteAsync(
+                    "DELETE FROM calendar_event_relation_backlog WHERE calendar_id = @CalendarId AND parent_external_id = @ParentExternalId AND child_external_id = @ChildExternalId",
+                    new { CalendarId = calendarId, ParentExternalId = parentExternalId, ChildExternalId = childExternalId },
+                    commandTimeout: 30
+                );
+            }
+        }
+    }
+
     #endregion
 
     public async Task<IEnumerable<CalendarEventQueryResult>> GetEventsByTimeRangeAsync(DateTime startTime, DateTime endTime)

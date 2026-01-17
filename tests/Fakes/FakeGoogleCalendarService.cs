@@ -229,4 +229,45 @@ public class FakeGoogleCalendarService : IGoogleCalendarService
             Recurrence = recurrence.Length > 0 ? new List<string>(recurrence) : null
         };
     }
+
+    /// <summary>
+    /// Creates a modified override event for a recurring event.
+    /// </summary>
+    public static Event CreateModifiedOverride(
+        string id,
+        string recurringEventId,
+        string summary,
+        DateTime originalStartTime,
+        DateTime newStart,
+        DateTime newEnd)
+    {
+        return new Event
+        {
+            Id = id,
+            RecurringEventId = recurringEventId,
+            Summary = summary,
+            Status = "confirmed",
+            OriginalStartTime = new EventDateTime { DateTimeRaw = originalStartTime.ToString("o") },
+            Start = new EventDateTime { DateTimeRaw = newStart.ToString("o") },
+            End = new EventDateTime { DateTimeRaw = newEnd.ToString("o") }
+        };
+    }
+
+    /// <summary>
+    /// Creates a cancelled override event for a recurring event.
+    /// </summary>
+    public static Event CreateCancelledOverride(
+        string id,
+        string recurringEventId,
+        DateTime originalStartTime)
+    {
+        return new Event
+        {
+            Id = id,
+            RecurringEventId = recurringEventId,
+            Summary = "Cancelled Event",
+            Status = "cancelled",
+            OriginalStartTime = new EventDateTime { DateTimeRaw = originalStartTime.ToString("o") }
+        };
+    }
 }
