@@ -295,8 +295,8 @@ public class DatabaseCalendarSource : ICalendarSource
 
     private List<CalendarEvent> CreateCalendarEvent(CalendarEventQueryResult e, DateTime eventStartTime, DateTime eventEndTime)
     {
-        return new List<CalendarEvent>
-        {
+        return
+        [
             new CalendarEvent
             {
                 Calendar = new Calendar
@@ -325,7 +325,7 @@ public class DatabaseCalendarSource : ICalendarSource
                     ? DateTimeOffset.FromUnixTimeSeconds(e.ChangedAt.Value).DateTime
                     : null
             }
-        };
+        ];
     }
 
     private List<CalendarEvent> GetRecurringOccurrences(CalendarEventQueryResult e, IList<string> recurrence, DateTime eventStart, DateTime eventEnd, DateTime queryStart, DateTime queryEnd)
@@ -356,7 +356,7 @@ public class DatabaseCalendarSource : ICalendarSource
                 return GetOccurrencesFromICalendarEvent(e, calendarEvent, eventStart, eventEnd, queryStart, queryEnd);
             }
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
             Console.WriteLine($"Error parsing Google recurrence rule: {ex.Message}");
         }
@@ -418,7 +418,7 @@ public class DatabaseCalendarSource : ICalendarSource
 
             return result;
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
             Console.WriteLine($"Error getting occurrences for event: {ex.Message}");
             return CreateCalendarEvent(e, eventStart, eventEnd);

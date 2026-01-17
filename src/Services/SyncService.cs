@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -104,7 +105,7 @@ public class SyncService
         try
         {
             // Get all accounts
-            var accounts = await _storage.GetAllAccountsAsync();
+            var accounts = (await _storage.GetAllAccountsAsync()).ToImmutableList();
             var googleAccounts = accounts.Where(a => a.Type.Equals("Google", StringComparison.OrdinalIgnoreCase)).ToList();
             var caldavAccounts = accounts.Where(a => a.Type.Equals("CalDAV", StringComparison.OrdinalIgnoreCase)).ToList();
 
@@ -250,7 +251,7 @@ public class SyncService
         {
             try
             {
-                await SyncCalendarEventsAsync(service, calendar, cancellationToken);
+                await SyncGoogleCalendarEventsAsync(service, calendar, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -261,9 +262,9 @@ public class SyncService
     }
 
     /// <summary>
-    /// Syncs events for a single calendar using incremental sync when possible
+    /// Syncs events for a single google calendar using incremental sync when possible
     /// </summary>
-    private async Task SyncCalendarEventsAsync(Google.Apis.Calendar.v3.CalendarService service, CalendarDbo calendar, CancellationToken cancellationToken)
+    private async Task SyncGoogleCalendarEventsAsync(Google.Apis.Calendar.v3.CalendarService service, CalendarDbo calendar, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Syncing events for calendar: {calendar.Name}");
 
@@ -338,7 +339,7 @@ public class SyncService
             }
 
             // For recurring events, calculate the recurrence end time and store it in EndTime
-            if (evt.Recurrence != null && evt.Recurrence.Count > 0 && startDateTime.HasValue && endDateTime.HasValue)
+            if (evt.Recurrence is { Count: > 0 } && startDateTime.HasValue && endDateTime.HasValue)
             {
                 var recurrenceEndTime = RecurrenceParser.GetRecurrenceEndTime(
                     evt.Recurrence,

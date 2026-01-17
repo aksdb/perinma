@@ -8,7 +8,7 @@ namespace tests;
 public class RecurrenceParserTests
 {
     [Test]
-    public void GetRecurrenceEndTime_WithUntil_ReturnsUntilPlusDuration()
+    public void GetRecurrenceEndTime_WithUntil_ReturnsEndOfLastOccurrence()
     {
         // RRULE with UNTIL clause - weekly until March 15, 2025
         var recurrence = new List<string>
@@ -20,11 +20,7 @@ public class RecurrenceParserTests
 
         var result = RecurrenceParser.GetRecurrenceEndTime(recurrence, eventStart, eventEnd);
 
-        Assert.That(result, Is.Not.Null);
-        // UNTIL is 2025-03-15T23:59:59Z, plus 1 hour duration = 2025-03-16T00:59:59Z
-        Assert.That(result!.Value.Year, Is.EqualTo(2025));
-        Assert.That(result.Value.Month, Is.EqualTo(3));
-        Assert.That(result.Value.Day, Is.GreaterThanOrEqualTo(15));
+        Assert.That(result, Is.EqualTo(new DateTime(2025, 3, 12, 11, 0, 0, DateTimeKind.Utc)));
     }
 
     [Test]
@@ -72,7 +68,7 @@ public class RecurrenceParserTests
     }
 
     [Test]
-    public void GetRecurrenceEndTime_WithNoEndClause_ReturnsNull()
+    public void GetRecurrenceEndTime_WithNoEndClause_ReturnsMaxDate()
     {
         // RRULE without UNTIL or COUNT - infinite recurrence
         var recurrence = new List<string>
@@ -84,7 +80,7 @@ public class RecurrenceParserTests
 
         var result = RecurrenceParser.GetRecurrenceEndTime(recurrence, eventStart, eventEnd);
 
-        Assert.That(result, Is.Null); // Infinite recurrence returns null
+        Assert.That(result, Is.EqualTo(DateTime.MaxValue)); // Infinite recurrence returns max value
     }
 
     [Test]

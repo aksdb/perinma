@@ -1,4 +1,3 @@
-using System;
 using CredentialStore;
 using perinma.Services;
 using perinma.Storage;
@@ -430,14 +429,10 @@ public class SyncServiceTests
 
         Assert.That(eventList, Has.Count.EqualTo(1));
         var recurringEvent = eventList.First();
-
-        // EndTime should be UNTIL date (March 31, 2025 23:59:59) + 1 hour duration
-        // This gives us April 1, 2025 00:59:59 UTC
+        
         Assert.That(recurringEvent.EndTime, Is.Not.Null);
         var endTimeUtc = DateTimeOffset.FromUnixTimeSeconds(recurringEvent.EndTime!.Value).UtcDateTime;
-        Assert.That(endTimeUtc.Year, Is.EqualTo(2025));
-        Assert.That(endTimeUtc.Month, Is.EqualTo(4));
-        Assert.That(endTimeUtc.Day, Is.EqualTo(1));
+        Assert.That(endTimeUtc, Is.EqualTo(new DateTime(2025, 3, 26, 11, 0, 0, DateTimeKind.Utc)));
     }
 
     [Test]
@@ -583,7 +578,7 @@ public class SyncServiceTests
     }
 
     [Test]
-    public async Task GoogleRecurringEvent_WithNoEndClause_KeepsOriginalEndTime()
+    public async Task GoogleRecurringEvent_WithNoEndClause_SetsMaximumEndTime()
     {
         // Arrange
         using var database = new DatabaseService(inMemory: true);
@@ -642,13 +637,11 @@ public class SyncServiceTests
         Assert.That(eventList, Has.Count.EqualTo(1));
         var recurringEvent = eventList.First();
 
-        // For infinite recurrence, EndTime should be the single occurrence end time
+        // For infinite recurrence, EndTime should be the max available value, since there is no
+        // theoretical end.
         Assert.That(recurringEvent.EndTime, Is.Not.Null);
-        var endTimeUtc = DateTimeOffset.FromUnixTimeSeconds(recurringEvent.EndTime!.Value).UtcDateTime;
-        Assert.That(endTimeUtc.Year, Is.EqualTo(2025));
-        Assert.That(endTimeUtc.Month, Is.EqualTo(1));
-        Assert.That(endTimeUtc.Day, Is.EqualTo(1));
-        Assert.That(endTimeUtc.Hour, Is.EqualTo(11)); // Original end time
+        var endTimeUtc = DateTimeOffset.FromUnixTimeSeconds(recurringEvent.EndTime!.Value).UtcDateTime.Date;
+        Assert.That(endTimeUtc, Is.EqualTo(DateTimeOffset.MaxValue.UtcDateTime.Date));
     }
 
     [Test]
@@ -715,12 +708,10 @@ public class SyncServiceTests
         Assert.That(eventList, Has.Count.EqualTo(1));
         var recurringEvent = eventList.First();
 
-        // EndTime should be UNTIL date (June 1, 2025 23:59:59) + 1.5 hour duration
+        // The last occurrence should end on 31.05. at 10:30.
         Assert.That(recurringEvent.EndTime, Is.Not.Null);
         var endTimeUtc = DateTimeOffset.FromUnixTimeSeconds(recurringEvent.EndTime!.Value).UtcDateTime;
-        Assert.That(endTimeUtc.Year, Is.EqualTo(2025));
-        Assert.That(endTimeUtc.Month, Is.EqualTo(6));
-        Assert.That(endTimeUtc.Day, Is.EqualTo(2)); // June 2 due to duration addition
+        Assert.That(endTimeUtc, Is.EqualTo(new DateTime(2025, 5, 31, 10, 30, 0, DateTimeKind.Utc)));
     }
 
     [Test]
