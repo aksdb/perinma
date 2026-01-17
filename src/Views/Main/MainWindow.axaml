@@ -18,8 +18,14 @@
         <main:MainWindowViewModel/>
     </Design.DataContext>
     
-    <DockPanel>
-        <Menu DockPanel.Dock="Top">
+    <Grid RowDefinitions="Auto,*">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" MinWidth="250"/> <!-- Sidebar -->
+            <ColumnDefinition Width="Auto"/> <!-- Splitter -->
+            <ColumnDefinition Width="*"/> <!-- Main Content -->
+        </Grid.ColumnDefinitions>
+        
+        <Menu Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3">
             <MenuItem Header="_File">
                 <MenuItem Header="_Settings" Name="MnuSettings" Command="{Binding ShowSettingsCommand}"/>
                 <MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"/>
@@ -34,15 +40,19 @@
                 <Button Command="{Binding CalendarWeekViewModel.NextWeekCommand}">Next</Button>
             </StackPanel>
         </Menu>
-
-        <!-- Calendar List Sidebar -->
-        <Border DockPanel.Dock="Left"
-                Width="250"
+        
+        <Border Grid.Row="1" Grid.Column="0"
                 BorderBrush="Gray"
                 BorderThickness="0,0,1,0">
             <callist:CalendarListView DataContext="{Binding CalendarListViewModel}"/>
         </Border>
 
-        <cal:CalendarWeekView DataContext="{Binding CalendarWeekViewModel}"/>
-    </DockPanel>
+        <GridSplitter Grid.Row="1" Grid.Column="1"
+                      Width="4"
+                      Background="Transparent"
+                      ResizeDirection="Columns"
+                      ResizeBehavior="PreviousAndNext"/>
+
+        <cal:CalendarWeekView Grid.Row="1" Grid.Column="2" DataContext="{Binding CalendarWeekViewModel}"/>
+    </Grid>
 </Window>
