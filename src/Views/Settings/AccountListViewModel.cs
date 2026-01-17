@@ -82,8 +82,13 @@ public partial class AccountListViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            // TODO: Show error to user
             Console.WriteLine($"Error loading accounts: {ex.Message}");
+            await MessageBoxWindow.ShowAsync(
+                _parentWindow,
+                "Error",
+                $"Failed to load accounts: {ex.Message}",
+                MessageBoxType.Error,
+                MessageBoxButtons.Ok);
         }
     }
 
@@ -123,16 +128,28 @@ public partial class AccountListViewModel : ViewModelBase
             else
             {
                 Console.WriteLine($"Failed to delete account: {accountId}");
+                await MessageBoxWindow.ShowAsync(
+                    _parentWindow,
+                    "Error",
+                    $"Failed to delete account \"{account.Name}\".",
+                    MessageBoxType.Error,
+                    MessageBoxButtons.Ok);
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error deleting account: {ex.Message}");
+            await MessageBoxWindow.ShowAsync(
+                _parentWindow,
+                "Error",
+                $"Failed to delete account: {ex.Message}",
+                MessageBoxType.Error,
+                MessageBoxButtons.Ok);
         }
     }
 
     [RelayCommand]
-    private void ReauthenticateAccount(Guid accountId)
+    private async Task ReauthenticateAccount(Guid accountId)
     {
         if (_reauthenticateWindow != null)
         {
@@ -152,15 +169,22 @@ public partial class AccountListViewModel : ViewModelBase
         if (account.Type != AccountType.Google)
         {
             Console.WriteLine($"Only Google accounts support OAuth reauthentication. Account type: {account.Type}");
+            await MessageBoxWindow.ShowAsync(
+                _parentWindow,
+                "Not Supported",
+                "Reauthentication is only supported for Google accounts.",
+                MessageBoxType.Information,
+                MessageBoxButtons.Ok);
             return;
         }
 
         var reauthVm = new ReauthenticateAccountViewModel(accountId.ToString(), account.Name, _credentialManager, _oauthService);
-        reauthVm.ReauthenticationCompleted += (_, _) =>
+        EventHandler onReauthenticateFinished = (_, _) =>
         {
             // Optionally trigger a sync or show a success message
             Console.WriteLine($"Account {account.Name} has been reauthenticated");
         };
+        reauthVm.ReauthenticationCompleted += onReauthenticateFinished;
 
         _reauthenticateWindow = new ReauthenticateAccountWindow
         {
@@ -168,7 +192,7 @@ public partial class AccountListViewModel : ViewModelBase
         };
         _reauthenticateWindow.Closed += (_, _) =>
         {
-            reauthVm.ReauthenticationCompleted -= (_, _) => { };
+            reauthVm.ReauthenticationCompleted -= onReauthenticateFinished;
             _reauthenticateWindow = null;
             CanReauthenticate = true;
         };
@@ -202,11 +226,25 @@ public partial class AccountListViewModel : ViewModelBase
                 {
                     Console.WriteLine($"  - {error}");
                 }
+
+                var errorDetails = string.Join("\n", result.Errors);
+                await MessageBoxWindow.ShowAsync(
+                    _parentWindow,
+                    "Sync Failed",
+                    $"Failed to resync account \"{account.Name}\":\n\n{errorDetails}",
+                    MessageBoxType.Error,
+                    MessageBoxButtons.Ok);
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error during force resync: {ex.Message}");
+            await MessageBoxWindow.ShowAsync(
+                _parentWindow,
+                "Sync Failed",
+                $"Failed to resync account: {ex.Message}",
+                MessageBoxType.Error,
+                MessageBoxButtons.Ok);
         }
     }
 }
