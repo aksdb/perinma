@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using perinma.Services;
@@ -19,6 +20,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly GoogleCalendarService _googleCalendarService;
     private readonly GoogleOAuthService _googleOAuthService;
     private readonly ICalDavService _calDavService;
+    private readonly ThemeService _themeService;
 
     [ObservableProperty]
     private bool _isSyncing;
@@ -36,6 +38,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _credentialManager = credentialManager;
         _syncService = syncService;
         _calDavService = calDavService;
+        _themeService = new ThemeService();
 
         var storage = new SqliteStorage(databaseService, credentialManager);
         var calendarSource = new DatabaseCalendarSource(storage);
@@ -62,6 +65,30 @@ public partial class MainWindowViewModel : ViewModelBase
         _settingsWindow.DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService, _calDavService, _syncService, _settingsWindow);
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
+    }
+    #endregion
+
+    #region Theme
+    [ObservableProperty]
+    private bool _isLightTheme = true;
+
+    [ObservableProperty]
+    private bool _isDarkTheme;
+
+    [RelayCommand]
+    private void SetLightTheme()
+    {
+        _themeService.SetTheme(ThemeVariant.Light);
+        IsLightTheme = true;
+        IsDarkTheme = false;
+    }
+
+    [RelayCommand]
+    private void SetDarkTheme()
+    {
+        _themeService.SetTheme(ThemeVariant.Dark);
+        IsLightTheme = false;
+        IsDarkTheme = true;
     }
     #endregion
 

@@ -30,6 +30,20 @@
                 <MenuItem Header="_Settings" Name="MnuSettings" Command="{Binding ShowSettingsCommand}"/>
                 <MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"/>
             </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem Header="_Theme">
+                    <MenuItem Header="_Light" Command="{Binding SetLightThemeCommand}">
+                        <MenuItem.Icon>
+                            <CheckBox IsChecked="{Binding IsLightTheme}" IsHitTestVisible="False"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="_Dark" Command="{Binding SetDarkThemeCommand}">
+                        <MenuItem.Icon>
+                            <CheckBox IsChecked="{Binding IsDarkTheme}" IsHitTestVisible="False"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </MenuItem>
+            </MenuItem>
             <StackPanel Orientation="Horizontal">
                 <Button Command="{Binding SyncCommand}" Margin="5,0">Sync</Button>
                 <Separator Width="1" Margin="5,0"/>
