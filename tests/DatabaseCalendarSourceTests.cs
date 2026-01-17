@@ -1,13 +1,11 @@
-using System;
-using System.Linq;
 using CredentialStore;
 using Google.Apis.Json;
-using Google.Apis.Calendar.v3.Data;
-using NUnit.Framework;
-using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Storage.Models;
+
+using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
+using GoogleEventDateTime =  Google.Apis.Calendar.v3.Data.EventDateTime;
 
 namespace tests;
 
@@ -447,13 +445,13 @@ public class DatabaseCalendarSourceTests
         };
         await storage.CreateOrUpdateEventAsync(eventDbo);
 
-        var googleEvent = new Event
+        var googleEvent = new GoogleEvent
         {
             Id = "recurring_event",
             Summary = "Weekly Meeting",
             Status = "confirmed",
-            Start = new EventDateTime { DateTimeRaw = eventStart.ToString("o") },
-            End = new EventDateTime { DateTimeRaw = eventEnd.ToString("o") },
+            Start = new GoogleEventDateTime { DateTimeRaw = eventStart.ToString("o") },
+            End = new GoogleEventDateTime { DateTimeRaw = eventEnd.ToString("o") },
             Recurrence = new List<string> { "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR" }
         };
 
@@ -496,13 +494,13 @@ public class DatabaseCalendarSourceTests
         };
         await storage.CreateOrUpdateEventAsync(eventDbo);
 
-        var googleEvent = new Event
+        var googleEvent = new GoogleEvent
         {
             Id = "single_event",
             Summary = "One-time Meeting",
             Status = "confirmed",
-            Start = new EventDateTime { DateTimeRaw = eventStart.ToString("o") },
-            End = new EventDateTime { DateTimeRaw = eventEnd.ToString("o") }
+            Start = new GoogleEventDateTime { DateTimeRaw = eventStart.ToString("o") },
+            End = new GoogleEventDateTime { DateTimeRaw = eventEnd.ToString("o") }
         };
 
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
@@ -661,13 +659,13 @@ END:VCALENDAR";
         };
         await storage.CreateOrUpdateEventAsync(eventDbo);
 
-        var googleEvent = new Event
+        var googleEvent = new GoogleEvent
         {
             Id = "past_recurring",
             Summary = "Past Event",
             Status = "confirmed",
-            Start = new EventDateTime { DateTimeRaw = eventStart.ToString("o") },
-            End = new EventDateTime { DateTimeRaw = eventEnd.ToString("o") },
+            Start = new GoogleEventDateTime { DateTimeRaw = eventStart.ToString("o") },
+            End = new GoogleEventDateTime { DateTimeRaw = eventEnd.ToString("o") },
             Recurrence = new List<string> { "RRULE:FREQ=WEEKLY;COUNT=3" }
         };
 
@@ -749,17 +747,17 @@ END:VCALENDAR";
         };
         await storage.CreateOrUpdateEventAsync(eventDbo);
 
-        var googleEvent = new Event
+        var googleEvent = new GoogleEvent
         {
             Id = "recurring_with_tz",
             Summary = "Weekly Meeting with TZ",
             Status = "confirmed",
-            Start = new EventDateTime
+            Start = new GoogleEventDateTime
             {
                 DateTimeRaw = eventStart.ToString("o"),
                 TimeZone = "America/New_York"
             },
-            End = new EventDateTime
+            End = new GoogleEventDateTime
             {
                 DateTimeRaw = eventEnd.ToString("o"),
                 TimeZone = "America/New_York"
@@ -860,6 +858,263 @@ END:VCALENDAR";
             Assert.That(event2.StartTime, Is.EqualTo(new DateTime(2022, 11, 29, 0, 0, 0)));
             Assert.That(event2.EndTime, Is.EqualTo(new DateTime(2022, 11, 30, 0, 0, 0)));
         });
+    }
+
+    #endregion
+
+    #region Event Shadowing Tests
+
+    [Test]
+    public async Task GetCalendarEvents_GoogleRecurringEventWithCancelledInstance_ExcludesCancelledOccurrence()
+    {
+        // Arrange: A weekly recurring event with one cancelled instance
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
+
+        var weekStart = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc); // Monday
+        var weekEnd = weekStart.AddDays(7);
+
+        var calendarId = await CreateCalendar(storage, "Google");
+
+        // Create the parent recurring event (every day for a week)
+        var parentStart = weekStart.AddHours(10);
+        var parentEnd = weekStart.AddHours(11);
+
+        var parentEventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendarId,
+            ExternalId = "parent_recurring",
+            StartTime = new DateTimeOffset(parentStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(weekEnd.AddDays(30)).ToUnixTimeSeconds(),
+            Title = "Daily Standup",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        var parentEventId = await storage.CreateOrUpdateEventAsync(parentEventDbo);
+
+        var parentGoogleEvent = new GoogleEvent
+        {
+            Id = "parent_recurring",
+            Summary = "Daily Standup",
+            Status = "confirmed",
+            Start = new GoogleEventDateTime { DateTimeRaw = parentStart.ToString("o") },
+            End = new GoogleEventDateTime { DateTimeRaw = parentEnd.ToString("o") },
+            Recurrence = new List<string> { "RRULE:FREQ=DAILY;COUNT=7" }
+        };
+        await storage.SetEventDataJson(parentEventId, "rawData",
+            NewtonsoftJsonSerializer.Instance.Serialize(parentGoogleEvent));
+
+        // Create a cancelled instance for the third occurrence (Wednesday)
+        var cancelledStart = weekStart.AddDays(2).AddHours(10);
+
+        var cancelledEventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendarId,
+            ExternalId = "parent_recurring_20240103T100000Z",
+            StartTime = new DateTimeOffset(cancelledStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(cancelledStart.AddHours(1)).ToUnixTimeSeconds(),
+            Title = "Daily Standup",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        var cancelledEventId = await storage.CreateOrUpdateEventAsync(cancelledEventDbo);
+
+        var cancelledGoogleEvent = new GoogleEvent
+        {
+            Id = "parent_recurring_20240103T100000Z",
+            Summary = "Daily Standup",
+            Status = "cancelled",
+            RecurringEventId = "parent_recurring",
+            OriginalStartTime = new GoogleEventDateTime { DateTimeRaw = cancelledStart.ToString("o") },
+            Start = new GoogleEventDateTime { DateTimeRaw = cancelledStart.ToString("o") },
+            End = new GoogleEventDateTime { DateTimeRaw = cancelledStart.AddHours(1).ToString("o") }
+        };
+        await storage.SetEventDataJson(cancelledEventId, "rawData",
+            NewtonsoftJsonSerializer.Instance.Serialize(cancelledGoogleEvent));
+
+        // Act
+        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+
+        // Assert: Should have 6 occurrences, not 7 (one was cancelled)
+        Assert.That(events.Count, Is.EqualTo(6));
+        
+        // Verify the cancelled date is not in the results
+        var cancelledDate = cancelledStart.Date;
+        var eventDates = events.Select(e => e.StartTime.Date).ToList();
+        Assert.That(eventDates, Does.Not.Contain(cancelledDate));
+    }
+
+    [Test]
+    public async Task GetCalendarEvents_GoogleRecurringEventWithModifiedInstance_ShowsModifiedVersion()
+    {
+        // Arrange: A weekly recurring event with one modified instance (different time)
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
+
+        var weekStart = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc); // Monday
+        var weekEnd = weekStart.AddDays(7);
+
+        var calendarId = await CreateCalendar(storage, "Google");
+
+        // Create the parent recurring event (every day for a week)
+        var parentStart = weekStart.AddHours(10);
+        var parentEnd = weekStart.AddHours(11);
+
+        var parentEventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendarId,
+            ExternalId = "parent_recurring",
+            StartTime = new DateTimeOffset(parentStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(weekEnd.AddDays(30)).ToUnixTimeSeconds(),
+            Title = "Daily Standup",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        var parentEventId = await storage.CreateOrUpdateEventAsync(parentEventDbo);
+
+        var parentGoogleEvent = new GoogleEvent
+        {
+            Id = "parent_recurring",
+            Summary = "Daily Standup",
+            Status = "confirmed",
+            Start = new GoogleEventDateTime { DateTimeRaw = parentStart.ToString("o") },
+            End = new GoogleEventDateTime { DateTimeRaw = parentEnd.ToString("o") },
+            Recurrence = new List<string> { "RRULE:FREQ=DAILY;COUNT=7" }
+        };
+        await storage.SetEventDataJson(parentEventId, "rawData",
+            NewtonsoftJsonSerializer.Instance.Serialize(parentGoogleEvent));
+
+        // Create a modified instance for the third occurrence (Wednesday) - moved to 2pm
+        var originalStart = weekStart.AddDays(2).AddHours(10);
+        var modifiedStart = weekStart.AddDays(2).AddHours(14); // Moved to 2pm
+        var modifiedEnd = weekStart.AddDays(2).AddHours(15);
+
+        var modifiedEventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendarId,
+            ExternalId = "parent_recurring_20240103T100000Z",
+            StartTime = new DateTimeOffset(modifiedStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(modifiedEnd).ToUnixTimeSeconds(),
+            Title = "Daily Standup (Rescheduled)",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        var modifiedEventId = await storage.CreateOrUpdateEventAsync(modifiedEventDbo);
+
+        var modifiedGoogleEvent = new GoogleEvent
+        {
+            Id = "parent_recurring_20240103T100000Z",
+            Summary = "Daily Standup (Rescheduled)",
+            Status = "confirmed",
+            RecurringEventId = "parent_recurring",
+            OriginalStartTime = new GoogleEventDateTime { DateTimeRaw = originalStart.ToString("o") },
+            Start = new GoogleEventDateTime { DateTimeRaw = modifiedStart.ToString("o") },
+            End = new GoogleEventDateTime { DateTimeRaw = modifiedEnd.ToString("o") }
+        };
+        await storage.SetEventDataJson(modifiedEventId, "rawData",
+            NewtonsoftJsonSerializer.Instance.Serialize(modifiedGoogleEvent));
+
+        // Act
+        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+
+        // Assert: Should still have 7 occurrences
+        Assert.That(events.Count, Is.EqualTo(7));
+
+        // Verify the modified instance appears with the new time (2pm UTC, not 10am UTC)
+        // Note: The returned time is in local timezone, so we compare in UTC
+        var wednesdayEvents = events.Where(e => e.StartTime.Date == weekStart.AddDays(2).Date).ToList();
+        Assert.That(wednesdayEvents.Count, Is.EqualTo(1));
+        Assert.That(wednesdayEvents[0].StartTime.ToUniversalTime().Hour, Is.EqualTo(14)); // 2pm UTC
+        Assert.That(wednesdayEvents[0].Title, Is.EqualTo("Daily Standup (Rescheduled)"));
+    }
+
+    [Test]
+    public async Task GetCalendarEvents_StandaloneEventWithCancelledStatus_IsExcluded()
+    {
+        // Arrange: A cancelled exception instance with no parent in the query range
+        // This can happen when the parent is outside the query range
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
+
+        var weekStart = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var weekEnd = weekStart.AddDays(7);
+
+        var calendarId = await CreateCalendar(storage, "Google");
+
+        // Create only the cancelled instance (parent is outside query range)
+        var cancelledStart = weekStart.AddDays(2).AddHours(10);
+
+        var cancelledEventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendarId,
+            ExternalId = "parent_recurring_20240103T100000Z",
+            StartTime = new DateTimeOffset(cancelledStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(cancelledStart.AddHours(1)).ToUnixTimeSeconds(),
+            Title = "Daily Standup",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        var cancelledEventId = await storage.CreateOrUpdateEventAsync(cancelledEventDbo);
+
+        var cancelledGoogleEvent = new GoogleEvent
+        {
+            Id = "parent_recurring_20240103T100000Z",
+            Summary = "Daily Standup",
+            Status = "cancelled",
+            RecurringEventId = "parent_outside_range",
+            OriginalStartTime = new GoogleEventDateTime { DateTimeRaw = cancelledStart.ToString("o") },
+            Start = new GoogleEventDateTime { DateTimeRaw = cancelledStart.ToString("o") },
+            End = new GoogleEventDateTime { DateTimeRaw = cancelledStart.AddHours(1).ToString("o") }
+        };
+        await storage.SetEventDataJson(cancelledEventId, "rawData",
+            NewtonsoftJsonSerializer.Instance.Serialize(cancelledGoogleEvent));
+
+        // Act
+        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+
+        // Assert: Cancelled events should not appear
+        Assert.That(events.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task GetCalendarEvents_ModifiedInstanceWithoutParentInRange_IsIncluded()
+    {
+        // Arrange: A modified exception instance where the parent is outside the query range
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
+
+        var weekStart = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var weekEnd = weekStart.AddDays(7);
+
+        var calendarId = await CreateCalendar(storage, "Google");
+
+        // Create only the modified instance (parent is outside query range)
+        var modifiedStart = weekStart.AddDays(2).AddHours(14);
+        var modifiedEnd = weekStart.AddDays(2).AddHours(15);
+
+        var modifiedEventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendarId,
+            ExternalId = "parent_recurring_20240103T100000Z",
+            StartTime = new DateTimeOffset(modifiedStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(modifiedEnd).ToUnixTimeSeconds(),
+            Title = "Daily Standup (Rescheduled)",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        var modifiedEventId = await storage.CreateOrUpdateEventAsync(modifiedEventDbo);
+
+        var modifiedGoogleEvent = new GoogleEvent
+        {
+            Id = "parent_recurring_20240103T100000Z",
+            Summary = "Daily Standup (Rescheduled)",
+            Status = "confirmed",
+            RecurringEventId = "parent_outside_range",
+            OriginalStartTime = new GoogleEventDateTime { DateTimeRaw = weekStart.AddDays(2).AddHours(10).ToString("o") },
+            Start = new GoogleEventDateTime { DateTimeRaw = modifiedStart.ToString("o") },
+            End = new GoogleEventDateTime { DateTimeRaw = modifiedEnd.ToString("o") }
+        };
+        await storage.SetEventDataJson(modifiedEventId, "rawData",
+            NewtonsoftJsonSerializer.Instance.Serialize(modifiedGoogleEvent));
+
+        // Act
+        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+
+        // Assert: Modified (non-cancelled) instances should appear
+        Assert.That(events.Count, Is.EqualTo(1));
+        Assert.That(events[0].Title, Is.EqualTo("Daily Standup (Rescheduled)"));
+        // Note: The returned time is in local timezone, so we compare in UTC
+        Assert.That(events[0].StartTime.ToUniversalTime().Hour, Is.EqualTo(14)); // 2pm UTC
     }
 
     #endregion

@@ -190,15 +190,27 @@ public class DatabaseCalendarSource : ICalendarSource
 
     public List<CalendarEvent> GetCalendarEvents(DateTime startTime, DateTime endTime)
     {
-        var events = _storage.GetEventsByTimeRangeAsync(startTime, endTime).GetAwaiter().GetResult();
+        var events =
+            _storage.GetEventsByTimeRangeAsync(startTime, endTime)
+                .GetAwaiter()
+                .GetResult()
+                .ToList();
 
         var calendarEvents = new List<CalendarEvent>();
 
-        foreach (var e in events)
+        // For Google events, we need to handle "exception instances" that shadow occurrences
+        // of recurring events. These have a RecurringEventId pointing to their parent.
+        var googleEvents = events.Where(e => e.AccountType == "Google").ToList();
+        var nonGoogleEvents = events.Where(e => e.AccountType != "Google").ToList();
+
+        // Process Google events with shadowing support
+        calendarEvents.AddRange(GetGoogleEventsWithShadowing(googleEvents, startTime, endTime));
+
+        // Process non-Google events normally
+        foreach (var e in nonGoogleEvents)
         {
             var occurrences = e.AccountType switch
             {
-                "Google" => GetGoogleEventOccurrences(e, startTime, endTime),
                 "CalDAV" => GetCalDavEventOccurrences(e, startTime, endTime),
                 _ => GetFallbackOccurrences(e, startTime, endTime)
             };
@@ -207,6 +219,105 @@ public class DatabaseCalendarSource : ICalendarSource
         }
 
         return calendarEvents;
+    }
+
+    private List<CalendarEvent> GetGoogleEventsWithShadowing(
+        List<CalendarEventQueryResult> events,
+        DateTime queryStart,
+        DateTime queryEnd)
+    {
+        var result = new List<CalendarEvent>();
+
+        // Parse all events and separate into parent recurring events and exception instances
+        var parsedEvents = new List<(CalendarEventQueryResult queryResult, GoogleEvent? googleEvent)>();
+        foreach (var e in events)
+        {
+            var googleEvent = TryParseGoogleEvent(e.RawData);
+            parsedEvents.Add((e, googleEvent));
+        }
+
+        // Group exception instances by their parent's external ID
+        // An exception instance has RecurringEventId set to the parent's ID
+        var exceptionsByParentId = parsedEvents
+            .Where(p => p.googleEvent != null && !string.IsNullOrEmpty(p.googleEvent.RecurringEventId))
+            .GroupBy(p => p.googleEvent!.RecurringEventId)
+            .ToDictionary(g => g.Key!, g => g.ToList());
+
+        // Process each event
+        foreach (var (queryResult, googleEvent) in parsedEvents)
+        {
+            // Skip exception instances - they'll be handled when processing their parent
+            // or added directly if they're standalone modified instances
+            if (googleEvent != null && !string.IsNullOrEmpty(googleEvent.RecurringEventId))
+            {
+                // This is an exception instance - add it if it's not cancelled
+                if (googleEvent.Status != "cancelled")
+                {
+                    result.AddRange(GetGoogleEventOccurrences(queryResult, queryStart, queryEnd));
+                }
+                continue;
+            }
+
+            // Check if this is a recurring event with exceptions
+            var parentExternalId = queryResult.ExternalId;
+            var hasExceptions = parentExternalId != null && exceptionsByParentId.ContainsKey(parentExternalId);
+
+            if (hasExceptions && googleEvent?.Recurrence != null && googleEvent.Recurrence.Count > 0)
+            {
+                // This is a recurring event with exception instances - apply shadowing
+                var exceptions = exceptionsByParentId[parentExternalId!];
+                result.AddRange(GetGoogleRecurringOccurrencesWithShadowing(
+                    queryResult, googleEvent, exceptions, queryStart, queryEnd));
+            }
+            else
+            {
+                // Regular event (no exceptions) - process normally
+                result.AddRange(GetGoogleEventOccurrences(queryResult, queryStart, queryEnd));
+            }
+        }
+
+        return result;
+    }
+
+    private List<CalendarEvent> GetGoogleRecurringOccurrencesWithShadowing(
+        CalendarEventQueryResult e,
+        GoogleEvent googleEvent,
+        List<(CalendarEventQueryResult queryResult, GoogleEvent? googleEvent)> exceptions,
+        DateTime queryStart,
+        DateTime queryEnd)
+    {
+        // Build a set of occurrence start times that are shadowed by exceptions (normalized to UTC)
+        var shadowedOccurrencesUtc = new List<DateTime>();
+        foreach (var (_, exceptionEvent) in exceptions)
+        {
+            if (exceptionEvent?.OriginalStartTime != null)
+            {
+                var originalStart = ParseGoogleEventDateTime(exceptionEvent.OriginalStartTime);
+                if (originalStart.HasValue)
+                {
+                    // Normalize to UTC for comparison (ParseGoogleEventDateTime returns local time)
+                    shadowedOccurrencesUtc.Add(originalStart.Value.ToUniversalTime());
+                }
+            }
+        }
+
+        // Get all occurrences from the recurrence rule
+        var allOccurrences = GetGoogleRecurringOccurrences(e, googleEvent, queryStart, queryEnd);
+
+        // Filter out shadowed occurrences - compare in UTC with minute-level tolerance
+        // Occurrence times from iCal have Kind=Unspecified but represent UTC values
+        var result = allOccurrences
+            .Where(occ =>
+            {
+                // The occurrence time from iCal is in UTC but with Kind=Unspecified
+                // Treat it as UTC by specifying the kind before comparison
+                var occUtc = DateTime.SpecifyKind(occ.StartTime, DateTimeKind.Utc);
+                return !shadowedOccurrencesUtc.Any(shadow =>
+                    Math.Abs((occUtc - shadow).TotalMinutes) < 1);
+            })
+            .ToList();
+
+        return result;
     }
 
     private (DateTime startTime, DateTime endTime) ExtractGoogleEventTimes(CalendarEventQueryResult result)
@@ -406,15 +517,18 @@ public class DatabaseCalendarSource : ICalendarSource
             var duration = eventEnd - eventStart;
             var queryStartUtc = queryStart.ToUniversalTime();
             var queryEndUtc = queryEnd.ToUniversalTime();
-            
+
             var occurrences = calDavEvent.GetOccurrences(new CalDateTime(eventStart.ToUniversalTime()));
 
+            // Use AsUtc for filtering to ensure proper UTC comparison
             var filteredOccurrences = occurrences
-                .TakeWhile(o => o.Period.StartTime.Value <= queryEndUtc)
-                .Where(o => o.Period.StartTime.Value >= queryStartUtc);
+                .TakeWhile(o => o.Period.StartTime.AsUtc <= queryEndUtc)
+                .Where(o => o.Period.StartTime.AsUtc >= queryStartUtc);
 
             foreach (var occurrence in filteredOccurrences)
             {
+                // Use .Value which returns the time as stored in the iCal
+                // This preserves consistency with the original time representation
                 var occStart = occurrence.Period.StartTime.Value;
                 var occEnd = occStart.Add(duration);
 
