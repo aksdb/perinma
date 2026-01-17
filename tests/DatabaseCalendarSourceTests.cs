@@ -36,6 +36,15 @@ public class DatabaseCalendarSourceTests
 
         return calendar.CalendarId;
     }
+
+    private static GoogleEventDateTime CreateGoogleEventDateTime(DateTime dateTime, TimeZoneInfo? timeZone = null)
+    {
+        return new GoogleEventDateTime
+        {
+            DateTimeRaw = dateTime.ToString("o"),
+            TimeZone = timeZone?.Id ?? TimeZoneInfo.Local.Id
+        };
+    }
     
     [Test]
     public async Task GetCalendarEvents_ReturnsEventsFromEnabledCalendars()
@@ -450,8 +459,8 @@ public class DatabaseCalendarSourceTests
             Id = "recurring_event",
             Summary = "Weekly Meeting",
             Status = "confirmed",
-            Start = new GoogleEventDateTime { DateTimeRaw = eventStart.ToString("o") },
-            End = new GoogleEventDateTime { DateTimeRaw = eventEnd.ToString("o") },
+            Start = CreateGoogleEventDateTime(eventStart),
+            End = CreateGoogleEventDateTime(eventEnd),
             Recurrence = new List<string> { "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR" }
         };
 
@@ -499,8 +508,8 @@ public class DatabaseCalendarSourceTests
             Id = "single_event",
             Summary = "One-time Meeting",
             Status = "confirmed",
-            Start = new GoogleEventDateTime { DateTimeRaw = eventStart.ToString("o") },
-            End = new GoogleEventDateTime { DateTimeRaw = eventEnd.ToString("o") }
+            Start = CreateGoogleEventDateTime(eventStart),
+            End = CreateGoogleEventDateTime(eventEnd)
         };
 
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
@@ -664,8 +673,8 @@ END:VCALENDAR";
             Id = "past_recurring",
             Summary = "Past Event",
             Status = "confirmed",
-            Start = new GoogleEventDateTime { DateTimeRaw = eventStart.ToString("o") },
-            End = new GoogleEventDateTime { DateTimeRaw = eventEnd.ToString("o") },
+            Start = CreateGoogleEventDateTime(eventStart),
+            End = CreateGoogleEventDateTime(eventEnd),
             Recurrence = new List<string> { "RRULE:FREQ=WEEKLY;COUNT=3" }
         };
 
@@ -752,16 +761,8 @@ END:VCALENDAR";
             Id = "recurring_with_tz",
             Summary = "Weekly Meeting with TZ",
             Status = "confirmed",
-            Start = new GoogleEventDateTime
-            {
-                DateTimeRaw = eventStart.ToString("o"),
-                TimeZone = "America/New_York"
-            },
-            End = new GoogleEventDateTime
-            {
-                DateTimeRaw = eventEnd.ToString("o"),
-                TimeZone = "America/New_York"
-            },
+            Start = CreateGoogleEventDateTime(eventStart),
+            End = CreateGoogleEventDateTime(eventEnd),
             Recurrence = new List<string> { "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR" }
         };
 
@@ -896,8 +897,8 @@ END:VCALENDAR";
             Id = "parent_recurring",
             Summary = "Daily Standup",
             Status = "confirmed",
-            Start = new GoogleEventDateTime { DateTimeRaw = parentStart.ToString("o"), TimeZone = TimeZoneInfo.Local.Id},
-            End = new GoogleEventDateTime { DateTimeRaw = parentEnd.ToString("o"), TimeZone = TimeZoneInfo.Local.Id },
+            Start = CreateGoogleEventDateTime(parentStart),
+            End = CreateGoogleEventDateTime(parentEnd),
             Recurrence = new List<string> { "RRULE:FREQ=DAILY;COUNT=7" }
         };
         await storage.SetEventDataJson(parentEventId, "rawData",
@@ -923,9 +924,9 @@ END:VCALENDAR";
             Summary = "Daily Standup",
             Status = "cancelled",
             RecurringEventId = "parent_recurring",
-            OriginalStartTime = new GoogleEventDateTime { DateTimeRaw = cancelledStart.ToString("o"), TimeZone = TimeZoneInfo.Local.Id },
-            Start = new GoogleEventDateTime { DateTimeRaw = cancelledStart.ToString("o"), TimeZone = TimeZoneInfo.Local.Id },
-            End = new GoogleEventDateTime { DateTimeRaw = cancelledStart.AddHours(1).ToString("o"), TimeZone = TimeZoneInfo.Local.Id }
+            OriginalStartTime = CreateGoogleEventDateTime(cancelledStart),
+            Start = CreateGoogleEventDateTime(cancelledStart),
+            End = CreateGoogleEventDateTime(cancelledStart.AddHours(1))
         };
         await storage.SetEventDataJson(cancelledEventId, "rawData",
             NewtonsoftJsonSerializer.Instance.Serialize(cancelledGoogleEvent));
@@ -973,8 +974,8 @@ END:VCALENDAR";
             Id = "parent_recurring",
             Summary = "Daily Standup",
             Status = "confirmed",
-            Start = new GoogleEventDateTime { DateTimeRaw = parentStart.ToString("o"), TimeZone = TimeZoneInfo.Local.Id },
-            End = new GoogleEventDateTime { DateTimeRaw = parentEnd.ToString("o"), TimeZone = TimeZoneInfo.Local.Id },
+            Start = CreateGoogleEventDateTime(parentStart),
+            End = CreateGoogleEventDateTime(parentEnd),
             Recurrence = new List<string> { "RRULE:FREQ=DAILY;COUNT=7" }
         };
         await storage.SetEventDataJson(parentEventId, "rawData",
@@ -1002,9 +1003,9 @@ END:VCALENDAR";
             Summary = "Daily Standup (Rescheduled)",
             Status = "confirmed",
             RecurringEventId = "parent_recurring",
-            OriginalStartTime = new GoogleEventDateTime { DateTimeRaw = originalStart.ToString("o"), TimeZone = TimeZoneInfo.Local.Id },
-            Start = new GoogleEventDateTime { DateTimeRaw = modifiedStart.ToString("o"), TimeZone = TimeZoneInfo.Local.Id },
-            End = new GoogleEventDateTime { DateTimeRaw = modifiedEnd.ToString("o"), TimeZone = TimeZoneInfo.Local.Id }
+            OriginalStartTime = CreateGoogleEventDateTime(originalStart),
+            Start = CreateGoogleEventDateTime(modifiedStart),
+            End = CreateGoogleEventDateTime(modifiedEnd)
         };
         await storage.SetEventDataJson(modifiedEventId, "rawData",
             NewtonsoftJsonSerializer.Instance.Serialize(modifiedGoogleEvent));
@@ -1055,9 +1056,9 @@ END:VCALENDAR";
             Summary = "Daily Standup",
             Status = "cancelled",
             RecurringEventId = "parent_outside_range",
-            OriginalStartTime = new GoogleEventDateTime { DateTimeRaw = cancelledStart.ToString("o"), TimeZone = TimeZoneInfo.Local.Id },
-            Start = new GoogleEventDateTime { DateTimeRaw = cancelledStart.ToString("o"), TimeZone = TimeZoneInfo.Local.Id },
-            End = new GoogleEventDateTime { DateTimeRaw = cancelledStart.AddHours(1).ToString("o"), TimeZone = TimeZoneInfo.Local.Id }
+            OriginalStartTime = CreateGoogleEventDateTime(cancelledStart),
+            Start = CreateGoogleEventDateTime(cancelledStart),
+            End = CreateGoogleEventDateTime(cancelledStart.AddHours(1))
         };
         await storage.SetEventDataJson(cancelledEventId, "rawData",
             NewtonsoftJsonSerializer.Instance.Serialize(cancelledGoogleEvent));
@@ -1101,9 +1102,9 @@ END:VCALENDAR";
             Summary = "Daily Standup (Rescheduled)",
             Status = "confirmed",
             RecurringEventId = "parent_outside_range",
-            OriginalStartTime = new GoogleEventDateTime { DateTimeRaw = weekStart.AddDays(2).AddHours(10).ToString("o"), TimeZone = TimeZoneInfo.Local.Id },
-            Start = new GoogleEventDateTime { DateTimeRaw = modifiedStart.ToString("o"), TimeZone = TimeZoneInfo.Local.Id },
-            End = new GoogleEventDateTime { DateTimeRaw = modifiedEnd.ToString("o"), TimeZone = TimeZoneInfo.Local.Id }
+            OriginalStartTime = CreateGoogleEventDateTime(weekStart.AddDays(2).AddHours(10)),
+            Start = CreateGoogleEventDateTime(modifiedStart),
+            End = CreateGoogleEventDateTime(modifiedEnd)
         };
         await storage.SetEventDataJson(modifiedEventId, "rawData",
             NewtonsoftJsonSerializer.Instance.Serialize(modifiedGoogleEvent));
