@@ -304,16 +304,12 @@ public class DatabaseCalendarSource : ICalendarSource
         // Get all occurrences from the recurrence rule
         var allOccurrences = GetGoogleRecurringOccurrences(e, googleEvent, queryStart, queryEnd);
 
-        // Filter out shadowed occurrences - compare in UTC with minute-level tolerance
+        // Filter out shadowed occurrences - compare in UTC.
         // Occurrence times from iCal have Kind=Unspecified but represent UTC values
         var result = allOccurrences
             .Where(occ =>
             {
-                // The occurrence time from iCal is in UTC but with Kind=Unspecified
-                // Treat it as UTC by specifying the kind before comparison
-                var occUtc = DateTime.SpecifyKind(occ.StartTime, DateTimeKind.Utc);
-                return !shadowedOccurrencesUtc.Any(shadow =>
-                    Math.Abs((occUtc - shadow).TotalMinutes) < 1);
+                return shadowedOccurrencesUtc.All(shadow => shadow != occ.StartTime.ToUniversalTime());
             })
             .ToList();
 
@@ -465,15 +461,15 @@ public class DatabaseCalendarSource : ICalendarSource
             else if (!string.IsNullOrEmpty(timeZone))
             {
                 var tzid = timeZone;
-                var dtstart = FormatDateTimeLocal(eventStart);
-                var dtend = FormatDateTimeLocal(eventEnd);
+                var dtstart = FormatDateTime(eventStart);
+                var dtend = FormatDateTime(eventEnd);
                 icalBuilder.AppendLine($"DTSTART;TZID={tzid}:{dtstart}");
                 icalBuilder.AppendLine($"DTEND;TZID={tzid}:{dtend}");
             }
             else
             {
-                icalBuilder.AppendLine($"DTSTART:{FormatDateTime(eventStart)}");
-                icalBuilder.AppendLine($"DTEND:{FormatDateTime(eventEnd)}");
+                icalBuilder.AppendLine($"DTSTART:{FormatDateTime(eventStart.ToUniversalTime())}'Z'");
+                icalBuilder.AppendLine($"DTEND:{FormatDateTime(eventEnd.ToUniversalTime())}'Z'");
             }
 
             foreach (var rule in googleEvent.Recurrence ?? [])
@@ -673,12 +669,6 @@ public class DatabaseCalendarSource : ICalendarSource
     }
 
     private string FormatDateTime(DateTime dt)
-    {
-        var utc = dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
-        return utc.ToString("yyyyMMdd'T'HHmmss'Z'");
-    }
-
-    private string FormatDateTimeLocal(DateTime dt)
     {
         return dt.ToString("yyyyMMdd'T'HHmmss");
     }
