@@ -1,0 +1,1 @@
+ALTER TABLE account ADD COLUMN sort_order int NOT NULL DEFAULT 0;

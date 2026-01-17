@@ -13,7 +13,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
     {
         using var connection = databaseService.GetConnection();
         return await connection.QueryAsync<AccountDbo>(
-            "SELECT account_id AS AccountId, name AS Name, type AS Type, data AS Data FROM account",
+            "SELECT account_id AS AccountId, name AS Name, type AS Type, sort_order AS SortOrder FROM account ORDER BY sort_order, name",
             commandTimeout: 30
         );
     }
@@ -22,7 +22,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
     {
         using var connection = databaseService.GetConnection();
         return await connection.QuerySingleOrDefaultAsync<AccountDbo>(
-            "SELECT account_id AS AccountId, name AS Name, type AS Type, data AS Data FROM account WHERE account_id = @AccountId",
+            "SELECT account_id AS AccountId, name AS Name, type AS Type, sort_order AS SortOrder FROM account WHERE account_id = @AccountId",
             new { AccountId = accountId },
             commandTimeout: 30
         );
@@ -32,7 +32,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
     {
         using var connection = databaseService.GetConnection();
         return await connection.QuerySingleOrDefaultAsync<AccountDbo>(
-            "SELECT account_id AS AccountId, name AS Name, type AS Type, data AS Data FROM account WHERE name = @Name",
+            "SELECT account_id AS AccountId, name AS Name, type AS Type, sort_order AS SortOrder FROM account WHERE name = @Name",
             new { Name = name },
             commandTimeout: 30
         );
@@ -80,6 +80,20 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         );
 
         return rowsAffected > 0;
+    }
+
+    public async Task UpdateAccountSortOrdersAsync(IEnumerable<(string AccountId, int SortOrder)> sortOrders)
+    {
+        using var connection = databaseService.GetConnection();
+
+        foreach (var (accountId, sortOrder) in sortOrders)
+        {
+            await connection.ExecuteAsync(
+                "UPDATE account SET sort_order = @SortOrder WHERE account_id = @AccountId",
+                new { AccountId = accountId, SortOrder = sortOrder },
+                commandTimeout: 30
+            );
+        }
     }
 
     public async Task<bool> SetAccountData(AccountDbo account, string key, string value)

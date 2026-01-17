@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
 using perinma.Services;
@@ -14,6 +15,7 @@ public partial class CalendarListViewModel : ViewModelBase
     private readonly IGoogleCalendarService _googleCalendarService;
     private readonly CredentialManagerService _credentialManager;
     private readonly CalendarWeekViewModel _calendarWeekViewModel;
+    private bool _isLoadingAccounts;
 
     public ObservableCollection<AccountGroupViewModel> AccountGroups { get; } = new();
 
@@ -27,11 +29,42 @@ public partial class CalendarListViewModel : ViewModelBase
         _googleCalendarService = googleCalendarService;
         _credentialManager = credentialManager;
         _calendarWeekViewModel = calendarWeekViewModel;
+        AccountGroups.CollectionChanged += OnAccountGroupsCollectionChanged;
         _ = LoadCalendarsAsync();
+    }
+
+    private async void OnAccountGroupsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        // Skip if we're loading accounts (not a user reorder)
+        if (_isLoadingAccounts)
+            return;
+
+        // Only handle Move actions (drag & drop reorder)
+        if (e.Action == NotifyCollectionChangedAction.Move)
+        {
+            await SaveAccountSortOrderAsync();
+        }
+    }
+
+    private async Task SaveAccountSortOrderAsync()
+    {
+        try
+        {
+            var sortOrders = AccountGroups
+                .Select((group, index) => (group.AccountId.ToString(), index))
+                .ToList();
+
+            await _storage.UpdateAccountSortOrdersAsync(sortOrders);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving account sort order: {ex.Message}");
+        }
     }
 
     public async Task LoadCalendarsAsync()
     {
+        _isLoadingAccounts = true;
         AccountGroups.Clear();
 
         try
@@ -71,6 +104,10 @@ public partial class CalendarListViewModel : ViewModelBase
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading calendars: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingAccounts = false;
         }
     }
 
