@@ -165,7 +165,8 @@ END:VEVENT
 END:VCALENDAR";
 
         var calendar = Calendar.Load(icalData);
-        var calendarEvent = calendar.Events.First();
+        var calendarEvent = calendar?.Events.FirstOrDefault();
+        Assert.That(calendarEvent, Is.Not.Null);
 
         var result = RecurrenceParser.CalculateRecurrenceEndTime(calendarEvent);
 
@@ -191,7 +192,8 @@ END:VEVENT
 END:VCALENDAR";
 
         var calendar = Calendar.Load(icalData);
-        var calendarEvent = calendar.Events.First();
+        var calendarEvent = calendar?.Events.FirstOrDefault();
+        Assert.That(calendarEvent, Is.Not.Null);
 
         var result = RecurrenceParser.CalculateRecurrenceEndTime(calendarEvent);
 

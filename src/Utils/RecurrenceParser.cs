@@ -74,10 +74,6 @@ public static class RecurrenceParser
         if (calendarEvent.RecurrenceRules.Count == 0)
             return null;
 
-        DateTime? latestEndTime = null;
-        var duration = GetEventDuration(calendarEvent);
-        var startTime = calendarEvent.Start?.AsUtc ?? DateTime.UtcNow;
-
         if (HasOpenEndedRecurrence(calendarEvent.RecurrenceRules))
         {
             // If the rule is open-ended, the event could potentially run forever.
