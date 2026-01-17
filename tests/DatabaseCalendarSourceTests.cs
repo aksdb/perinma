@@ -13,14 +13,37 @@ namespace tests;
 
 public class DatabaseCalendarSourceTests
 {
+    private static IDisposable CreateTestSetup(out DatabaseCalendarSource calendarSource, out SqliteStorage storage)
+    {
+        var database = new DatabaseService(inMemory: true);
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        storage = new SqliteStorage(database, credentialManager);
+        calendarSource = new DatabaseCalendarSource(storage);
+        return database;
+    }
+
+    private static async Task<string> CreateCalendar(SqliteStorage storage, string accountType = "Unknown")
+    {
+        var accountId = Guid.NewGuid().ToString();
+        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = accountType });
+
+        var calendar = new CalendarDbo
+        {
+            AccountId = accountId,
+            Name = "Test Calendar",
+            CalendarId = "",
+            Enabled = 1
+        };
+        await storage.CreateOrUpdateCalendarAsync(calendar);
+
+        return calendar.CalendarId;
+    }
+    
     [Test]
     public async Task GetCalendarEvents_ReturnsEventsFromEnabledCalendars()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -83,10 +106,7 @@ public class DatabaseCalendarSourceTests
     public async Task GetCalendarEvents_ExcludesEventsFromDisabledCalendars()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -138,10 +158,7 @@ public class DatabaseCalendarSourceTests
     public async Task GetCalendarEvents_OnlyReturnsEventsInTimeRange()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -213,10 +230,7 @@ public class DatabaseCalendarSourceTests
     public async Task GetCalendarEvents_CorrectlyMapsTimestampsToDateTime()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -264,10 +278,7 @@ public class DatabaseCalendarSourceTests
     public async Task GetCalendarEvents_ReturnsEmptyListWhenNoEventsExist()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -296,10 +307,7 @@ public class DatabaseCalendarSourceTests
     public async Task GetCalendarEvents_ReturnsEventsFromMultipleEnabledCalendars()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -361,10 +369,7 @@ public class DatabaseCalendarSourceTests
     public async Task GetCalendarEvents_PreservesCalendarMetadata()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -418,26 +423,13 @@ public class DatabaseCalendarSourceTests
     [Test]
     public async Task GetCalendarEvents_GoogleRecurringEvent_ReturnsOccurrencesInRange()
     {
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
         var weekEnd = weekStart.AddDays(7);
 
-        var accountId = Guid.NewGuid().ToString();
-        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "Google" });
-
-        var calendar = new CalendarDbo
-        {
-            AccountId = accountId,
-            Name = "Test Calendar",
-            CalendarId = "",
-            Enabled = 1
-        };
-        await storage.CreateOrUpdateCalendarAsync(calendar);
+        var calendarId = await CreateCalendar(storage);
 
         var eventStart = weekStart.AddHours(10);
         var eventEnd = weekStart.AddHours(11);
@@ -445,7 +437,7 @@ public class DatabaseCalendarSourceTests
 
         var eventDbo = new CalendarEventDbo
         {
-            CalendarId = calendar.CalendarId,
+            CalendarId = calendarId,
             EventId = eventId,
             ExternalId = "recurring_event",
             StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
@@ -480,26 +472,13 @@ public class DatabaseCalendarSourceTests
     [Test]
     public async Task GetCalendarEvents_GoogleNonRecurringEvent_ReturnsSingleEvent()
     {
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
         var weekEnd = weekStart.AddDays(7);
 
-        var accountId = Guid.NewGuid().ToString();
-        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "Google" });
-
-        var calendar = new CalendarDbo
-        {
-            AccountId = accountId,
-            Name = "Test Calendar",
-            CalendarId = "",
-            Enabled = 1
-        };
-        await storage.CreateOrUpdateCalendarAsync(calendar);
+        var calendarId = await CreateCalendar(storage);
 
         var eventStart = weekStart.AddHours(10);
         var eventEnd = weekStart.AddHours(11);
@@ -507,7 +486,7 @@ public class DatabaseCalendarSourceTests
 
         var eventDbo = new CalendarEventDbo
         {
-            CalendarId = calendar.CalendarId,
+            CalendarId = calendarId,
             EventId = eventId,
             ExternalId = "single_event",
             StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
@@ -540,10 +519,7 @@ public class DatabaseCalendarSourceTests
     [Test]
     public async Task GetCalendarEvents_CalDavRecurringEvent_ReturnsOccurrencesInRange()
     {
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -603,10 +579,7 @@ END:VCALENDAR";
     [Test]
     public async Task GetCalendarEvents_CalDavNonRecurringEvent_ReturnsSingleEvent()
     {
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -664,26 +637,13 @@ END:VCALENDAR";
     [Test]
     public async Task GetCalendarEvents_RecurringEventOutsideRange_ReturnsEmptyList()
     {
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
         var weekEnd = weekStart.AddDays(7);
 
-        var accountId = Guid.NewGuid().ToString();
-        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "Google" });
-
-        var calendar = new CalendarDbo
-        {
-            AccountId = accountId,
-            Name = "Test Calendar",
-            CalendarId = "",
-            Enabled = 1
-        };
-        await storage.CreateOrUpdateCalendarAsync(calendar);
+        var calendarId = await CreateCalendar(storage);
 
         var eventStart = weekStart.AddDays(-14);
         var eventEnd = weekStart.AddDays(-14).AddHours(1);
@@ -691,7 +651,7 @@ END:VCALENDAR";
 
         var eventDbo = new CalendarEventDbo
         {
-            CalendarId = calendar.CalendarId,
+            CalendarId = calendarId,
             EventId = eventId,
             ExternalId = "past_recurring",
             StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
@@ -722,10 +682,7 @@ END:VCALENDAR";
     [Test]
     public async Task GetCalendarEvents_UnknownAccountType_ReturnsFallbackEvent()
     {
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
         var now = DateTime.UtcNow;
         var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -763,6 +720,146 @@ END:VCALENDAR";
 
         Assert.That(events, Has.Count.EqualTo(1));
         Assert.That(events[0].Title, Is.EqualTo("Unknown Type Event"));
+    }
+
+    [Test]
+    public async Task GetCalendarEvents_GoogleRecurringEventWithTimezone_ReturnsOccurrencesWithCorrectTimestamps()
+    {
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
+
+        var now = DateTime.UtcNow;
+        var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
+        var weekEnd = weekStart.AddDays(7);
+
+        var calendarId = await CreateCalendar(storage);
+
+        var eventStart = weekStart.AddHours(10);
+        var eventEnd = weekStart.AddHours(11);
+        var eventId = Guid.NewGuid().ToString();
+
+        var eventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendarId,
+            EventId = eventId,
+            ExternalId = "recurring_with_tz",
+            StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(weekEnd.AddDays(30)).ToUnixTimeSeconds(),
+            Title = "Weekly Meeting with TZ",
+            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+        };
+        await storage.CreateOrUpdateEventAsync(eventDbo);
+
+        var googleEvent = new Event
+        {
+            Id = "recurring_with_tz",
+            Summary = "Weekly Meeting with TZ",
+            Status = "confirmed",
+            Start = new EventDateTime
+            {
+                DateTimeRaw = eventStart.ToString("o"),
+                TimeZone = "America/New_York"
+            },
+            End = new EventDateTime
+            {
+                DateTimeRaw = eventEnd.ToString("o"),
+                TimeZone = "America/New_York"
+            },
+            Recurrence = new List<string> { "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR" }
+        };
+
+        var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
+        await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
+
+        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+
+        Assert.That(events.Count, Is.GreaterThan(0));
+        foreach (var evt in events)
+        {
+            Assert.That(evt.Title, Is.EqualTo("Weekly Meeting with TZ"));
+        }
+    }
+
+    [Test]
+    public async Task GetCalendarEvents_FullDayRecurringGoogleEvent()
+    {
+        using var disposable = CreateTestSetup(out var calendarSource, out var storage);
+        var calendarId = await CreateCalendar(storage, accountType: "Google");
+
+        var eventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendarId,
+            ExternalId = "fullday_recurring",
+            StartTime = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds(),
+            Title = "Weekly Meeting with TZ",
+            ChangedAt = new DateTimeOffset().ToUnixTimeSeconds()
+        };
+        var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
+        await storage.SetEventDataJson(eventId, "rawData",
+            """
+            {
+                "created": "2021-12-16T14:30:52.000Z",
+                "creator":
+                {
+                    "email": "example@localhost.localdomain",
+                    "self": true
+                },
+                "end":
+                {
+                    "date": "2021-12-22"
+                },
+                "etag": "\"3412196577778000\"",
+                "eventType": "workingLocation",
+                "htmlLink": "https://www.google.com/calendar/event?eid=someid",
+                "iCalUID": "someid@google.com",
+                "id": "someid",
+                "kind": "calendar#event",
+                "organizer":
+                {
+                    "email": "example@localhost.localdomain",
+                    "self": true
+                },
+                "recurrence":
+                [
+                    "EXDATE;VALUE=DATE:20221122",
+                    "RRULE:FREQ=WEEKLY;BYDAY=TU"
+                ],
+                "reminders":
+                {
+                    "useDefault": false
+                },
+                "sequence": 0,
+                "start":
+                {
+                    "date": "2021-12-21"
+                },
+                "status": "confirmed",
+                "summary": "Homeoffice",
+                "transparency": "transparent",
+                "updated": "2024-01-24T12:11:28.889Z",
+                "visibility": "public",
+                "workingLocationProperties":
+                {
+                    "homeOffice":
+                    {},
+                    "type": "homeOffice"
+                }
+            }
+            """);
+        
+        var events = calendarSource.GetCalendarEvents(new DateTime(2022, 11, 10), new DateTime(2022, 12, 01));
+        Assert.That(events.Count, Is.EqualTo(2));
+        
+        var event1 = events[0];
+        var event2 = events[1];
+        Assert.Multiple(() =>
+        {
+            Assert.That(event1.StartTime, Is.EqualTo(new DateTime(2022, 11, 15, 0, 0, 0)));
+            Assert.That(event1.EndTime, Is.EqualTo(new DateTime(2022, 11, 16, 0, 0, 0)));
+
+            Assert.That(event2.StartTime, Is.EqualTo(new DateTime(2022, 11, 29, 0, 0, 0)));
+            Assert.That(event2.EndTime, Is.EqualTo(new DateTime(2022, 11, 30, 0, 0, 0)));
+        });
     }
 
     #endregion

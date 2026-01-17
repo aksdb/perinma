@@ -261,10 +261,7 @@ public class DatabaseCalendarSource : ICalendarSource
             return CreateCalendarEvent(e, eventStartTime, eventEndTime);
         }
 
-        var baseStartTime = ParseGoogleEventDateTime(googleEvent.Start) ?? GetFallbackStartTime(e);
-        var baseEndTime = ParseGoogleEventDateTime(googleEvent.End) ?? GetFallbackEndTime(e);
-
-        return GetRecurringOccurrences(e, googleEvent.Recurrence, baseStartTime, baseEndTime, queryStart, queryEnd);
+        return GetGoogleRecurringOccurrences(e, googleEvent, queryStart, queryEnd);
     }
 
     private List<CalendarEvent> GetCalDavEventOccurrences(CalendarEventQueryResult e, DateTime queryStart, DateTime queryEnd)
@@ -275,7 +272,7 @@ public class DatabaseCalendarSource : ICalendarSource
             return GetFallbackOccurrences(e, queryStart, queryEnd);
         }
 
-        if (calDavEvent.RecurrenceRules == null || calDavEvent.RecurrenceRules.Count == 0)
+        if (calDavEvent.RecurrenceRules.Count == 0)
         {
             var (eventStartTime, eventEndTime) = ExtractCalDavEventTimes(e);
             return CreateCalendarEvent(e, eventStartTime, eventEndTime);
@@ -328,19 +325,47 @@ public class DatabaseCalendarSource : ICalendarSource
         ];
     }
 
-    private List<CalendarEvent> GetRecurringOccurrences(CalendarEventQueryResult e, IList<string> recurrence, DateTime eventStart, DateTime eventEnd, DateTime queryStart, DateTime queryEnd)
+    private List<CalendarEvent> GetGoogleRecurringOccurrences(CalendarEventQueryResult e, GoogleEvent googleEvent, DateTime queryStart, DateTime queryEnd)
     {
         try
         {
+            var eventStart = googleEvent.Start != null
+                ? ParseGoogleEventDateTime(googleEvent.Start) ?? GetFallbackStartTime(e)
+                : GetFallbackStartTime(e);
+
+            var eventEnd = googleEvent.End != null
+                ? ParseGoogleEventDateTime(googleEvent.End) ?? GetFallbackEndTime(e)
+                : GetFallbackEndTime(e);
+
+            var timeZone = googleEvent.Start?.TimeZone;
+            var isAllDayEvent = !string.IsNullOrEmpty(googleEvent.Start?.Date);
+
             var icalBuilder = new System.Text.StringBuilder();
             icalBuilder.AppendLine("BEGIN:VCALENDAR");
             icalBuilder.AppendLine("VERSION:2.0");
             icalBuilder.AppendLine("BEGIN:VEVENT");
-            icalBuilder.AppendLine($"DTSTART:{FormatDateTime(eventStart)}");
-            icalBuilder.AppendLine($"DTEND:{FormatDateTime(eventEnd)}");
             icalBuilder.AppendLine("UID:temp-uid@perinma");
 
-            foreach (var rule in recurrence)
+            if (isAllDayEvent)
+            {
+                icalBuilder.AppendLine($"DTSTART;VALUE=DATE:{FormatDate(eventStart)}");
+                icalBuilder.AppendLine($"DTEND;VALUE=DATE:{FormatDate(eventEnd)}");
+            }
+            else if (!string.IsNullOrEmpty(timeZone))
+            {
+                var tzid = timeZone;
+                var dtstart = FormatDateTimeLocal(eventStart);
+                var dtend = FormatDateTimeLocal(eventEnd);
+                icalBuilder.AppendLine($"DTSTART;TZID={tzid}:{dtstart}");
+                icalBuilder.AppendLine($"DTEND;TZID={tzid}:{dtend}");
+            }
+            else
+            {
+                icalBuilder.AppendLine($"DTSTART:{FormatDateTime(eventStart)}");
+                icalBuilder.AppendLine($"DTEND:{FormatDateTime(eventEnd)}");
+            }
+
+            foreach (var rule in googleEvent.Recurrence ?? [])
             {
                 icalBuilder.AppendLine(rule);
             }
@@ -348,7 +373,8 @@ public class DatabaseCalendarSource : ICalendarSource
             icalBuilder.AppendLine("END:VEVENT");
             icalBuilder.AppendLine("END:VCALENDAR");
 
-            var calendar = ICalCalendar.Load(icalBuilder.ToString());
+            var icalContent = icalBuilder.ToString();
+            var calendar = ICalCalendar.Load(icalContent);
             var calendarEvent = calendar?.Events.FirstOrDefault();
 
             if (calendarEvent != null)
@@ -361,7 +387,15 @@ public class DatabaseCalendarSource : ICalendarSource
             Console.WriteLine($"Error parsing Google recurrence rule: {ex.Message}");
         }
 
-        return CreateCalendarEvent(e, eventStart, eventEnd);
+        var fallbackStart = googleEvent.Start != null
+            ? ParseGoogleEventDateTime(googleEvent.Start) ?? GetFallbackStartTime(e)
+            : GetFallbackStartTime(e);
+
+        var fallbackEnd = googleEvent.End != null
+            ? ParseGoogleEventDateTime(googleEvent.End) ?? GetFallbackEndTime(e)
+            : GetFallbackEndTime(e);
+
+        return CreateCalendarEvent(e, fallbackStart, fallbackEnd);
     }
 
     private List<CalendarEvent> GetOccurrencesFromICalendarEvent(CalendarEventQueryResult e, ICalCalendarEvent calDavEvent, DateTime eventStart, DateTime eventEnd, DateTime queryStart, DateTime queryEnd)
@@ -373,7 +407,7 @@ public class DatabaseCalendarSource : ICalendarSource
             var queryStartUtc = queryStart.ToUniversalTime();
             var queryEndUtc = queryEnd.ToUniversalTime();
             
-            var occurrences = calDavEvent.GetOccurrences(startTime: new CalDateTime(queryStartUtc));
+            var occurrences = calDavEvent.GetOccurrences(new CalDateTime(eventStart.ToUniversalTime()));
 
             var filteredOccurrences = occurrences
                 .TakeWhile(o => o.Period.StartTime.Value <= queryEndUtc)
@@ -528,5 +562,15 @@ public class DatabaseCalendarSource : ICalendarSource
     {
         var utc = dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
         return utc.ToString("yyyyMMdd'T'HHmmss'Z'");
+    }
+
+    private string FormatDateTimeLocal(DateTime dt)
+    {
+        return dt.ToString("yyyyMMdd'T'HHmmss");
+    }
+
+    private string FormatDate(DateTime dt)
+    {
+        return dt.ToString("yyyyMMdd");
     }
 }
