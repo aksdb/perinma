@@ -1,33 +1,60 @@
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Media;
 
 namespace perinma.Views.MessageBox;
 
 public partial class MessageBoxWindow : Window
 {
     private MessageBoxResult _result = MessageBoxResult.None;
-    private TaskCompletionSource<MessageBoxResult>? _tcs;
 
     public MessageBoxWindow()
     {
         InitializeComponent();
     }
 
-    public static Task<MessageBoxResult> ShowAsync(Window owner, string title, string message, MessageBoxButtons buttons)
+    public static Task<MessageBoxResult> ShowAsync(Window owner, string title, string message, MessageBoxType type, MessageBoxButtons buttons)
     {
         var messageBox = new MessageBoxWindow();
         messageBox.Title = title;
         messageBox.MessageText.Text = message;
+        messageBox.ConfigureType(type);
         messageBox.ConfigureButtons(buttons);
 
         var tcs = new TaskCompletionSource<MessageBoxResult>();
-        messageBox._tcs = tcs;
 
         messageBox.Closed += (_, _) => tcs.TrySetResult(messageBox._result);
 
         messageBox.ShowDialog(owner);
 
         return tcs.Task;
+    }
+
+    private void ConfigureType(MessageBoxType type)
+    {
+        switch (type)
+        {
+            case MessageBoxType.Information:
+                IconBorder.Background = new SolidColorBrush(Color.FromRgb(0, 120, 212)); // Blue
+                IconText.Text = "i";
+                IconText.Foreground = Brushes.White;
+                break;
+            case MessageBoxType.Confirmation:
+                IconBorder.Background = new SolidColorBrush(Color.FromRgb(16, 124, 16)); // Green
+                IconText.Text = "?";
+                IconText.Foreground = Brushes.White;
+                break;
+            case MessageBoxType.Warning:
+                IconBorder.Background = new SolidColorBrush(Color.FromRgb(255, 185, 0)); // Yellow/Orange
+                IconText.Text = "!";
+                IconText.Foreground = Brushes.Black;
+                break;
+            case MessageBoxType.Error:
+                IconBorder.Background = new SolidColorBrush(Color.FromRgb(196, 43, 28)); // Red
+                IconText.Text = "X";
+                IconText.Foreground = Brushes.White;
+                break;
+        }
     }
 
     private void ConfigureButtons(MessageBoxButtons buttons)

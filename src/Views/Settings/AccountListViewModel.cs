@@ -106,6 +106,7 @@ public partial class AccountListViewModel : ViewModelBase
             _parentWindow,
             "Delete Account",
             $"Are you sure you want to delete the account \"{account.Name}\"?\n\nThis will remove all calendars and events associated with this account.",
+            MessageBoxType.Confirmation,
             MessageBoxButtons.YesNo);
 
         if (result != MessageBoxResult.Yes)

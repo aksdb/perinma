@@ -15,3 +15,11 @@ public enum MessageBoxResult
     Yes,
     No
 }
+
+public enum MessageBoxType
+{
+    Information,
+    Confirmation,
+    Warning,
+    Error
+}
