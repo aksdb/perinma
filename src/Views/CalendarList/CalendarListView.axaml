@@ -15,20 +15,24 @@
                        FontWeight="Bold"
                        Margin="0,0,0,15" />
 
-            <!-- Account Groups with Calendars -->
+            <!-- Account Groups with Calendars (collapsible) -->
             <ItemsControl ItemsSource="{Binding AccountGroups}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="callist:AccountGroupViewModel">
-                        <StackPanel Margin="0,0,0,15">
-                            <!-- Account Header -->
-                            <TextBlock Text="{Binding AccountName}"
-                                       FontWeight="SemiBold"
-                                       Foreground="Gray"
-                                       FontSize="12"
-                                       Margin="0,0,0,8" />
+                        <Expander IsExpanded="{Binding IsExpanded}"
+                                  HorizontalAlignment="Stretch"
+                                  Margin="0,0,0,5"
+                                  Padding="0">
+                            <Expander.Header>
+                                <TextBlock Text="{Binding AccountName}"
+                                           FontWeight="SemiBold"
+                                           Foreground="Gray"
+                                           FontSize="12" />
+                            </Expander.Header>
 
                             <!-- Calendars in this account -->
-                            <ItemsControl ItemsSource="{Binding Calendars}">
+                            <ItemsControl ItemsSource="{Binding Calendars}"
+                                          Margin="0,4,0,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="callist:CalendarViewModel">
                                         <Border Padding="5,4"
@@ -61,7 +65,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </StackPanel>
+                        </Expander>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
