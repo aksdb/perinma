@@ -58,10 +58,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        _settingsWindow = new SettingsWindow
-        {
-            DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService, _calDavService, _syncService)
-        };
+        _settingsWindow = new SettingsWindow();
+        _settingsWindow.DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService, _calDavService, _syncService, _settingsWindow);
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
     }

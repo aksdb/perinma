@@ -2,10 +2,12 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Collections;
+using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using perinma.Services;
 using perinma.Storage;
+using perinma.Views.MessageBox;
 using perinma.Views.Settings.AddAccountWizard;
 
 namespace perinma.Views.Settings;
@@ -17,6 +19,7 @@ public partial class AccountListViewModel : ViewModelBase
     private readonly GoogleOAuthService _oauthService;
     private readonly ICalDavService _calDavService;
     private readonly SyncService _syncService;
+    private readonly Window _parentWindow;
     private AddAccountWindow? _addAccountWindow;
     private ReauthenticateAccountWindow? _reauthenticateWindow;
 
@@ -26,13 +29,14 @@ public partial class AccountListViewModel : ViewModelBase
     [ObservableProperty]
     private bool _canReauthenticate = true;
 
-    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, SyncService syncService)
+    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, SyncService syncService, Window parentWindow)
     {
         _storage = storage;
         _credentialManager = credentialManager;
         _oauthService = oauthService;
         _calDavService = calDavService;
         _syncService = syncService;
+        _parentWindow = parentWindow;
         _ = LoadAccountsAsync(); // Fire and forget initial load
     }
 
@@ -91,28 +95,37 @@ public partial class AccountListViewModel : ViewModelBase
     [RelayCommand]
     private async Task DeleteAccount(Guid accountId)
     {
+        var account = Accounts.FirstOrDefault(a => a.Id == accountId);
+        if (account == null)
+        {
+            Console.WriteLine($"Account not found: {accountId}");
+            return;
+        }
+
+        var result = await MessageBoxWindow.ShowAsync(
+            _parentWindow,
+            "Delete Account",
+            $"Are you sure you want to delete the account \"{account.Name}\"?\n\nThis will remove all calendars and events associated with this account.",
+            MessageBoxButtons.YesNo);
+
+        if (result != MessageBoxResult.Yes)
+            return;
+
         try
         {
             var success = await _storage.DeleteAccountAsync(accountId.ToString());
 
             if (success)
             {
-                // Remove from UI
-                var account = Accounts.FirstOrDefault(a => a.Id == accountId);
-                if (account != null)
-                {
-                    Accounts.Remove(account);
-                }
+                Accounts.Remove(account);
             }
             else
             {
-                // TODO: Show error to user
                 Console.WriteLine($"Failed to delete account: {accountId}");
             }
         }
         catch (Exception ex)
         {
-            // TODO: Show error to user
             Console.WriteLine($"Error deleting account: {ex.Message}");
         }
     }
