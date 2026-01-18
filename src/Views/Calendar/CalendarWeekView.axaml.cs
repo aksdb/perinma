@@ -2,9 +2,11 @@ using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using perinma.Services;
 
 namespace perinma.Views.Calendar;
 
@@ -72,6 +74,7 @@ public partial class CalendarWeekView : UserControl
         topView.MaxHeight = _topBarView.RowHeight * 3;
 
         _mainView.SetEvents(_viewModel.Events); // timed events only
+        _mainView.SettingsService = _viewModel.SettingsService;
         _topBarView.SetEvents(_viewModel.FullDayEvents); // full-day events only
         
         _viewModel.PropertyChanged += (sender, args) =>
@@ -81,8 +84,13 @@ public partial class CalendarWeekView : UserControl
                 case nameof(CalendarWeekViewModel.DayColumns):
                     RebuildColumns();
                     break;
+                case nameof(CalendarWeekViewModel.WeekStart):
+                    _mainView.WeekStart = _viewModel.WeekStart;
+                    _mainView.InvalidateVisual();
+                    break;
             }
         };
+        _mainView.WeekStart = _viewModel.WeekStart;
         RebuildColumns();
     }
 
@@ -107,15 +115,45 @@ public partial class CalendarWeekView : UserControl
     
     private class MainView : ContentControl
     {
-
         public int DayColumns = 5;
         public double RowHeight = 0;
+        public DateTime WeekStart;
+        public SettingsService? SettingsService;
+
+        // Cached working hours settings
+        private bool[] _workingDays = [false, true, true, true, true, true, false]; // Sun-Sat, default Mon-Fri
+        private int _workingHoursStartSlot = 9 * 4; // 09:00 = slot 36
+        private int _workingHoursEndSlot = 17 * 4;  // 17:00 = slot 68
 
         private readonly Canvas _canvas = new();
         
         public MainView()
         {
             Content = _canvas;
+            _ = LoadSettingsAsync();
+        }
+
+        private async Task LoadSettingsAsync()
+        {
+            if (SettingsService == null) return;
+
+            _workingDays =
+            [
+                await SettingsService.GetWorkingDaySundayAsync(),
+                await SettingsService.GetWorkingDayMondayAsync(),
+                await SettingsService.GetWorkingDayTuesdayAsync(),
+                await SettingsService.GetWorkingDayWednesdayAsync(),
+                await SettingsService.GetWorkingDayThursdayAsync(),
+                await SettingsService.GetWorkingDayFridayAsync(),
+                await SettingsService.GetWorkingDaySaturdayAsync()
+            ];
+
+            var startTime = await SettingsService.GetWorkingHoursStartAsync();
+            var endTime = await SettingsService.GetWorkingHoursEndAsync();
+            _workingHoursStartSlot = (int)(startTime.TotalMinutes / 15);
+            _workingHoursEndSlot = (int)(endTime.TotalMinutes / 15);
+
+            InvalidateVisual();
         }
 
         private ObservableCollection<EventItem>? _items;
@@ -163,6 +201,7 @@ public partial class CalendarWeekView : UserControl
                 eventView.Width = innerWidth;
             }
             
+            _ = LoadSettingsAsync();
             InvalidateVisual();
         }
 
@@ -176,13 +215,49 @@ public partial class CalendarWeekView : UserControl
         {
             base.Render(context);
 
+            var height = Bounds.Height;
+            var width = Bounds.Width;
+            var columnWidth = width / DayColumns;
+
+            // Draw non-working area backgrounds
+            var nonWorkingBrush = new SolidColorBrush(Color.FromArgb(20, 0, 0, 0)); // Semi-transparent dark overlay
+
+            for (var dayIndex = 0; dayIndex < DayColumns; dayIndex++)
+            {
+                var dayDate = WeekStart.AddDays(dayIndex);
+                var dayOfWeek = (int)dayDate.DayOfWeek; // 0=Sunday, 1=Monday, etc.
+                var isWorkingDay = _workingDays[dayOfWeek];
+
+                var left = dayIndex * columnWidth;
+
+                if (!isWorkingDay)
+                {
+                    // Entire day is non-working
+                    context.FillRectangle(nonWorkingBrush, new Rect(left, 0, columnWidth, height));
+                }
+                else
+                {
+                    // Draw non-working hours (before start and after end)
+                    if (_workingHoursStartSlot > 0)
+                    {
+                        var beforeHeight = _workingHoursStartSlot * RowHeight;
+                        context.FillRectangle(nonWorkingBrush, new Rect(left, 0, columnWidth, beforeHeight));
+                    }
+
+                    if (_workingHoursEndSlot < 24 * 4)
+                    {
+                        var afterTop = _workingHoursEndSlot * RowHeight;
+                        var afterHeight = height - afterTop;
+                        context.FillRectangle(nonWorkingBrush, new Rect(left, afterTop, columnWidth, afterHeight));
+                    }
+                }
+            }
+
+            // Draw grid lines
             var thinPen = new Pen(Brushes.LightGray, 1);
             var thickPen = new Pen(Brushes.LightGray, 2);
 
-            var height = Bounds.Height;
-            var width = Bounds.Width;
-
-            for (int i = 0; i < 24; i++)
+            for (var i = 0; i < 24; i++)
             {
                 context.DrawLine(thinPen, new Point(0, (i*4+1)*RowHeight), new Point(width, (i*4+1)*RowHeight));
                 context.DrawLine(thinPen, new Point(0, (i*4+2)*RowHeight), new Point(width, (i*4+2)*RowHeight));
@@ -190,8 +265,7 @@ public partial class CalendarWeekView : UserControl
                 context.DrawLine(thickPen, new Point(0, (i*4+4)*RowHeight), new Point(width, (i*4+4)*RowHeight));
             }
 
-            var columnWidth = width / DayColumns;
-            for (int i = 1; i < DayColumns; i++)
+            for (var i = 1; i < DayColumns; i++)
             {
                 context.DrawLine(thickPen, new Point(i * columnWidth, 0), new Point(i * columnWidth, height));
             }

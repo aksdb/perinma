@@ -6,6 +6,7 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using perinma.Models;
+using perinma.Services;
 using perinma.Storage;
 
 namespace perinma.Views.Calendar;
@@ -14,6 +15,8 @@ public partial class CalendarWeekViewModel : ViewModelBase
 {
     private readonly ICalendarSource _calendarSource;
     private readonly SqliteStorage? _storage;
+
+    public SettingsService? SettingsService { get; }
 
     public ObservableCollection<EventItem> Events { get; } = [];
 
@@ -36,10 +39,11 @@ public partial class CalendarWeekViewModel : ViewModelBase
     [ObservableProperty]
     private List<WeekDayHeaderViewModel> _weekDayHeaders = [];
 
-    public CalendarWeekViewModel(ICalendarSource calendarSource, SqliteStorage? storage = null)
+    public CalendarWeekViewModel(ICalendarSource calendarSource, SqliteStorage? storage = null, SettingsService? settingsService = null)
     {
         _calendarSource = calendarSource;
         _storage = storage;
+        SettingsService = settingsService;
         DayColumns = 7;
         WeekStart = DateTime.Now;
     }
