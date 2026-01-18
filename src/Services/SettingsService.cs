@@ -18,6 +18,11 @@ public class SettingsService(SqliteStorage storage)
         public const string WorkingDaySunday = "calendar.workingDays.sunday";
         public const string WorkingHoursStart = "calendar.workingHours.start";
         public const string WorkingHoursEnd = "calendar.workingHours.end";
+        public const string MainWindowX = "mainWindow.position.x";
+        public const string MainWindowY = "mainWindow.position.y";
+        public const string MainWindowWidth = "mainWindow.size.width";
+        public const string MainWindowHeight = "mainWindow.size.height";
+        public const string SidebarWidth = "mainWindow.sidebar.width";
     }
 
     // Default values
@@ -32,6 +37,11 @@ public class SettingsService(SqliteStorage storage)
         public const bool WorkingDaySunday = false;
         public static readonly TimeSpan WorkingHoursStart = new(9, 0, 0);
         public static readonly TimeSpan WorkingHoursEnd = new(17, 0, 0);
+        public const int MainWindowX = int.MinValue;
+        public const int MainWindowY = int.MinValue;
+        public const int MainWindowWidth = 1200;
+        public const int MainWindowHeight = 600;
+        public const int SidebarWidth = 250;
     }
 
     // Generic accessors
@@ -82,4 +92,20 @@ public class SettingsService(SqliteStorage storage)
 
     public Task<TimeSpan> GetWorkingHoursEndAsync() => GetTimeSpanAsync(Keys.WorkingHoursEnd, Defaults.WorkingHoursEnd);
     public Task SetWorkingHoursEndAsync(TimeSpan value) => SetTimeSpanAsync(Keys.WorkingHoursEnd, value);
+
+    // MainWindow settings accessors
+    public Task<int> GetMainWindowXAsync() => GetIntAsync(Keys.MainWindowX, Defaults.MainWindowX);
+    public Task SetMainWindowXAsync(int value) => SetIntAsync(Keys.MainWindowX, value);
+
+    public Task<int> GetMainWindowYAsync() => GetIntAsync(Keys.MainWindowY, Defaults.MainWindowY);
+    public Task SetMainWindowYAsync(int value) => SetIntAsync(Keys.MainWindowY, value);
+
+    public Task<int> GetMainWindowWidthAsync() => GetIntAsync(Keys.MainWindowWidth, Defaults.MainWindowWidth);
+    public Task SetMainWindowWidthAsync(int value) => SetIntAsync(Keys.MainWindowWidth, value);
+
+    public Task<int> GetMainWindowHeightAsync() => GetIntAsync(Keys.MainWindowHeight, Defaults.MainWindowHeight);
+    public Task SetMainWindowHeightAsync(int value) => SetIntAsync(Keys.MainWindowHeight, value);
+
+    public Task<int> GetSidebarWidthAsync() => GetIntAsync(Keys.SidebarWidth, Defaults.SidebarWidth);
+    public Task SetSidebarWidthAsync(int value) => SetIntAsync(Keys.SidebarWidth, value);
 }

@@ -21,6 +21,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly GoogleOAuthService _googleOAuthService;
     private readonly ICalDavService _calDavService;
     private readonly ThemeService _themeService;
+    private readonly SettingsService _settingsService;
 
     [ObservableProperty]
     private bool _isSyncing;
@@ -45,9 +46,11 @@ public partial class MainWindowViewModel : ViewModelBase
         //var calendarSource = new DummyCalendarSource(DateTime.Now);
         _googleCalendarService = new GoogleCalendarService();
         _googleOAuthService = new GoogleOAuthService(_googleCalendarService);
-        var settingsService = new SettingsService(storage);
-        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, storage, settingsService);
+        _settingsService = new SettingsService(storage);
+        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, storage, _settingsService);
         CalendarListViewModel = new CalendarListViewModel(storage, _googleCalendarService, credentialManager, CalendarWeekViewModel);
+
+        Initialize();
     }
 
     #region Settings
@@ -130,5 +133,32 @@ public partial class MainWindowViewModel : ViewModelBase
             IsSyncing = false;
         }
     }
+    #endregion
+
+    #region Window Settings
+
+    private void Initialize()
+    {
+    }
+
+    public async Task SaveWindowSettingsAsync(int x, int y, int width, int height, int sidebarWidth)
+    {
+        await _settingsService.SetMainWindowXAsync(x);
+        await _settingsService.SetMainWindowYAsync(y);
+        await _settingsService.SetMainWindowWidthAsync(width);
+        await _settingsService.SetMainWindowHeightAsync(height);
+        await _settingsService.SetSidebarWidthAsync(sidebarWidth);
+    }
+
+    public async Task<(int x, int y, int width, int height, int sidebarWidth)> GetWindowSettingsAsync()
+    {
+        var x = await _settingsService.GetMainWindowXAsync();
+        var y = await _settingsService.GetMainWindowYAsync();
+        var width = await _settingsService.GetMainWindowWidthAsync();
+        var height = await _settingsService.GetMainWindowHeightAsync();
+        var sidebarWidth = await _settingsService.GetSidebarWidthAsync();
+        return (x, y, width, height, sidebarWidth);
+    }
+
     #endregion
 }

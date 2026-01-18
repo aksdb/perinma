@@ -18,9 +18,9 @@
         <main:MainWindowViewModel/>
     </Design.DataContext>
     
-    <Grid RowDefinitions="Auto,*">
+    <Grid x:Name="MainGrid" RowDefinitions="Auto,*">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" MinWidth="250"/> <!-- Sidebar -->
+            <ColumnDefinition Width="250" MinWidth="250"/> <!-- Sidebar -->
             <ColumnDefinition Width="Auto"/> <!-- Splitter -->
             <ColumnDefinition Width="*"/> <!-- Main Content -->
         </Grid.ColumnDefinitions>
