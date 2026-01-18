@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:settings="using:perinma.Views.Settings"
+             x:DataType="settings:CalendarSettingsViewModel"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="perinma.Views.Settings.CalendarSettingsView">
+
+    <StackPanel Margin="20" Spacing="20">
+        <TextBlock Text="Calendar Settings" FontSize="24" FontWeight="Bold" />
+
+        <!-- Working Days Section -->
+        <StackPanel Spacing="10">
+            <TextBlock Text="Working Days" FontSize="16" FontWeight="SemiBold" />
+            <TextBlock Text="Select which days are considered working days" 
+                       Foreground="Gray" FontSize="12" />
+            
+            <WrapPanel Orientation="Horizontal">
+                <CheckBox Content="Monday" IsChecked="{Binding Monday}" Margin="0,0,20,5" />
+                <CheckBox Content="Tuesday" IsChecked="{Binding Tuesday}" Margin="0,0,20,5" />
+                <CheckBox Content="Wednesday" IsChecked="{Binding Wednesday}" Margin="0,0,20,5" />
+                <CheckBox Content="Thursday" IsChecked="{Binding Thursday}" Margin="0,0,20,5" />
+                <CheckBox Content="Friday" IsChecked="{Binding Friday}" Margin="0,0,20,5" />
+                <CheckBox Content="Saturday" IsChecked="{Binding Saturday}" Margin="0,0,20,5" />
+                <CheckBox Content="Sunday" IsChecked="{Binding Sunday}" Margin="0,0,20,5" />
+            </WrapPanel>
+        </StackPanel>
+
+        <!-- Working Hours Section -->
+        <StackPanel Spacing="10">
+            <TextBlock Text="Working Hours" FontSize="16" FontWeight="SemiBold" />
+            <TextBlock Text="Set your typical working hours" 
+                       Foreground="Gray" FontSize="12" />
+            
+            <StackPanel Orientation="Horizontal" Spacing="15">
+                <StackPanel Spacing="5">
+                    <TextBlock Text="Start Time" FontSize="12" />
+                    <TimePicker SelectedTime="{Binding WorkingHoursStart}" 
+                                ClockIdentifier="24HourClock"
+                                MinuteIncrement="15" />
+                </StackPanel>
+                
+                <StackPanel Spacing="5">
+                    <TextBlock Text="End Time" FontSize="12" />
+                    <TimePicker SelectedTime="{Binding WorkingHoursEnd}" 
+                                ClockIdentifier="24HourClock"
+                                MinuteIncrement="15" />
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+
+</UserControl>

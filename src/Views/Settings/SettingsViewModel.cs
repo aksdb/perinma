@@ -29,11 +29,13 @@ public partial class SettingsViewModel : ViewModelBase
     public SettingsViewModel(DatabaseService databaseService, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, SyncService syncService, Window parentWindow)
     {
         _storage = new SqliteStorage(databaseService, credentialManager);
+        var settingsService = new SettingsService(_storage);
 
         // Define available settings pages
         Pages = new List<SettingsPage>
         {
             new SettingsPage { Name = "General", ViewModel = new GeneralSettingsViewModel() },
+            new SettingsPage { Name = "Calendar", ViewModel = new CalendarSettingsViewModel(settingsService) },
             new SettingsPage { Name = "Accounts", ViewModel = new AccountListViewModel(_storage, credentialManager, oauthService, calDavService, syncService, parentWindow) }
         };
 

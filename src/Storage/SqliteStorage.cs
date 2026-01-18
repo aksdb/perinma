@@ -538,6 +538,60 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     #endregion
 
+    #region Settings
+
+    public async Task<string?> GetSettingAsync(string key)
+    {
+        using var connection = databaseService.GetConnection();
+        return await connection.QuerySingleOrDefaultAsync<string?>(
+            "SELECT value FROM setting WHERE key = @Key",
+            new { Key = key },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<string> GetSettingAsync(string key, string defaultValue)
+    {
+        var value = await GetSettingAsync(key);
+        return value ?? defaultValue;
+    }
+
+    public async Task SetSettingAsync(string key, string value)
+    {
+        using var connection = databaseService.GetConnection();
+        await connection.ExecuteAsync(
+            "INSERT INTO setting (key, value) VALUES (@Key, @Value) ON CONFLICT(key) DO UPDATE SET value = @Value",
+            new { Key = key, Value = value },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<bool> GetSettingBoolAsync(string key, bool defaultValue)
+    {
+        var value = await GetSettingAsync(key);
+        if (value == null) return defaultValue;
+        return value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public async Task SetSettingBoolAsync(string key, bool value)
+    {
+        await SetSettingAsync(key, value ? "1" : "0");
+    }
+
+    public async Task<int> GetSettingIntAsync(string key, int defaultValue)
+    {
+        var value = await GetSettingAsync(key);
+        if (value == null) return defaultValue;
+        return int.TryParse(value, out var result) ? result : defaultValue;
+    }
+
+    public async Task SetSettingIntAsync(string key, int value)
+    {
+        await SetSettingAsync(key, value.ToString());
+    }
+
+    #endregion
+
     public async Task<IEnumerable<CalendarEventQueryResult>> GetEventsByTimeRangeAsync(DateTime startTime, DateTime endTime)
     {
         using var connection = databaseService.GetConnection();
