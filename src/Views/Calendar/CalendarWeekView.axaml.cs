@@ -17,6 +17,8 @@ public partial class CalendarWeekView : UserControl
     private readonly MainView _mainView = new();
     private readonly TopBarView _topBarView = new();
     private CalendarWeekViewModel? _viewModel;
+    private ScrollViewer? _centerView;
+    private bool _hasScrolledToWorkingHours;
     
     public CalendarWeekView()
     {
@@ -65,8 +67,8 @@ public partial class CalendarWeekView : UserControl
         }
         _timeRowGrid.RowDefinitions.Add(new RowDefinition(1.0, GridUnitType.Star));
         
-        var centerView = this.FindControl<ScrollViewer>("CenterView")!;
-        centerView.Content = _mainView;
+        _centerView = this.FindControl<ScrollViewer>("CenterView")!;
+        _centerView.Content = _mainView;
 
         var topView = this.FindControl<ScrollViewer>("TopView")!;
         topView.Content = _topBarView;
@@ -75,6 +77,7 @@ public partial class CalendarWeekView : UserControl
 
         _mainView.SetEvents(_viewModel.Events); // timed events only
         _mainView.SettingsService = _viewModel.SettingsService;
+        _mainView.SettingsLoaded += OnSettingsLoaded;
         _topBarView.SetEvents(_viewModel.FullDayEvents); // full-day events only
         
         _viewModel.PropertyChanged += (sender, args) =>
@@ -102,6 +105,37 @@ public partial class CalendarWeekView : UserControl
         _mainView.RefreshContent();
         _topBarView.RefreshContent();
     }
+
+    private void TryScrollToWorkingHours()
+    {
+        if (_hasScrolledToWorkingHours || _centerView == null || _mainView.RowHeight <= 0) return;
+        
+        // Check if content is actually laid out
+        if (_mainView.Height <= 0)
+        {
+            return;
+        }
+        
+        _hasScrolledToWorkingHours = true;
+        
+        // Scroll to show working hours at the top, with one hour of context above
+        var slotsToShow = Math.Max(0, _mainView.WorkingHoursStartSlot - 4); // 4 slots = 1 hour before
+        var scrollOffset = slotsToShow * _mainView.RowHeight;
+        
+        // Defer the scroll to next layout pass to ensure content is ready
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_centerView != null)
+            {
+                _centerView.Offset = new Vector(0, scrollOffset);
+            }
+        }, Avalonia.Threading.DispatcherPriority.Render);
+    }
+
+    private void OnSettingsLoaded(object? sender, EventArgs e)
+    {
+        TryScrollToWorkingHours();
+    }
     
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
@@ -111,6 +145,7 @@ public partial class CalendarWeekView : UserControl
         _mainView.RowHeight = _timeRowGrid.RowDefinitions[1].ActualHeight;
         _mainView.RefreshContent();
         _topBarView.RefreshContent();
+        TryScrollToWorkingHours();
     }
     
     private class MainView : ContentControl
@@ -122,18 +157,19 @@ public partial class CalendarWeekView : UserControl
 
         // Cached working hours settings
         private bool[] _workingDays = [false, true, true, true, true, true, false]; // Sun-Sat, default Mon-Fri
-        private int _workingHoursStartSlot = 9 * 4; // 09:00 = slot 36
+        public int WorkingHoursStartSlot { get; private set; } = 9 * 4; // 09:00 = slot 36
         private int _workingHoursEndSlot = 17 * 4;  // 17:00 = slot 68
+
+        public event EventHandler? SettingsLoaded;
 
         private readonly Canvas _canvas = new();
         
         public MainView()
         {
             Content = _canvas;
-            _ = LoadSettingsAsync();
         }
 
-        private async Task LoadSettingsAsync()
+        public async Task LoadSettingsAsync()
         {
             if (SettingsService == null) return;
 
@@ -150,9 +186,10 @@ public partial class CalendarWeekView : UserControl
 
             var startTime = await SettingsService.GetWorkingHoursStartAsync();
             var endTime = await SettingsService.GetWorkingHoursEndAsync();
-            _workingHoursStartSlot = (int)(startTime.TotalMinutes / 15);
+            WorkingHoursStartSlot = (int)(startTime.TotalMinutes / 15);
             _workingHoursEndSlot = (int)(endTime.TotalMinutes / 15);
 
+            SettingsLoaded?.Invoke(this, EventArgs.Empty);
             InvalidateVisual();
         }
 
@@ -238,9 +275,9 @@ public partial class CalendarWeekView : UserControl
                 else
                 {
                     // Draw non-working hours (before start and after end)
-                    if (_workingHoursStartSlot > 0)
+                    if (WorkingHoursStartSlot > 0)
                     {
-                        var beforeHeight = _workingHoursStartSlot * RowHeight;
+                        var beforeHeight = WorkingHoursStartSlot * RowHeight;
                         context.FillRectangle(nonWorkingBrush, new Rect(left, 0, columnWidth, beforeHeight));
                     }
 
