@@ -1,5 +1,6 @@
 using CredentialStore;
 using Google.Apis.Json;
+using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Storage.Models;
@@ -20,10 +21,10 @@ public class DatabaseCalendarSourceTests
         return database;
     }
 
-    private static async Task<string> CreateCalendar(SqliteStorage storage, string accountType = "Unknown")
+    private static async Task<string> CreateCalendar(SqliteStorage storage, AccountType accountType = AccountType.Google)
     {
         var accountId = Guid.NewGuid().ToString();
-        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = accountType });
+        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = accountType.ToString() });
 
         var calendar = new CalendarDbo
         {
@@ -62,7 +63,7 @@ public class DatabaseCalendarSourceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
@@ -106,7 +107,7 @@ public class DatabaseCalendarSourceTests
         Assert.That(calendarEvent.Calendar.Enabled, Is.True);
         Assert.That(calendarEvent.Calendar.Account.Id, Is.EqualTo(Guid.Parse(accountId)));
         Assert.That(calendarEvent.Calendar.Account.Name, Is.EqualTo("Test Account"));
-        Assert.That(calendarEvent.Calendar.Account.Type, Is.EqualTo("Google"));
+        Assert.That(calendarEvent.Calendar.Account.Type, Is.EqualTo(AccountType.Google));
     }
 
     [Test]
@@ -125,7 +126,7 @@ public class DatabaseCalendarSourceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
@@ -782,7 +783,7 @@ END:VCALENDAR";
     public async Task GetCalendarEvents_FullDayRecurringGoogleEvent()
     {
         using var disposable = CreateTestSetup(out var calendarSource, out var storage);
-        var calendarId = await CreateCalendar(storage, accountType: "Google");
+        var calendarId = await CreateCalendar(storage, accountType: AccountType.Google);
 
         var eventDbo = new CalendarEventDbo
         {
@@ -874,7 +875,7 @@ END:VCALENDAR";
         var weekStart = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc); // Monday
         var weekEnd = weekStart.AddDays(7);
 
-        var calendarId = await CreateCalendar(storage, "Google");
+        var calendarId = await CreateCalendar(storage, AccountType.Google);
 
         // Create the parent recurring event (every day for a week)
         var parentStart = weekStart.AddHours(10);
@@ -952,7 +953,7 @@ END:VCALENDAR";
         var weekStart = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc); // Monday
         var weekEnd = weekStart.AddDays(7);
 
-        var calendarId = await CreateCalendar(storage, "Google");
+        var calendarId = await CreateCalendar(storage, AccountType.Google);
 
         // Create the parent recurring event (every day for a week)
         var parentStart = weekStart.AddHours(10);
@@ -1034,7 +1035,7 @@ END:VCALENDAR";
         var weekStart = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var weekEnd = weekStart.AddDays(7);
 
-        var calendarId = await CreateCalendar(storage, "Google");
+        var calendarId = await CreateCalendar(storage, AccountType.Google);
 
         // Create only the cancelled instance (parent is outside query range)
         var cancelledStart = weekStart.AddDays(2).AddHours(10);
@@ -1079,7 +1080,7 @@ END:VCALENDAR";
         var weekStart = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var weekEnd = weekStart.AddDays(7);
 
-        var calendarId = await CreateCalendar(storage, "Google");
+        var calendarId = await CreateCalendar(storage, AccountType.Google);
 
         // Create only the modified instance (parent is outside query range)
         var modifiedStart = weekStart.AddDays(2).AddHours(14);

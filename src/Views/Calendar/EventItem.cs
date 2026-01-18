@@ -151,12 +151,12 @@ public partial class EventItem : TemplatedControl
             return null;
         }
 
-        if (CalendarEvent.Calendar.Account.Type.Equals("Google", StringComparison.OrdinalIgnoreCase))
+        if (CalendarEvent.Calendar.Account.Type == AccountType.Google)
         {
             return new GoogleCalendarEventViewModel(CalendarEvent, Storage);
         }
 
-        if (CalendarEvent.Calendar.Account.Type.Equals("CalDAV", StringComparison.OrdinalIgnoreCase))
+        if (CalendarEvent.Calendar.Account.Type == AccountType.CalDav)
         {
             return new CalDavEventViewModel(CalendarEvent, Storage);
         }

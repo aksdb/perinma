@@ -1,4 +1,5 @@
 using System;
+using perinma.Models;
 
 namespace perinma.Storage.Models;
 
@@ -8,6 +9,11 @@ public class AccountDbo
     public required string Name { get; set; }
     public required string Type { get; set; }
     public int SortOrder { get; set; }
+
+    public AccountType AccountTypeEnum => 
+        Enum.TryParse<AccountType>(Type, ignoreCase: true, out var result) 
+            ? result 
+            : throw new ArgumentException("Unknown account type.");
 }
 
 public class CalendarDbo
@@ -50,4 +56,6 @@ public class CalendarEventQueryResult
     public required string AccountId { get; init; }
     public required string AccountName { get; init; }
     public required string AccountType { get; init; }
+
+    public AccountType AccountTypeEnum => Enum.TryParse<AccountType>(AccountType, ignoreCase: true, out var result) ? result : perinma.Models.AccountType.Google;
 }

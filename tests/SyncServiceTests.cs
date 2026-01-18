@@ -1,5 +1,6 @@
 using CredentialStore;
 using Dapper;
+using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Storage.Models;
@@ -33,14 +34,14 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         // Store test credentials
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -76,7 +77,7 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
@@ -118,7 +119,7 @@ public class SyncServiceTests
         // Store test credentials
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -187,14 +188,14 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         // Store test credentials
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -260,14 +261,14 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         // Store test credentials
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -312,14 +313,14 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         // Store test credentials
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -383,13 +384,13 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -449,13 +450,13 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -520,13 +521,13 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -591,13 +592,13 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -879,13 +880,13 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -953,14 +954,14 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         // Store test credentials
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -1157,7 +1158,7 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
@@ -1232,13 +1233,13 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -1311,13 +1312,13 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -1393,13 +1394,13 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -1479,13 +1480,13 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -1587,13 +1588,13 @@ public class SyncServiceTests
         {
             AccountId = accountId,
             Name = "Test Account",
-            Type = "Google"
+            Type = AccountType.Google.ToString()
         };
         await storage.CreateAccountAsync(account);
 
         var credentials = new GoogleCredentials
         {
-            Type = "Google",
+            Type = AccountType.Google.ToString(),
             AccessToken = "test_token",
             RefreshToken = "test_refresh",
             ExpiresAt = DateTime.UtcNow.AddHours(1),

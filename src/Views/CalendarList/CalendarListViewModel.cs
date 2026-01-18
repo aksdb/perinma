@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
+using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Views.Calendar;
@@ -137,7 +138,7 @@ public partial class CalendarListViewModel : ViewModelBase
             }
 
             // Only sync with Google for Google accounts
-            if (account.Type == "Google" && !string.IsNullOrEmpty(calendarDbo.ExternalId) && (calendarDbo.Enabled == 1) != enabled)
+            if (account.AccountTypeEnum == AccountType.Google && !string.IsNullOrEmpty(calendarDbo.ExternalId) && (calendarDbo.Enabled == 1) != enabled)
             {
                 try
                 {

@@ -33,7 +33,7 @@ public class DummyCalendarSource : ICalendarSource
         {
             Id = Guid.NewGuid(),
             Name = "Dummy Account",
-            Type = "dummy"
+            Type = AccountType.Google
         };
 
         _calRed = new Calendar
@@ -200,8 +200,8 @@ public class DatabaseCalendarSource : ICalendarSource
 
         // For Google events, we need to handle "exception instances" that shadow occurrences
         // of recurring events. These have a RecurringEventId pointing to their parent.
-        var googleEvents = events.Where(e => e.AccountType == "Google").ToList();
-        var nonGoogleEvents = events.Where(e => e.AccountType != "Google").ToList();
+        var googleEvents = events.Where(e => e.AccountTypeEnum == AccountType.Google).ToList();
+        var nonGoogleEvents = events.Where(e => e.AccountTypeEnum != AccountType.Google).ToList();
 
         // Process Google events with shadowing support
         calendarEvents.AddRange(GetGoogleEventsWithShadowing(googleEvents, startTime, endTime));
@@ -209,9 +209,9 @@ public class DatabaseCalendarSource : ICalendarSource
         // Process non-Google events normally
         foreach (var e in nonGoogleEvents)
         {
-            var occurrences = e.AccountType switch
+            var occurrences = e.AccountTypeEnum switch
             {
-                "CalDAV" => GetCalDavEventOccurrences(e, startTime, endTime),
+                AccountType.CalDav => GetCalDavEventOccurrences(e, startTime, endTime),
                 _ => GetFallbackOccurrences(e, startTime, endTime)
             };
 
@@ -409,7 +409,7 @@ public class DatabaseCalendarSource : ICalendarSource
                     {
                         Id = Guid.Parse(e.AccountId),
                         Name = e.AccountName,
-                        Type = e.AccountType
+                        Type = e.AccountTypeEnum
                     },
                     Id = Guid.Parse(e.CalendarId),
                     ExternalId = e.CalendarExternalId,
@@ -536,7 +536,7 @@ public class DatabaseCalendarSource : ICalendarSource
                         {
                             Id = Guid.Parse(e.AccountId),
                             Name = e.AccountName,
-                            Type = e.AccountType
+                            Type = e.AccountTypeEnum
                         },
                         Id = Guid.Parse(e.CalendarId),
                         ExternalId = e.CalendarExternalId,

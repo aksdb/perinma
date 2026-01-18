@@ -1,12 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:wizard="using:perinma.Views.Settings.AddAccountWizard"
-             xmlns:settings="using:perinma.Views.Settings"
-             x:DataType="wizard:AccountDetailsStepViewModel"
-             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
-             x:Class="perinma.Views.Settings.AddAccountWizard.AccountDetailsStepView">
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+              xmlns:wizard="using:perinma.Views.Settings.AddAccountWizard"
+              xmlns:settings="using:perinma.Views.Settings"
+              xmlns:models="using:perinma.Models"
+              x:DataType="wizard:AccountDetailsStepViewModel"
+              mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
+              x:Class="perinma.Views.Settings.AddAccountWizard.AccountDetailsStepView">
 
     <StackPanel Margin="20" Spacing="15">
         <TextBlock Text="Account Details" FontSize="18" FontWeight="SemiBold" />
@@ -24,8 +25,8 @@
             <ComboBox SelectedItem="{Binding SelectedAccountType}"
                       HorizontalAlignment="Stretch">
                 <ComboBox.Items>
-                    <settings:AccountType>Google</settings:AccountType>
-                    <settings:AccountType>CalDav</settings:AccountType>
+                    <models:AccountType>Google</models:AccountType>
+                    <models:AccountType>CalDav</models:AccountType>
                 </ComboBox.Items>
             </ComboBox>
         </StackPanel>

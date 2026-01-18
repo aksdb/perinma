@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Storage.Models;
@@ -25,7 +26,7 @@ public partial class AddAccountWizardViewModel : ViewModelBase
     // Step 1 data
     private AccountDetailsStepViewModel? _accountDetailsStep;
     public string? AccountName { get; private set; }
-    public AccountType? AccountType { get; private set; }
+    public AccountType? SelectedAccountType { get; private set; }
 
     // Step 2 data
     private GoogleConnectionStepViewModel? _googleConnectionStep;
@@ -64,10 +65,10 @@ public partial class AddAccountWizardViewModel : ViewModelBase
 
             // Save data from step 1
             AccountName = _accountDetailsStep.AccountName;
-            AccountType = _accountDetailsStep.SelectedAccountType;
+            SelectedAccountType = _accountDetailsStep.SelectedAccountType;
 
             // Create step 2 based on account type
-            if (AccountType == Settings.AccountType.Google)
+            if (SelectedAccountType == AccountType.Google)
             {
                 _googleConnectionStep = new GoogleConnectionStepViewModel(_oauthService);
                 CurrentStepView = new GoogleConnectionStepView
@@ -75,7 +76,7 @@ public partial class AddAccountWizardViewModel : ViewModelBase
                     DataContext = _googleConnectionStep
                 };
             }
-            else if (AccountType == Settings.AccountType.CalDav)
+            else if (SelectedAccountType == AccountType.CalDav)
             {
                 _calDavConnectionStep = new CalDavConnectionStepViewModel(_calDavService);
                 CurrentStepView = new CalDavConnectionStepView
@@ -115,12 +116,12 @@ public partial class AddAccountWizardViewModel : ViewModelBase
     private async Task Finish(CancellationToken ct)
     {
         // Validate step 2
-        if (AccountType == Settings.AccountType.Google)
+        if (SelectedAccountType == AccountType.Google)
         {
             if (_googleConnectionStep == null || !_googleConnectionStep.IsValid())
                 return;
         }
-        else if (AccountType == Settings.AccountType.CalDav)
+        else if (SelectedAccountType == AccountType.CalDav)
         {
             if (_calDavConnectionStep == null || !_calDavConnectionStep.Validate())
                 return;
@@ -131,7 +132,7 @@ public partial class AddAccountWizardViewModel : ViewModelBase
             var accountId = Guid.NewGuid().ToString();
 
             // Store credentials in platform keyring
-            if (AccountType == Settings.AccountType.Google && _googleConnectionStep != null)
+            if (SelectedAccountType == AccountType.Google && _googleConnectionStep != null)
             {
                 var credentials = _googleConnectionStep.GetCredentials();
                 if (credentials != null)
@@ -139,7 +140,7 @@ public partial class AddAccountWizardViewModel : ViewModelBase
                     _credentialManager.StoreGoogleCredentials(accountId, credentials);
                 }
             }
-            else if (AccountType == Settings.AccountType.CalDav && _calDavConnectionStep != null)
+            else if (SelectedAccountType == AccountType.CalDav && _calDavConnectionStep != null)
             {
                 var credentials = _calDavConnectionStep.GetCredentials();
                 _credentialManager.StoreCalDavCredentials(accountId, credentials);
@@ -150,7 +151,7 @@ public partial class AddAccountWizardViewModel : ViewModelBase
             {
                 AccountId = accountId,
                 Name = AccountName ?? "Unnamed Account",
-                Type = AccountType?.ToString() ?? "Google",
+                Type = SelectedAccountType?.ToString() ?? "Google",
             };
 
             var success = await _storage.CreateAccountAsync(accountDbo);

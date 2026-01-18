@@ -1,13 +1,8 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
+using perinma.Models;
 
 namespace perinma.Views.Settings;
-
-public enum AccountType
-{
-    Google,
-    CalDav
-}
 
 public partial class AccountViewModel : ViewModelBase
 {

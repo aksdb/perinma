@@ -5,6 +5,7 @@ using Avalonia.Collections;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Views.MessageBox;
@@ -76,7 +77,7 @@ public partial class AccountListViewModel : ViewModelBase
                 {
                     Id = Guid.Parse(dbo.AccountId),
                     Name = dbo.Name,
-                    Type = Enum.Parse<AccountType>(dbo.Type, ignoreCase: true)
+                    Type = dbo.AccountTypeEnum
                 });
             }
         }
