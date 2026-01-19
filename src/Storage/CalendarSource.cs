@@ -399,6 +399,8 @@ public class DatabaseCalendarSource : ICalendarSource
 
     private List<CalendarEvent> CreateCalendarEvent(CalendarEventQueryResult e, DateTime eventStartTime, DateTime eventEndTime)
     {
+        var responseStatus = ExtractResponseStatus(e);
+        
         return
         [
             new CalendarEvent
@@ -427,9 +429,84 @@ public class DatabaseCalendarSource : ICalendarSource
                 Title = e.Title,
                 ChangedAt = e.ChangedAt.HasValue
                     ? DateTimeOffset.FromUnixTimeSeconds(e.ChangedAt.Value).DateTime
-                    : null
+                    : null,
+                ResponseStatus = responseStatus
             }
         ];
+    }
+    
+    private EventResponseStatus ExtractResponseStatus(CalendarEventQueryResult e)
+    {
+        if (e.AccountTypeEnum == AccountType.Google)
+        {
+            return ExtractGoogleResponseStatus(e.RawData);
+        }
+        
+        if (e.AccountTypeEnum == AccountType.CalDav)
+        {
+            return ExtractCalDavResponseStatus(e.RawData);
+        }
+        
+        return EventResponseStatus.None;
+    }
+    
+    private EventResponseStatus ExtractGoogleResponseStatus(string? rawData)
+    {
+        var googleEvent = TryParseGoogleEvent(rawData);
+        if (googleEvent?.Attendees == null)
+        {
+            return EventResponseStatus.None;
+        }
+        
+        // Find the attendee with self=true (the current user)
+        var selfAttendee = googleEvent.Attendees.FirstOrDefault(a => a.Self == true);
+        if (selfAttendee == null)
+        {
+            return EventResponseStatus.None;
+        }
+        
+        return selfAttendee.ResponseStatus?.ToLowerInvariant() switch
+        {
+            "needsaction" => EventResponseStatus.NeedsAction,
+            "declined" => EventResponseStatus.Declined,
+            "tentative" => EventResponseStatus.Tentative,
+            "accepted" => EventResponseStatus.Accepted,
+            _ => EventResponseStatus.None
+        };
+    }
+    
+    private EventResponseStatus ExtractCalDavResponseStatus(string? rawData)
+    {
+        var calDavEvent = TryParseCalDavEvent(rawData);
+        if (calDavEvent?.Attendees == null)
+        {
+            return EventResponseStatus.None;
+        }
+        
+        // Find the attendee with PartStat set (typically the user is marked with PARTSTAT)
+        // In CalDav, the user's attendance is typically the first attendee or one without a specific role
+        foreach (var attendee in calDavEvent.Attendees)
+        {
+            // Check if this attendee has a participation status
+            var partStat = attendee.ParticipationStatus;
+            if (partStat == null)
+            {
+                continue;
+            }
+            
+            // Return the first meaningful participation status found
+            // (In practice, should match on CUTYPE=INDIVIDUAL or the user's email)
+            return partStat.ToUpperInvariant() switch
+            {
+                "NEEDS-ACTION" => EventResponseStatus.NeedsAction,
+                "DECLINED" => EventResponseStatus.Declined,
+                "TENTATIVE" => EventResponseStatus.Tentative,
+                "ACCEPTED" => EventResponseStatus.Accepted,
+                _ => EventResponseStatus.None
+            };
+        }
+        
+        return EventResponseStatus.None;
     }
 
     private List<CalendarEvent> GetGoogleRecurringOccurrences(CalendarEventQueryResult e, GoogleEvent googleEvent, DateTime queryStart, DateTime queryEnd)
@@ -513,6 +590,7 @@ public class DatabaseCalendarSource : ICalendarSource
             var duration = eventEnd - eventStart;
             var queryStartUtc = queryStart.ToUniversalTime();
             var queryEndUtc = queryEnd.ToUniversalTime();
+            var responseStatus = ExtractResponseStatus(e);
 
             var occurrences = calDavEvent.GetOccurrences(new CalDateTime(eventStart.ToUniversalTime()));
 
@@ -554,7 +632,8 @@ public class DatabaseCalendarSource : ICalendarSource
                     Title = e.Title,
                     ChangedAt = e.ChangedAt.HasValue
                         ? DateTimeOffset.FromUnixTimeSeconds(e.ChangedAt.Value).DateTime
-                        : null
+                        : null,
+                    ResponseStatus = responseStatus
                 };
 
                 result.Add(calendarEvent);

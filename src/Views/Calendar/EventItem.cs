@@ -41,6 +41,15 @@ public partial class EventItem : TemplatedControl
 
     [AvaStyledProperty]
     private IBrush _foregroundBrush = Brushes.Black;
+    
+    [AvaStyledProperty]
+    private IBrush _borderBrush = Brushes.Transparent;
+    
+    /// <summary>
+    /// Indicates whether this event needs a response from the user (not yet accepted).
+    /// </summary>
+    [AvaStyledProperty]
+    private bool _needsResponse = false;
 
     public int TieBreaker { get; set; }
     public bool IsFullDay { get; set; }
@@ -88,8 +97,8 @@ public partial class EventItem : TemplatedControl
                 InlineTimeText = $"🕐 {StartTimeText}-{EndTimeText}";
                 break;
             case nameof(Color):
-                BackgroundBrush = new SolidColorBrush(Color, 0.8);
-                ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(Color));
+            case nameof(NeedsResponse):
+                UpdateBrushes();
                 break;
             case nameof(InlineTimeText):
             case nameof(FontFamily):
@@ -100,6 +109,41 @@ public partial class EventItem : TemplatedControl
                 RecalculateInlineTimeWidth();
                 break;
         }
+    }
+    
+    private void UpdateBrushes()
+    {
+        if (NeedsResponse)
+        {
+            // Make the background much brighter for events needing response
+            var brighterColor = MakeBrighter(Color, 0.8);
+            BackgroundBrush = new SolidColorBrush(brighterColor, 0.9);
+            ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(brighterColor));
+            
+            // Set border color for the dashed rectangle
+            BorderBrush = new SolidColorBrush(Color);
+        }
+        else
+        {
+            // Normal styling
+            BackgroundBrush = new SolidColorBrush(Color, 0.8);
+            ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(Color));
+            BorderBrush = Brushes.Transparent;
+        }
+    }
+    
+    /// <summary>
+    /// Makes a color brighter by interpolating toward white.
+    /// </summary>
+    /// <param name="color">The original color.</param>
+    /// <param name="amount">How much to brighten (0 = no change, 1 = pure white).</param>
+    private static Color MakeBrighter(Color color, double amount)
+    {
+        // Interpolate each channel toward 255 (white)
+        var r = (byte)(color.R + (255 - color.R) * amount);
+        var g = (byte)(color.G + (255 - color.G) * amount);
+        var b = (byte)(color.B + (255 - color.B) * amount);
+        return Color.FromArgb(color.A, r, g, b);
     }
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)

@@ -158,6 +158,9 @@ public partial class CalendarWeekViewModel : ViewModelBase
                     // Detect all-day events: modeled as midnight-to-midnight spans
                     var isFullDay = e.StartTime.TimeOfDay == TimeSpan.Zero && e.EndTime.TimeOfDay == TimeSpan.Zero;
 
+                    // Determine if this event needs a response (not yet accepted and can respond)
+                    var needsResponse = e.ResponseStatus is EventResponseStatus.NeedsAction or EventResponseStatus.Tentative;
+                    
                     var vm = new EventItem
                     {
                         Title = string.IsNullOrEmpty(e.Title) ? "[no title]" : e.Title,
@@ -174,6 +177,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         ShowInlineTimes = true,
                         CalendarEvent = e,
                         Storage = _storage,
+                        NeedsResponse = needsResponse,
                     };
                     viewModels.Add(vm);
                 }
