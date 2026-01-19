@@ -3,18 +3,30 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
+using Microsoft.Data.Sqlite;
 using perinma.Services;
 using perinma.Storage.Models;
 using perinma.Models;
 
 namespace perinma.Storage;
 
-public class SqliteStorage(DatabaseService databaseService, CredentialManagerService credentialManager)
+public class SqliteStorage : IDisposable
 {
+    private readonly DatabaseService _databaseService;
+    private readonly CredentialManagerService _credentialManager;
+    private readonly SqliteConnection _connection;
+
+    public SqliteStorage(DatabaseService databaseService, CredentialManagerService credentialManager)
+    {
+        _databaseService = databaseService;
+        _credentialManager = credentialManager;
+        _connection = (SqliteConnection)databaseService.GetConnection();
+        _connection.Open();
+    }
+
     public async Task<IEnumerable<AccountDbo>> GetAllAccountsAsync()
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QueryAsync<AccountDbo>(
+        return await _connection.QueryAsync<AccountDbo>(
             "SELECT account_id AS AccountId, name AS Name, type AS Type, sort_order AS SortOrder FROM account ORDER BY sort_order, name",
             commandTimeout: 30
         );
@@ -22,8 +34,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<AccountDbo?> GetAccountByIdAsync(string accountId)
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QuerySingleOrDefaultAsync<AccountDbo>(
+        return await _connection.QuerySingleOrDefaultAsync<AccountDbo>(
             "SELECT account_id AS AccountId, name AS Name, type AS Type, sort_order AS SortOrder FROM account WHERE account_id = @AccountId",
             new { AccountId = accountId },
             commandTimeout: 30
@@ -32,8 +43,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<AccountDbo?> GetAccountByNameAsync(string name)
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QuerySingleOrDefaultAsync<AccountDbo>(
+        return await _connection.QuerySingleOrDefaultAsync<AccountDbo>(
             "SELECT account_id AS AccountId, name AS Name, type AS Type, sort_order AS SortOrder FROM account WHERE name = @Name",
             new { Name = name },
             commandTimeout: 30
@@ -42,13 +52,11 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<bool> IsAccountNameUniqueAsync(string name, string? excludeAccountId = null)
     {
-        using var connection = databaseService.GetConnection();
-
         var query = excludeAccountId == null
             ? "SELECT COUNT(*) FROM account WHERE name = @Name"
             : "SELECT COUNT(*) FROM account WHERE name = @Name AND account_id != @ExcludeAccountId";
 
-        var count = await connection.ExecuteScalarAsync<int>(
+        var count = await _connection.ExecuteScalarAsync<int>(
             query,
             new { Name = name, ExcludeAccountId = excludeAccountId },
             commandTimeout: 30
@@ -59,10 +67,8 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<bool> CreateAccountAsync(AccountDbo account)
     {
-        using var connection = databaseService.GetConnection();
-
         // Data field is stored as NULL - we use it for sync metadata via SetAccountData/GetAccountData
-        var rowsAffected = await connection.ExecuteAsync(
+        var rowsAffected = await _connection.ExecuteAsync(
             "INSERT INTO account (account_id, name, type) VALUES (@AccountId, @Name, @Type)",
             account,
             commandTimeout: 30
@@ -73,9 +79,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<bool> UpdateAccountAsync(AccountDbo account)
     {
-        using var connection = databaseService.GetConnection();
-
-        var rowsAffected = await connection.ExecuteAsync(
+        var rowsAffected = await _connection.ExecuteAsync(
             "UPDATE account SET name = @Name, type = @Type WHERE account_id = @AccountId",
             account,
             commandTimeout: 30
@@ -86,11 +90,9 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task UpdateAccountSortOrdersAsync(IEnumerable<(string AccountId, int SortOrder)> sortOrders)
     {
-        using var connection = databaseService.GetConnection();
-
         foreach (var (accountId, sortOrder) in sortOrders)
         {
-            await connection.ExecuteAsync(
+            await _connection.ExecuteAsync(
                 "UPDATE account SET sort_order = @SortOrder WHERE account_id = @AccountId",
                 new { AccountId = accountId, SortOrder = sortOrder },
                 commandTimeout: 30
@@ -100,9 +102,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<bool> SetAccountData(AccountDbo account, string key, string value)
     {
-        using var connection = databaseService.GetConnection();
-
-        var rowsAffected = await connection.ExecuteAsync(
+        var rowsAffected = await _connection.ExecuteAsync(
             """
                 UPDATE account 
                 SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
@@ -117,9 +117,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<string?> GetAccountData(AccountDbo account, string key)
     {
-        using var connection = databaseService.GetConnection();
-
-        return await connection.QuerySingleAsync<string?>(
+        return await _connection.QuerySingleAsync<string?>(
             """
             SELECT coalesce(data ->> @key, '') as value
             FROM account
@@ -130,9 +128,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<bool> DeleteAccountAsync(string accountId)
     {
-        using var connection = databaseService.GetConnection();
-
-        var rowsAffected = await connection.ExecuteAsync(
+        var rowsAffected = await _connection.ExecuteAsync(
             "DELETE FROM account WHERE account_id = @AccountId",
             new { AccountId = accountId },
             commandTimeout: 30
@@ -141,7 +137,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         // Also delete credentials from platform keyring
         if (rowsAffected > 0)
         {
-            credentialManager.DeleteCredentials(accountId);
+            _credentialManager.DeleteCredentials(accountId);
         }
 
         return rowsAffected > 0;
@@ -153,17 +149,15 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
     /// </summary>
     public async Task ClearAccountSyncDataAsync(string accountId)
     {
-        using var connection = databaseService.GetConnection();
-
         // Delete all calendars for this account (events are cascade-deleted)
-        await connection.ExecuteAsync(
+        await _connection.ExecuteAsync(
             "DELETE FROM calendar WHERE account_id = @AccountId",
             new { AccountId = accountId },
             commandTimeout: 30
         );
 
         // Clear only the account's calendar sync token
-        await connection.ExecuteAsync(
+        await _connection.ExecuteAsync(
             "UPDATE account SET data = jsonb_remove(coalesce(data, jsonb_object()), '$.calendarSyncToken') WHERE account_id = @AccountId",
             new { AccountId = accountId },
             commandTimeout: 30
@@ -174,8 +168,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<IEnumerable<CalendarDbo>> GetCalendarsByAccountAsync(string accountId)
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QueryAsync<CalendarDbo>(
+        return await _connection.QueryAsync<CalendarDbo>(
             "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
             "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
             "FROM calendar WHERE account_id = @AccountId",
@@ -186,8 +179,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<CalendarDbo?> GetCalendarByExternalIdAsync(string accountId, string externalId)
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QuerySingleOrDefaultAsync<CalendarDbo>(
+        return await _connection.QuerySingleOrDefaultAsync<CalendarDbo>(
             "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
             "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
             "FROM calendar WHERE account_id = @AccountId AND external_id = @ExternalId",
@@ -198,8 +190,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<CalendarDbo?> GetCalendarByIdAsync(string calendarId)
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QuerySingleOrDefaultAsync<CalendarDbo>(
+        return await _connection.QuerySingleOrDefaultAsync<CalendarDbo>(
             "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
             "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
             "FROM calendar WHERE calendar_id = @CalendarId",
@@ -210,15 +201,13 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<bool> CreateOrUpdateCalendarAsync(CalendarDbo calendar)
     {
-        using var connection = databaseService.GetConnection();
-
         // Check if calendar already exists by external_id
         var existing = await GetCalendarByExternalIdAsync(calendar.AccountId, calendar.ExternalId ?? string.Empty);
 
         if (existing != null)
         {
             // Update existing calendar - keep the existing calendar_id (UUID)
-            var rowsAffected = await connection.ExecuteAsync(
+            var rowsAffected = await _connection.ExecuteAsync(
                 "UPDATE calendar SET name = @Name, color = @Color, enabled = @Enabled, " +
                 "last_sync = @LastSync " +
                 "WHERE account_id = @AccountId AND external_id = @ExternalId",
@@ -243,7 +232,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         {
             // Insert new calendar with a generated UUID
             var calendarId = System.Guid.NewGuid().ToString();
-            var rowsAffected = await connection.ExecuteAsync(
+            var rowsAffected = await _connection.ExecuteAsync(
                 "INSERT INTO calendar (account_id, calendar_id, external_id, name, color, enabled, last_sync) " +
                 "VALUES (@AccountId, @CalendarId, @ExternalId, @Name, @Color, @Enabled, @LastSync)",
                 new
@@ -268,9 +257,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<bool> DeleteCalendarAsync(string calendarId)
     {
-        using var connection = databaseService.GetConnection();
-
-        var rowsAffected = await connection.ExecuteAsync(
+        var rowsAffected = await _connection.ExecuteAsync(
             "DELETE FROM calendar WHERE calendar_id = @CalendarId",
             new { CalendarId = calendarId },
             commandTimeout: 30
@@ -281,9 +268,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<int> DeleteCalendarsNotSyncedAsync(string accountId, long currentSyncTime)
     {
-        using var connection = databaseService.GetConnection();
-
-        var rowsAffected = await connection.ExecuteAsync(
+        var rowsAffected = await _connection.ExecuteAsync(
             "DELETE FROM calendar WHERE account_id = @AccountId AND last_sync < @CurrentSyncTime",
             new { AccountId = accountId, CurrentSyncTime = currentSyncTime },
             commandTimeout: 30
@@ -294,9 +279,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<bool> SetCalendarData(CalendarDbo calendar, string key, string value)
     {
-        using var connection = databaseService.GetConnection();
-
-        var rowsAffected = await connection.ExecuteAsync(
+        var rowsAffected = await _connection.ExecuteAsync(
             """
                 UPDATE calendar
                 SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
@@ -311,9 +294,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<string?> GetCalendarData(CalendarDbo calendar, string key)
     {
-        using var connection = databaseService.GetConnection();
-
-        return await connection.QuerySingleAsync<string?>(
+        return await _connection.QuerySingleAsync<string?>(
             """
             SELECT coalesce(data ->> @key, '') as value
             FROM calendar
@@ -324,9 +305,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<bool> UpdateCalendarEnabledAsync(string calendarId, bool enabled)
     {
-        using var connection = databaseService.GetConnection();
-
-        var rowsAffected = await connection.ExecuteAsync(
+        var rowsAffected = await _connection.ExecuteAsync(
             "UPDATE calendar SET enabled = @Enabled WHERE calendar_id = @CalendarId",
             new { CalendarId = calendarId, Enabled = enabled ? 1 : 0 },
             commandTimeout: 30
@@ -341,8 +320,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<IEnumerable<CalendarEventDbo>> GetEventsByCalendarAsync(string calendarId)
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QueryAsync<CalendarEventDbo>(
+        return await _connection.QueryAsync<CalendarEventDbo>(
             "SELECT calendar_id AS CalendarId, event_id AS EventId, external_id AS ExternalId, " +
             "start_time AS StartTime, end_time AS EndTime, title AS Title, changed_at AS ChangedAt " +
             "FROM calendar_event WHERE calendar_id = @CalendarId",
@@ -353,8 +331,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<CalendarEventDbo?> GetEventByExternalIdAsync(string calendarId, string externalId)
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QuerySingleOrDefaultAsync<CalendarEventDbo>(
+        return await _connection.QuerySingleOrDefaultAsync<CalendarEventDbo>(
             "SELECT calendar_id AS CalendarId, event_id AS EventId, external_id AS ExternalId, " +
             "start_time AS StartTime, end_time AS EndTime, title AS Title, changed_at AS ChangedAt " +
             "FROM calendar_event WHERE calendar_id = @CalendarId AND external_id = @ExternalId",
@@ -371,15 +348,13 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
     /// <returns>The id of the event.</returns>
     public async Task<string> CreateOrUpdateEventAsync(CalendarEventDbo eventDbo)
     {
-        using var connection = databaseService.GetConnection();
-
         // Check if event already exists by external_id
         var existing = await GetEventByExternalIdAsync(eventDbo.CalendarId, eventDbo.ExternalId ?? string.Empty);
 
         if (existing != null)
         {
             // Update existing event - keep the existing event_id
-            await connection.ExecuteAsync(
+            await _connection.ExecuteAsync(
                 "UPDATE calendar_event SET start_time = @start_time, end_time = @end_time, " +
                 "title = @title, changed_at = @changed_at " +
                 "WHERE calendar_id = @calendar_id AND external_id = @external_id",
@@ -401,7 +376,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
         {
             // Insert new event with generated UUID
             var newEventId = Guid.NewGuid().ToString();
-            await connection.ExecuteAsync(
+            await _connection.ExecuteAsync(
                 "INSERT INTO calendar_event (calendar_id, event_id, external_id, start_time, end_time, title, changed_at) " +
                 "VALUES (@calendar_id, @event_id, @external_id, @start_time, @end_time, @title, @changed_at)",
                 new
@@ -423,9 +398,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<int> DeleteEventsNotSyncedAsync(string calendarId, long currentSyncTime)
     {
-        using var connection = databaseService.GetConnection();
-
-        var rowsAffected = await connection.ExecuteAsync(
+        var rowsAffected = await _connection.ExecuteAsync(
             "DELETE FROM calendar_event WHERE calendar_id = @CalendarId AND changed_at < @CurrentSyncTime",
             new { CalendarId = calendarId, CurrentSyncTime = currentSyncTime },
             commandTimeout: 30
@@ -436,9 +409,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<bool> SetEventData(string eventId, string key, string value)
     {
-        using var connection = databaseService.GetConnection();
-
-        var rowsAffected = await connection.ExecuteAsync(
+        var rowsAffected = await _connection.ExecuteAsync(
             """
                 UPDATE calendar_event
                 SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
@@ -453,9 +424,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
     
     public async Task<bool> SetEventDataJson(string eventId, string key, string jsonValue)
     {
-        using var connection = databaseService.GetConnection();
-
-        var rowsAffected = await connection.ExecuteAsync(
+        var rowsAffected = await _connection.ExecuteAsync(
             """
                 UPDATE calendar_event
                 SET data = jsonb_set(coalesce(data, jsonb_object()), @key, jsonb(@jsonValue))
@@ -470,9 +439,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<string?> GetEventData(string eventId, string key)
     {
-        using var connection = databaseService.GetConnection();
-
-        return await connection.QuerySingleAsync<string?>(
+        return await _connection.QuerySingleAsync<string?>(
             """
             SELECT coalesce(data ->> @key, '') as value
             FROM calendar_event
@@ -483,8 +450,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<string?> GetEventIdByExternalIdAsync(string calendarId, string externalId)
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QuerySingleOrDefaultAsync<string?>(
+        return await _connection.QuerySingleOrDefaultAsync<string?>(
             "SELECT event_id FROM calendar_event WHERE calendar_id = @CalendarId AND external_id = @ExternalId",
             new { CalendarId = calendarId, ExternalId = externalId },
             commandTimeout: 30
@@ -493,8 +459,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task CreateEventRelationAsync(string parentEventId, string childEventId)
     {
-        using var connection = databaseService.GetConnection();
-        await connection.ExecuteAsync(
+        await _connection.ExecuteAsync(
             "INSERT OR REPLACE INTO calendar_event_relation (parent_event_id, child_event_id) VALUES (@ParentEventId, @ChildEventId)",
             new { ParentEventId = parentEventId, ChildEventId = childEventId },
             commandTimeout: 30
@@ -503,8 +468,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task AddEventRelationToBacklogAsync(string calendarId, string parentExternalId, string childExternalId)
     {
-        using var connection = databaseService.GetConnection();
-        await connection.ExecuteAsync(
+        await _connection.ExecuteAsync(
             "INSERT OR REPLACE INTO calendar_event_relation_backlog (calendar_id, parent_external_id, child_external_id) VALUES (@CalendarId, @ParentExternalId, @ChildExternalId)",
             new { CalendarId = calendarId, ParentExternalId = parentExternalId, ChildExternalId = childExternalId },
             commandTimeout: 30
@@ -513,9 +477,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task ProcessEventRelationBacklogAsync(string calendarId)
     {
-        using var connection = databaseService.GetConnection();
-
-        var backlogItems = await connection.QueryAsync<(string ParentExternalId, string ChildExternalId)>(
+        var backlogItems = await _connection.QueryAsync<(string ParentExternalId, string ChildExternalId)>(
             "SELECT parent_external_id, child_external_id FROM calendar_event_relation_backlog WHERE calendar_id = @CalendarId",
             new { CalendarId = calendarId },
             commandTimeout: 30
@@ -529,7 +491,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
             if (parentEventId != null && childEventId != null)
             {
                 await CreateEventRelationAsync(parentEventId, childEventId);
-                await connection.ExecuteAsync(
+                await _connection.ExecuteAsync(
                     "DELETE FROM calendar_event_relation_backlog WHERE calendar_id = @CalendarId AND parent_external_id = @ParentExternalId AND child_external_id = @ChildExternalId",
                     new { CalendarId = calendarId, ParentExternalId = parentExternalId, ChildExternalId = childExternalId },
                     commandTimeout: 30
@@ -544,8 +506,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<string?> GetSettingAsync(string key)
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QuerySingleOrDefaultAsync<string?>(
+        return await _connection.QuerySingleOrDefaultAsync<string?>(
             "SELECT value FROM setting WHERE key = @Key",
             new { Key = key },
             commandTimeout: 30
@@ -560,8 +521,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task SetSettingAsync(string key, string value)
     {
-        using var connection = databaseService.GetConnection();
-        await connection.ExecuteAsync(
+        await _connection.ExecuteAsync(
             "INSERT INTO setting (key, value) VALUES (@Key, @Value) ON CONFLICT(key) DO UPDATE SET value = @Value",
             new { Key = key, Value = value },
             commandTimeout: 30
@@ -596,8 +556,6 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<IEnumerable<CalendarEventQueryResult>> GetEventsByTimeRangeAsync(DateTime startTime, DateTime endTime)
     {
-        using var connection = databaseService.GetConnection();
-
         var startTimestamp = new DateTimeOffset(startTime).ToUnixTimeSeconds();
         var endTimestamp = new DateTimeOffset(endTime).ToUnixTimeSeconds();
 
@@ -629,7 +587,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
               )
             ORDER BY ce.start_time";
 
-        return await connection.QueryAsync<CalendarEventQueryResult>(
+        return await _connection.QueryAsync<CalendarEventQueryResult>(
             query,
             new { StartTimestamp = startTimestamp, EndTimestamp = endTimestamp },
             commandTimeout: 30
@@ -640,8 +598,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<List<ReminderDbo>> GetRemindersByEventAsync(string eventId)
     {
-        using var connection = databaseService.GetConnection();
-        return (await connection.QueryAsync<ReminderDbo>(
+        return (await _connection.QueryAsync<ReminderDbo>(
             "SELECT reminder_id AS ReminderId, target_type AS TargetType, target_id AS TargetId, " +
             "target_time AS TargetTime, trigger_time AS TriggerTime " +
             "FROM reminder WHERE target_type = @TargetType AND target_id = @TargetId",
@@ -652,10 +609,9 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task CreateReminderAsync(string eventId, DateTime occurrenceTime, DateTime triggerTime)
     {
-        using var connection = databaseService.GetConnection();
         var reminderId = Guid.NewGuid().ToString();
 
-        await connection.ExecuteAsync(
+        await _connection.ExecuteAsync(
             "INSERT INTO reminder (reminder_id, target_type, target_id, target_time, trigger_time) " +
             "VALUES (@ReminderId, @TargetType, @TargetId, @TargetTime, @TriggerTime)",
             new
@@ -672,7 +628,6 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<List<ReminderWithEvent>> GetDueRemindersAsync(HashSet<string> firedReminderIds)
     {
-        using var connection = databaseService.GetConnection();
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var firedReminderIdsList = firedReminderIds.ToList();
 
@@ -695,7 +650,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
               AND r.reminder_id NOT IN @FiredReminderIds
             ORDER BY r.trigger_time";
 
-        return (await connection.QueryAsync<ReminderWithEvent>(
+        return (await _connection.QueryAsync<ReminderWithEvent>(
             query,
             new { TargetType = (int)TargetType.CalendarEvent, Now = now, FiredReminderIds = firedReminderIdsList },
             commandTimeout: 30
@@ -704,8 +659,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<ReminderDbo?> GetReminderAsync(string reminderId)
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QuerySingleOrDefaultAsync<ReminderDbo>(
+        return await _connection.QuerySingleOrDefaultAsync<ReminderDbo>(
             "SELECT reminder_id AS ReminderId, target_type AS TargetType, target_id AS TargetId, " +
             "target_time AS TargetTime, trigger_time AS TriggerTime " +
             "FROM reminder WHERE reminder_id = @ReminderId",
@@ -716,8 +670,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<string?> GetEventCalendarIdAsync(string eventId)
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QuerySingleOrDefaultAsync<string?>(
+        return await _connection.QuerySingleOrDefaultAsync<string?>(
             "SELECT calendar_id FROM calendar_event WHERE event_id = @EventId",
             new { EventId = eventId },
             commandTimeout: 30
@@ -726,8 +679,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<AccountType?> GetAccountTypeForCalendarAsync(string calendarId)
     {
-        using var connection = databaseService.GetConnection();
-        var typeStr = await connection.QuerySingleOrDefaultAsync<string?>(
+        var typeStr = await _connection.QuerySingleOrDefaultAsync<string?>(
             "SELECT a.type FROM account a INNER JOIN calendar c ON a.account_id = c.account_id WHERE c.calendar_id = @CalendarId",
             new { CalendarId = calendarId },
             commandTimeout: 30
@@ -748,8 +700,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
             return;
         }
 
-        using var connection = databaseService.GetConnection();
-        await connection.ExecuteAsync(
+        await _connection.ExecuteAsync(
             "DELETE FROM reminder WHERE reminder_id IN @ReminderIds",
             new { ReminderIds = reminderIds },
             commandTimeout: 30
@@ -758,8 +709,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task DeleteReminderAsync(string reminderId)
     {
-        using var connection = databaseService.GetConnection();
-        await connection.ExecuteAsync(
+        await _connection.ExecuteAsync(
             "DELETE FROM reminder WHERE reminder_id = @ReminderId",
             new { ReminderId = reminderId },
             commandTimeout: 30
@@ -768,8 +718,7 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
 
     public async Task<string?> GetCalendarDefaultRemindersAsync(string calendarId)
     {
-        using var connection = databaseService.GetConnection();
-        return await connection.QuerySingleOrDefaultAsync<string?>(
+        return await _connection.QuerySingleOrDefaultAsync<string?>(
             "SELECT json_extract(data, '$.defaultReminders') FROM calendar WHERE calendar_id = @CalendarId",
             new { CalendarId = calendarId },
             commandTimeout: 30
@@ -777,4 +726,9 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
     }
 
     #endregion
+
+    public void Dispose()
+    {
+        _connection.Dispose();
+    }
 }
