@@ -48,9 +48,9 @@
                         <Border Name="Border"
                                 CornerRadius="10"
                                 Background="{Binding BackgroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                                Margin="2"
+                                Margin="1"
                                 Bounds="{Binding AvailableBounds, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}">
-                            <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 2, 5, 2">
+                            <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">
                                 <TextBlock Text="{Binding Title, RelativeSource={RelativeSource TemplatedParent}}"
                                            FontWeight="Bold"
                                            TextTrimming="CharacterEllipsis"
