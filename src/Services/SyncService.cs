@@ -661,8 +661,7 @@ public class SyncService
                 await _storage.SetEventData(eventId, "rawData", evt.RawICalendar);
             }
 
-            // Populate reminders for this event (CalDAV reminder support is not yet implemented)
-            // await _reminderService.PopulateRemindersForEventAsync(eventId, calendar.CalendarId, AccountType.CalDav, cancellationToken);
+            await _reminderService.PopulateRemindersForEventAsync(eventId, calendar.CalendarId, AccountType.CalDav, cancellationToken);
         }
 
         // If this was a full sync, clean up events that weren't updated

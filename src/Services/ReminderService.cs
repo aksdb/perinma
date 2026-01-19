@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Json;
 using Google.Apis.Calendar.v3.Data;
+using ICalCalendarEvent = Ical.Net.CalendarComponents.CalendarEvent;
 using perinma.Storage.Models;
 using perinma.Utils;
 using perinma.Storage;
@@ -29,6 +30,10 @@ public class ReminderService(SqliteStorage storage)
         if (accountType == AccountType.Google)
         {
             await PopulateGoogleRemindersAsync(eventId, calendarId, rawData, cancellationToken);
+        }
+        else if (accountType == AccountType.CalDav)
+        {
+            await PopulateCalDavRemindersAsync(eventId, calendarId, rawData, cancellationToken);
         }
     }
 
@@ -109,6 +114,103 @@ public class ReminderService(SqliteStorage storage)
         }
     }
 
+    private async Task PopulateCalDavRemindersAsync(string eventId, string calendarId, string rawIcal, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var calendar = Ical.Net.Calendar.Load(rawIcal);
+            var evt = calendar?.Events.FirstOrDefault();
+            if (evt == null)
+            {
+                return;
+            }
+
+            var alarms = evt.Alarms;
+            if (alarms == null || alarms.Count == 0)
+            {
+                return;
+            }
+
+            List<int> reminderMinutes = [];
+
+            foreach (var alarm in alarms)
+            {
+                if (alarm.Trigger == null)
+                {
+                    continue;
+                }
+
+                if (alarm.Trigger.IsRelative)
+                {
+                    var duration = alarm.Trigger.Duration;
+                    if (duration.HasValue)
+                    {
+                        var weeks = duration.Value.Weeks ?? 0;
+                        var days = duration.Value.Days ?? 0;
+                        var hours = duration.Value.Hours ?? 0;
+                        var minutes = duration.Value.Minutes ?? 0;
+                        var totalMinutes = (int)(-(weeks * 7 * 24 * 60 + days * 24 * 60 + hours * 60 + minutes) * duration.Value.Sign);
+                        if (totalMinutes > 0)
+                        {
+                            reminderMinutes.Add(totalMinutes);
+                        }
+                    }
+                }
+            }
+
+            if (reminderMinutes.Count == 0)
+            {
+                return;
+            }
+
+            var eventStartTime = evt.Start?.AsUtc;
+            if (!eventStartTime.HasValue)
+            {
+                return;
+            }
+
+            List<(DateTime Occurrence, DateTime TriggerTime)> reminderOccurrences = [];
+
+            if (evt.RecurrenceRules.Count > 0)
+            {
+                var occurrences = GetCalDavRecurringOccurrences(evt, reminderMinutes);
+                reminderOccurrences.AddRange(occurrences);
+            }
+            else
+            {
+                foreach (var minutes in reminderMinutes)
+                {
+                    var triggerTime = eventStartTime.Value.AddMinutes(-minutes);
+                    if (triggerTime > DateTime.UtcNow)
+                    {
+                        reminderOccurrences.Add((eventStartTime.Value, triggerTime));
+                    }
+                }
+            }
+
+            var existingReminders = await storage.GetRemindersByEventAsync(eventId);
+
+            var remindersToDelete = existingReminders
+                .Where(r => !reminderOccurrences.Any(o => o.TriggerTime == DateTimeOffset.FromUnixTimeSeconds(r.TriggerTime).DateTime))
+                .Select(r => r.ReminderId)
+                .ToList();
+
+            await storage.DeleteRemindersAsync(remindersToDelete);
+
+            foreach (var (occurrence, triggerTime) in reminderOccurrences)
+            {
+                if (!existingReminders.Any(r => r.TriggerTime == new DateTimeOffset(triggerTime).ToUnixTimeSeconds()))
+                {
+                    await storage.CreateReminderAsync(eventId, occurrence, triggerTime);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            return;
+        }
+    }
+
     private List<int> ParseDefaultReminders(string calendarData)
     {
         try
@@ -170,6 +272,59 @@ public class ReminderService(SqliteStorage storage)
             }
 
             var occurrences = icalEvent.GetOccurrences();
+
+            var result = new List<(DateTime Occurrence, DateTime TriggerTime)>();
+            var searchEnd = recurrenceEndTime ?? now.AddYears(10);
+
+            foreach (var occurrence in occurrences)
+            {
+                var occurrenceTime = occurrence.Period.StartTime.AsUtc;
+                if (occurrenceTime < now)
+                {
+                    continue;
+                }
+
+                if (occurrenceTime > searchEnd)
+                {
+                    continue;
+                }
+
+                foreach (var minutes in reminderMinutes)
+                {
+                    var triggerTime = occurrenceTime.AddMinutes(-minutes);
+                    if (triggerTime > now)
+                    {
+                        result.Add((occurrenceTime, triggerTime));
+                        break;
+                    }
+                }
+            }
+
+            return result;
+        }
+        catch (Exception)
+        {
+            return [];
+        }
+    }
+
+    private List<(DateTime Occurrence, DateTime TriggerTime)> GetCalDavRecurringOccurrences(ICalCalendarEvent evt, List<int> reminderMinutes)
+    {
+        var eventStartTime = evt.Start?.AsUtc;
+        if (!eventStartTime.HasValue)
+        {
+            return [];
+        }
+
+        var eventEndTime = evt.End?.AsUtc ?? eventStartTime.Value.AddHours(1);
+
+        var recurrenceEndTime = RecurrenceParser.CalculateRecurrenceEndTime(evt);
+
+        var now = DateTime.UtcNow;
+
+        try
+        {
+            var occurrences = evt.GetOccurrences();
 
             var result = new List<(DateTime Occurrence, DateTime TriggerTime)>();
             var searchEnd = recurrenceEndTime ?? now.AddYears(10);
@@ -274,6 +429,10 @@ public class ReminderService(SqliteStorage storage)
                     if (accountType == AccountType.Google)
                     {
                         await PopulateGoogleRemindersAsync(reminder.TargetId, calendarId, rawDataJson, originalCancellationToken ?? cancellationToken);
+                    }
+                    else if (accountType == AccountType.CalDav)
+                    {
+                        await PopulateCalDavRemindersAsync(reminder.TargetId, calendarId, rawDataJson, originalCancellationToken ?? cancellationToken);
                     }
                 }
             }
