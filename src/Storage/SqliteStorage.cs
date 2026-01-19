@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
 using perinma.Services;
 using perinma.Storage.Models;
+using perinma.Models;
 
 namespace perinma.Storage;
 
@@ -633,4 +635,146 @@ public class SqliteStorage(DatabaseService databaseService, CredentialManagerSer
             commandTimeout: 30
         );
     }
+
+    #region Reminders
+
+    public async Task<List<ReminderDbo>> GetRemindersByEventAsync(string eventId)
+    {
+        using var connection = databaseService.GetConnection();
+        return (await connection.QueryAsync<ReminderDbo>(
+            "SELECT reminder_id AS ReminderId, target_type AS TargetType, target_id AS TargetId, " +
+            "target_time AS TargetTime, trigger_time AS TriggerTime " +
+            "FROM reminder WHERE target_type = @TargetType AND target_id = @TargetId",
+            new { TargetType = (int)TargetType.CalendarEvent, TargetId = eventId },
+            commandTimeout: 30
+        )).ToList();
+    }
+
+    public async Task CreateReminderAsync(string eventId, DateTime occurrenceTime, DateTime triggerTime)
+    {
+        using var connection = databaseService.GetConnection();
+        var reminderId = Guid.NewGuid().ToString();
+
+        await connection.ExecuteAsync(
+            "INSERT INTO reminder (reminder_id, target_type, target_id, target_time, trigger_time) " +
+            "VALUES (@ReminderId, @TargetType, @TargetId, @TargetTime, @TriggerTime)",
+            new
+            {
+                ReminderId = reminderId,
+                TargetType = (int)TargetType.CalendarEvent,
+                TargetId = eventId,
+                TargetTime = new DateTimeOffset(occurrenceTime).ToUnixTimeSeconds(),
+                TriggerTime = new DateTimeOffset(triggerTime).ToUnixTimeSeconds()
+            },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<List<ReminderWithEvent>> GetDueRemindersAsync(HashSet<string> firedReminderIds)
+    {
+        using var connection = databaseService.GetConnection();
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var firedReminderIdsList = firedReminderIds.ToList();
+
+        var query = @"
+            SELECT
+                r.reminder_id AS ReminderId,
+                r.target_type AS TargetType,
+                r.target_id AS TargetId,
+                r.target_time AS TargetTime,
+                r.trigger_time AS TriggerTime,
+                ce.title AS EventTitle,
+                c.name AS CalendarName,
+                c.color AS CalendarColor,
+                ce.start_time AS StartTime
+            FROM reminder r
+            INNER JOIN calendar_event ce ON r.target_id = ce.event_id
+            INNER JOIN calendar c ON ce.calendar_id = c.calendar_id
+            WHERE r.target_type = @TargetType
+              AND r.trigger_time <= @Now
+              AND r.reminder_id NOT IN @FiredReminderIds
+            ORDER BY r.trigger_time";
+
+        return (await connection.QueryAsync<ReminderWithEvent>(
+            query,
+            new { TargetType = (int)TargetType.CalendarEvent, Now = now, FiredReminderIds = firedReminderIdsList },
+            commandTimeout: 30
+        )        ).ToList();
+    }
+
+    public async Task<ReminderDbo?> GetReminderAsync(string reminderId)
+    {
+        using var connection = databaseService.GetConnection();
+        return await connection.QuerySingleOrDefaultAsync<ReminderDbo>(
+            "SELECT reminder_id AS ReminderId, target_type AS TargetType, target_id AS TargetId, " +
+            "target_time AS TargetTime, trigger_time AS TriggerTime " +
+            "FROM reminder WHERE reminder_id = @ReminderId",
+            new { ReminderId = reminderId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<string?> GetEventCalendarIdAsync(string eventId)
+    {
+        using var connection = databaseService.GetConnection();
+        return await connection.QuerySingleOrDefaultAsync<string?>(
+            "SELECT calendar_id FROM calendar_event WHERE event_id = @EventId",
+            new { EventId = eventId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<AccountType?> GetAccountTypeForCalendarAsync(string calendarId)
+    {
+        using var connection = databaseService.GetConnection();
+        var typeStr = await connection.QuerySingleOrDefaultAsync<string?>(
+            "SELECT a.type FROM account a INNER JOIN calendar c ON a.account_id = c.account_id WHERE c.calendar_id = @CalendarId",
+            new { CalendarId = calendarId },
+            commandTimeout: 30
+        );
+
+        if (string.IsNullOrEmpty(typeStr))
+        {
+            return null;
+        }
+
+        return Enum.TryParse<AccountType>(typeStr, out var accountType) ? accountType : null;
+    }
+
+    public async Task DeleteRemindersAsync(List<string> reminderIds)
+    {
+        if (reminderIds.Count == 0)
+        {
+            return;
+        }
+
+        using var connection = databaseService.GetConnection();
+        await connection.ExecuteAsync(
+            "DELETE FROM reminder WHERE reminder_id IN @ReminderIds",
+            new { ReminderIds = reminderIds },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task DeleteReminderAsync(string reminderId)
+    {
+        using var connection = databaseService.GetConnection();
+        await connection.ExecuteAsync(
+            "DELETE FROM reminder WHERE reminder_id = @ReminderId",
+            new { ReminderId = reminderId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<string?> GetCalendarDefaultRemindersAsync(string calendarId)
+    {
+        using var connection = databaseService.GetConnection();
+        return await connection.QuerySingleOrDefaultAsync<string?>(
+            "SELECT json_extract(data, '$.defaultReminders') FROM calendar WHERE calendar_id = @CalendarId",
+            new { CalendarId = calendarId },
+            commandTimeout: 30
+        );
+    }
+
+    #endregion
 }

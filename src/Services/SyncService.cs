@@ -8,6 +8,7 @@ using Google.Apis.Json;
 using perinma.Storage;
 using perinma.Storage.Models;
 using perinma.Utils;
+using perinma.Models;
 
 namespace perinma.Services;
 
@@ -17,17 +18,20 @@ public class SyncService
     private readonly CredentialManagerService _credentialManager;
     private readonly IGoogleCalendarService _googleCalendarService;
     private readonly ICalDavService _calDavService;
+    private readonly ReminderService _reminderService;
 
     public SyncService(
         SqliteStorage storage,
         CredentialManagerService credentialManager,
         IGoogleCalendarService googleCalendarService,
-        ICalDavService calDavService)
+        ICalDavService calDavService,
+        ReminderService reminderService)
     {
         _storage = storage;
         _credentialManager = credentialManager;
         _googleCalendarService = googleCalendarService;
         _calDavService = calDavService;
+        _reminderService = reminderService;
     }
 
     /// <summary>
@@ -442,6 +446,9 @@ public class SyncService
             var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(evt);
             await _storage.SetEventDataJson(eventId, "rawData", rawEventJson);
 
+            // Populate reminders for this event
+            await _reminderService.PopulateRemindersForEventAsync(eventId, calendar.CalendarId, AccountType.Google, cancellationToken);
+
             // Handle override relationship
             if (isOverride && !string.IsNullOrEmpty(evt.RecurringEventId))
             {
@@ -653,6 +660,9 @@ public class SyncService
             {
                 await _storage.SetEventData(eventId, "rawData", evt.RawICalendar);
             }
+
+            // Populate reminders for this event (CalDAV reminder support is not yet implemented)
+            // await _reminderService.PopulateRemindersForEventAsync(eventId, calendar.CalendarId, AccountType.CalDav, cancellationToken);
         }
 
         // If this was a full sync, clean up events that weren't updated

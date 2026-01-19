@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:reminders="clr-namespace:perinma.Views.Reminders"
+             x:Class="perinma.Views.Reminders.ReminderItemControl"
+             x:DataType="reminders:ReminderViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto"
+          ColumnDefinitions="*,Auto">
+        <TextBlock Grid.Row="0" Grid.Column="0"
+                   Text="{Binding Title}"
+                   FontWeight="SemiBold"
+                   FontSize="15"
+                   TextWrapping="Wrap"
+                   Margin="0,0,10,8"/>
+
+        <TextBlock Grid.Row="1" Grid.Column="0"
+                   Text="{Binding CalendarName}"
+                   FontSize="12"
+                   Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}"
+                   Margin="0,0,10,5"/>
+
+        <TextBlock Grid.Row="2" Grid.Column="0"
+                   Text="{Binding StartTime, StringFormat='{}{0:ddd, MMM d, yyyy \u2022 h:mm tt}'}"
+                   FontSize="13"
+                   Margin="0,0,10,15"/>
+
+        <TextBlock Grid.Row="0" Grid.Column="1"
+                   Text="Snooze:"
+                   FontSize="11"
+                   Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}"
+                   VerticalAlignment="Top"
+                   Margin="0,0,0,8"/>
+
+        <ItemsControl Grid.Row="1" Grid.Column="1"
+                  ItemsSource="{Binding SnoozeIntervals}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="reminders:SnoozeIntervalItem">
+                    <Button Content="{Binding Label}"
+                            Padding="8,5"
+                            Margin="0,0,0,5"
+                            FontSize="11"
+                            Click="SnoozeClick"/>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Button Grid.Row="2" Grid.Column="1"
+                Content="Dismiss"
+                Command="{Binding DismissCommand}"
+                Padding="15,6"
+                Margin="0,10,0,0"
+                FontSize="12"/>
+    </Grid>
+</UserControl>

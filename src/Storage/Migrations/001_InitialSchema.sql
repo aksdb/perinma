@@ -60,8 +60,8 @@ CREATE TABLE calendar_event_relation_backlog(
 
 CREATE TABLE reminder(
     reminder_id text NOT NULL PRIMARY KEY,
-    -- 1 = calendar
-    target_type int NOT NULL CHECK(target_type IN (1)),
+    -- 1 = calendar_event
+    target_type int NOT NULL,
     target_id text NOT NULL,
     target_time int NOT NULL,
     trigger_time int NOT NULL
@@ -70,7 +70,7 @@ CREATE TABLE reminder(
 CREATE INDEX reminder_by_time ON reminder (trigger_time);
 CREATE INDEX reminder_by_type_and_id ON reminder (target_type, target_id);
 
-CREATE TRIGGER reminder_cleanup_calendar
+CREATE TRIGGER reminder_cleanup_calendar_event
     AFTER DELETE ON calendar_event
     FOR EACH ROW
     BEGIN
