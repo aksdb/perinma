@@ -31,4 +31,13 @@ public partial class GoogleCalendarEventView : UserControl
             e.Event.Handled = true;
         }
     }
+    
+    private void OnAttachmentLinkPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is TextBlock { Tag: string fileUrl } && !string.IsNullOrEmpty(fileUrl))
+        {
+            PlatformUtil.OpenBrowser(fileUrl);
+            e.Handled = true;
+        }
+    }
 }

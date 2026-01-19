@@ -51,6 +51,24 @@
                 <TextBlock Text="Created by" FontWeight="SemiBold" FontSize="12" />
                 <TextBlock Text="{Binding Creator}" />
             </StackPanel>
+            
+            <StackPanel Spacing="4" IsVisible="{Binding Attachments.Count}">
+                <TextBlock Text="Attachments" FontWeight="SemiBold" FontSize="12" />
+                <ItemsControl ItemsSource="{Binding Attachments}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="cal:EventAttachment">
+                            <TextBlock Text="{Binding Title}" 
+                                       Foreground="Blue" 
+                                       TextWrapping="Wrap"
+                                       Cursor="Hand" 
+                                       TextDecorations="Underline"
+                                       Margin="0,2,0,2"
+                                       Tag="{Binding FileUrl}"
+                                       PointerPressed="OnAttachmentLinkPressed" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
         </StackPanel>
     </StackPanel>
 

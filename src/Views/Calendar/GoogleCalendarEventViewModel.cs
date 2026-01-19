@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Google.Apis.Calendar.v3.Data;
@@ -8,6 +9,17 @@ using perinma.Storage;
 using perinma.Storage.Models;
 
 namespace perinma.Views.Calendar;
+
+/// <summary>
+/// Represents an attachment on a Google Calendar event.
+/// </summary>
+public class EventAttachment
+{
+    public required string Title { get; init; }
+    public required string FileUrl { get; init; }
+    public string? IconLink { get; init; }
+    public string? MimeType { get; init; }
+}
 
 public partial class GoogleCalendarEventViewModel : ViewModelBase
 {
@@ -33,6 +45,8 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isLoading;
+    
+    public ObservableCollection<EventAttachment> Attachments { get; } = [];
 
     public GoogleCalendarEventViewModel(CalendarEvent calendarEvent, SqliteStorage storage)
     {
@@ -63,6 +77,8 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase
                     Creator = googleEvent.Creator != null
                         ? $"{googleEvent.Creator.DisplayName ?? googleEvent.Creator.Email}"
                         : string.Empty;
+                    
+                    ExtractAttachments(googleEvent);
                 }
             }
         }
@@ -76,6 +92,30 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase
         }
     }
 
+    private void ExtractAttachments(Event googleEvent)
+    {
+        if (googleEvent.Attachments == null)
+        {
+            return;
+        }
+        
+        foreach (var attachment in googleEvent.Attachments)
+        {
+            if (string.IsNullOrEmpty(attachment.FileUrl))
+            {
+                continue;
+            }
+            
+            Attachments.Add(new EventAttachment
+            {
+                Title = attachment.Title ?? attachment.FileUrl,
+                FileUrl = attachment.FileUrl,
+                IconLink = attachment.IconLink,
+                MimeType = attachment.MimeType
+            });
+        }
+    }
+    
     private string ExtractGoogleMeetLink(Event googleEvent)
     {
         if (!string.IsNullOrEmpty(googleEvent.HangoutLink))
