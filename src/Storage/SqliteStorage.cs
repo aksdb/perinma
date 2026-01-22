@@ -291,6 +291,21 @@ public class SqliteStorage : IDisposable
 
         return rowsAffected > 0;
     }
+    
+    public async Task<bool> SetCalendarDataJson(CalendarDbo calendar, string key, string jsonValue)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            """
+                UPDATE calendar
+                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, jsonb(@jsonValue))
+                WHERE calendar_id = @calendar_id
+            """,
+            param: new { key = $"$.{key}", jsonValue, calendar_id = calendar.CalendarId },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
 
     public async Task<string?> GetCalendarData(CalendarDbo calendar, string key)
     {
@@ -716,14 +731,7 @@ public class SqliteStorage : IDisposable
         );
     }
 
-    public async Task<string?> GetCalendarDefaultRemindersAsync(string calendarId)
-    {
-        return await _connection.QuerySingleOrDefaultAsync<string?>(
-            "SELECT json_extract(data, '$.defaultReminders') FROM calendar WHERE calendar_id = @CalendarId",
-            new { CalendarId = calendarId },
-            commandTimeout: 30
-        );
-    }
+
 
     #endregion
 

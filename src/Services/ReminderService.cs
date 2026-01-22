@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Json;
@@ -49,10 +48,21 @@ public class ReminderService(SqliteStorage storage)
 
         if (googleEvent.Reminders.UseDefault == true)
         {
-            var calendarData = await storage.GetCalendarDefaultRemindersAsync(calendarId);
-            if (calendarData != null)
+            var calendar = await storage.GetCalendarByIdAsync(calendarId);
+            if (calendar != null)
             {
-                reminderMinutes.AddRange(ParseDefaultReminders(calendarData));
+                var rawCalendarData = await storage.GetCalendarData(calendar, "rawData");
+                if (!string.IsNullOrEmpty(rawCalendarData))
+                {
+                    var calendarListEntry = NewtonsoftJsonSerializer.Instance.Deserialize<CalendarListEntry>(rawCalendarData);
+                    if (calendarListEntry?.DefaultReminders != null)
+                    {
+                        foreach (var reminder in calendarListEntry.DefaultReminders.Where(r => r.Method == "popup" && r.Minutes.HasValue))
+                        {
+                            reminderMinutes.Add(reminder.Minutes.Value);
+                        }
+                    }
+                }
             }
         }
         else
@@ -208,19 +218,6 @@ public class ReminderService(SqliteStorage storage)
         catch (Exception)
         {
             return;
-        }
-    }
-
-    private List<int> ParseDefaultReminders(string calendarData)
-    {
-        try
-        {
-            var defaultReminders = JsonSerializer.Deserialize<List<DefaultReminderData>>(calendarData);
-            return defaultReminders?.Where(r => r.Method == "popup").Select(r => r.Minutes).ToList() ?? [];
-        }
-        catch (JsonException)
-        {
-            return [];
         }
     }
 
@@ -464,11 +461,5 @@ public class ReminderService(SqliteStorage storage)
     public void ClearFiredReminders()
     {
         _firedReminders.Clear();
-    }
-
-    private class DefaultReminderData
-    {
-        public string Method { get; set; } = string.Empty;
-        public int Minutes { get; set; }
     }
 }

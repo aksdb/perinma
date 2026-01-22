@@ -227,6 +227,10 @@ public class SyncService
             };
 
             await _storage.CreateOrUpdateCalendarAsync(calendarDbo);
+
+            // Store raw Google calendar data for later use
+            var rawCalendarJson = NewtonsoftJsonSerializer.Instance.Serialize(calendar);
+            await _storage.SetCalendarDataJson(calendarDbo, "rawData", rawCalendarJson);
         }
 
         // If this was a full sync, clean up calendars that weren't updated
