@@ -47,6 +47,18 @@ public interface ICalendarProvider
     Task<bool> TestConnectionAsync(
         AccountCredentials credentials,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Extracts reminder trigger times from raw event data.
+    /// </summary>
+    /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
+    /// <param name="rawCalendarData">Optional raw calendar data for default reminders (JSON for Google)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of reminder minutes before event start</returns>
+    Task<IList<int>> GetReminderMinutesAsync(
+        string rawEventData,
+        string? rawCalendarData = null,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

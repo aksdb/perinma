@@ -133,6 +133,15 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
         return Task.FromResult(credentials is GoogleCredentials);
     }
 
+    public Task<IList<int>> GetReminderMinutesAsync(
+        string rawEventData,
+        string? rawCalendarData = null,
+        CancellationToken cancellationToken = default)
+    {
+        // Return empty list by default - tests can override if needed
+        return Task.FromResult<IList<int>>([]);
+    }
+
     private static ProviderEvent? ConvertGoogleEvent(Event evt)
     {
         var isOverride = !string.IsNullOrEmpty(evt.RecurringEventId);

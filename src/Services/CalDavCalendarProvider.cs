@@ -164,4 +164,60 @@ public class CalDavCalendarProvider : ICalendarProvider
 
         return null;
     }
+
+    /// <inheritdoc/>
+    public Task<IList<int>> GetReminderMinutesAsync(
+        string rawEventData,
+        string? rawCalendarData = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var calendar = Ical.Net.Calendar.Load(rawEventData);
+            var evt = calendar?.Events.FirstOrDefault();
+            if (evt == null)
+            {
+                return Task.FromResult<IList<int>>([]);
+            }
+
+            var alarms = evt.Alarms;
+            if (alarms == null || alarms.Count == 0)
+            {
+                return Task.FromResult<IList<int>>([]);
+            }
+
+            List<int> reminderMinutes = [];
+
+            foreach (var alarm in alarms)
+            {
+                if (alarm.Trigger == null)
+                {
+                    continue;
+                }
+
+                if (alarm.Trigger.IsRelative)
+                {
+                    var duration = alarm.Trigger.Duration;
+                    if (duration.HasValue)
+                    {
+                        var weeks = duration.Value.Weeks ?? 0;
+                        var days = duration.Value.Days ?? 0;
+                        var hours = duration.Value.Hours ?? 0;
+                        var minutes = duration.Value.Minutes ?? 0;
+                        var totalMinutes = (int)(-(weeks * 7 * 24 * 60 + days * 24 * 60 + hours * 60 + minutes) * duration.Value.Sign);
+                        if (totalMinutes > 0)
+                        {
+                            reminderMinutes.Add(totalMinutes);
+                        }
+                    }
+                }
+            }
+
+            return Task.FromResult<IList<int>>(reminderMinutes);
+        }
+        catch (Exception)
+        {
+            return Task.FromResult<IList<int>>([]);
+        }
+    }
 }

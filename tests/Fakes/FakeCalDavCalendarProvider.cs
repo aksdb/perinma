@@ -99,6 +99,15 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
         return Task.FromResult(credentials is CalDavCredentials);
     }
 
+    public Task<IList<int>> GetReminderMinutesAsync(
+        string rawEventData,
+        string? rawCalendarData = null,
+        CancellationToken cancellationToken = default)
+    {
+        // Return empty list by default - tests can override if needed
+        return Task.FromResult<IList<int>>([]);
+    }
+
     private static ProviderEvent? ConvertCalDavEvent(CalDavEvent evt)
     {
         var isDeleted = evt.Status == "CANCELLED" || evt.Deleted;

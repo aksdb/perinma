@@ -20,20 +20,13 @@ public class SyncService
     public SyncService(
         SqliteStorage storage,
         CredentialManagerService credentialManager,
-        ICalendarProvider googleProvider,
-        ICalendarProvider calDavProvider,
+        IReadOnlyDictionary<string, ICalendarProvider> providers,
         ReminderService reminderService)
     {
         _storage = storage;
         _credentialManager = credentialManager;
+        _providers = providers;
         _reminderService = reminderService;
-
-        // Register providers by account type
-        _providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
     }
 
     /// <summary>

@@ -13,7 +13,7 @@ using perinma.Models;
 
 namespace perinma.Services;
 
-public class ReminderService(SqliteStorage storage)
+public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<string, ICalendarProvider> providers)
 {
     private readonly HashSet<string> _firedReminders = new();
 
@@ -26,62 +26,32 @@ public class ReminderService(SqliteStorage storage)
             return;
         }
 
-        if (accountType == AccountType.Google)
-        {
-            await PopulateGoogleRemindersAsync(eventId, calendarId, rawData, cancellationToken);
-        }
-        else if (accountType == AccountType.CalDav)
-        {
-            await PopulateCalDavRemindersAsync(eventId, calendarId, rawData, cancellationToken);
-        }
-    }
-
-    private async Task PopulateGoogleRemindersAsync(string eventId, string calendarId, string eventDataJson, CancellationToken cancellationToken)
-    {
-        var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(eventDataJson);
-        if (googleEvent?.Reminders == null)
+        // Get the appropriate provider
+        var providerKey = accountType == AccountType.Google ? "Google" : "CalDAV";
+        if (!providers.TryGetValue(providerKey, out var provider))
         {
             return;
         }
 
-        List<int> reminderMinutes = [];
+        // Get raw calendar data for default reminders (Google uses this)
+        string? rawCalendarData = null;
+        var calendar = await storage.GetCalendarByIdAsync(calendarId);
+        if (calendar != null)
+        {
+            rawCalendarData = await storage.GetCalendarData(calendar, "rawData");
+        }
 
-        if (googleEvent.Reminders.UseDefault == true)
-        {
-            var calendar = await storage.GetCalendarByIdAsync(calendarId);
-            if (calendar != null)
-            {
-                var rawCalendarData = await storage.GetCalendarData(calendar, "rawData");
-                if (!string.IsNullOrEmpty(rawCalendarData))
-                {
-                    var calendarListEntry = NewtonsoftJsonSerializer.Instance.Deserialize<CalendarListEntry>(rawCalendarData);
-                    if (calendarListEntry?.DefaultReminders != null)
-                    {
-                        foreach (var reminder in calendarListEntry.DefaultReminders.Where(r => r.Method == "popup" && r.Minutes.HasValue))
-                        {
-                            reminderMinutes.Add(reminder.Minutes.Value);
-                        }
-                    }
-                }
-            }
-        }
-        else
-        {
-            if (googleEvent.Reminders.Overrides != null)
-            {
-                foreach (var reminder in googleEvent.Reminders.Overrides.Where(r => r.Method == "popup" && r.Minutes.HasValue))
-                {
-                    reminderMinutes.Add(reminder.Minutes.Value);
-                }
-            }
-        }
+        // Get reminder minutes from the provider
+        var reminderMinutes = await provider.GetReminderMinutesAsync(rawData, rawCalendarData, cancellationToken);
 
         if (reminderMinutes.Count == 0)
         {
             return;
         }
 
-        var eventStartTime = ParseEventStartTime(googleEvent);
+        // Parse event start time and recurrence info from raw data
+        var (eventStartTime, isRecurring, recurrenceOccurrences) = ParseEventInfo(rawData, accountType, reminderMinutes.ToList());
+
         if (!eventStartTime.HasValue)
         {
             return;
@@ -89,10 +59,9 @@ public class ReminderService(SqliteStorage storage)
 
         List<(DateTime Occurrence, DateTime TriggerTime)> reminderOccurrences = [];
 
-        if (googleEvent.Recurrence is { Count: > 0 })
+        if (isRecurring && recurrenceOccurrences.Count > 0)
         {
-            var occurrences = GetRecurringOccurrences(googleEvent, reminderMinutes);
-            reminderOccurrences.AddRange(occurrences);
+            reminderOccurrences.AddRange(recurrenceOccurrences);
         }
         else
         {
@@ -124,100 +93,80 @@ public class ReminderService(SqliteStorage storage)
         }
     }
 
-    private async Task PopulateCalDavRemindersAsync(string eventId, string calendarId, string rawIcal, CancellationToken cancellationToken)
+    private (DateTime? StartTime, bool IsRecurring, List<(DateTime Occurrence, DateTime TriggerTime)> Occurrences) ParseEventInfo(
+        string rawData,
+        AccountType accountType,
+        List<int> reminderMinutes)
+    {
+        if (accountType == AccountType.Google)
+        {
+            return ParseGoogleEventInfo(rawData, reminderMinutes);
+        }
+        else
+        {
+            return ParseCalDavEventInfo(rawData, reminderMinutes);
+        }
+    }
+
+    private (DateTime? StartTime, bool IsRecurring, List<(DateTime Occurrence, DateTime TriggerTime)> Occurrences) ParseGoogleEventInfo(
+        string rawData,
+        List<int> reminderMinutes)
+    {
+        var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(rawData);
+        if (googleEvent == null)
+        {
+            return (null, false, []);
+        }
+
+        var eventStartTime = ParseEventStartTime(googleEvent);
+        if (!eventStartTime.HasValue)
+        {
+            return (null, false, []);
+        }
+
+        var isRecurring = googleEvent.Recurrence is { Count: > 0 };
+        List<(DateTime Occurrence, DateTime TriggerTime)> occurrences = [];
+
+        if (isRecurring)
+        {
+            occurrences = GetRecurringOccurrences(googleEvent, reminderMinutes);
+        }
+
+        return (eventStartTime, isRecurring, occurrences);
+    }
+
+    private (DateTime? StartTime, bool IsRecurring, List<(DateTime Occurrence, DateTime TriggerTime)> Occurrences) ParseCalDavEventInfo(
+        string rawData,
+        List<int> reminderMinutes)
     {
         try
         {
-            var calendar = Ical.Net.Calendar.Load(rawIcal);
+            var calendar = Ical.Net.Calendar.Load(rawData);
             var evt = calendar?.Events.FirstOrDefault();
             if (evt == null)
             {
-                return;
-            }
-
-            var alarms = evt.Alarms;
-            if (alarms == null || alarms.Count == 0)
-            {
-                return;
-            }
-
-            List<int> reminderMinutes = [];
-
-            foreach (var alarm in alarms)
-            {
-                if (alarm.Trigger == null)
-                {
-                    continue;
-                }
-
-                if (alarm.Trigger.IsRelative)
-                {
-                    var duration = alarm.Trigger.Duration;
-                    if (duration.HasValue)
-                    {
-                        var weeks = duration.Value.Weeks ?? 0;
-                        var days = duration.Value.Days ?? 0;
-                        var hours = duration.Value.Hours ?? 0;
-                        var minutes = duration.Value.Minutes ?? 0;
-                        var totalMinutes = (int)(-(weeks * 7 * 24 * 60 + days * 24 * 60 + hours * 60 + minutes) * duration.Value.Sign);
-                        if (totalMinutes > 0)
-                        {
-                            reminderMinutes.Add(totalMinutes);
-                        }
-                    }
-                }
-            }
-
-            if (reminderMinutes.Count == 0)
-            {
-                return;
+                return (null, false, []);
             }
 
             var eventStartTime = evt.Start?.AsUtc;
             if (!eventStartTime.HasValue)
             {
-                return;
+                return (null, false, []);
             }
 
-            List<(DateTime Occurrence, DateTime TriggerTime)> reminderOccurrences = [];
+            var isRecurring = evt.RecurrenceRules.Count > 0;
+            List<(DateTime Occurrence, DateTime TriggerTime)> occurrences = [];
 
-            if (evt.RecurrenceRules.Count > 0)
+            if (isRecurring)
             {
-                var occurrences = GetCalDavRecurringOccurrences(evt, reminderMinutes);
-                reminderOccurrences.AddRange(occurrences);
-            }
-            else
-            {
-                foreach (var minutes in reminderMinutes)
-                {
-                    var triggerTime = eventStartTime.Value.AddMinutes(-minutes);
-                    if (triggerTime > DateTime.UtcNow)
-                    {
-                        reminderOccurrences.Add((eventStartTime.Value, triggerTime));
-                    }
-                }
+                occurrences = GetCalDavRecurringOccurrences(evt, reminderMinutes);
             }
 
-            var existingReminders = await storage.GetRemindersByEventAsync(eventId);
-
-            var remindersToDelete = existingReminders
-                .Where(r => !reminderOccurrences.Any(o => o.TriggerTime == DateTimeOffset.FromUnixTimeSeconds(r.TriggerTime).DateTime))
-                .Select(r => r.ReminderId)
-                .ToList();
-
-            await storage.DeleteRemindersAsync(remindersToDelete);
-
-            foreach (var (occurrence, triggerTime) in reminderOccurrences)
-            {
-                if (!existingReminders.Any(r => r.TriggerTime == new DateTimeOffset(triggerTime).ToUnixTimeSeconds()))
-                {
-                    await storage.CreateReminderAsync(eventId, occurrence, triggerTime);
-                }
-            }
+            return (eventStartTime, isRecurring, occurrences);
         }
         catch (Exception)
         {
-            return;
+            return (null, false, []);
         }
     }
 
@@ -312,8 +261,6 @@ public class ReminderService(SqliteStorage storage)
         {
             return [];
         }
-
-        var eventEndTime = evt.End?.AsUtc ?? eventStartTime.Value.AddHours(1);
 
         var recurrenceEndTime = RecurrenceParser.CalculateRecurrenceEndTime(evt);
 
@@ -423,13 +370,9 @@ public class ReminderService(SqliteStorage storage)
                 if (!string.IsNullOrEmpty(calendarId))
                 {
                     var accountType = await storage.GetAccountTypeForCalendarAsync(calendarId);
-                    if (accountType == AccountType.Google)
+                    if (accountType.HasValue)
                     {
-                        await PopulateGoogleRemindersAsync(reminder.TargetId, calendarId, rawDataJson, originalCancellationToken ?? cancellationToken);
-                    }
-                    else if (accountType == AccountType.CalDav)
-                    {
-                        await PopulateCalDavRemindersAsync(reminder.TargetId, calendarId, rawDataJson, originalCancellationToken ?? cancellationToken);
+                        await PopulateRemindersForEventAsync(reminder.TargetId, calendarId, accountType.Value, originalCancellationToken ?? cancellationToken);
                     }
                 }
             }

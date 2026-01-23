@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -35,13 +36,20 @@ public partial class App : Application
             var googleCalendarService = new GoogleCalendarService();
             var googleOAuthService = new GoogleOAuthService(googleCalendarService);
             var calDavService = new CalDavService();
-            var reminderService = new ReminderService(storage);
 
             // Create calendar providers
             var googleProvider = new GoogleCalendarProvider(googleCalendarService);
             var calDavProvider = new CalDavCalendarProvider(calDavService);
 
-            var syncService = new SyncService(storage, _credentialManager, googleProvider, calDavProvider, reminderService);
+            // Create providers dictionary for ReminderService
+            var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Google"] = googleProvider,
+                ["CalDAV"] = calDavProvider
+            };
+
+            var reminderService = new ReminderService(storage, providers);
+            var syncService = new SyncService(storage, _credentialManager, providers, reminderService);
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {

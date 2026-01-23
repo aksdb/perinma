@@ -28,8 +28,13 @@ public class SyncServiceTests
 
         var fakeCalDavService = new FakeCalDavService();
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Create test account
         var accountId = Guid.NewGuid().ToString();
@@ -150,8 +155,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -221,8 +231,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Perform first sync
         await syncService.SyncAllAccountsAsync();
@@ -296,8 +311,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -357,8 +377,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -435,8 +460,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -504,8 +534,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -579,8 +614,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -651,8 +691,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -725,8 +770,13 @@ public class SyncServiceTests
         var fakeGoogleService = new FakeGoogleCalendarService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -799,8 +849,13 @@ public class SyncServiceTests
         var fakeGoogleService = new FakeGoogleCalendarService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -879,8 +934,13 @@ public class SyncServiceTests
         var fakeGoogleService = new FakeGoogleCalendarService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -950,8 +1010,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -1029,8 +1094,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Perform initial sync
         await syncService.SyncAllAccountsAsync();
@@ -1105,8 +1175,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         var result = await syncService.ForceResyncAccountAsync("non-existent-account-id");
@@ -1155,8 +1230,13 @@ public class SyncServiceTests
         var fakeGoogleService = new FakeGoogleCalendarService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Perform initial sync
         await syncService.SyncAllAccountsAsync();
@@ -1323,8 +1403,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -1410,8 +1495,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -1494,8 +1584,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -1577,8 +1672,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act - First sync
         await syncService.SyncAllAccountsAsync();
@@ -1686,8 +1786,13 @@ public class SyncServiceTests
         var fakeCalDavService = new FakeCalDavService();
         var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
         var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
+        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] = googleProvider,
+            ["CalDAV"] = calDavProvider
+        };
+        var reminderService = new ReminderService(storage, providers);
+        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();

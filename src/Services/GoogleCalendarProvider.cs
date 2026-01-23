@@ -228,4 +228,48 @@ public class GoogleCalendarProvider : ICalendarProvider
 
         return null;
     }
+
+    /// <inheritdoc/>
+    public Task<IList<int>> GetReminderMinutesAsync(
+        string rawEventData,
+        string? rawCalendarData = null,
+        CancellationToken cancellationToken = default)
+    {
+        var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Google.Apis.Calendar.v3.Data.Event>(rawEventData);
+        if (googleEvent?.Reminders == null)
+        {
+            return Task.FromResult<IList<int>>([]);
+        }
+
+        List<int> reminderMinutes = [];
+
+        if (googleEvent.Reminders.UseDefault == true)
+        {
+            // Use default reminders from calendar
+            if (!string.IsNullOrEmpty(rawCalendarData))
+            {
+                var calendarListEntry = NewtonsoftJsonSerializer.Instance.Deserialize<Google.Apis.Calendar.v3.Data.CalendarListEntry>(rawCalendarData);
+                if (calendarListEntry?.DefaultReminders != null)
+                {
+                    foreach (var reminder in calendarListEntry.DefaultReminders.Where(r => r.Method == "popup" && r.Minutes.HasValue))
+                    {
+                        reminderMinutes.Add(reminder.Minutes!.Value);
+                    }
+                }
+            }
+        }
+        else
+        {
+            // Use event-specific reminders
+            if (googleEvent.Reminders.Overrides != null)
+            {
+                foreach (var reminder in googleEvent.Reminders.Overrides.Where(r => r.Method == "popup" && r.Minutes.HasValue))
+                {
+                    reminderMinutes.Add(reminder.Minutes!.Value);
+                }
+            }
+        }
+
+        return Task.FromResult<IList<int>>(reminderMinutes);
+    }
 }
