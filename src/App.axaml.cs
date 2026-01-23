@@ -36,7 +36,12 @@ public partial class App : Application
             var googleOAuthService = new GoogleOAuthService(googleCalendarService);
             var calDavService = new CalDavService();
             var reminderService = new ReminderService(storage);
-            var syncService = new SyncService(storage, _credentialManager, googleCalendarService, calDavService, reminderService);
+
+            // Create calendar providers
+            var googleProvider = new GoogleCalendarProvider(googleCalendarService);
+            var calDavProvider = new CalDavCalendarProvider(calDavService);
+
+            var syncService = new SyncService(storage, _credentialManager, googleProvider, calDavProvider, reminderService);
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {

@@ -1,0 +1,171 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using perinma.Storage.Models;
+
+namespace perinma.Services;
+
+/// <summary>
+/// Interface for calendar providers (Google Calendar, CalDAV, etc.).
+/// Provides a unified abstraction for syncing calendars and events from different sources.
+/// </summary>
+public interface ICalendarProvider
+{
+    /// <summary>
+    /// Syncs calendars for an account, optionally using incremental sync.
+    /// </summary>
+    /// <param name="credentials">Account credentials (type-specific)</param>
+    /// <param name="syncToken">Optional sync token for incremental sync</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Result containing calendars and new sync token</returns>
+    Task<CalendarSyncResult> GetCalendarsAsync(
+        AccountCredentials credentials,
+        string? syncToken = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Syncs events for a specific calendar, optionally using incremental sync.
+    /// </summary>
+    /// <param name="credentials">Account credentials (type-specific)</param>
+    /// <param name="calendarExternalId">External ID of the calendar to sync</param>
+    /// <param name="syncToken">Optional sync token for incremental sync</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Result containing events and new sync token</returns>
+    Task<EventSyncResult> GetEventsAsync(
+        AccountCredentials credentials,
+        string calendarExternalId,
+        string? syncToken = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tests whether the connection to the provider is working with the given credentials.
+    /// </summary>
+    /// <param name="credentials">Account credentials to test</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if connection is successful, false otherwise</returns>
+    Task<bool> TestConnectionAsync(
+        AccountCredentials credentials,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Result of syncing calendars from a provider.
+/// </summary>
+public class CalendarSyncResult
+{
+    /// <summary>
+    /// Calendars returned from the sync operation.
+    /// May include deleted calendars with Deleted=true for incremental sync.
+    /// </summary>
+    public required IList<ProviderCalendar> Calendars { get; init; }
+
+    /// <summary>
+    /// Sync token to use for the next incremental sync.
+    /// </summary>
+    public string? SyncToken { get; init; }
+}
+
+/// <summary>
+/// Result of syncing events from a provider.
+/// </summary>
+public class EventSyncResult
+{
+    /// <summary>
+    /// Events returned from the sync operation.
+    /// May include deleted/cancelled events for incremental sync.
+    /// </summary>
+    public required IList<ProviderEvent> Events { get; init; }
+
+    /// <summary>
+    /// Sync token to use for the next incremental sync.
+    /// </summary>
+    public string? SyncToken { get; init; }
+}
+
+/// <summary>
+/// Provider-agnostic calendar representation for sync operations.
+/// </summary>
+public class ProviderCalendar
+{
+    /// <summary>
+    /// External ID of the calendar (provider-specific identifier).
+    /// </summary>
+    public required string ExternalId { get; init; }
+
+    /// <summary>
+    /// Display name of the calendar.
+    /// </summary>
+    public required string Name { get; init; }
+
+    /// <summary>
+    /// Calendar color as hex string (e.g., "#9fc6e7").
+    /// </summary>
+    public string? Color { get; init; }
+
+    /// <summary>
+    /// Whether the calendar is selected/enabled by default.
+    /// </summary>
+    public bool Selected { get; init; }
+
+    /// <summary>
+    /// Whether the calendar has been deleted (for incremental sync).
+    /// </summary>
+    public bool Deleted { get; init; }
+
+    /// <summary>
+    /// Raw provider data serialized as JSON for later use.
+    /// </summary>
+    public string? RawData { get; init; }
+}
+
+/// <summary>
+/// Provider-agnostic event representation for sync operations.
+/// </summary>
+public class ProviderEvent
+{
+    /// <summary>
+    /// External ID of the event (provider-specific identifier).
+    /// </summary>
+    public required string ExternalId { get; init; }
+
+    /// <summary>
+    /// Event title/summary.
+    /// </summary>
+    public string? Title { get; init; }
+
+    /// <summary>
+    /// Start time of the event (or first occurrence for recurring events).
+    /// </summary>
+    public DateTime? StartTime { get; init; }
+
+    /// <summary>
+    /// End time of the event. For recurring events, this is the end of the recurrence span.
+    /// </summary>
+    public DateTime? EndTime { get; init; }
+
+    /// <summary>
+    /// Event status (e.g., "confirmed", "cancelled", "tentative").
+    /// </summary>
+    public string? Status { get; init; }
+
+    /// <summary>
+    /// Whether this event is deleted/cancelled (for incremental sync).
+    /// </summary>
+    public bool Deleted { get; init; }
+
+    /// <summary>
+    /// For override events: the ID of the parent recurring event.
+    /// </summary>
+    public string? RecurringEventId { get; init; }
+
+    /// <summary>
+    /// For override events: the original start time of the occurrence being modified.
+    /// </summary>
+    public DateTime? OriginalStartTime { get; init; }
+
+    /// <summary>
+    /// Raw provider data serialized as string for later use (JSON or iCalendar).
+    /// </summary>
+    public string? RawData { get; init; }
+}

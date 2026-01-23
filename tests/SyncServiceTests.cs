@@ -24,10 +24,12 @@ public class SyncServiceTests
             FakeGoogleCalendarService.CreateCalendar("cal2", "Personal Calendar", selected: true, color: "#00ff00"),
             FakeGoogleCalendarService.CreateCalendar("cal3", "Disabled Calendar", selected: false)
         );
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
 
         var fakeCalDavService = new FakeCalDavService();
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Create test account
         var accountId = Guid.NewGuid().ToString();
@@ -146,8 +148,10 @@ public class SyncServiceTests
         fakeGoogleService.SetInvalidSyncTokenBehavior(true);
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -215,8 +219,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Perform first sync
         await syncService.SyncAllAccountsAsync();
@@ -288,8 +294,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -347,8 +355,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -423,8 +433,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -490,8 +502,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -563,8 +577,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -633,8 +649,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -705,8 +723,10 @@ public class SyncServiceTests
         );
 
         var fakeGoogleService = new FakeGoogleCalendarService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -777,8 +797,10 @@ public class SyncServiceTests
         );
 
         var fakeGoogleService = new FakeGoogleCalendarService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -855,8 +877,10 @@ public class SyncServiceTests
         );
 
         var fakeGoogleService = new FakeGoogleCalendarService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -924,8 +948,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -1001,8 +1027,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Perform initial sync
         await syncService.SyncAllAccountsAsync();
@@ -1075,8 +1103,10 @@ public class SyncServiceTests
 
         var fakeGoogleService = new FakeGoogleCalendarService();
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         var result = await syncService.ForceResyncAccountAsync("non-existent-account-id");
@@ -1123,8 +1153,10 @@ public class SyncServiceTests
         });
 
         var fakeGoogleService = new FakeGoogleCalendarService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Perform initial sync
         await syncService.SyncAllAccountsAsync();
@@ -1289,8 +1321,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -1374,8 +1408,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -1456,8 +1492,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
@@ -1537,8 +1575,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act - First sync
         await syncService.SyncAllAccountsAsync();
@@ -1644,8 +1684,10 @@ public class SyncServiceTests
         );
 
         var fakeCalDavService = new FakeCalDavService();
+        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
+        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
         var reminderService = new ReminderService(storage);
-        var syncService = new SyncService(storage, credentialManager, fakeGoogleService, fakeCalDavService, reminderService);
+        var syncService = new SyncService(storage, credentialManager, googleProvider, calDavProvider, reminderService);
 
         // Act
         await syncService.SyncAllAccountsAsync();
