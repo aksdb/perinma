@@ -400,28 +400,13 @@ public class DatabaseCalendarSource : ICalendarSource
     private List<CalendarEvent> CreateCalendarEvent(CalendarEventQueryResult e, DateTime eventStartTime, DateTime eventEndTime)
     {
         var responseStatus = ExtractResponseStatus(e);
+        var calendar = GetOrCreateCalendar(e);
         
         return
         [
             new CalendarEvent
             {
-                Calendar = new Calendar
-                {
-                    Account = new Account
-                    {
-                        Id = Guid.Parse(e.AccountId),
-                        Name = e.AccountName,
-                        Type = e.AccountTypeEnum
-                    },
-                    Id = Guid.Parse(e.CalendarId),
-                    ExternalId = e.CalendarExternalId,
-                    Name = e.CalendarName,
-                    Color = e.CalendarColor,
-                    Enabled = e.CalendarEnabled == 1,
-                    LastSync = e.CalendarLastSync.HasValue
-                        ? DateTimeOffset.FromUnixTimeSeconds(e.CalendarLastSync.Value).DateTime
-                        : null
-                },
+                Calendar = calendar,
                 Id = Guid.Parse(e.EventId),
                 ExternalId = e.ExternalId,
                 StartTime = eventStartTime,
@@ -433,6 +418,40 @@ public class DatabaseCalendarSource : ICalendarSource
                 ResponseStatus = responseStatus
             }
         ];
+    }
+
+    private Calendar GetOrCreateCalendar(CalendarEventQueryResult e)
+    {
+        var calendarId = Guid.Parse(e.CalendarId);
+        var cachedCalendar = _storage.GetCachedCalendar(calendarId);
+        
+        if (cachedCalendar != null)
+        {
+            return cachedCalendar;
+        }
+
+        var accountId = Guid.Parse(e.AccountId);
+        var cachedAccount = _storage.GetCachedAccount(accountId);
+        
+        var account = cachedAccount ?? new Account
+        {
+            Id = accountId,
+            Name = e.AccountName,
+            Type = e.AccountTypeEnum
+        };
+
+        return new Calendar
+        {
+            Account = account,
+            Id = calendarId,
+            ExternalId = e.CalendarExternalId,
+            Name = e.CalendarName,
+            Color = e.CalendarColor,
+            Enabled = e.CalendarEnabled == 1,
+            LastSync = e.CalendarLastSync.HasValue
+                ? DateTimeOffset.FromUnixTimeSeconds(e.CalendarLastSync.Value).DateTime
+                : null
+        };
     }
     
     private EventResponseStatus ExtractResponseStatus(CalendarEventQueryResult e)
@@ -601,30 +620,14 @@ public class DatabaseCalendarSource : ICalendarSource
 
             foreach (var occurrence in filteredOccurrences)
             {
-                // Use .Value which returns the time as stored in the iCal
-                // This preserves consistency with the original time representation
                 var occStart = occurrence.Period.StartTime.Value;
                 var occEnd = occStart.Add(duration);
 
+                var calendar = GetOrCreateCalendar(e);
+
                 var calendarEvent = new CalendarEvent
                 {
-                    Calendar = new Calendar
-                    {
-                        Account = new Account
-                        {
-                            Id = Guid.Parse(e.AccountId),
-                            Name = e.AccountName,
-                            Type = e.AccountTypeEnum
-                        },
-                        Id = Guid.Parse(e.CalendarId),
-                        ExternalId = e.CalendarExternalId,
-                        Name = e.CalendarName,
-                        Color = e.CalendarColor,
-                        Enabled = e.CalendarEnabled == 1,
-                        LastSync = e.CalendarLastSync.HasValue
-                            ? DateTimeOffset.FromUnixTimeSeconds(e.CalendarLastSync.Value).DateTime
-                            : null
-                    },
+                    Calendar = calendar,
                     Id = Guid.Parse(e.EventId),
                     ExternalId = e.ExternalId,
                     StartTime = occStart,
