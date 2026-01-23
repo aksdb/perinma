@@ -1,68 +1,31 @@
-using CredentialStore;
 using Dapper;
-using perinma.Models;
 using perinma.Services;
-using perinma.Storage;
 using perinma.Storage.Models;
 using perinma.Tests.Fakes;
+using tests.Base;
 
 namespace tests;
 
-public class SyncServiceTests
+public class SyncServiceTests : SyncTestBase
 {
     [Test]
     public async Task WithNewCalendars_SavesCalendarsToDatabase()
     {
-        // Arrange - Use real DatabaseService in memory mode
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        // Arrange
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true, color: "#ff0000"),
             FakeGoogleCalendarService.CreateCalendar("cal2", "Personal Calendar", selected: true, color: "#00ff00"),
             FakeGoogleCalendarService.CreateCalendar("cal3", "Disabled Calendar", selected: false)
         );
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
 
-        var fakeCalDavService = new FakeCalDavService();
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
-        // Create test account
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        // Store test credentials
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer",
-            Scope = "calendar.readonly"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendarList = calendars.ToList();
 
         Assert.That(calendarList, Has.Count.EqualTo(3));
@@ -75,99 +38,37 @@ public class SyncServiceTests
     public async Task WithInvalidSyncToken_FallsBackToFullSync()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-
-        // Create test account
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
+        var account = await CreateGoogleAccountAsync();
 
         // Create 3 existing calendars from a "previous sync"
-        var cal1 = new CalendarDbo
-        {
-            AccountId = accountId,
-            CalendarId = Guid.NewGuid().ToString(),
-            ExternalId = "cal1",
-            Name = "Work Calendar",
-            Color = "#ff0000",
-            Enabled = 1,
-            LastSync = DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds()
-        };
-        var cal2 = new CalendarDbo
-        {
-            AccountId = accountId,
-            CalendarId = Guid.NewGuid().ToString(),
-            ExternalId = "cal2",
-            Name = "Personal Calendar",
-            Color = "#00ff00",
-            Enabled = 1,
-            LastSync = DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds()
-        };
-        var cal3 = new CalendarDbo
-        {
-            AccountId = accountId,
-            CalendarId = Guid.NewGuid().ToString(),
-            ExternalId = "cal3",
-            Name = "Old Calendar",
-            Color = "#0000ff",
-            Enabled = 1,
-            LastSync = DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds()
-        };
-        await storage.CreateOrUpdateCalendarAsync(cal1);
-        await storage.CreateOrUpdateCalendarAsync(cal2);
-        await storage.CreateOrUpdateCalendarAsync(cal3);
+        await CreateExistingCalendarsAsync(account.AccountId,
+            ("cal1", "Work Calendar", "#ff0000"),
+            ("cal2", "Personal Calendar", "#00ff00"),
+            ("cal3", "Old Calendar", "#0000ff")
+        );
 
-        // Store test credentials
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer",
-            Scope = "calendar.readonly"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
+        StoreGoogleCredentials(account.AccountId);
 
         // Store an invalid/expired sync token to simulate a previous sync
-        await storage.SetAccountData(account, "calendarSyncToken", "invalid-expired-token");
+        await Storage.SetAccountData(account, "calendarSyncToken", "invalid-expired-token");
 
         // Set up fake service to return only 2 calendars:
         // - cal1 unchanged
         // - cal2 with updated name and disabled
         // - cal3 not returned (deleted remotely)
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true, color: "#ff0000"),
             FakeGoogleCalendarService.CreateCalendar("cal2", "Personal Calendar - Updated", selected: false, color: "#00ff00")
         );
 
         // Simulate invalid sync token on first call, then succeed on retry with full sync
-        fakeGoogleService.SetInvalidSyncTokenBehavior(true);
-
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
+        FakeGoogleService.SetInvalidSyncTokenBehavior(true);
 
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendarList = calendars.ToList();
 
         // Should have only 2 calendars now (cal3 deleted)
@@ -194,75 +95,40 @@ public class SyncServiceTests
     public async Task FullSync_DeletesRemovedCalendars()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-
-        // Create test account
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        // Store test credentials
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer",
-            Scope = "calendar.readonly"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
         // First sync: 3 calendars
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Calendar 1"),
             FakeGoogleCalendarService.CreateCalendar("cal2", "Calendar 2"),
             FakeGoogleCalendarService.CreateCalendar("cal3", "Calendar 3")
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Perform first sync
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Verify all 3 calendars were created
-        var calendarsAfterFirstSync = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendarsAfterFirstSync = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         Assert.That(calendarsAfterFirstSync.Count(), Is.EqualTo(3));
 
         // Clear the sync token to force a full sync (simulating token expiration or manual refresh)
-        await storage.SetAccountData(account, "calendarSyncToken", "");
+        await Storage.SetAccountData(account, "calendarSyncToken", "");
 
         // Wait 1 second to ensure the second sync has a different timestamp
         await Task.Delay(1000);
 
         // Second sync: Only 2 calendars (cal3 removed remotely)
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Calendar 1"),
             FakeGoogleCalendarService.CreateCalendar("cal2", "Calendar 2")
         );
 
         // Act - Perform second full sync (no sync token means full sync)
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert - Verify cal3 was deleted from database
-        var calendarsAfterSecondSync = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendarsAfterSecondSync = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendarList = calendarsAfterSecondSync.ToList();
 
         Assert.That(calendarList, Has.Count.EqualTo(2));
@@ -275,55 +141,20 @@ public class SyncServiceTests
     public async Task WithDeletedFlag_SkipsDeletedCalendars()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-
-        // Create test account
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        // Store test credentials
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer",
-            Scope = "calendar.readonly"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
         // Set up fake service with one active calendar and one deleted calendar
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Active Calendar"),
             FakeGoogleCalendarService.CreateDeletedCalendar("cal2")
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert - Only cal1 should be saved, cal2 should be skipped
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendarList = calendars.ToList();
 
         Assert.That(calendarList, Has.Count.EqualTo(1));
@@ -335,66 +166,31 @@ public class SyncServiceTests
     public async Task SyncsEventsForEnabledCalendars()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-
-        // Create test account
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        // Store test credentials
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer",
-            Scope = "calendar.readonly"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
         // Set up fake service with calendar and events
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
         );
 
         var eventStart = DateTime.UtcNow.AddHours(1);
         var eventEnd = DateTime.UtcNow.AddHours(2);
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateEvent("event1", "Team Meeting", eventStart, eventEnd),
             FakeGoogleCalendarService.CreateEvent("event2", "Lunch Break", eventStart.AddHours(2), eventEnd.AddHours(2))
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert - Verify calendar was created
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
         Assert.That(calendar.ExternalId, Is.EqualTo("cal1"));
 
         // Verify events were synced
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(2));
@@ -403,7 +199,7 @@ public class SyncServiceTests
 
         // Verify raw event data is stored
         var event1 = eventList.First(e => e.ExternalId == "event1");
-        var rawData = await storage.GetEventData(event1.EventId, "rawData");
+        var rawData = await Storage.GetEventData(event1.EventId, "rawData");
         Assert.That(rawData, Is.Not.Null.And.Not.Empty);
         Assert.That(rawData, Does.Contain("Team Meeting"));
         Assert.That(rawData, Does.Contain("event1"));
@@ -415,31 +211,10 @@ public class SyncServiceTests
     public async Task GoogleRecurringEvent_WithUntilClause_StoresRecurrenceEndTime()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
-
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
         );
 
@@ -447,7 +222,7 @@ public class SyncServiceTests
         // Weekly meeting starting Jan 1, 2025 at 10:00 UTC, ending March 31, 2025
         var eventStart = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
         var eventEnd = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc);
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateRecurringEvent(
                 "recurring1",
                 "Weekly Team Sync",
@@ -457,29 +232,18 @@ public class SyncServiceTests
             )
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(1));
         var recurringEvent = eventList.First();
-        
+
         Assert.That(recurringEvent.EndTime, Is.Not.Null);
         var endTimeUtc = DateTimeOffset.FromUnixTimeSeconds(recurringEvent.EndTime!.Value).UtcDateTime;
         Assert.That(endTimeUtc, Is.EqualTo(new DateTime(2025, 3, 26, 11, 0, 0, DateTimeKind.Utc)));
@@ -489,31 +253,10 @@ public class SyncServiceTests
     public async Task GoogleRecurringEvent_WithCountClause_StoresCalculatedEndTime()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
-
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
         );
 
@@ -521,7 +264,7 @@ public class SyncServiceTests
         // Starting Jan 15, 2025 at 14:00 UTC, 2 hours duration
         var eventStart = new DateTime(2025, 1, 15, 14, 0, 0, DateTimeKind.Utc);
         var eventEnd = new DateTime(2025, 1, 15, 16, 0, 0, DateTimeKind.Utc);
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateRecurringEvent(
                 "recurring2",
                 "Daily Standup",
@@ -531,24 +274,13 @@ public class SyncServiceTests
             )
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(1));
@@ -568,31 +300,10 @@ public class SyncServiceTests
     public async Task GoogleRecurringEvent_WithTimezone_HandlesTimezoneCorrectly()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
-
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
         );
 
@@ -600,7 +311,7 @@ public class SyncServiceTests
         // Monthly event at 9:00 AM New York time for 3 months
         var eventStart = new DateTime(2025, 2, 1, 9, 0, 0, DateTimeKind.Utc); // 9 AM in UTC for test
         var eventEnd = new DateTime(2025, 2, 1, 10, 0, 0, DateTimeKind.Utc);
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateRecurringEventWithTimezone(
                 "recurring3",
                 "Monthly Review",
@@ -611,24 +322,13 @@ public class SyncServiceTests
             )
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(1));
@@ -647,38 +347,17 @@ public class SyncServiceTests
     public async Task GoogleRecurringEvent_WithNoEndClause_SetsMaximumEndTime()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
-
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
         );
 
         // Create an infinite recurring event (no UNTIL or COUNT)
         var eventStart = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
         var eventEnd = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc);
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateRecurringEvent(
                 "recurring4",
                 "Weekly Infinite Meeting",
@@ -688,24 +367,13 @@ public class SyncServiceTests
             )
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(1));
@@ -722,30 +390,10 @@ public class SyncServiceTests
     public async Task CalDavRecurringEvent_WithUntilClause_StoresRecurrenceEndTime()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateCalDavAccountAsync();
+        StoreCalDavCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test CalDAV Account",
-            Type = "CalDAV"
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new CalDavCredentials
-        {
-            Type = "CalDAV",
-            ServerUrl = "https://caldav.example.com",
-            Username = "testuser",
-            Password = "testpass"
-        };
-        credentialManager.StoreCalDavCredentials(accountId, credentials);
-
-        var fakeCalDavService = new FakeCalDavService();
-        fakeCalDavService.SetCalendars(new CalDavCalendar
+        FakeCalDavService.SetCalendars(new CalDavCalendar
         {
             Url = "https://caldav.example.com/calendars/work",
             DisplayName = "Work Calendar",
@@ -755,7 +403,7 @@ public class SyncServiceTests
         // Create a recurring event with UNTIL clause via raw iCalendar
         var eventStart = new DateTime(2025, 3, 1, 9, 0, 0, DateTimeKind.Utc);
         var eventEnd = new DateTime(2025, 3, 1, 10, 30, 0, DateTimeKind.Utc);
-        fakeCalDavService.SetEvents(
+        FakeCalDavService.SetEvents(
             "https://caldav.example.com/calendars/work",
             FakeCalDavService.CreateRecurringEvent(
                 "caldav-recurring1",
@@ -767,24 +415,13 @@ public class SyncServiceTests
             )
         );
 
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(1));
@@ -800,30 +437,10 @@ public class SyncServiceTests
     public async Task CalDavRecurringEvent_WithCountClause_StoresCalculatedEndTime()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateCalDavAccountAsync();
+        StoreCalDavCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test CalDAV Account",
-            Type = "CalDAV"
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new CalDavCredentials
-        {
-            Type = "CalDAV",
-            ServerUrl = "https://caldav.example.com",
-            Username = "testuser",
-            Password = "testpass"
-        };
-        credentialManager.StoreCalDavCredentials(accountId, credentials);
-
-        var fakeCalDavService = new FakeCalDavService();
-        fakeCalDavService.SetCalendars(new CalDavCalendar
+        FakeCalDavService.SetCalendars(new CalDavCalendar
         {
             Url = "https://caldav.example.com/calendars/personal",
             DisplayName = "Personal Calendar",
@@ -834,7 +451,7 @@ public class SyncServiceTests
         // Daily for 10 occurrences, starting May 1, 2025
         var eventStart = new DateTime(2025, 5, 1, 8, 0, 0, DateTimeKind.Utc);
         var eventEnd = new DateTime(2025, 5, 1, 8, 30, 0, DateTimeKind.Utc);
-        fakeCalDavService.SetEvents(
+        FakeCalDavService.SetEvents(
             "https://caldav.example.com/calendars/personal",
             FakeCalDavService.CreateRecurringEvent(
                 "caldav-recurring2",
@@ -846,24 +463,13 @@ public class SyncServiceTests
             )
         );
 
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(1));
@@ -884,30 +490,10 @@ public class SyncServiceTests
     public async Task CalDavRecurringEvent_WithTimezone_HandlesTimezoneCorrectly()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateCalDavAccountAsync();
+        StoreCalDavCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test CalDAV Account",
-            Type = "CalDAV"
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new CalDavCredentials
-        {
-            Type = "CalDAV",
-            ServerUrl = "https://caldav.example.com",
-            Username = "testuser",
-            Password = "testpass"
-        };
-        credentialManager.StoreCalDavCredentials(accountId, credentials);
-
-        var fakeCalDavService = new FakeCalDavService();
-        fakeCalDavService.SetCalendars(new CalDavCalendar
+        FakeCalDavService.SetCalendars(new CalDavCalendar
         {
             Url = "https://caldav.example.com/calendars/europe",
             DisplayName = "Europe Calendar",
@@ -918,7 +504,7 @@ public class SyncServiceTests
         // Weekly for 4 occurrences, starting June 1, 2025 at 15:00 local time
         var eventStart = new DateTime(2025, 6, 1, 15, 0, 0, DateTimeKind.Utc);
         var eventEnd = new DateTime(2025, 6, 1, 16, 0, 0, DateTimeKind.Utc);
-        fakeCalDavService.SetEvents(
+        FakeCalDavService.SetEvents(
             "https://caldav.example.com/calendars/europe",
             FakeCalDavService.CreateRecurringEventWithTimezone(
                 "caldav-recurring3",
@@ -931,24 +517,13 @@ public class SyncServiceTests
             )
         );
 
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(1));
@@ -967,38 +542,17 @@ public class SyncServiceTests
     public async Task NonRecurringEvent_KeepsOriginalEndTime()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
-
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
         );
 
         // Create a non-recurring event
         var eventStart = new DateTime(2025, 7, 15, 14, 0, 0, DateTimeKind.Utc);
         var eventEnd = new DateTime(2025, 7, 15, 15, 30, 0, DateTimeKind.Utc);
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateEvent(
                 "single-event",
                 "One-time Meeting",
@@ -1007,24 +561,13 @@ public class SyncServiceTests
             )
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(1));
@@ -1048,35 +591,11 @@ public class SyncServiceTests
     public async Task ForceResync_ClearsAllDataAndPerformsFullSync()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-
-        // Create test account
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        // Store test credentials
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer",
-            Scope = "calendar.readonly"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
         // Initial sync with 3 calendars and events
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Calendar 1", selected: true),
             FakeGoogleCalendarService.CreateCalendar("cal2", "Calendar 2", selected: true),
             FakeGoogleCalendarService.CreateCalendar("cal3", "Calendar 3", selected: true)
@@ -1084,55 +603,44 @@ public class SyncServiceTests
 
         var eventStart = DateTime.UtcNow.AddHours(1);
         var eventEnd = DateTime.UtcNow.AddHours(2);
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateEvent("event1", "Event 1", eventStart, eventEnd)
         );
-        fakeGoogleService.SetEvents("cal2",
+        FakeGoogleService.SetEvents("cal2",
             FakeGoogleCalendarService.CreateEvent("event2", "Event 2", eventStart, eventEnd)
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Perform initial sync
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Verify initial state
-        var calendarsBeforeResync = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendarsBeforeResync = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         Assert.That(calendarsBeforeResync.Count(), Is.EqualTo(3));
 
         var cal1 = calendarsBeforeResync.First(c => c.ExternalId == "cal1");
-        var eventsBeforeResync = await storage.GetEventsByCalendarAsync(cal1.CalendarId);
+        var eventsBeforeResync = await Storage.GetEventsByCalendarAsync(cal1.CalendarId);
         Assert.That(eventsBeforeResync.Count(), Is.EqualTo(1));
 
         // Store a sync token to verify it gets cleared
-        await storage.SetAccountData(account, "calendarSyncToken", "some-sync-token");
-        var tokenBefore = await storage.GetAccountData(account, "calendarSyncToken");
+        await Storage.SetAccountData(account, "calendarSyncToken", "some-sync-token");
+        var tokenBefore = await Storage.GetAccountData(account, "calendarSyncToken");
         Assert.That(tokenBefore, Is.EqualTo("some-sync-token"));
 
         // Now simulate remote changes - only 2 calendars exist now
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Calendar 1 - Updated", selected: true),
             FakeGoogleCalendarService.CreateCalendar("cal4", "New Calendar", selected: true)
         );
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateEvent("event1", "Event 1 - Updated", eventStart, eventEnd),
             FakeGoogleCalendarService.CreateEvent("event3", "New Event", eventStart.AddHours(3), eventEnd.AddHours(3))
         );
-        fakeGoogleService.SetEvents("cal4",
+        FakeGoogleService.SetEvents("cal4",
             FakeGoogleCalendarService.CreateEvent("event4", "Event in New Calendar", eventStart, eventEnd)
         );
 
         // Act - Force resync
-        var result = await syncService.ForceResyncAccountAsync(accountId);
+        var result = await SyncService.ForceResyncAccountAsync(account.AccountId);
 
         // Assert
         Assert.That(result.Success, Is.True);
@@ -1140,11 +648,11 @@ public class SyncServiceTests
         Assert.That(result.FailedAccounts, Is.EqualTo(0));
 
         // Verify sync token was cleared (or has a new value from the fresh sync)
-        var tokenAfter = await storage.GetAccountData(account, "calendarSyncToken");
+        var tokenAfter = await Storage.GetAccountData(account, "calendarSyncToken");
         Assert.That(tokenAfter, Is.Not.EqualTo("some-sync-token"));
 
         // Verify calendars reflect the new remote state
-        var calendarsAfterResync = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendarsAfterResync = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendarList = calendarsAfterResync.ToList();
 
         Assert.That(calendarList, Has.Count.EqualTo(2));
@@ -1155,7 +663,7 @@ public class SyncServiceTests
 
         // Verify events reflect the new remote state
         var updatedCal1 = calendarList.First(c => c.ExternalId == "cal1");
-        var eventsAfterResync = await storage.GetEventsByCalendarAsync(updatedCal1.CalendarId);
+        var eventsAfterResync = await Storage.GetEventsByCalendarAsync(updatedCal1.CalendarId);
         var eventList = eventsAfterResync.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(2));
@@ -1166,25 +674,8 @@ public class SyncServiceTests
     [Test]
     public async Task ForceResync_WithInvalidAccountId_ReturnsError()
     {
-        // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        var result = await syncService.ForceResyncAccountAsync("non-existent-account-id");
+        var result = await SyncService.ForceResyncAccountAsync("non-existent-account-id");
 
         // Assert
         Assert.That(result.Success, Is.False);
@@ -1196,60 +687,28 @@ public class SyncServiceTests
     public async Task ForceResync_CalDavAccount_ClearsDataAndResyncs()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateCalDavAccountAsync();
+        StoreCalDavCredentials(account.AccountId);
 
-        // Create CalDAV account
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test CalDAV Account",
-            Type = "CalDAV"
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new CalDavCredentials
-        {
-            Type = "CalDAV",
-            ServerUrl = "https://caldav.example.com",
-            Username = "testuser",
-            Password = "testpass"
-        };
-        credentialManager.StoreCalDavCredentials(accountId, credentials);
-
-        var fakeCalDavService = new FakeCalDavService();
-        fakeCalDavService.SetCalendars(new CalDavCalendar
+        FakeCalDavService.SetCalendars(new CalDavCalendar
         {
             Url = "https://caldav.example.com/calendars/work",
             DisplayName = "Work Calendar",
             Deleted = false
         });
 
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Perform initial sync
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Verify initial state
-        var calendarsBeforeResync = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendarsBeforeResync = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         Assert.That(calendarsBeforeResync.Count(), Is.EqualTo(1));
 
         // Store a sync token
-        await storage.SetAccountData(account, "calendarSyncToken", "caldav-sync-token");
+        await Storage.SetAccountData(account, "calendarSyncToken", "caldav-sync-token");
 
         // Change remote state
-        fakeCalDavService.SetCalendars(
+        FakeCalDavService.SetCalendars(
             new CalDavCalendar
             {
                 Url = "https://caldav.example.com/calendars/personal",
@@ -1259,12 +718,12 @@ public class SyncServiceTests
         );
 
         // Act - Force resync
-        var result = await syncService.ForceResyncAccountAsync(accountId);
+        var result = await SyncService.ForceResyncAccountAsync(account.AccountId);
 
         // Assert
         Assert.That(result.Success, Is.True);
 
-        var calendarsAfterResync = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendarsAfterResync = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendarList = calendarsAfterResync.ToList();
 
         Assert.That(calendarList, Has.Count.EqualTo(1));
@@ -1276,31 +735,19 @@ public class SyncServiceTests
     public async Task ClearAccountSyncData_RemovesCalendarsEventsAndSyncToken()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
-
-        // Create test account
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
+        var account = await CreateGoogleAccountAsync();
 
         // Create calendars
         var cal1 = new CalendarDbo
         {
-            AccountId = accountId,
+            AccountId = account.AccountId,
             CalendarId = Guid.NewGuid().ToString(),
             ExternalId = "cal1",
             Name = "Calendar 1",
             Enabled = 1,
             LastSync = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
         };
-        await storage.CreateOrUpdateCalendarAsync(cal1);
+        await Storage.CreateOrUpdateCalendarAsync(cal1);
 
         // Create events
         var event1 = new CalendarEventDbo
@@ -1313,34 +760,34 @@ public class SyncServiceTests
             EndTime = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds(),
             ChangedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
         };
-        await storage.CreateOrUpdateEventAsync(event1);
+        await Storage.CreateOrUpdateEventAsync(event1);
 
         // Store sync token
-        await storage.SetAccountData(account, "calendarSyncToken", "test-sync-token");
+        await Storage.SetAccountData(account, "calendarSyncToken", "test-sync-token");
 
         // Verify data exists
-        var calendarsBeforeClear = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendarsBeforeClear = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         Assert.That(calendarsBeforeClear.Count(), Is.EqualTo(1));
 
-        var eventsBeforeClear = await storage.GetEventsByCalendarAsync(cal1.CalendarId);
+        var eventsBeforeClear = await Storage.GetEventsByCalendarAsync(cal1.CalendarId);
         Assert.That(eventsBeforeClear.Count(), Is.EqualTo(1));
 
-        var tokenBeforeClear = await storage.GetAccountData(account, "calendarSyncToken");
+        var tokenBeforeClear = await Storage.GetAccountData(account, "calendarSyncToken");
         Assert.That(tokenBeforeClear, Is.EqualTo("test-sync-token"));
 
         // Act
-        await storage.ClearAccountSyncDataAsync(accountId);
+        await Storage.ClearAccountSyncDataAsync(account.AccountId);
 
         // Assert - All data should be cleared
-        var calendarsAfterClear = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendarsAfterClear = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         Assert.That(calendarsAfterClear.Count(), Is.EqualTo(0));
 
         // Events are cascade-deleted with calendars, but verify by checking the account still exists
-        var accountAfterClear = await storage.GetAccountByIdAsync(accountId);
+        var accountAfterClear = await Storage.GetAccountByIdAsync(account.AccountId);
         Assert.That(accountAfterClear, Is.Not.Null);
 
         // Sync token should be cleared (empty JSON object means key won't exist)
-        var tokenAfterClear = await storage.GetAccountData(account, "calendarSyncToken");
+        var tokenAfterClear = await Storage.GetAccountData(account, "calendarSyncToken");
         Assert.That(string.IsNullOrEmpty(tokenAfterClear), Is.True);
     }
 
@@ -1352,31 +799,10 @@ public class SyncServiceTests
     public async Task GoogleCancelledOverride_StoresWithOriginalStartAsStartAndEnd()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
-
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
         );
 
@@ -1385,7 +811,7 @@ public class SyncServiceTests
 
         var overrideTime = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
 
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateRecurringEvent(
                 "recurring1",
                 "Weekly Meeting",
@@ -1400,24 +826,13 @@ public class SyncServiceTests
             )
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(2));
@@ -1439,31 +854,10 @@ public class SyncServiceTests
     public async Task GoogleModifiedOverride_WithTimeOutsideBounds_ExpandsBounds()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
-
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
         );
 
@@ -1474,7 +868,7 @@ public class SyncServiceTests
         var newStart = new DateTime(2025, 1, 8, 9, 0, 0, DateTimeKind.Utc); // Earlier than original
         var newEnd = new DateTime(2025, 1, 8, 10, 30, 0, DateTimeKind.Utc);
 
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateRecurringEvent(
                 "recurring1",
                 "Weekly Meeting",
@@ -1492,24 +886,13 @@ public class SyncServiceTests
             )
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(2));
@@ -1529,31 +912,10 @@ public class SyncServiceTests
     public async Task GoogleOverride_WithExistingParent_CreatesRelation()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
-
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
         );
 
@@ -1563,7 +925,7 @@ public class SyncServiceTests
         var newStart = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
         var newEnd = new DateTime(2025, 1, 8, 11, 30, 0, DateTimeKind.Utc);
 
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateRecurringEvent(
                 "recurring1",
                 "Weekly Meeting",
@@ -1581,24 +943,13 @@ public class SyncServiceTests
             )
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
 
         Assert.That(eventList, Has.Count.EqualTo(2));
@@ -1609,45 +960,20 @@ public class SyncServiceTests
         Assert.That(overrideEvent, Is.Not.Null);
 
         // Verify relation was created
-        using var connection = database.GetConnection();
-        var relation = await connection.QuerySingleOrDefaultAsync<(string ParentEventId, string ChildEventId)>(
-            "SELECT parent_event_id, child_event_id FROM calendar_event_relation WHERE parent_event_id = @ParentEventId AND child_event_id = @ChildEventId",
-            new { ParentEventId = parentEvent!.EventId, ChildEventId = overrideEvent!.EventId }
-        );
-
-        Assert.That(relation.ParentEventId, Is.EqualTo(parentEvent.EventId));
-        Assert.That(relation.ChildEventId, Is.EqualTo(overrideEvent.EventId));
+        var relation = await GetEventRelationAsync(parentEvent!.EventId, overrideEvent!.EventId);
+        Assert.That(relation, Is.Not.Null);
+        Assert.That(relation!.Value.ParentEventId, Is.EqualTo(parentEvent.EventId));
+        Assert.That(relation.Value.ChildEventId, Is.EqualTo(overrideEvent.EventId));
     }
 
     [Test]
     public async Task GoogleOverride_WithParentAfterOverride_CreatesRelationAfterBacklogProcessing()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
-
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
         );
 
@@ -1658,7 +984,7 @@ public class SyncServiceTests
         var newEnd = new DateTime(2025, 1, 8, 11, 30, 0, DateTimeKind.Utc);
 
         // First sync: Override arrives before parent
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateModifiedOverride(
                 "override1",
                 "recurring1",
@@ -1669,31 +995,20 @@ public class SyncServiceTests
             )
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act - First sync
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert - Override exists but no parent yet
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
-        var eventsAfterFirstSync = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var eventsAfterFirstSync = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventListAfterFirstSync = eventsAfterFirstSync.ToList();
 
         Assert.That(eventListAfterFirstSync, Has.Count.EqualTo(1));
         Assert.That(eventListAfterFirstSync[0].ExternalId, Is.EqualTo("override1"));
 
         // Second sync: Parent arrives
-        fakeGoogleService.SetEvents("cal1",
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateRecurringEvent(
                 "recurring1",
                 "Weekly Meeting",
@@ -1712,10 +1027,10 @@ public class SyncServiceTests
         );
 
         // Act - Second sync
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert - Both events exist with relation
-        var eventsAfterSecondSync = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var eventsAfterSecondSync = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventListAfterSecondSync = eventsAfterSecondSync.ToList();
 
         Assert.That(eventListAfterSecondSync, Has.Count.EqualTo(2));
@@ -1725,45 +1040,20 @@ public class SyncServiceTests
         Assert.That(parentEvent, Is.Not.Null);
         Assert.That(overrideEvent, Is.Not.Null);
 
-        using var connection = database.GetConnection();
-        var relation = await connection.QuerySingleOrDefaultAsync<(string ParentEventId, string ChildEventId)>(
-            "SELECT parent_event_id, child_event_id FROM calendar_event_relation WHERE parent_event_id = @ParentEventId AND child_event_id = @ChildEventId",
-            new { ParentEventId = parentEvent!.EventId, ChildEventId = overrideEvent!.EventId }
-        );
-
-        Assert.That(relation.ParentEventId, Is.EqualTo(parentEvent.EventId));
-        Assert.That(relation.ChildEventId, Is.EqualTo(overrideEvent.EventId));
+        var relation = await GetEventRelationAsync(parentEvent!.EventId, overrideEvent!.EventId);
+        Assert.That(relation, Is.Not.Null);
+        Assert.That(relation!.Value.ParentEventId, Is.EqualTo(parentEvent.EventId));
+        Assert.That(relation.Value.ChildEventId, Is.EqualTo(overrideEvent.EventId));
     }
 
     [Test]
     public async Task GoogleOverride_WithParentNeverArrived_StaysInBacklog()
     {
         // Arrange
-        using var database = new DatabaseService(inMemory: true);
-        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        var storage = new SqliteStorage(database, credentialManager);
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
 
-        var accountId = Guid.NewGuid().ToString();
-        var account = new AccountDbo
-        {
-            AccountId = accountId,
-            Name = "Test Account",
-            Type = AccountType.Google.ToString()
-        };
-        await storage.CreateAccountAsync(account);
-
-        var credentials = new GoogleCredentials
-        {
-            Type = AccountType.Google.ToString(),
-            AccessToken = "test_token",
-            RefreshToken = "test_refresh",
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            TokenType = "Bearer"
-        };
-        credentialManager.StoreGoogleCredentials(accountId, credentials);
-
-        var fakeGoogleService = new FakeGoogleCalendarService();
-        fakeGoogleService.SetCalendars(
+        FakeGoogleService.SetCalendars(
             FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
         );
 
@@ -1771,8 +1061,8 @@ public class SyncServiceTests
         var newStart = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
         var newEnd = new DateTime(2025, 1, 8, 11, 30, 0, DateTimeKind.Utc);
 
-        // Sync with only the override, parent never arrives
-        fakeGoogleService.SetEvents("cal1",
+        // Sync with only override, parent never arrives
+        FakeGoogleService.SetEvents("cal1",
             FakeGoogleCalendarService.CreateModifiedOverride(
                 "override1",
                 "recurring1",
@@ -1783,43 +1073,27 @@ public class SyncServiceTests
             )
         );
 
-        var fakeCalDavService = new FakeCalDavService();
-        var googleProvider = new GoogleCalendarProvider(fakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(fakeCalDavService);
-        var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
-        };
-        var reminderService = new ReminderService(storage, providers);
-        var syncService = new SyncService(storage, credentialManager, providers, reminderService);
-
         // Act
-        await syncService.SyncAllAccountsAsync();
+        await SyncService.SyncAllAccountsAsync();
 
         // Assert
-        var calendars = await storage.GetCalendarsByAccountAsync(accountId);
+        var calendars = await Storage.GetCalendarsByAccountAsync(account.AccountId);
         var calendar = calendars.First();
 
         // Override should be stored
-        var events = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        var events = await Storage.GetEventsByCalendarAsync(calendar.CalendarId);
         var eventList = events.ToList();
         Assert.That(eventList, Has.Count.EqualTo(1));
         Assert.That(eventList[0].ExternalId, Is.EqualTo("override1"));
 
         // Backlog should contain the pending relation
-        using var connection = database.GetConnection();
-        var backlogItems = await connection.QueryAsync<(string ParentExternalId, string ChildExternalId)>(
-            "SELECT parent_external_id, child_external_id FROM calendar_event_relation_backlog WHERE calendar_id = @CalendarId",
-            new { CalendarId = calendar.CalendarId }
-        );
-
-        var backlogList = backlogItems.ToList();
-        Assert.That(backlogList, Has.Count.EqualTo(1));
-        Assert.That(backlogList[0].ParentExternalId, Is.EqualTo("recurring1"));
-        Assert.That(backlogList[0].ChildExternalId, Is.EqualTo("override1"));
+        var backlogItems = await GetRelationBacklogAsync(calendar.CalendarId);
+        Assert.That(backlogItems, Has.Length.EqualTo(1));
+        Assert.That(backlogItems[0].ParentExternalId, Is.EqualTo("recurring1"));
+        Assert.That(backlogItems[0].ChildExternalId, Is.EqualTo("override1"));
 
         // No relation should exist yet
+        using var connection = Database!.GetConnection();
         var relations = await connection.QueryAsync<string>(
             "SELECT child_event_id FROM calendar_event_relation WHERE parent_event_id = @EventId OR child_event_id = @EventId",
             new { EventId = eventList[0].EventId }
