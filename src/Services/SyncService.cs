@@ -17,6 +17,10 @@ public class SyncService
     private readonly ReminderService _reminderService;
     private readonly IReadOnlyDictionary<string, ICalendarProvider> _providers;
 
+    public delegate void SyncProgressHandler(string message, int current, int total);
+    public delegate void CalendarSyncProgressHandler(string calendarName, int current, int total);
+    public delegate void EventSyncProgressHandler(string calendarName, int eventCount);
+
     public SyncService(
         SqliteStorage storage,
         CredentialManagerService credentialManager,
@@ -56,7 +60,7 @@ public class SyncService
             // Perform a fresh sync
             try
             {
-                await SyncAccountAsync(account, cancellationToken);
+                await SyncAccountAsync(account, cancellationToken, null, null);
                 result.SyncedAccounts++;
                 result.Success = true;
                 Console.WriteLine($"Force resync completed for account: {account.Name}");
@@ -82,7 +86,11 @@ public class SyncService
     /// <summary>
     /// Syncs calendars from all accounts.
     /// </summary>
-    public async Task<SyncResult> SyncAllAccountsAsync(CancellationToken cancellationToken = default)
+    public async Task<SyncResult> SyncAllAccountsAsync(
+        CancellationToken cancellationToken = default,
+        SyncProgressHandler? onAccountSyncStart = null,
+        CalendarSyncProgressHandler? onCalendarSyncStart = null,
+        EventSyncProgressHandler? onEventSyncStart = null)
     {
         var result = new SyncResult();
 
@@ -91,11 +99,13 @@ public class SyncService
             var accounts = (await _storage.GetAllAccountsAsync()).ToImmutableList();
             Console.WriteLine($"Found {accounts.Count} accounts to sync");
 
-            foreach (var account in accounts)
+            for (int i = 0; i < accounts.Count; i++)
             {
+                var account = accounts[i];
                 try
                 {
-                    await SyncAccountAsync(account, cancellationToken);
+                    onAccountSyncStart?.Invoke(account.Name, i, accounts.Count);
+                    await SyncAccountAsync(account, cancellationToken, onCalendarSyncStart, onEventSyncStart);
                     result.SyncedAccounts++;
                 }
                 catch (Exception ex)
@@ -121,7 +131,11 @@ public class SyncService
     /// <summary>
     /// Syncs a single account using the appropriate provider.
     /// </summary>
-    private async Task SyncAccountAsync(AccountDbo account, CancellationToken cancellationToken)
+    private async Task SyncAccountAsync(
+        AccountDbo account,
+        CancellationToken cancellationToken,
+        CalendarSyncProgressHandler? onCalendarSyncStart = null,
+        EventSyncProgressHandler? onEventSyncStart = null)
     {
         Console.WriteLine($"Syncing account: {account.Name} (Type: {account.Type})");
 
@@ -143,11 +157,15 @@ public class SyncService
 
         // Sync events for each enabled calendar
         var calendars = await _storage.GetCalendarsByAccountAsync(account.AccountId);
-        foreach (var calendar in calendars.Where(c => c.Enabled == 1))
+        var enabledCalendars = calendars.Where(c => c.Enabled == 1).ToList();
+
+        for (int i = 0; i < enabledCalendars.Count; i++)
         {
+            var calendar = enabledCalendars[i];
             try
             {
-                await SyncCalendarEventsAsync(provider, calendar, credentials, account.Type, cancellationToken);
+                onCalendarSyncStart?.Invoke(calendar.Name, i, enabledCalendars.Count);
+                await SyncCalendarEventsAsync(provider, calendar, credentials, account.Type, cancellationToken, onEventSyncStart);
             }
             catch (Exception ex)
             {
@@ -249,7 +267,8 @@ public class SyncService
         CalendarDbo calendar,
         AccountCredentials credentials,
         string accountType,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        EventSyncProgressHandler? onEventSyncStart = null)
     {
         Console.WriteLine($"Syncing events for calendar: {calendar.Name}");
 
@@ -349,6 +368,7 @@ public class SyncService
         }
 
         Console.WriteLine($"Synced {result.Events.Count} events for calendar {calendar.Name}");
+        onEventSyncStart?.Invoke(calendar.Name, result.Events.Count);
     }
 
     /// <summary>

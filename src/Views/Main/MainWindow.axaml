@@ -18,7 +18,7 @@
         <main:MainWindowViewModel/>
     </Design.DataContext>
     
-    <Grid x:Name="MainGrid" RowDefinitions="Auto,*">
+    <Grid x:Name="MainGrid" RowDefinitions="Auto,*,Auto">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="250" MinWidth="250"/> <!-- Sidebar -->
             <ColumnDefinition Width="Auto"/> <!-- Splitter -->
@@ -68,5 +68,34 @@
                       ResizeBehavior="PreviousAndNext"/>
 
         <cal:CalendarWeekView Grid.Row="1" Grid.Column="2" DataContext="{Binding CalendarWeekViewModel}"/>
+
+        <!-- Status Bar (Row 2) -->
+        <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                Background="{DynamicResource SystemChromeMediumLowColor}"
+                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                BorderThickness="0,1,0,0"
+                Padding="12,8"
+                MinHeight="32">
+
+            <Grid ColumnDefinitions="Auto,*">
+                <!-- Progress Indicator (only shows during sync) -->
+                <ProgressBar Grid.Column="0"
+                            Width="80"
+                            Height="3"
+                            Margin="0,0,12,0"
+                            IsIndeterminate="True"
+                            IsVisible="{Binding IsSyncing}"
+                            Foreground="{DynamicResource SystemAccentColor}"
+                            Background="{DynamicResource SystemBaseLowColor}"/>
+
+                <!-- Status Text -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding SyncStatusText, FallbackValue='Ready'}"
+                           VerticalAlignment="Center"
+                           FontSize="13"
+                           Foreground="{DynamicResource SystemBaseHighColor}"
+                           TextTrimming="CharacterEllipsis"/>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

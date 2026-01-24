@@ -28,6 +28,15 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSyncing;
 
+    [ObservableProperty]
+    private string _syncStatusText = "Ready";
+
+    [ObservableProperty]
+    private double _syncProgress = 0.0;
+
+    [ObservableProperty]
+    private bool _syncProgressIsIndeterminate = true;
+
     public CalendarWeekViewModel CalendarWeekViewModel { get; }
     public CalendarListViewModel CalendarListViewModel { get; }
 
@@ -106,33 +115,60 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
 
         IsSyncing = true;
+        SyncProgress = 0.0;
+        SyncProgressIsIndeterminate = true;
+        SyncStatusText = "Starting sync...";
 
         try
         {
             Console.WriteLine("Starting sync...");
-            var result = await _syncService.SyncAllAccountsAsync(cancellationToken);
+            
+            var result = await _syncService.SyncAllAccountsAsync(cancellationToken, 
+                onAccountSyncStart: (accountName, accountIndex, totalAccounts) =>
+                {
+                    SyncStatusText = $"Syncing account {accountIndex + 1} of {totalAccounts}: {accountName}";
+                    SyncProgress = (double)accountIndex / totalAccounts * 100;
+                    SyncProgressIsIndeterminate = false;
+                },
+                onCalendarSyncStart: (calendarName, calendarIndex, totalCalendars) =>
+                {
+                    SyncStatusText = $"  Syncing calendar {calendarIndex + 1} of {totalCalendars}: {calendarName}";
+                },
+                onEventSyncStart: (calendarName, eventCount) =>
+                {
+                    SyncStatusText = $"  Syncing events for {calendarName} ({eventCount} events)...";
+                });
 
             if (result.Success)
             {
+                SyncStatusText = $"Sync completed successfully. Synced {result.SyncedAccounts} accounts.";
                 Console.WriteLine($"Sync completed successfully. Synced {result.SyncedAccounts} accounts.");
                 await CalendarListViewModel.LoadCalendarsAsync();
             }
             else
             {
+                SyncStatusText = $"Sync completed with {result.FailedAccounts} error(s).";
                 Console.WriteLine($"Sync completed with errors. Synced: {result.SyncedAccounts}, Failed: {result.FailedAccounts}");
                 foreach (var error in result.Errors)
                 {
                     Console.WriteLine($"  - {error}");
                 }
             }
+            
+            // Show success message briefly before clearing
+            await Task.Delay(2000, cancellationToken);
         }
         catch (Exception ex)
         {
+            SyncStatusText = $"Sync failed: {ex.Message}";
             Console.WriteLine($"Sync failed: {ex.Message}");
+            await Task.Delay(3000, cancellationToken);
         }
         finally
         {
             IsSyncing = false;
+            SyncProgress = 0.0;
+            SyncStatusText = "Ready";
         }
     }
     #endregion
