@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cal="using:perinma.Views.Calendar"
+             xmlns:models="using:perinma.Models"
              x:DataType="cal:CalDavEventViewModel"
              mc:Ignorable="d" d:DesignWidth="350" d:DesignHeight="200"
              x:Class="perinma.Views.Calendar.CalDavEventView">
@@ -44,9 +45,27 @@
                 <TextBlock Text="{Binding Organizer}" />
             </StackPanel>
 
-            <StackPanel Spacing="4" IsVisible="{Binding Attendees, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <StackPanel Spacing="4" IsVisible="{Binding Attendees.Count}">
                 <TextBlock Text="Attendees" FontWeight="SemiBold" FontSize="12" />
-                <TextBlock Text="{Binding Attendees}" TextWrapping="Wrap" />
+                <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Attendees}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:EventAttendee">
+                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
+                                    <TextBlock Text="{Binding StatusIcon}"
+                                               Foreground="{Binding StatusColor}"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"
+                                               ToolTip.Tip="{Binding StatusTooltip}" />
+                                    <TextBlock Text="{Binding Name}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxWidth="280" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </StackPanel>
 
             <StackPanel Spacing="4" IsVisible="{Binding Categories, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -35,10 +36,9 @@ public partial class CalDavEventViewModel : ViewModelBase
     private string _url = string.Empty;
 
     [ObservableProperty]
-    private string _attendees = string.Empty;
-
-    [ObservableProperty]
     private bool _isLoading;
+
+    public ObservableCollection<EventAttendee> Attendees { get; } = [];
 
     public CalDavEventViewModel(CalendarEvent calendarEvent, SqliteStorage storage)
     {
@@ -85,19 +85,27 @@ public partial class CalDavEventViewModel : ViewModelBase
                         Url = iCalEvent.Url.ToString();
                     }
 
-                    // Extract attendees
+                    // Extract attendees with response status
                     if (iCalEvent.Attendees != null && iCalEvent.Attendees.Count > 0)
                     {
-                        var attendeeList = iCalEvent.Attendees
-                            .Select(a => !string.IsNullOrEmpty(a.CommonName)
-                                ? a.CommonName
-                                : ExtractEmailFromUri(a.Value?.ToString()))
-                            .Where(s => !string.IsNullOrEmpty(s))
-                            .ToList();
-
-                        if (attendeeList.Count > 0)
+                        foreach (var attendee in iCalEvent.Attendees)
                         {
-                            Attendees = string.Join(", ", attendeeList);
+                            var name = !string.IsNullOrEmpty(attendee.CommonName)
+                                ? attendee.CommonName
+                                : ExtractEmailFromUri(attendee.Value?.ToString());
+
+                            if (string.IsNullOrEmpty(name))
+                            {
+                                continue;
+                            }
+
+                            var responseStatus = ParseParticipationStatus(attendee.ParticipationStatus);
+
+                            Attendees.Add(new EventAttendee
+                            {
+                                Name = name,
+                                ResponseStatus = responseStatus
+                            });
                         }
                     }
                 }
@@ -142,6 +150,23 @@ public partial class CalDavEventViewModel : ViewModelBase
             "CANCELLED" => "Cancelled",
             "TENTATIVE" => "Tentative",
             _ => status
+        };
+    }
+
+    private static EventResponseStatus ParseParticipationStatus(string? status)
+    {
+        if (string.IsNullOrEmpty(status))
+        {
+            return EventResponseStatus.None;
+        }
+
+        return status.ToUpperInvariant() switch
+        {
+            "ACCEPTED" => EventResponseStatus.Accepted,
+            "DECLINED" => EventResponseStatus.Declined,
+            "TENTATIVE" => EventResponseStatus.Tentative,
+            "NEEDS-ACTION" => EventResponseStatus.NeedsAction,
+            _ => EventResponseStatus.None
         };
     }
 }

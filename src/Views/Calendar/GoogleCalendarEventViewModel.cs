@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Google.Apis.Calendar.v3.Data;
@@ -45,8 +46,10 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isLoading;
-    
+
     public ObservableCollection<EventAttachment> Attachments { get; } = [];
+
+    public ObservableCollection<Models.EventAttendee> Attendees { get; } = [];
 
     public GoogleCalendarEventViewModel(CalendarEvent calendarEvent, SqliteStorage storage)
     {
@@ -77,7 +80,8 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase
                     Creator = googleEvent.Creator != null
                         ? $"{googleEvent.Creator.DisplayName ?? googleEvent.Creator.Email}"
                         : string.Empty;
-                    
+
+                    ExtractAttendees(googleEvent);
                     ExtractAttachments(googleEvent);
                 }
             }
@@ -92,20 +96,63 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase
         }
     }
 
+    private void ExtractAttendees(Event googleEvent)
+    {
+        if (googleEvent.Attendees == null)
+        {
+            return;
+        }
+
+        foreach (var attendee in googleEvent.Attendees)
+        {
+            var name = attendee.DisplayName ?? attendee.Email;
+            if (string.IsNullOrEmpty(name))
+            {
+                continue;
+            }
+
+            var responseStatus = ParseGoogleResponseStatus(attendee.ResponseStatus);
+
+            Attendees.Add(new Models.EventAttendee
+            {
+                Name = name,
+                ResponseStatus = responseStatus,
+                IsOrganizer = attendee.Organizer ?? false
+            });
+        }
+    }
+
+    private static EventResponseStatus ParseGoogleResponseStatus(string? status)
+    {
+        if (string.IsNullOrEmpty(status))
+        {
+            return EventResponseStatus.None;
+        }
+
+        return status.ToLowerInvariant() switch
+        {
+            "accepted" => EventResponseStatus.Accepted,
+            "declined" => EventResponseStatus.Declined,
+            "tentative" => EventResponseStatus.Tentative,
+            "needsaction" => EventResponseStatus.NeedsAction,
+            _ => EventResponseStatus.None
+        };
+    }
+
     private void ExtractAttachments(Event googleEvent)
     {
         if (googleEvent.Attachments == null)
         {
             return;
         }
-        
+
         foreach (var attachment in googleEvent.Attachments)
         {
             if (string.IsNullOrEmpty(attachment.FileUrl))
             {
                 continue;
             }
-            
+
             Attachments.Add(new EventAttachment
             {
                 Title = attachment.Title ?? attachment.FileUrl,

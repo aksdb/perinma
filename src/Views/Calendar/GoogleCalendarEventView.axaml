@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cal="using:perinma.Views.Calendar"
+             xmlns:models="using:perinma.Models"
              xmlns:html="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
              x:DataType="cal:GoogleCalendarEventViewModel"
              mc:Ignorable="d" d:DesignWidth="350" d:DesignHeight="200"
@@ -51,7 +52,30 @@
                 <TextBlock Text="Created by" FontWeight="SemiBold" FontSize="12" />
                 <TextBlock Text="{Binding Creator}" />
             </StackPanel>
-            
+
+            <StackPanel Spacing="4" IsVisible="{Binding Attendees.Count}">
+                <TextBlock Text="Attendees" FontWeight="SemiBold" FontSize="12" />
+                <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Attendees}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:EventAttendee">
+                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
+                                    <TextBlock Text="{Binding StatusIcon}"
+                                               Foreground="{Binding StatusColor}"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"
+                                               ToolTip.Tip="{Binding StatusTooltip}" />
+                                    <TextBlock Text="{Binding Name}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxWidth="280" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </StackPanel>
+
             <StackPanel Spacing="4" IsVisible="{Binding Attachments.Count}">
                 <TextBlock Text="Attachments" FontWeight="SemiBold" FontSize="12" />
                 <ItemsControl ItemsSource="{Binding Attachments}">
