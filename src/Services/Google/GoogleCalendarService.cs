@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -308,6 +309,38 @@ public class GoogleCalendarService : IGoogleCalendarService
 
         // Send the update to Google
         await service.CalendarList.Update(calendarListEntry, calendarId).ExecuteAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Updates the user's response status for an event invitation
+    /// </summary>
+    public async Task RespondToEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        string responseStatus,
+        CancellationToken cancellationToken = default)
+    {
+        // Get the current event
+        var googleEvent = await service.Events.Get(calendarId, eventId).ExecuteAsync(cancellationToken);
+
+        if (googleEvent.Attendees == null)
+        {
+            throw new InvalidOperationException("Event has no attendees");
+        }
+
+        // Find the current user's attendee entry (marked with Self = true)
+        var selfAttendee = googleEvent.Attendees.FirstOrDefault(a => a.Self == true);
+        if (selfAttendee == null)
+        {
+            throw new InvalidOperationException("Current user is not an attendee of this event");
+        }
+
+        // Update the response status
+        selfAttendee.ResponseStatus = responseStatus;
+
+        // Send the update to Google
+        await service.Events.Patch(googleEvent, calendarId, eventId).ExecuteAsync(cancellationToken);
     }
 
     public class CalendarSyncResult

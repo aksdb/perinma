@@ -142,6 +142,24 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
         return Task.FromResult<IList<int>>([]);
     }
 
+    public Task RespondToEventAsync(
+        AccountCredentials credentials,
+        string calendarId,
+        string eventId,
+        string rawEventData,
+        string responseStatus,
+        CancellationToken cancellationToken = default)
+    {
+        // Validate credentials type
+        if (credentials is not GoogleCredentials)
+        {
+            throw new InvalidOperationException("FakeGoogleCalendarProvider requires GoogleCredentials");
+        }
+
+        // For testing, just return completed task
+        return Task.CompletedTask;
+    }
+
     private static ProviderEvent? ConvertGoogleEvent(Event evt)
     {
         var isOverride = !string.IsNullOrEmpty(evt.RecurringEventId);

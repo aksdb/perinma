@@ -67,6 +67,18 @@ public class FakeCalDavService : ICalDavService
         return Task.FromResult(true);
     }
 
+    public Task<string> RespondToEventAsync(
+        CalDavCredentials credentials,
+        string eventUrl,
+        string rawICalendar,
+        string responseStatus,
+        string userEmail,
+        CancellationToken cancellationToken = default)
+    {
+        // For testing, just return the event URL
+        return Task.FromResult(eventUrl);
+    }
+
     /// <summary>
     /// Creates a simple CalDAV event without recurrence.
     /// </summary>

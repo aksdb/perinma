@@ -109,6 +109,24 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
         return Task.FromResult<IList<int>>([]);
     }
 
+    public Task RespondToEventAsync(
+        AccountCredentials credentials,
+        string calendarId,
+        string eventId,
+        string rawEventData,
+        string responseStatus,
+        CancellationToken cancellationToken = default)
+    {
+        // Validate credentials type
+        if (credentials is not CalDavCredentials)
+        {
+            throw new InvalidOperationException("FakeCalDavCalendarProvider requires CalDavCredentials");
+        }
+
+        // For testing, just return completed task
+        return Task.CompletedTask;
+    }
+
     private static ProviderEvent? ConvertCalDavEvent(CalDavEvent evt)
     {
         var isDeleted = evt.Status == "CANCELLED" || evt.Deleted;

@@ -59,6 +59,23 @@ public interface ICalendarProvider
         string rawEventData,
         string? rawCalendarData = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Responds to an event invitation with the specified status.
+    /// </summary>
+    /// <param name="credentials">Account credentials (type-specific: GoogleCredentials or CalDavCredentials)</param>
+    /// <param name="calendarId">External ID of the calendar</param>
+    /// <param name="eventId">External ID of the event</param>
+    /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
+    /// <param name="responseStatus">The response status (e.g., "accepted", "declined", "tentative")</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task RespondToEventAsync(
+        AccountCredentials credentials,
+        string calendarId,
+        string eventId,
+        string rawEventData,
+        string responseStatus,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

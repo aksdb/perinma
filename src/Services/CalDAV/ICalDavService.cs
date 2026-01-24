@@ -22,6 +22,24 @@ public interface ICalDavService
         CalDavCredentials credentials,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Updates the user's response status for an event invitation
+    /// </summary>
+    /// <param name="credentials">CalDAV credentials</param>
+    /// <param name="eventUrl">URL of the event to update</param>
+    /// <param name="rawICalendar">Current iCalendar data</param>
+    /// <param name="responseStatus">The response status (ACCEPTED, DECLINED, TENTATIVE)</param>
+    /// <param name="userEmail">The user's email to identify their attendee entry</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Updated iCalendar data</returns>
+    Task<string> RespondToEventAsync(
+        CalDavCredentials credentials,
+        string eventUrl,
+        string rawICalendar,
+        string responseStatus,
+        string userEmail,
+        CancellationToken cancellationToken = default);
+
     public class CalendarSyncResult
     {
         public required IList<CalDavCalendar> Calendars { get; init; }

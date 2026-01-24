@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Lucdem.Avalonia.SourceGenerators.Attributes;
 using perinma.Models;
+using perinma.Services;
 using perinma.Storage;
 using perinma.Utils;
 
@@ -78,6 +79,12 @@ public partial class EventItem : TemplatedControl
 
     [AvaStyledProperty]
     private SqliteStorage? _storage;
+
+    [AvaStyledProperty]
+    private IReadOnlyDictionary<string, ICalendarProvider>? _providers;
+
+    [AvaStyledProperty]
+    private CredentialManagerService? _credentialManager;
 
 #pragma warning restore CS0169
 #pragma warning restore CS0414
@@ -195,14 +202,30 @@ public partial class EventItem : TemplatedControl
             return null;
         }
 
+        ICalendarProvider? calendarProvider = null;
+        var accountType = CalendarEvent.Calendar.Account.Type.ToString();
+
+        if (Providers != null && Providers.TryGetValue(accountType, out var provider))
+        {
+            calendarProvider = provider;
+        }
+
         if (CalendarEvent.Calendar.Account.Type == AccountType.Google)
         {
-            return new GoogleCalendarEventViewModel(CalendarEvent, Storage);
+            return new GoogleCalendarEventViewModel(
+                CalendarEvent,
+                Storage,
+                calendarProvider,
+                CredentialManager);
         }
 
         if (CalendarEvent.Calendar.Account.Type == AccountType.CalDav)
         {
-            return new CalDavEventViewModel(CalendarEvent, Storage);
+            return new CalDavEventViewModel(
+                CalendarEvent,
+                Storage,
+                calendarProvider,
+                CredentialManager);
         }
 
         return new CalendarEventViewModel(CalendarEvent);

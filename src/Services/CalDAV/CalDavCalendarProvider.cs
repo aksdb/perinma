@@ -220,4 +220,28 @@ public class CalDavCalendarProvider : ICalendarProvider
             return Task.FromResult<IList<int>>([]);
         }
     }
+
+    /// <inheritdoc/>
+    public async Task RespondToEventAsync(
+        AccountCredentials credentials,
+        string calendarId,
+        string eventId,
+        string rawEventData,
+        string responseStatus,
+        CancellationToken cancellationToken = default)
+    {
+        var calDavCredentials = ValidateCredentials(credentials);
+
+        // For CalDAV, we need the user's email (stored in Username)
+        var userEmail = calDavCredentials.Username;
+
+        // Respond to the event using the service
+        await _calDavService.RespondToEventAsync(
+            calDavCredentials,
+            eventId, // eventId is the event URL for CalDAV
+            rawEventData,
+            responseStatus,
+            userEmail,
+            cancellationToken);
+    }
 }

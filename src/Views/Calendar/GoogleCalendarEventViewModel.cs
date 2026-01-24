@@ -3,9 +3,12 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
 using perinma.Models;
+using perinma.Services;
+using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Storage.Models;
 
@@ -28,6 +31,8 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase
 
     private readonly CalendarEvent _calendarEvent;
     private readonly SqliteStorage _storage;
+    private readonly ICalendarProvider? _calendarProvider;
+    private readonly CredentialManagerService? _credentialManager;
 
     [ObservableProperty]
     private string _googleMeetLink = string.Empty;
@@ -47,14 +52,29 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isLoading;
 
+    [ObservableProperty]
+    private bool _isUpdating;
+
+    [ObservableProperty]
+    private bool _canRespond;
+
+    [ObservableProperty]
+    private EventResponseStatus _currentResponseStatus = EventResponseStatus.None;
+
     public ObservableCollection<EventAttachment> Attachments { get; } = [];
 
     public ObservableCollection<Models.EventAttendee> Attendees { get; } = [];
 
-    public GoogleCalendarEventViewModel(CalendarEvent calendarEvent, SqliteStorage storage)
+    public GoogleCalendarEventViewModel(
+        CalendarEvent calendarEvent,
+        SqliteStorage storage,
+        ICalendarProvider? calendarProvider = null,
+        CredentialManagerService? credentialManager = null)
     {
         _calendarEvent = calendarEvent;
         _storage = storage;
+        _calendarProvider = calendarProvider;
+        _credentialManager = credentialManager;
         _isLoading = true;
         _ = LoadEventDataAsync();
     }
@@ -83,6 +103,11 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase
 
                     ExtractAttendees(googleEvent);
                     ExtractAttachments(googleEvent);
+
+                    // Check if user can respond (is an attendee and not the organizer)
+                    var selfAttendee = googleEvent.Attendees?.FirstOrDefault(a => a.Self == true);
+                    CanRespond = selfAttendee != null && !(selfAttendee.Organizer ?? false);
+                    CurrentResponseStatus = _calendarEvent.ResponseStatus;
                 }
             }
         }
@@ -196,5 +221,101 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase
         }
 
         return string.Empty;
+    }
+
+    [RelayCommand]
+    private async Task AcceptEventAsync()
+    {
+        await RespondToEventAsync("accepted");
+    }
+
+    [RelayCommand]
+    private async Task DeclineEventAsync()
+    {
+        await RespondToEventAsync("declined");
+    }
+
+    [RelayCommand]
+    private async Task TentativeEventAsync()
+    {
+        await RespondToEventAsync("tentative");
+    }
+
+    private async Task RespondToEventAsync(string responseStatus)
+    {
+        if (IsUpdating || !CanRespond)
+        {
+            return;
+        }
+
+        if (_calendarProvider == null || _credentialManager == null)
+        {
+            Console.WriteLine("Calendar provider or credential manager not available");
+            return;
+        }
+
+        try
+        {
+            IsUpdating = true;
+
+            var accountId = _calendarEvent.Calendar.Account.Id.ToString();
+            var credentials = _credentialManager.GetGoogleCredentials(accountId);
+
+            if (credentials == null)
+            {
+                Console.WriteLine("Failed to get Google credentials for account");
+                return;
+            }
+
+            var calendarId = _calendarEvent.Calendar.ExternalId;
+            var eventId = _calendarEvent.ExternalId;
+
+            if (string.IsNullOrEmpty(calendarId) || string.IsNullOrEmpty(eventId))
+            {
+                Console.WriteLine("Missing calendar or event ID");
+                return;
+            }
+
+            // Get raw event data for the provider
+            var rawData = await _storage.GetEventData(_calendarEvent.Id.ToString(), "rawData");
+            if (string.IsNullOrEmpty(rawData))
+            {
+                Console.WriteLine("Failed to get raw event data");
+                return;
+            }
+
+            // Use the provider to respond to the event
+            await _calendarProvider.RespondToEventAsync(credentials, calendarId, eventId, rawData, responseStatus);
+
+            // Update local state
+            CurrentResponseStatus = responseStatus switch
+            {
+                "accepted" => EventResponseStatus.Accepted,
+                "declined" => EventResponseStatus.Declined,
+                "tentative" => EventResponseStatus.Tentative,
+                _ => EventResponseStatus.None
+            };
+
+            // Update the attendee list to reflect the change
+            var selfAttendee = Attendees.FirstOrDefault(a => a.Name == _calendarEvent.Calendar.Account.Name);
+            if (selfAttendee != null)
+            {
+                var index = Attendees.IndexOf(selfAttendee);
+                Attendees[index] = new Models.EventAttendee
+                {
+                    Name = selfAttendee.Name,
+                    ResponseStatus = CurrentResponseStatus,
+                    IsOrganizer = selfAttendee.IsOrganizer
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to respond to event: {ex.Message}");
+        }
+        finally
+        {
+            IsUpdating = false;
+        }
     }
 }

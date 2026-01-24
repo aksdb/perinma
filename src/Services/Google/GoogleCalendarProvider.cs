@@ -273,4 +273,22 @@ public class GoogleCalendarProvider : ICalendarProvider
 
         return Task.FromResult<IList<int>>(reminderMinutes);
     }
+
+    /// <inheritdoc/>
+    public async Task RespondToEventAsync(
+        AccountCredentials credentials,
+        string calendarId,
+        string eventId,
+        string rawEventData,
+        string responseStatus,
+        CancellationToken cancellationToken = default)
+    {
+        var googleCredentials = ValidateCredentials(credentials);
+
+        // Create Google Calendar service (handles token refresh)
+        var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken);
+
+        // Respond to the event using the service
+        await _googleCalendarService.RespondToEventAsync(service, calendarId, eventId, responseStatus, cancellationToken);
+    }
 }

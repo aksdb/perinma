@@ -32,6 +32,11 @@ public class SyncService
     }
 
     /// <summary>
+    /// Gets the calendar providers dictionary.
+    /// </summary>
+    public IReadOnlyDictionary<string, ICalendarProvider> Providers => _providers;
+
+    /// <summary>
     /// Forces a complete resync of an account by clearing all local data and sync tokens,
     /// then performing a full sync from the remote server.
     /// </summary>
@@ -413,6 +418,20 @@ public class SyncService
             _credentialManager.StoreGoogleCredentials(account.AccountId, googleCredentials);
         }
         // CalDAV credentials don't need to be updated after sync
+    }
+
+    /// <summary>
+    /// Gets the calendar provider for a specific account type.
+    /// </summary>
+    /// <param name="accountType">The account type (Google or CalDav)</param>
+    /// <returns>The calendar provider, or null if not found</returns>
+    public ICalendarProvider? GetProviderForAccountType(string accountType)
+    {
+        return accountType.Equals("Google", StringComparison.OrdinalIgnoreCase)
+            ? _providers.GetValueOrDefault("Google")
+            : accountType.Equals("CalDAV", StringComparison.OrdinalIgnoreCase)
+                ? _providers.GetValueOrDefault("CalDAV")
+                : null;
     }
 }
 

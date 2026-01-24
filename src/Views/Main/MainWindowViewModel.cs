@@ -67,7 +67,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _googleCalendarService = new GoogleCalendarService();
         _googleOAuthService = new GoogleOAuthService(_googleCalendarService);
         _settingsService = new SettingsService(storage);
-        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, storage, _settingsService);
+        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, storage, _settingsService, syncService.Providers, credentialManager);
         CalendarListViewModel = new CalendarListViewModel(storage, _googleCalendarService, credentialManager, CalendarWeekViewModel);
 
         Initialize();

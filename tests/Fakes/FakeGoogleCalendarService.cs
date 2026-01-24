@@ -136,6 +136,17 @@ public class FakeGoogleCalendarService : IGoogleCalendarService
         return Task.CompletedTask;
     }
 
+    public Task RespondToEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        string responseStatus,
+        CancellationToken cancellationToken = default)
+    {
+        // For testing, just return completed task
+        return Task.CompletedTask;
+    }
+
     public static CalendarListEntry CreateCalendar(string id, string summary, bool selected = true, string? color = null)
     {
         return new CalendarListEntry

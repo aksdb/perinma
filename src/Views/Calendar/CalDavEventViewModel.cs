@@ -3,7 +3,9 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using perinma.Models;
+using perinma.Services;
 using perinma.Storage;
 using perinma.Storage.Models;
 using ICalCalendar = Ical.Net.Calendar;
@@ -16,6 +18,8 @@ public partial class CalDavEventViewModel : ViewModelBase
 
     private readonly CalendarEvent _calendarEvent;
     private readonly SqliteStorage _storage;
+    private readonly ICalendarProvider? _calendarProvider;
+    private readonly CredentialManagerService? _credentialManager;
 
     [ObservableProperty]
     private string _description = string.Empty;
@@ -38,12 +42,27 @@ public partial class CalDavEventViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isLoading;
 
+    [ObservableProperty]
+    private bool _isUpdating;
+
+    [ObservableProperty]
+    private bool _canRespond;
+
+    [ObservableProperty]
+    private EventResponseStatus _currentResponseStatus = EventResponseStatus.None;
+
     public ObservableCollection<EventAttendee> Attendees { get; } = [];
 
-    public CalDavEventViewModel(CalendarEvent calendarEvent, SqliteStorage storage)
+    public CalDavEventViewModel(
+        CalendarEvent calendarEvent,
+        SqliteStorage storage,
+        ICalendarProvider? calendarProvider = null,
+        CredentialManagerService? credentialManager = null)
     {
         _calendarEvent = calendarEvent;
         _storage = storage;
+        _calendarProvider = calendarProvider;
+        _credentialManager = credentialManager;
         _isLoading = true;
         _ = LoadEventDataAsync();
     }
@@ -107,6 +126,10 @@ public partial class CalDavEventViewModel : ViewModelBase
                                 ResponseStatus = responseStatus
                             });
                         }
+
+                        // Check if user can respond (is an attendee)
+                        CanRespond = Attendees.Count > 0;
+                        CurrentResponseStatus = _calendarEvent.ResponseStatus;
                     }
                 }
             }
@@ -168,5 +191,88 @@ public partial class CalDavEventViewModel : ViewModelBase
             "NEEDS-ACTION" => EventResponseStatus.NeedsAction,
             _ => EventResponseStatus.None
         };
+    }
+
+    [RelayCommand]
+    private async Task AcceptEventAsync()
+    {
+        await RespondToEventAsync("accepted");
+    }
+
+    [RelayCommand]
+    private async Task DeclineEventAsync()
+    {
+        await RespondToEventAsync("declined");
+    }
+
+    [RelayCommand]
+    private async Task TentativeEventAsync()
+    {
+        await RespondToEventAsync("tentative");
+    }
+
+    private async Task RespondToEventAsync(string responseStatus)
+    {
+        if (IsUpdating || !CanRespond)
+        {
+            return;
+        }
+
+        if (_calendarProvider == null || _credentialManager == null)
+        {
+            Console.WriteLine("Calendar provider or credential manager not available");
+            return;
+        }
+
+        try
+        {
+            IsUpdating = true;
+
+            var accountId = _calendarEvent.Calendar.Account.Id.ToString();
+            var credentials = _credentialManager.GetCalDavCredentials(accountId);
+
+            if (credentials == null)
+            {
+                Console.WriteLine("Failed to get CalDAV credentials for account");
+                return;
+            }
+
+            var calendarId = _calendarEvent.Calendar.ExternalId;
+            var eventId = _calendarEvent.ExternalId;
+
+            if (string.IsNullOrEmpty(calendarId) || string.IsNullOrEmpty(eventId))
+            {
+                Console.WriteLine("Missing calendar or event ID");
+                return;
+            }
+
+            // Get raw event data for the provider
+            var rawData = await _storage.GetEventData(_calendarEvent.Id.ToString(), "rawData");
+            if (string.IsNullOrEmpty(rawData))
+            {
+                Console.WriteLine("Failed to get raw event data");
+                return;
+            }
+
+            // Use the provider to respond to the event
+            await _calendarProvider.RespondToEventAsync(credentials, calendarId, eventId, rawData, responseStatus);
+
+            // Update local state
+            CurrentResponseStatus = responseStatus switch
+            {
+                "accepted" => EventResponseStatus.Accepted,
+                "declined" => EventResponseStatus.Declined,
+                "tentative" => EventResponseStatus.Tentative,
+                _ => EventResponseStatus.None
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to respond to event: {ex.Message}");
+        }
+        finally
+        {
+            IsUpdating = false;
+        }
     }
 }

@@ -48,4 +48,19 @@ public interface IGoogleCalendarService
         GoogleCredentials credentials,
         CancellationToken cancellationToken,
         string? redirectUri = null);
+
+    /// <summary>
+    /// Updates the user's response status for an event invitation
+    /// </summary>
+    /// <param name="service">Authenticated CalendarService</param>
+    /// <param name="calendarId">Calendar ID containing the event</param>
+    /// <param name="eventId">Event ID to respond to</param>
+    /// <param name="responseStatus">The response status (accepted, declined, tentative)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task RespondToEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        string responseStatus,
+        CancellationToken cancellationToken = default);
 }

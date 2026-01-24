@@ -138,6 +138,27 @@ public class CalDavClient
         return await response.Content.ReadAsStringAsync(cancellationToken);
     }
 
+    public async Task PutCalendarObjectAsync(
+        string objectUrl,
+        string icalData,
+        string? etag = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Put, objectUrl)
+        {
+            Content = new StringContent(icalData, Encoding.UTF8, "text/calendar")
+        };
+
+        // If we have an ETag, use it for conditional update
+        if (!string.IsNullOrEmpty(etag))
+        {
+            request.Headers.TryAddWithoutValidation("If-Match", etag);
+        }
+
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
     public Calendar? ParseICalendar(string icalData)
     {
         return Calendar.Load(icalData);

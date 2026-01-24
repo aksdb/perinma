@@ -147,6 +147,63 @@ public class CalDavService : ICalDavService
         return await client.TestConnectionAsync(credentials.ServerUrl, cancellationToken);
     }
 
+    public async Task<string> RespondToEventAsync(
+        CalDavCredentials credentials,
+        string eventUrl,
+        string rawICalendar,
+        string responseStatus,
+        string userEmail,
+        CancellationToken cancellationToken = default)
+    {
+        var client = CreateClient(credentials);
+
+        // Parse the iCalendar data
+        var calendar = Ical.Net.Calendar.Load(rawICalendar);
+        var iCalEvent = calendar?.Events.FirstOrDefault();
+
+        if (iCalEvent == null)
+        {
+            throw new InvalidOperationException("Could not parse event from iCalendar data");
+        }
+
+        if (iCalEvent.Attendees == null || iCalEvent.Attendees.Count == 0)
+        {
+            throw new InvalidOperationException("Event has no attendees");
+        }
+
+        // Find the user's attendee entry by email
+        var userAttendee = iCalEvent.Attendees.FirstOrDefault(a =>
+        {
+            var email = a.Value?.ToString();
+            if (string.IsNullOrEmpty(email))
+                return false;
+
+            // Remove mailto: prefix if present
+            if (email.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase))
+                email = email[7..];
+
+            return email.Equals(userEmail, StringComparison.OrdinalIgnoreCase);
+        });
+
+        if (userAttendee == null)
+        {
+            throw new InvalidOperationException($"User {userEmail} is not an attendee of this event");
+        }
+
+        // Update the participation status
+        userAttendee.ParticipationStatus = responseStatus;
+
+        // Serialize the updated calendar
+        var serializer = new Ical.Net.Serialization.CalendarSerializer();
+        var updatedICalendar = serializer.SerializeToString(calendar) 
+            ?? throw new InvalidOperationException("Failed to serialize updated calendar");
+
+        // PUT the updated event back to the server
+        await client.PutCalendarObjectAsync(eventUrl, updatedICalendar, null, cancellationToken);
+
+        return updatedICalendar;
+    }
+
     private CalDavClient CreateClient(CalDavCredentials credentials)
     {
         var client = new CalDavClient();
