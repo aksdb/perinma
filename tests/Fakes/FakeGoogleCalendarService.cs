@@ -45,7 +45,7 @@ public class FakeGoogleCalendarService : IGoogleCalendarService
         _shouldThrowInvalidEventSyncToken = shouldThrow;
     }
 
-    public Task<CalendarService> CreateServiceAsync(GoogleCredentials credentials, CancellationToken cancellationToken = default)
+    public Task<CalendarService> CreateServiceAsync(GoogleCredentials credentials, CancellationToken cancellationToken = default, string? accountId = null)
     {
         // Return a null CalendarService - we won't actually use it in tests
         // In a real scenario, you might want to create a proper mock CalendarService

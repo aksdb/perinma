@@ -1,6 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,6 +14,7 @@ using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Views.Calendar;
 using perinma.Views.CalendarList;
+using perinma.Views.MessageBox;
 using perinma.Views.Settings;
 
 namespace perinma.Views.Main;
@@ -23,7 +26,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
     IRecipient<SyncCalendarProgressMessage>,
     IRecipient<SyncEventsProgressMessage>,
     IRecipient<SyncCompletedMessage>,
-    IRecipient<SyncFailedMessage>
+    IRecipient<SyncFailedMessage>,
+    IRecipient<ReAuthenticationRequiredMessage>
 {
     private readonly DatabaseService _databaseService;
     private readonly CredentialManagerService _credentialManager;
@@ -205,6 +209,90 @@ public partial class MainWindowViewModel : ObservableRecipient,
             SyncProgress = 0.0;
             SyncStatusText = "Ready";
         });
+    }
+
+    public async void Receive(ReAuthenticationRequiredMessage message)
+    {
+        // Get the main window reference
+        var mainWindow = Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+
+        if (mainWindow == null)
+        {
+            Console.WriteLine("Unable to show re-authentication dialog - main window not found");
+            return;
+        }
+
+        try
+        {
+            var result = await MessageBoxWindow.ShowAsync(
+                mainWindow,
+                "Re-authentication Required",
+                $"Your {message.ProviderType} account requires re-authentication. Would you like to sign in again?",
+                MessageBoxType.Warning,
+                MessageBoxButtons.YesNo);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                if (message.ProviderType.Equals("Google", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        // Get the account details
+                        var storage = new SqliteStorage(_databaseService, _credentialManager);
+                        var account = await storage.GetAccountByIdAsync(message.AccountId);
+
+                        if (account != null)
+                        {
+                            Console.WriteLine($"Starting re-authentication for account: {account.Name}");
+
+                            // Perform authentication
+                            var newCredentials = await _googleOAuthService.AuthenticateAsync();
+
+                            // Update the credentials in the credential manager
+                            _credentialManager.StoreGoogleCredentials(message.AccountId, newCredentials);
+
+                            Console.WriteLine($"Re-authentication successful for account: {account.Name}");
+
+                            await MessageBoxWindow.ShowAsync(
+                                mainWindow,
+                                "Authentication Successful",
+                                $"Your {message.ProviderType} account has been successfully re-authenticated.",
+                                MessageBoxType.Information,
+                                MessageBoxButtons.Ok);
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Account not found: {message.AccountId}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Re-authentication failed: {ex.Message}");
+                        await MessageBoxWindow.ShowAsync(
+                            mainWindow,
+                            "Authentication Failed",
+                            $"Failed to re-authenticate your {message.ProviderType} account: {ex.Message}",
+                            MessageBoxType.Error,
+                            MessageBoxButtons.Ok);
+                    }
+                }
+                else
+                {
+                    await MessageBoxWindow.ShowAsync(
+                        mainWindow,
+                        "Not Implemented",
+                        $"Re-authentication for {message.ProviderType} is not yet implemented.",
+                        MessageBoxType.Information,
+                        MessageBoxButtons.Ok);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in re-authentication flow: {ex.Message}");
+        }
     }
     #endregion
 

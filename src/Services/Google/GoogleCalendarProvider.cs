@@ -42,7 +42,7 @@ public class GoogleCalendarProvider : ICalendarProvider
         }
 
         // Create Google Calendar service (handles token refresh)
-        var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken);
+        var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
 
         // Fetch calendars from Google
         var result = await _googleCalendarService.GetCalendarsAsync(service, syncToken, cancellationToken);
@@ -79,7 +79,7 @@ public class GoogleCalendarProvider : ICalendarProvider
         }
 
         // Create Google Calendar service (handles token refresh)
-        var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken);
+        var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
 
         // Fetch events from Google
         var result = await _googleCalendarService.GetEventsAsync(service, calendarExternalId, syncToken, cancellationToken);
@@ -300,7 +300,7 @@ public class GoogleCalendarProvider : ICalendarProvider
         }
 
         // Create Google Calendar service (handles token refresh)
-        var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken);
+        var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
 
         // Respond to the event using the service
         await _googleCalendarService.RespondToEventAsync(service, calendarId, eventId, responseStatus, cancellationToken);

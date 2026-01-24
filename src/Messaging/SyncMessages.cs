@@ -62,3 +62,8 @@ public class SyncFailedMessage
 public class SyncEndedMessage
 {
 }
+
+/// <summary>
+/// Message sent when an account requires re-authentication
+/// </summary>
+public sealed record ReAuthenticationRequiredMessage(string AccountId, string ProviderType);

@@ -13,7 +13,7 @@ public interface IGoogleCalendarService
     /// <summary>
     /// Creates a CalendarService from GoogleCredentials
     /// </summary>
-    Task<CalendarService> CreateServiceAsync(GoogleCredentials credentials, CancellationToken cancellationToken = default);
+    Task<CalendarService> CreateServiceAsync(GoogleCredentials credentials, CancellationToken cancellationToken = default, string? accountId = null);
 
     /// <summary>
     /// Fetches calendars for the authenticated user, optionally using incremental sync

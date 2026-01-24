@@ -21,7 +21,7 @@ public class GoogleCalendarService : IGoogleCalendarService
     /// <summary>
     /// Creates a CalendarService from GoogleCredentials
     /// </summary>
-    public async Task<CalendarService> CreateServiceAsync(GoogleCredentials credentials, CancellationToken cancellationToken = default)
+    public async Task<CalendarService> CreateServiceAsync(GoogleCredentials credentials, CancellationToken cancellationToken = default, string? accountId = null)
     {
         // During sync, we should not exchange authorization codes. Only refresh tokens if needed.
         // Proactive refresh: if token is missing or near expiry, try to refresh using the refresh token.
@@ -33,7 +33,12 @@ public class GoogleCalendarService : IGoogleCalendarService
         {
             try
             {
-                await RefreshAccessTokenAsync(credentials, cancellationToken);
+                await RefreshAccessTokenAsync(credentials, cancellationToken, accountId);
+            }
+            catch (ReAuthenticationRequiredException)
+            {
+                // Re-throw to let SyncService handle re-authentication flow
+                throw;
             }
             catch (Exception ex)
             {
@@ -130,7 +135,7 @@ public class GoogleCalendarService : IGoogleCalendarService
     /// Uses the refresh token to obtain a new access token. Does not modify the refresh token unless
     /// the server returns a new one (rare for Google).
     /// </summary>
-    private async Task RefreshAccessTokenAsync(GoogleCredentials credentials, CancellationToken cancellationToken)
+    private async Task RefreshAccessTokenAsync(GoogleCredentials credentials, CancellationToken cancellationToken, string? accountId = null)
     {
         if (string.IsNullOrEmpty(credentials.RefreshToken))
         {
@@ -157,6 +162,14 @@ public class GoogleCalendarService : IGoogleCalendarService
         {
             Console.WriteLine($"Token refresh failed: {response.StatusCode}");
             Console.WriteLine($"Response body: {responseContent}");
+
+            // If accountId is provided, throw specific exception for re-authentication flow
+            if (!string.IsNullOrEmpty(accountId))
+            {
+                throw new ReAuthenticationRequiredException("Google", accountId,
+                    $"Token refresh failed with status {response.StatusCode}: {responseContent}");
+            }
+
             throw new InvalidOperationException(
                 $"Token refresh failed with status {response.StatusCode}: {responseContent}");
         }

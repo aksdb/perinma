@@ -157,31 +157,40 @@ public class SyncService
             throw new InvalidOperationException($"No provider registered for account type: {account.Type}");
         }
 
-        // Sync calendars
-        await SyncCalendarsAsync(provider, account, cancellationToken);
-
-        // Sync events for each enabled calendar
-        var calendars = await _storage.GetCalendarsByAccountAsync(account.AccountId);
-        var enabledCalendars = calendars.Where(c => c.Enabled == 1).ToList();
-
-        for (int i = 0; i < enabledCalendars.Count; i++)
+        try
         {
-            var calendar = enabledCalendars[i];
-            try
+            // Sync calendars
+            await SyncCalendarsAsync(provider, account, cancellationToken);
+
+            // Sync events for each enabled calendar
+            var calendars = await _storage.GetCalendarsByAccountAsync(account.AccountId);
+            var enabledCalendars = calendars.Where(c => c.Enabled == 1).ToList();
+
+            for (int i = 0; i < enabledCalendars.Count; i++)
             {
-                WeakReferenceMessenger.Default.Send(new SyncCalendarProgressMessage
+                var calendar = enabledCalendars[i];
+                try
                 {
-                    CalendarName = calendar.Name,
-                    CalendarIndex = i,
-                    TotalCalendars = enabledCalendars.Count
-                });
-                await SyncCalendarEventsAsync(provider, calendar, account.Type, cancellationToken);
+                    WeakReferenceMessenger.Default.Send(new SyncCalendarProgressMessage
+                    {
+                        CalendarName = calendar.Name,
+                        CalendarIndex = i,
+                        TotalCalendars = enabledCalendars.Count
+                    });
+                    await SyncCalendarEventsAsync(provider, calendar, account.Type, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error syncing events for calendar {calendar.Name}: {ex.Message}");
+                    // Continue with other calendars
+                }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error syncing events for calendar {calendar.Name}: {ex.Message}");
-                // Continue with other calendars
-            }
+        }
+        catch (ReAuthenticationRequiredException ex)
+        {
+            // Account requires re-authentication - send message and continue with next account
+            Console.WriteLine($"Account {account.Name} requires re-authentication: {ex.Message}");
+            WeakReferenceMessenger.Default.Send(new ReAuthenticationRequiredMessage(ex.AccountId, ex.ProviderType));
         }
     }
 
