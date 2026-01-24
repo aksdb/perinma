@@ -34,7 +34,14 @@ public partial class CalendarWeekViewModel : ViewModelBase
         {
             var weekStart = WeekStart.Date;
             var weekEnd = weekStart.AddDays(6);
-            return $"{weekStart:MMM d} - {weekEnd:MMM d, yyyy}";
+
+            var sameYear = weekStart.Year == weekEnd.Year;
+            var sameMonth = sameYear && weekStart.Month == weekEnd.Month;
+
+            var startFormat = sameYear ? "MMM d" : "MMM d, yyyy";
+            var endFormat = sameMonth ? "d, yyyy" : "MMM d, yyyy";
+
+            return $"{weekStart.ToString(startFormat)} - {weekEnd.ToString(endFormat)}";
         }
     }
 
