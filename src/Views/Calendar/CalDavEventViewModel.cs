@@ -12,7 +12,7 @@ using ICalCalendar = Ical.Net.Calendar;
 
 namespace perinma.Views.Calendar;
 
-public partial class CalDavEventViewModel : ViewModelBase
+public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventViewModel
 {
     public CalendarEvent CalendarEvent => _calendarEvent;
 

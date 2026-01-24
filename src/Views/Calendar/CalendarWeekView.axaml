@@ -45,46 +45,55 @@
                                    StrokeDashArray="4,2"
                                    IsVisible="{Binding NeedsResponse, RelativeSource={RelativeSource TemplatedParent}}" />
                         
-                        <Border Name="Border"
-                                CornerRadius="10"
-                                Background="{Binding BackgroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                                Margin="1"
-                                Bounds="{Binding AvailableBounds, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}">
-                            <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">
-                                <TextBlock Text="{Binding Title, RelativeSource={RelativeSource TemplatedParent}}"
-                                           FontWeight="Bold"
-                                           TextTrimming="CharacterEllipsis"
-                                           FontSize="{DynamicResource CalendarTimeHourFontSize}"
-                                           Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
+                         <Border Name="Border"
+                                 CornerRadius="10"
+                                 Background="{Binding BackgroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                                 Margin="1"
+                                 Bounds="{Binding AvailableBounds, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}">
+                             <Border.ContextMenu>
+                                 <ContextMenu>
+                                     <MenuItem Header="Respond" IsVisible="{Binding EventViewModel.CanRespond, RelativeSource={RelativeSource TemplatedParent}}">
+                                         <MenuItem Header="Accept" Command="{Binding EventViewModel.AcceptEventCommand, RelativeSource={RelativeSource TemplatedParent}}" />
+                                         <MenuItem Header="Tentative" Command="{Binding EventViewModel.TentativeEventCommand, RelativeSource={RelativeSource TemplatedParent}}" />
+                                         <MenuItem Header="Decline" Command="{Binding EventViewModel.DeclineEventCommand, RelativeSource={RelativeSource TemplatedParent}}" />
+                                     </MenuItem>
+                                 </ContextMenu>
+                             </Border.ContextMenu>
+                             <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">
+                                 <TextBlock Text="{Binding Title, RelativeSource={RelativeSource TemplatedParent}}"
+                                            FontWeight="Bold"
+                                            TextTrimming="CharacterEllipsis"
+                                            FontSize="{DynamicResource CalendarTimeHourFontSize}"
+                                            Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
 
-                                <!-- Inline variant: single line with emoji and range -->
-                                <TextBlock
-                                    IsVisible="{Binding ShowInlineTimes, RelativeSource={RelativeSource TemplatedParent}}"
-                                    Text="{Binding InlineTimeText, RelativeSource={RelativeSource TemplatedParent}}"
-                                    FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
-                                    Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                                    TextTrimming="None" />
+                                 <!-- Inline variant: single line with emoji and range -->
+                                 <TextBlock
+                                     IsVisible="{Binding ShowInlineTimes, RelativeSource={RelativeSource TemplatedParent}}"
+                                     Text="{Binding InlineTimeText, RelativeSource={RelativeSource TemplatedParent}}"
+                                     FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
+                                     Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                                     TextTrimming="None" />
 
-                                <!-- Stacked variant: start and end on separate lines -->
-                                <StackPanel Orientation="Vertical"
-                                            IsVisible="{Binding ShowStackedTimes, RelativeSource={RelativeSource TemplatedParent}}"
-                                            Spacing="0">
-                                    <TextBlock
-                                        Text="{Binding StartTimeText, RelativeSource={RelativeSource TemplatedParent}}"
-                                        FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
-                                        Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
-                                    <TextBlock
-                                        Text="{Binding EndTimeText, RelativeSource={RelativeSource TemplatedParent}}"
-                                        FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
-                                        Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
-                                </StackPanel>
-                            </StackPanel>
-                            <FlyoutBase.AttachedFlyout>
-                                <Flyout Placement="Right">
-                                    <ContentControl Name="EventFlyoutContent" />
-                                </Flyout>
-                            </FlyoutBase.AttachedFlyout>
-                        </Border>
+                                 <!-- Stacked variant: start and end on separate lines -->
+                                 <StackPanel Orientation="Vertical"
+                                             IsVisible="{Binding ShowStackedTimes, RelativeSource={RelativeSource TemplatedParent}}"
+                                             Spacing="0">
+                                     <TextBlock
+                                         Text="{Binding StartTimeText, RelativeSource={RelativeSource TemplatedParent}}"
+                                         FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
+                                         Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
+                                     <TextBlock
+                                         Text="{Binding EndTimeText, RelativeSource={RelativeSource TemplatedParent}}"
+                                         FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
+                                         Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
+                                 </StackPanel>
+                             </StackPanel>
+                             <FlyoutBase.AttachedFlyout>
+                                 <Flyout Placement="Right">
+                                     <ContentControl Name="EventFlyoutContent" />
+                                 </Flyout>
+                             </FlyoutBase.AttachedFlyout>
+                         </Border>
                     </Grid>
                 </ControlTemplate>
             </Setter>

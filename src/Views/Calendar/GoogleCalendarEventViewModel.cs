@@ -25,7 +25,7 @@ public class EventAttachment
     public string? MimeType { get; init; }
 }
 
-public partial class GoogleCalendarEventViewModel : ViewModelBase
+public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableEventViewModel
 {
     public CalendarEvent CalendarEvent => _calendarEvent;
 

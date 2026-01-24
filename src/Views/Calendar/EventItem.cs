@@ -83,13 +83,16 @@ public partial class EventItem : TemplatedControl
     [AvaStyledProperty]
     private IReadOnlyDictionary<string, ICalendarProvider>? _providers;
 
+    [AvaStyledProperty]
+    private IRespondableEventViewModel? _eventViewModel;
+
 #pragma warning restore CS0169
 #pragma warning restore CS0414
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        
+
         switch (change.Property.Name)
         {
             case nameof(AvailableBounds):
@@ -111,6 +114,11 @@ public partial class EventItem : TemplatedControl
             case nameof(FontStyle):
             case nameof(FontWeight):
                 RecalculateInlineTimeWidth();
+                break;
+            case nameof(CalendarEvent):
+            case nameof(Storage):
+            case nameof(Providers):
+                EventViewModel = CreateViewModel() as IRespondableEventViewModel;
                 break;
         }
     }
@@ -186,6 +194,7 @@ public partial class EventItem : TemplatedControl
         if (flyout is Flyout fly && fly.Content is ContentControl contentControl)
         {
             var viewModel = CreateViewModel();
+            EventViewModel = viewModel as IRespondableEventViewModel;
             contentControl.Content = viewModel;
         }
 
