@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using perinma.Storage.Models;
 
 namespace perinma.Services;
 
@@ -61,6 +60,19 @@ public interface ICalendarProvider
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of reminder minutes before event start</returns>
     Task<IList<int>> GetReminderMinutesAsync(
+        string rawEventData,
+        string? rawCalendarData = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all reminder occurrences with their trigger times for an event.
+    /// Includes future occurrences for recurring events, filtered by the reminder minutes.
+    /// </summary>
+    /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
+    /// <param name="rawCalendarData">Optional raw calendar data for default reminders (JSON for Google)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of tuples containing occurrence time and trigger time for each reminder</returns>
+    Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetReminderOccurrencesAsync(
         string rawEventData,
         string? rawCalendarData = null,
         CancellationToken cancellationToken = default);

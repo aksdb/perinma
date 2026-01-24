@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
-using perinma.Storage.Models;
 using perinma.Utils;
+using Calendar = Ical.Net.Calendar;
 
 namespace perinma.Services.Google;
 
@@ -282,6 +283,118 @@ public class GoogleCalendarProvider : ICalendarProvider
         }
 
         return Task.FromResult<IList<int>>(reminderMinutes);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetReminderOccurrencesAsync(
+        string rawEventData,
+        string? rawCalendarData = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(rawEventData);
+            if (googleEvent == null)
+            {
+                return [];
+            }
+
+            var reminderMinutes = await GetReminderMinutesAsync(rawEventData, rawCalendarData, cancellationToken);
+            if (reminderMinutes.Count == 0)
+            {
+                return [];
+            }
+
+            var eventStartTime = ParseGoogleDateTime(googleEvent.Start);
+            if (!eventStartTime.HasValue)
+            {
+                return [];
+            }
+
+            var isRecurring = googleEvent.Recurrence is { Count: > 0 };
+            var now = DateTime.UtcNow;
+            var result = new List<(DateTime Occurrence, DateTime TriggerTime)>();
+
+            if (isRecurring)
+            {
+                var recurrenceEndTime = RecurrenceParser.GetRecurrenceEndTime(
+                    googleEvent.Recurrence,
+                    eventStartTime.Value,
+                    eventStartTime.Value.AddHours(1));
+
+                var icalString = BuildIcalString(googleEvent.Recurrence);
+                if (string.IsNullOrEmpty(icalString))
+                {
+                    return [];
+                }
+
+                var calendar = Calendar.Load(icalString);
+                var icalEvent = calendar?.Events.FirstOrDefault();
+
+                if (icalEvent != null)
+                {
+                    var searchEnd = recurrenceEndTime ?? now.AddYears(10);
+
+                    foreach (var occurrence in icalEvent.GetOccurrences())
+                    {
+                        var occurrenceTime = occurrence.Period.StartTime.AsUtc;
+                        if (occurrenceTime < now || occurrenceTime > searchEnd)
+                        {
+                            continue;
+                        }
+
+                        foreach (var minutes in reminderMinutes)
+                        {
+                            var triggerTime = occurrenceTime.AddMinutes(-minutes);
+                            if (triggerTime > now)
+                            {
+                                result.Add((occurrenceTime, triggerTime));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                foreach (var minutes in reminderMinutes)
+                {
+                    var triggerTime = eventStartTime.Value.AddMinutes(-minutes);
+                    if (triggerTime > now)
+                    {
+                        result.Add((eventStartTime.Value, triggerTime));
+                    }
+                }
+            }
+
+            return result;
+        }
+        catch (Exception)
+        {
+            return [];
+        }
+    }
+
+    private static string BuildIcalString(IList<string>? recurrence)
+    {
+        if (recurrence == null || recurrence.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine("BEGIN:VCALENDAR");
+        sb.AppendLine("BEGIN:VEVENT");
+
+        foreach (var r in recurrence)
+        {
+            sb.AppendLine(r);
+        }
+
+        sb.AppendLine("END:VEVENT");
+        sb.Append("END:VCALENDAR");
+
+        return sb.ToString();
     }
 
     /// <inheritdoc/>
