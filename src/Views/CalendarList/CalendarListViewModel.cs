@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using perinma.Models;
 using perinma.Services;
 using perinma.Services.Google;
@@ -20,6 +21,8 @@ public partial class CalendarListViewModel : ViewModelBase
     private bool _isLoadingAccounts;
 
     public ObservableCollection<AccountGroupViewModel> AccountGroups { get; } = new();
+
+    public CalendarWeekViewModel CalendarWeekViewModel => _calendarWeekViewModel;
 
     public CalendarListViewModel(
         SqliteStorage storage,

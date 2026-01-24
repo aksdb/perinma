@@ -25,7 +25,18 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(WeekStartOffset))]
+    [NotifyPropertyChangedFor(nameof(WeekDisplay))]
     private DateTime _weekStart;
+
+    public string WeekDisplay
+    {
+        get
+        {
+            var weekStart = WeekStart.Date;
+            var weekEnd = weekStart.AddDays(6);
+            return $"{weekStart:MMM d} - {weekEnd:MMM d, yyyy}";
+        }
+    }
 
     public DateTimeOffset WeekStartOffset
     {

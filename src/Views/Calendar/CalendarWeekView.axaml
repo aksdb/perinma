@@ -91,14 +91,40 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,*">
-        <TextBlock Grid.Row="0" Grid.Column="0"
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,*">
+        <!-- Navigation Bar -->
+        <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Margin="0, 10, 0, 10">
+            <Button Command="{Binding PreviousWeekCommand}"
+                    Margin="0, 0, 8, 0"
+                    Padding="8, 4">
+                ←
+            </Button>
+            <TextBlock Text="{Binding WeekDisplay}"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Margin="0, 0, 8, 0"/>
+            <Button Command="{Binding TodayCommand}"
+                    Margin="0, 0, 8, 0"
+                    Padding="8, 4">
+                Today
+            </Button>
+            <Button Command="{Binding NextWeekCommand}"
+                    Padding="8, 4">
+                →
+            </Button>
+        </StackPanel>
+
+        <TextBlock Grid.Row="1" Grid.Column="0"
                    FontSize="{DynamicResource CalendarTimeHourFontSize}"
                    Foreground="Gray"
                    VerticalAlignment="Center"
                    Text="All-day"
                    Margin="4, 0, 4, 0"/>
-        <StackPanel Grid.Column="1" Grid.Row="0">
+        <StackPanel Grid.Column="1" Grid.Row="1">
             <!-- Weekday headers -->
             <!--<Grid Name="WeekdayNames" />-->
             <ItemsControl ItemsSource="{Binding WeekDayHeaders}">
@@ -133,11 +159,11 @@
                 </Border.Background>
             </Border>
         </StackPanel>
-        <ScrollViewer Name="TimeRows" Grid.Column="0" Grid.Row="1"
+        <ScrollViewer Name="TimeRows" Grid.Column="0" Grid.Row="2"
                       VerticalScrollBarVisibility="Hidden"
                       Margin="5, 0, 5, 0">
         </ScrollViewer>
-        <ScrollViewer Name="CenterView" Grid.Column="1" Grid.Row="1" Offset="{Binding #TimeRows.Offset, Mode=TwoWay}"
+        <ScrollViewer Name="CenterView" Grid.Column="1" Grid.Row="2" Offset="{Binding #TimeRows.Offset, Mode=TwoWay}"
                       Effect="">
         </ScrollViewer>
     </Grid>

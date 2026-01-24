@@ -28,6 +28,7 @@
         <Menu Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3">
             <MenuItem Header="_File">
                 <MenuItem Header="_Settings" Name="MnuSettings" Command="{Binding ShowSettingsCommand}"/>
+                <MenuItem Header="_Sync" Command="{Binding SyncCommand}"/>
                 <MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"/>
             </MenuItem>
             <MenuItem Header="_View">
@@ -44,15 +45,6 @@
                     </MenuItem>
                 </MenuItem>
             </MenuItem>
-            <StackPanel Orientation="Horizontal">
-                <Button Command="{Binding SyncCommand}" Margin="5,0">Sync</Button>
-                <Separator Width="1" Margin="5,0"/>
-                <NumericUpDown Value="{Binding CalendarWeekViewModel.DayColumns}" Minimum="1" Maximum="7"/>
-                <DatePicker SelectedDate="{Binding CalendarWeekViewModel.WeekStartOffset}"/>
-                <Button Command="{Binding CalendarWeekViewModel.PreviousWeekCommand}">Previous</Button>
-                <Button Command="{Binding CalendarWeekViewModel.TodayCommand}">Today</Button>
-                <Button Command="{Binding CalendarWeekViewModel.NextWeekCommand}">Next</Button>
-            </StackPanel>
         </Menu>
         
         <Border Grid.Row="1" Grid.Column="0"
