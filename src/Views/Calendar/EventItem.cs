@@ -83,9 +83,6 @@ public partial class EventItem : TemplatedControl
     [AvaStyledProperty]
     private IReadOnlyDictionary<string, ICalendarProvider>? _providers;
 
-    [AvaStyledProperty]
-    private CredentialManagerService? _credentialManager;
-
 #pragma warning restore CS0169
 #pragma warning restore CS0414
 
@@ -215,8 +212,7 @@ public partial class EventItem : TemplatedControl
             return new GoogleCalendarEventViewModel(
                 CalendarEvent,
                 Storage,
-                calendarProvider,
-                CredentialManager);
+                calendarProvider);
         }
 
         if (CalendarEvent.Calendar.Account.Type == AccountType.CalDav)
@@ -224,8 +220,7 @@ public partial class EventItem : TemplatedControl
             return new CalDavEventViewModel(
                 CalendarEvent,
                 Storage,
-                calendarProvider,
-                CredentialManager);
+                calendarProvider);
         }
 
         return new CalendarEventViewModel(CalendarEvent);

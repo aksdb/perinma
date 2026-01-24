@@ -157,15 +157,8 @@ public class SyncService
             throw new InvalidOperationException($"No provider registered for account type: {account.Type}");
         }
 
-        // Get credentials from credential manager
-        var credentials = GetCredentialsForAccount(account);
-        if (credentials == null)
-        {
-            throw new InvalidOperationException($"No credentials found for account {account.Name}");
-        }
-
         // Sync calendars
-        await SyncCalendarsAsync(provider, account, credentials, cancellationToken);
+        await SyncCalendarsAsync(provider, account, cancellationToken);
 
         // Sync events for each enabled calendar
         var calendars = await _storage.GetCalendarsByAccountAsync(account.AccountId);
@@ -182,7 +175,7 @@ public class SyncService
                     CalendarIndex = i,
                     TotalCalendars = enabledCalendars.Count
                 });
-                await SyncCalendarEventsAsync(provider, calendar, credentials, account.Type, cancellationToken);
+                await SyncCalendarEventsAsync(provider, calendar, account.Type, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -198,7 +191,6 @@ public class SyncService
     private async Task SyncCalendarsAsync(
         ICalendarProvider provider,
         AccountDbo account,
-        AccountCredentials credentials,
         CancellationToken cancellationToken)
     {
         // Load sync token from account data for incremental sync
@@ -209,7 +201,7 @@ public class SyncService
         CalendarSyncResult result;
         try
         {
-            result = await provider.GetCalendarsAsync(credentials, syncToken, cancellationToken);
+            result = await provider.GetCalendarsAsync(account.AccountId, syncToken, cancellationToken);
             Console.WriteLine($"Found {result.Calendars.Count} calendar {(isFullSync ? "items" : "changes")} for account {account.Name}");
         }
         catch (Exception ex) when (ex.Message.Contains("410") || ex.Message.Contains("invalid") || ex.Message.Contains("Sync token"))
@@ -217,12 +209,12 @@ public class SyncService
             // Sync token is invalid or expired, fall back to full sync
             Console.WriteLine($"Sync token invalid, performing full sync: {ex.Message}");
             isFullSync = true;
-            result = await provider.GetCalendarsAsync(credentials, null, cancellationToken);
+            result = await provider.GetCalendarsAsync(account.AccountId, null, cancellationToken);
             Console.WriteLine($"Found {result.Calendars.Count} calendars in full sync for account {account.Name}");
         }
 
         // Update credentials in case tokens were refreshed (for Google)
-        UpdateCredentialsIfNeeded(account, credentials);
+        UpdateCredentialsIfNeeded(account);
 
         // Track the current sync timestamp for cleanup
         var currentSyncTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -282,7 +274,6 @@ public class SyncService
     private async Task SyncCalendarEventsAsync(
         ICalendarProvider provider,
         CalendarDbo calendar,
-        AccountCredentials credentials,
         string accountType,
         CancellationToken cancellationToken)
     {
@@ -296,7 +287,7 @@ public class SyncService
         EventSyncResult result;
         try
         {
-            result = await provider.GetEventsAsync(credentials, calendar.ExternalId ?? string.Empty, syncToken, cancellationToken);
+            result = await provider.GetEventsAsync(calendar.AccountId, calendar.ExternalId ?? string.Empty, syncToken, cancellationToken);
             Console.WriteLine($"Found {result.Events.Count} event {(isFullSync ? "items" : "changes")} for calendar {calendar.Name}");
         }
         catch (Exception ex) when (ex.Message.Contains("410") || ex.Message.Contains("invalid") || ex.Message.Contains("Sync token"))
@@ -304,7 +295,7 @@ public class SyncService
             // Sync token is invalid or expired, fall back to full sync
             Console.WriteLine($"Event sync token invalid, performing full sync: {ex.Message}");
             isFullSync = true;
-            result = await provider.GetEventsAsync(credentials, calendar.ExternalId ?? string.Empty, null, cancellationToken);
+            result = await provider.GetEventsAsync(calendar.AccountId, calendar.ExternalId ?? string.Empty, null, cancellationToken);
             Console.WriteLine($"Found {result.Events.Count} events in full sync for calendar {calendar.Name}");
         }
 
@@ -392,32 +383,13 @@ public class SyncService
     }
 
     /// <summary>
-    /// Gets credentials for an account based on its type.
-    /// </summary>
-    private AccountCredentials? GetCredentialsForAccount(AccountDbo account)
-    {
-        if (account.Type.Equals("Google", StringComparison.OrdinalIgnoreCase))
-        {
-            return _credentialManager.GetGoogleCredentials(account.AccountId);
-        }
-        else if (account.Type.Equals("CalDAV", StringComparison.OrdinalIgnoreCase))
-        {
-            return _credentialManager.GetCalDavCredentials(account.AccountId);
-        }
-
-        return null;
-    }
-
-    /// <summary>
     /// Updates credentials in the credential manager if they were refreshed during sync.
     /// </summary>
-    private void UpdateCredentialsIfNeeded(AccountDbo account, AccountCredentials credentials)
+    private void UpdateCredentialsIfNeeded(AccountDbo account)
     {
-        if (credentials is GoogleCredentials googleCredentials)
-        {
-            _credentialManager.StoreGoogleCredentials(account.AccountId, googleCredentials);
-        }
-        // CalDAV credentials don't need to be updated after sync
+        // Providers now manage credentials internally
+        // Google provider will store updated access tokens automatically
+        // CalDAV credentials don't change during sync
     }
 
     /// <summary>

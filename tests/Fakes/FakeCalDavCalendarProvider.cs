@@ -16,6 +16,15 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
 {
     private readonly List<CalDavCalendar> _calendars = [];
     private readonly Dictionary<string, List<CalDavEvent>> _calendarEvents = new();
+    private readonly CredentialManagerService _credentialManager;
+
+    public FakeCalDavCalendarProvider(CredentialManagerService credentialManager)
+    {
+        _credentialManager = credentialManager;
+    }
+
+    /// <inheritdoc/>
+    public CredentialManagerService CredentialManager => _credentialManager;
 
     public void SetCalendars(params CalDavCalendar[] calendars)
     {
@@ -34,16 +43,10 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
     }
 
     public Task<CalendarSyncResult> GetCalendarsAsync(
-        AccountCredentials credentials,
+        string accountId,
         string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        // Validate credentials type
-        if (credentials is not CalDavCredentials)
-        {
-            throw new InvalidOperationException("FakeCalDavCalendarProvider requires CalDavCredentials");
-        }
-
         // Convert to provider-agnostic format
         var calendars = _calendars.Select(c => new ProviderCalendar
         {
@@ -65,17 +68,11 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
     }
 
     public Task<EventSyncResult> GetEventsAsync(
-        AccountCredentials credentials,
+        string accountId,
         string calendarExternalId,
         string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        // Validate credentials type
-        if (credentials is not CalDavCredentials)
-        {
-            throw new InvalidOperationException("FakeCalDavCalendarProvider requires CalDavCredentials");
-        }
-
         // Get events for this calendar
         var caldavEvents = _calendarEvents.TryGetValue(calendarExternalId, out var events)
             ? events
@@ -94,10 +91,10 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
     }
 
     public Task<bool> TestConnectionAsync(
-        AccountCredentials credentials,
+        string accountId,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(credentials is CalDavCredentials);
+        return Task.FromResult(true);
     }
 
     public Task<IList<int>> GetReminderMinutesAsync(
@@ -110,19 +107,13 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
     }
 
     public Task RespondToEventAsync(
-        AccountCredentials credentials,
+        string accountId,
         string calendarId,
         string eventId,
         string rawEventData,
         string responseStatus,
         CancellationToken cancellationToken = default)
     {
-        // Validate credentials type
-        if (credentials is not CalDavCredentials)
-        {
-            throw new InvalidOperationException("FakeCalDavCalendarProvider requires CalDavCredentials");
-        }
-
         // For testing, just return completed task
         return Task.CompletedTask;
     }

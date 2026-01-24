@@ -16,19 +16,30 @@ namespace perinma.Services.Google;
 public class GoogleCalendarProvider : ICalendarProvider
 {
     private readonly IGoogleCalendarService _googleCalendarService;
+    private readonly CredentialManagerService _credentialManager;
 
-    public GoogleCalendarProvider(IGoogleCalendarService googleCalendarService)
+    public GoogleCalendarProvider(
+        IGoogleCalendarService googleCalendarService,
+        CredentialManagerService credentialManager)
     {
         _googleCalendarService = googleCalendarService;
+        _credentialManager = credentialManager;
     }
 
     /// <inheritdoc/>
+    public CredentialManagerService CredentialManager => _credentialManager;
+
+    /// <inheritdoc/>
     public async Task<CalendarSyncResult> GetCalendarsAsync(
-        AccountCredentials credentials,
+        string accountId,
         string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        var googleCredentials = ValidateCredentials(credentials);
+        var googleCredentials = _credentialManager.GetGoogleCredentials(accountId);
+        if (googleCredentials == null)
+        {
+            throw new InvalidOperationException($"No Google credentials found for account {accountId}");
+        }
 
         // Create Google Calendar service (handles token refresh)
         var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken);
@@ -56,12 +67,16 @@ public class GoogleCalendarProvider : ICalendarProvider
 
     /// <inheritdoc/>
     public async Task<EventSyncResult> GetEventsAsync(
-        AccountCredentials credentials,
+        string accountId,
         string calendarExternalId,
         string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        var googleCredentials = ValidateCredentials(credentials);
+        var googleCredentials = _credentialManager.GetGoogleCredentials(accountId);
+        if (googleCredentials == null)
+        {
+            throw new InvalidOperationException($"No Google credentials found for account {accountId}");
+        }
 
         // Create Google Calendar service (handles token refresh)
         var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken);
@@ -90,12 +105,17 @@ public class GoogleCalendarProvider : ICalendarProvider
 
     /// <inheritdoc/>
     public async Task<bool> TestConnectionAsync(
-        AccountCredentials credentials,
+        string accountId,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var googleCredentials = ValidateCredentials(credentials);
+            var googleCredentials = _credentialManager.GetGoogleCredentials(accountId);
+            if (googleCredentials == null)
+            {
+                return false;
+            }
+
             var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken);
 
             // Try to fetch calendar list as a connection test
@@ -107,16 +127,6 @@ public class GoogleCalendarProvider : ICalendarProvider
             Console.WriteLine($"Google Calendar connection test failed: {ex.Message}");
             return false;
         }
-    }
-
-    private static GoogleCredentials ValidateCredentials(AccountCredentials credentials)
-    {
-        if (credentials is not GoogleCredentials googleCredentials)
-        {
-            throw new InvalidOperationException(
-                $"GoogleCalendarProvider requires GoogleCredentials, but received {credentials.GetType().Name}");
-        }
-        return googleCredentials;
     }
 
     private static ProviderEvent? ConvertGoogleEvent(Event evt)
@@ -276,14 +286,18 @@ public class GoogleCalendarProvider : ICalendarProvider
 
     /// <inheritdoc/>
     public async Task RespondToEventAsync(
-        AccountCredentials credentials,
+        string accountId,
         string calendarId,
         string eventId,
         string rawEventData,
         string responseStatus,
         CancellationToken cancellationToken = default)
     {
-        var googleCredentials = ValidateCredentials(credentials);
+        var googleCredentials = _credentialManager.GetGoogleCredentials(accountId);
+        if (googleCredentials == null)
+        {
+            throw new InvalidOperationException($"No Google credentials found for account {accountId}");
+        }
 
         // Create Google Calendar service (handles token refresh)
         var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken);

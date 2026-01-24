@@ -13,39 +13,44 @@ namespace perinma.Services;
 public interface ICalendarProvider
 {
     /// <summary>
+    /// Gets the credential manager service used by this provider.
+    /// </summary>
+    CredentialManagerService CredentialManager { get; }
+
+    /// <summary>
     /// Syncs calendars for an account, optionally using incremental sync.
     /// </summary>
-    /// <param name="credentials">Account credentials (type-specific)</param>
+    /// <param name="accountId">Account ID to sync calendars for</param>
     /// <param name="syncToken">Optional sync token for incremental sync</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Result containing calendars and new sync token</returns>
     Task<CalendarSyncResult> GetCalendarsAsync(
-        AccountCredentials credentials,
+        string accountId,
         string? syncToken = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Syncs events for a specific calendar, optionally using incremental sync.
     /// </summary>
-    /// <param name="credentials">Account credentials (type-specific)</param>
+    /// <param name="accountId">Account ID to sync events for</param>
     /// <param name="calendarExternalId">External ID of the calendar to sync</param>
     /// <param name="syncToken">Optional sync token for incremental sync</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Result containing events and new sync token</returns>
     Task<EventSyncResult> GetEventsAsync(
-        AccountCredentials credentials,
+        string accountId,
         string calendarExternalId,
         string? syncToken = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Tests whether the connection to the provider is working with the given credentials.
+    /// Tests whether the connection to the provider is working with the given account.
     /// </summary>
-    /// <param name="credentials">Account credentials to test</param>
+    /// <param name="accountId">Account ID to test connection for</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if connection is successful, false otherwise</returns>
     Task<bool> TestConnectionAsync(
-        AccountCredentials credentials,
+        string accountId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -63,14 +68,14 @@ public interface ICalendarProvider
     /// <summary>
     /// Responds to an event invitation with the specified status.
     /// </summary>
-    /// <param name="credentials">Account credentials (type-specific: GoogleCredentials or CalDavCredentials)</param>
+    /// <param name="accountId">Account ID to respond with</param>
     /// <param name="calendarId">External ID of the calendar</param>
     /// <param name="eventId">External ID of the event</param>
     /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
     /// <param name="responseStatus">The response status (e.g., "accepted", "declined", "tentative")</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task RespondToEventAsync(
-        AccountCredentials credentials,
+        string accountId,
         string calendarId,
         string eventId,
         string rawEventData,

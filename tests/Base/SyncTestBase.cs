@@ -38,8 +38,8 @@ public abstract class SyncTestBase
         FakeCalDavService = new FakeCalDavService();
 
         // Initialize providers
-        var googleProvider = new GoogleCalendarProvider(FakeGoogleService);
-        var calDavProvider = new CalDavCalendarProvider(FakeCalDavService);
+        var googleProvider = new GoogleCalendarProvider(FakeGoogleService, CredentialManager);
+        var calDavProvider = new CalDavCalendarProvider(FakeCalDavService, CredentialManager);
         Providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
         {
             ["Google"] = googleProvider,

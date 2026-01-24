@@ -40,8 +40,8 @@ public partial class App : Application
             var calDavService = new CalDavService();
 
             // Create calendar providers
-            var googleProvider = new GoogleCalendarProvider(googleCalendarService);
-            var calDavProvider = new CalDavCalendarProvider(calDavService);
+            var googleProvider = new GoogleCalendarProvider(googleCalendarService, _credentialManager);
+            var calDavProvider = new CalDavCalendarProvider(calDavService, _credentialManager);
 
             // Create providers dictionary for ReminderService
             var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)

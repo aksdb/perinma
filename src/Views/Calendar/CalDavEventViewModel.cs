@@ -19,7 +19,6 @@ public partial class CalDavEventViewModel : ViewModelBase
     private readonly CalendarEvent _calendarEvent;
     private readonly SqliteStorage _storage;
     private readonly ICalendarProvider? _calendarProvider;
-    private readonly CredentialManagerService? _credentialManager;
 
     [ObservableProperty]
     private string _description = string.Empty;
@@ -56,13 +55,11 @@ public partial class CalDavEventViewModel : ViewModelBase
     public CalDavEventViewModel(
         CalendarEvent calendarEvent,
         SqliteStorage storage,
-        ICalendarProvider? calendarProvider = null,
-        CredentialManagerService? credentialManager = null)
+        ICalendarProvider? calendarProvider = null)
     {
         _calendarEvent = calendarEvent;
         _storage = storage;
         _calendarProvider = calendarProvider;
-        _credentialManager = credentialManager;
         _isLoading = true;
         _ = LoadEventDataAsync();
     }
@@ -218,9 +215,9 @@ public partial class CalDavEventViewModel : ViewModelBase
             return;
         }
 
-        if (_calendarProvider == null || _credentialManager == null)
+        if (_calendarProvider == null)
         {
-            Console.WriteLine("Calendar provider or credential manager not available");
+            Console.WriteLine("Calendar provider not available");
             return;
         }
 
@@ -229,14 +226,6 @@ public partial class CalDavEventViewModel : ViewModelBase
             IsUpdating = true;
 
             var accountId = _calendarEvent.Calendar.Account.Id.ToString();
-            var credentials = _credentialManager.GetCalDavCredentials(accountId);
-
-            if (credentials == null)
-            {
-                Console.WriteLine("Failed to get CalDAV credentials for account");
-                return;
-            }
-
             var calendarId = _calendarEvent.Calendar.ExternalId;
             var eventId = _calendarEvent.ExternalId;
 
@@ -255,7 +244,7 @@ public partial class CalDavEventViewModel : ViewModelBase
             }
 
             // Use the provider to respond to the event
-            await _calendarProvider.RespondToEventAsync(credentials, calendarId, eventId, rawData, responseStatus);
+            await _calendarProvider.RespondToEventAsync(accountId, calendarId, eventId, rawData, responseStatus);
 
             // Update local state
             CurrentResponseStatus = responseStatus switch

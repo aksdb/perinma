@@ -14,19 +14,30 @@ namespace perinma.Services.CalDAV;
 public class CalDavCalendarProvider : ICalendarProvider
 {
     private readonly ICalDavService _calDavService;
+    private readonly CredentialManagerService _credentialManager;
 
-    public CalDavCalendarProvider(ICalDavService calDavService)
+    public CalDavCalendarProvider(
+        ICalDavService calDavService,
+        CredentialManagerService credentialManager)
     {
         _calDavService = calDavService;
+        _credentialManager = credentialManager;
     }
 
     /// <inheritdoc/>
+    public CredentialManagerService CredentialManager => _credentialManager;
+
+    /// <inheritdoc/>
     public async Task<CalendarSyncResult> GetCalendarsAsync(
-        AccountCredentials credentials,
+        string accountId,
         string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        var calDavCredentials = ValidateCredentials(credentials);
+        var calDavCredentials = _credentialManager.GetCalDavCredentials(accountId);
+        if (calDavCredentials == null)
+        {
+            throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
+        }
 
         // Fetch calendars from CalDAV server
         var result = await _calDavService.GetCalendarsAsync(calDavCredentials, syncToken, cancellationToken);
@@ -51,12 +62,16 @@ public class CalDavCalendarProvider : ICalendarProvider
 
     /// <inheritdoc/>
     public async Task<EventSyncResult> GetEventsAsync(
-        AccountCredentials credentials,
+        string accountId,
         string calendarExternalId,
         string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        var calDavCredentials = ValidateCredentials(credentials);
+        var calDavCredentials = _credentialManager.GetCalDavCredentials(accountId);
+        if (calDavCredentials == null)
+        {
+            throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
+        }
 
         // Fetch events from CalDAV server
         var result = await _calDavService.GetEventsAsync(calDavCredentials, calendarExternalId, syncToken, cancellationToken);
@@ -82,21 +97,15 @@ public class CalDavCalendarProvider : ICalendarProvider
 
     /// <inheritdoc/>
     public Task<bool> TestConnectionAsync(
-        AccountCredentials credentials,
+        string accountId,
         CancellationToken cancellationToken = default)
     {
-        var calDavCredentials = ValidateCredentials(credentials);
-        return _calDavService.TestConnectionAsync(calDavCredentials, cancellationToken);
-    }
-
-    private static CalDavCredentials ValidateCredentials(AccountCredentials credentials)
-    {
-        if (credentials is not CalDavCredentials calDavCredentials)
+        var calDavCredentials = _credentialManager.GetCalDavCredentials(accountId);
+        if (calDavCredentials == null)
         {
-            throw new InvalidOperationException(
-                $"CalDavCalendarProvider requires CalDavCredentials, but received {credentials.GetType().Name}");
+            return Task.FromResult(false);
         }
-        return calDavCredentials;
+        return _calDavService.TestConnectionAsync(calDavCredentials, cancellationToken);
     }
 
     private static ProviderEvent? ConvertCalDavEvent(CalDavEvent evt)
@@ -223,14 +232,18 @@ public class CalDavCalendarProvider : ICalendarProvider
 
     /// <inheritdoc/>
     public async Task RespondToEventAsync(
-        AccountCredentials credentials,
+        string accountId,
         string calendarId,
         string eventId,
         string rawEventData,
         string responseStatus,
         CancellationToken cancellationToken = default)
     {
-        var calDavCredentials = ValidateCredentials(credentials);
+        var calDavCredentials = _credentialManager.GetCalDavCredentials(accountId);
+        if (calDavCredentials == null)
+        {
+            throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
+        }
 
         // For CalDAV, we need the user's email (stored in Username)
         var userEmail = calDavCredentials.Username;
