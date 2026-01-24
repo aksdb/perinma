@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using perinma.Storage.Models;
 
-namespace perinma.Services;
+namespace perinma.Services.CalDAV;
 
 public interface ICalDavService
 {

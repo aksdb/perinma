@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
-using perinma.Storage.Models;
 
-namespace perinma.Services;
+namespace perinma.Services.CalDAV;
 
 public class CalDavCalendar
 {

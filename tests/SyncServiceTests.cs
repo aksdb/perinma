@@ -1,5 +1,6 @@
 using Dapper;
 using perinma.Services;
+using perinma.Services.CalDAV;
 using perinma.Storage.Models;
 using perinma.Tests.Fakes;
 using tests.Base;

@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
 using perinma.Storage.Models;
 using perinma.Utils;
 
-namespace perinma.Services;
+namespace perinma.Services.Google;
 
 /// <summary>
 /// Google Calendar implementation of ICalendarProvider.
@@ -36,7 +37,7 @@ public class GoogleCalendarProvider : ICalendarProvider
         var result = await _googleCalendarService.GetCalendarsAsync(service, syncToken, cancellationToken);
 
         // Convert to provider-agnostic format
-        var calendars = result.Calendars.Select(c => new ProviderCalendar
+        var calendars = result.Calendars.Select<CalendarListEntry, ProviderCalendar>(c => new ProviderCalendar
         {
             ExternalId = c.Id,
             Name = c.Summary ?? "Unnamed Calendar",
@@ -118,7 +119,7 @@ public class GoogleCalendarProvider : ICalendarProvider
         return googleCredentials;
     }
 
-    private static ProviderEvent? ConvertGoogleEvent(Google.Apis.Calendar.v3.Data.Event evt)
+    private static ProviderEvent? ConvertGoogleEvent(Event evt)
     {
         var isOverride = !string.IsNullOrEmpty(evt.RecurringEventId);
 
@@ -211,7 +212,7 @@ public class GoogleCalendarProvider : ICalendarProvider
         };
     }
 
-    private static DateTime? ParseGoogleDateTime(Google.Apis.Calendar.v3.Data.EventDateTime? eventDateTime)
+    private static DateTime? ParseGoogleDateTime(EventDateTime? eventDateTime)
     {
         if (eventDateTime == null)
             return null;
@@ -235,7 +236,7 @@ public class GoogleCalendarProvider : ICalendarProvider
         string? rawCalendarData = null,
         CancellationToken cancellationToken = default)
     {
-        var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Google.Apis.Calendar.v3.Data.Event>(rawEventData);
+        var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(rawEventData);
         if (googleEvent?.Reminders == null)
         {
             return Task.FromResult<IList<int>>([]);
@@ -248,7 +249,7 @@ public class GoogleCalendarProvider : ICalendarProvider
             // Use default reminders from calendar
             if (!string.IsNullOrEmpty(rawCalendarData))
             {
-                var calendarListEntry = NewtonsoftJsonSerializer.Instance.Deserialize<Google.Apis.Calendar.v3.Data.CalendarListEntry>(rawCalendarData);
+                var calendarListEntry = NewtonsoftJsonSerializer.Instance.Deserialize<CalendarListEntry>(rawCalendarData);
                 if (calendarListEntry?.DefaultReminders != null)
                 {
                     foreach (var reminder in calendarListEntry.DefaultReminders.Where(r => r.Method == "popup" && r.Minutes.HasValue))

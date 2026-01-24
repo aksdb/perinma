@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using perinma.Services;
+using perinma.Services.CalDAV;
 using perinma.Storage.Models;
 
 namespace perinma.Tests.Fakes;

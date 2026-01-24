@@ -7,6 +7,8 @@ using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using CredentialStore;
 using perinma.Services;
+using perinma.Services.CalDAV;
+using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Views.Main;
 using SQLitePCL;

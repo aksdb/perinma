@@ -8,10 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Ical.Net;
-using perinma.Storage.Models;
 using perinma.Utils;
 
-namespace perinma.Services;
+namespace perinma.Services.CalDAV;
 
 public class CalDavClient
 {

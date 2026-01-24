@@ -5,7 +5,7 @@ using Google.Apis.Calendar.v3;
 using perinma.Storage.Models;
 using perinma.Utils;
 
-namespace perinma.Services;
+namespace perinma.Services.Google;
 
 public class GoogleOAuthService
 {

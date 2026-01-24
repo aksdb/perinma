@@ -5,6 +5,8 @@ using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using perinma.Services;
+using perinma.Services.CalDAV;
+using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Views.Calendar;
 using perinma.Views.CalendarList;

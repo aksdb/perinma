@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using perinma.Storage.Models;
 
-namespace perinma.Services;
+namespace perinma.Services.CalDAV;
 
 public class CalDavService : ICalDavService
 {

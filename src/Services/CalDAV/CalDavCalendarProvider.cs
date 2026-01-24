@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using perinma.Storage.Models;
 using perinma.Utils;
 
-namespace perinma.Services;
+namespace perinma.Services.CalDAV;
 
 /// <summary>
 /// CalDAV implementation of ICalendarProvider.

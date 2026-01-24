@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using perinma.Services;
+using perinma.Services.Google;
 using perinma.Storage.Models;
 
 namespace perinma.Tests.Fakes;

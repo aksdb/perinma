@@ -2,6 +2,8 @@ using CredentialStore;
 using Dapper;
 using perinma.Models;
 using perinma.Services;
+using perinma.Services.CalDAV;
+using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Storage.Models;
 using perinma.Tests.Fakes;

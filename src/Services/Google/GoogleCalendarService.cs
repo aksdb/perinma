@@ -9,10 +9,11 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Calendar.v3;
+using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Services;
 using perinma.Storage.Models;
 
-namespace perinma.Services;
+namespace perinma.Services.Google;
 
 public class GoogleCalendarService : IGoogleCalendarService
 {
@@ -191,7 +192,7 @@ public class GoogleCalendarService : IGoogleCalendarService
         string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        var allCalendars = new List<Google.Apis.Calendar.v3.Data.CalendarListEntry>();
+        var allCalendars = new List<CalendarListEntry>();
         string? pageToken = null;
         string? newSyncToken = null;
 
@@ -245,7 +246,7 @@ public class GoogleCalendarService : IGoogleCalendarService
         string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        var allEvents = new List<Google.Apis.Calendar.v3.Data.Event>();
+        var allEvents = new List<Event>();
         string? pageToken = null;
         string? newSyncToken = null;
 
@@ -311,13 +312,13 @@ public class GoogleCalendarService : IGoogleCalendarService
 
     public class CalendarSyncResult
     {
-        public required IList<Google.Apis.Calendar.v3.Data.CalendarListEntry> Calendars { get; init; }
+        public required IList<CalendarListEntry> Calendars { get; init; }
         public string? SyncToken { get; init; }
     }
 
     public class EventSyncResult
     {
-        public required IList<Google.Apis.Calendar.v3.Data.Event> Events { get; init; }
+        public required IList<Event> Events { get; init; }
         public string? SyncToken { get; init; }
     }
 

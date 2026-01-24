@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Google.Apis.Calendar.v3;
 using perinma.Storage.Models;
 
-namespace perinma.Services;
+namespace perinma.Services.Google;
 
 /// <summary>
 /// Interface for Google Calendar API operations
