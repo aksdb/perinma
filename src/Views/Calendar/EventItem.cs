@@ -81,7 +81,7 @@ public partial class EventItem : TemplatedControl
     private SqliteStorage? _storage;
 
     [AvaStyledProperty]
-    private IReadOnlyDictionary<string, ICalendarProvider>? _providers;
+    private IReadOnlyDictionary<AccountType, ICalendarProvider>? _providers;
 
     [AvaStyledProperty]
     private IRespondableEventViewModel? _eventViewModel;
@@ -209,7 +209,7 @@ public partial class EventItem : TemplatedControl
         }
 
         ICalendarProvider? calendarProvider = null;
-        var accountType = CalendarEvent.Calendar.Account.Type.ToString();
+        var accountType = CalendarEvent.Calendar.Account.Type;
 
         if (Providers != null && Providers.TryGetValue(accountType, out var provider))
         {

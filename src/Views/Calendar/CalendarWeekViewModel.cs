@@ -15,7 +15,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
 {
     private readonly ICalendarSource _calendarSource;
     private readonly SqliteStorage? _storage;
-    private readonly IReadOnlyDictionary<string, ICalendarProvider>? _providers;
+    private readonly IReadOnlyDictionary<AccountType, ICalendarProvider>? _providers;
 
     public SettingsService? SettingsService { get; }
 
@@ -62,7 +62,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
         ICalendarSource calendarSource,
         SqliteStorage? storage = null,
         SettingsService? settingsService = null,
-        IReadOnlyDictionary<string, ICalendarProvider>? providers = null)
+        IReadOnlyDictionary<AccountType, ICalendarProvider>? providers = null)
     {
         _calendarSource = calendarSource;
         _storage = storage;

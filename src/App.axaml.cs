@@ -6,6 +6,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using CredentialStore;
+using perinma.Models;
 using perinma.Services;
 using perinma.Services.CalDAV;
 using perinma.Services.Google;
@@ -44,10 +45,10 @@ public partial class App : Application
             var calDavProvider = new CalDavCalendarProvider(calDavService, _credentialManager);
 
             // Create providers dictionary for ReminderService
-            var providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+            var providers = new Dictionary<AccountType, ICalendarProvider>
             {
-                ["Google"] = googleProvider,
-                ["CalDAV"] = calDavProvider
+                [AccountType.Google] = googleProvider,
+                [AccountType.CalDav] = calDavProvider
             };
 
             var reminderService = new ReminderService(storage, providers);

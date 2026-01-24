@@ -9,7 +9,7 @@ using perinma.Storage.Models;
 
 namespace perinma.Services;
 
-public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<string, ICalendarProvider> providers)
+public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountType, ICalendarProvider> providers)
 {
     private readonly HashSet<string> _firedReminders = new();
 
@@ -23,8 +23,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<string, 
         }
 
         // Get the appropriate provider
-        var providerKey = accountType == AccountType.Google ? "Google" : "CalDAV";
-        if (!providers.TryGetValue(providerKey, out var provider))
+        if (!providers.TryGetValue(accountType, out var provider))
         {
             return;
         }

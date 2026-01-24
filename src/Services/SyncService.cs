@@ -17,12 +17,12 @@ public class SyncService
     private readonly SqliteStorage _storage;
     private readonly CredentialManagerService _credentialManager;
     private readonly ReminderService _reminderService;
-    private readonly IReadOnlyDictionary<string, ICalendarProvider> _providers;
+    private readonly IReadOnlyDictionary<AccountType, ICalendarProvider> _providers;
 
     public SyncService(
         SqliteStorage storage,
         CredentialManagerService credentialManager,
-        IReadOnlyDictionary<string, ICalendarProvider> providers,
+        IReadOnlyDictionary<AccountType, ICalendarProvider> providers,
         ReminderService reminderService)
     {
         _storage = storage;
@@ -34,7 +34,7 @@ public class SyncService
     /// <summary>
     /// Gets the calendar providers dictionary.
     /// </summary>
-    public IReadOnlyDictionary<string, ICalendarProvider> Providers => _providers;
+    public IReadOnlyDictionary<AccountType, ICalendarProvider> Providers => _providers;
 
     /// <summary>
     /// Forces a complete resync of an account by clearing all local data and sync tokens,
@@ -152,7 +152,7 @@ public class SyncService
         Console.WriteLine($"Syncing account: {account.Name} (Type: {account.Type})");
 
         // Get the provider for this account type
-        if (!_providers.TryGetValue(account.Type, out var provider))
+        if (!_providers.TryGetValue(account.AccountTypeEnum, out var provider))
         {
             throw new InvalidOperationException($"No provider registered for account type: {account.Type}");
         }
@@ -177,7 +177,7 @@ public class SyncService
                         CalendarIndex = i,
                         TotalCalendars = enabledCalendars.Count
                     });
-                    await SyncCalendarEventsAsync(provider, calendar, account.Type, cancellationToken);
+                    await SyncCalendarEventsAsync(provider, calendar, account.AccountTypeEnum, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -283,7 +283,7 @@ public class SyncService
     private async Task SyncCalendarEventsAsync(
         ICalendarProvider provider,
         CalendarDbo calendar,
-        string accountType,
+        AccountType accountType,
         CancellationToken cancellationToken)
     {
         Console.WriteLine($"Syncing events for calendar: {calendar.Name}");
@@ -311,10 +311,8 @@ public class SyncService
         // Track the current sync timestamp for cleanup
         var currentSyncTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-        // Determine account type for reminders
-        var reminderAccountType = accountType.Equals("Google", StringComparison.OrdinalIgnoreCase)
-            ? AccountType.Google
-            : AccountType.CalDav;
+        // Use account type for reminders
+        var reminderAccountType = accountType;
 
         // Save events to database
         foreach (var evt in result.Events)
@@ -406,13 +404,9 @@ public class SyncService
     /// </summary>
     /// <param name="accountType">The account type (Google or CalDav)</param>
     /// <returns>The calendar provider, or null if not found</returns>
-    public ICalendarProvider? GetProviderForAccountType(string accountType)
+    public ICalendarProvider? GetProviderForAccountType(AccountType accountType)
     {
-        return accountType.Equals("Google", StringComparison.OrdinalIgnoreCase)
-            ? _providers.GetValueOrDefault("Google")
-            : accountType.Equals("CalDAV", StringComparison.OrdinalIgnoreCase)
-                ? _providers.GetValueOrDefault("CalDAV")
-                : null;
+        return _providers.GetValueOrDefault(accountType);
     }
 }
 

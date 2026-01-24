@@ -21,7 +21,7 @@ public abstract class SyncTestBase
     protected SqliteStorage? Storage { get; private set; } = null;
     protected FakeGoogleCalendarService FakeGoogleService { get; private set; } = null!;
     protected FakeCalDavService FakeCalDavService { get; private set; } = null!;
-    protected Dictionary<string, ICalendarProvider> Providers { get; private set; } = null!;
+    protected Dictionary<AccountType, ICalendarProvider> Providers { get; private set; } = null!;
     protected ReminderService ReminderService { get; private set; } = null!;
     protected SyncService SyncService { get; private set; } = null!;
 
@@ -40,10 +40,10 @@ public abstract class SyncTestBase
         // Initialize providers
         var googleProvider = new GoogleCalendarProvider(FakeGoogleService, CredentialManager);
         var calDavProvider = new CalDavCalendarProvider(FakeCalDavService, CredentialManager);
-        Providers = new Dictionary<string, ICalendarProvider>(StringComparer.OrdinalIgnoreCase)
+        Providers = new Dictionary<AccountType, ICalendarProvider>
         {
-            ["Google"] = googleProvider,
-            ["CalDAV"] = calDavProvider
+            [AccountType.Google] = googleProvider,
+            [AccountType.CalDav] = calDavProvider
         };
 
         // Initialize sync services
