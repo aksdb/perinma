@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using perinma.Messaging;
 using perinma.Services;
 using perinma.Services.CalDAV;
 using perinma.Services.Google;
@@ -14,7 +16,14 @@ using perinma.Views.Settings;
 
 namespace perinma.Views.Main;
 
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ObservableRecipient,
+    IRecipient<SyncStartedMessage>,
+    IRecipient<SyncEndedMessage>,
+    IRecipient<SyncAccountProgressMessage>,
+    IRecipient<SyncCalendarProgressMessage>,
+    IRecipient<SyncEventsProgressMessage>,
+    IRecipient<SyncCompletedMessage>,
+    IRecipient<SyncFailedMessage>
 {
     private readonly DatabaseService _databaseService;
     private readonly CredentialManagerService _credentialManager;
@@ -114,62 +123,88 @@ public partial class MainWindowViewModel : ViewModelBase
         if (IsSyncing)
             return;
 
-        IsSyncing = true;
-        SyncProgress = 0.0;
-        SyncProgressIsIndeterminate = true;
-        SyncStatusText = "Starting sync...";
-
         try
         {
             Console.WriteLine("Starting sync...");
-            
-            var result = await _syncService.SyncAllAccountsAsync(cancellationToken, 
-                onAccountSyncStart: (accountName, accountIndex, totalAccounts) =>
-                {
-                    SyncStatusText = $"Syncing account {accountIndex + 1} of {totalAccounts}: {accountName}";
-                    SyncProgress = (double)accountIndex / totalAccounts * 100;
-                    SyncProgressIsIndeterminate = false;
-                },
-                onCalendarSyncStart: (calendarName, calendarIndex, totalCalendars) =>
-                {
-                    SyncStatusText = $"  Syncing calendar {calendarIndex + 1} of {totalCalendars}: {calendarName}";
-                },
-                onEventSyncStart: (calendarName, eventCount) =>
-                {
-                    SyncStatusText = $"  Syncing events for {calendarName} ({eventCount} events)...";
-                });
 
+            var result = await _syncService.SyncAllAccountsAsync(cancellationToken);
+
+            // Status updates are now handled by the Receive methods via messages
             if (result.Success)
             {
-                SyncStatusText = $"Sync completed successfully. Synced {result.SyncedAccounts} accounts.";
                 Console.WriteLine($"Sync completed successfully. Synced {result.SyncedAccounts} accounts.");
                 await CalendarListViewModel.LoadCalendarsAsync();
             }
             else
             {
-                SyncStatusText = $"Sync completed with {result.FailedAccounts} error(s).";
                 Console.WriteLine($"Sync completed with errors. Synced: {result.SyncedAccounts}, Failed: {result.FailedAccounts}");
                 foreach (var error in result.Errors)
                 {
                     Console.WriteLine($"  - {error}");
                 }
             }
-            
-            // Show success message briefly before clearing
-            await Task.Delay(2000, cancellationToken);
         }
         catch (Exception ex)
         {
             SyncStatusText = $"Sync failed: {ex.Message}";
             Console.WriteLine($"Sync failed: {ex.Message}");
-            await Task.Delay(3000, cancellationToken);
         }
-        finally
+    }
+
+    public void Receive(SyncStartedMessage message)
+    {
+        IsSyncing = true;
+        SyncProgress = 0.0;
+        SyncProgressIsIndeterminate = true;
+        SyncStatusText = "Starting sync...";
+    }
+
+    public void Receive(SyncEndedMessage message)
+    {
+        IsSyncing = false;
+        SyncProgress = 0.0;
+        SyncStatusText = "Ready";
+    }
+
+    public void Receive(SyncAccountProgressMessage message)
+    {
+        SyncStatusText = $"Syncing account {message.AccountIndex + 1} of {message.TotalAccounts}: {message.AccountName}";
+        SyncProgress = message.ProgressPercentage;
+        SyncProgressIsIndeterminate = false;
+    }
+
+    public void Receive(SyncCalendarProgressMessage message)
+    {
+        SyncStatusText = $"  Syncing calendar {message.CalendarIndex + 1} of {message.TotalCalendars}: {message.CalendarName}";
+    }
+
+    public void Receive(SyncEventsProgressMessage message)
+    {
+        SyncStatusText = $"  Syncing events for {message.CalendarName} ({message.EventCount} events)...";
+    }
+
+    public void Receive(SyncCompletedMessage message)
+    {
+        SyncStatusText = $"Sync completed successfully. Synced {message.SyncedAccounts} accounts.";
+        Task.Run(async () =>
         {
+            await Task.Delay(2000);
             IsSyncing = false;
             SyncProgress = 0.0;
             SyncStatusText = "Ready";
-        }
+        });
+    }
+
+    public void Receive(SyncFailedMessage message)
+    {
+        SyncStatusText = $"Sync completed with {message.FailedAccounts} error(s).";
+        Task.Run(async () =>
+        {
+            await Task.Delay(3000);
+            IsSyncing = false;
+            SyncProgress = 0.0;
+            SyncStatusText = "Ready";
+        });
     }
     #endregion
 
@@ -177,6 +212,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void Initialize()
     {
+        // Enable message registration
+        IsActive = true;
     }
 
     public async Task SaveWindowSettingsAsync(int x, int y, int width, int height, int sidebarWidth)

@@ -4,9 +4,11 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Messaging;
 using perinma.Storage;
 using perinma.Storage.Models;
 using perinma.Models;
+using perinma.Messaging;
 
 namespace perinma.Services;
 
@@ -16,10 +18,6 @@ public class SyncService
     private readonly CredentialManagerService _credentialManager;
     private readonly ReminderService _reminderService;
     private readonly IReadOnlyDictionary<string, ICalendarProvider> _providers;
-
-    public delegate void SyncProgressHandler(string message, int current, int total);
-    public delegate void CalendarSyncProgressHandler(string calendarName, int current, int total);
-    public delegate void EventSyncProgressHandler(string calendarName, int eventCount);
 
     public SyncService(
         SqliteStorage storage,
@@ -40,6 +38,7 @@ public class SyncService
     public async Task<SyncResult> ForceResyncAccountAsync(string accountId, CancellationToken cancellationToken = default)
     {
         var result = new SyncResult();
+        WeakReferenceMessenger.Default.Send(new SyncStartedMessage());
 
         try
         {
@@ -60,7 +59,7 @@ public class SyncService
             // Perform a fresh sync
             try
             {
-                await SyncAccountAsync(account, cancellationToken, null, null);
+                await SyncAccountAsync(account, cancellationToken);
                 result.SyncedAccounts++;
                 result.Success = true;
                 Console.WriteLine($"Force resync completed for account: {account.Name}");
@@ -79,6 +78,10 @@ public class SyncService
             result.Success = false;
             result.Errors.Add(ex.Message);
         }
+        finally
+        {
+            WeakReferenceMessenger.Default.Send(new SyncEndedMessage());
+        }
 
         return result;
     }
@@ -86,13 +89,10 @@ public class SyncService
     /// <summary>
     /// Syncs calendars from all accounts.
     /// </summary>
-    public async Task<SyncResult> SyncAllAccountsAsync(
-        CancellationToken cancellationToken = default,
-        SyncProgressHandler? onAccountSyncStart = null,
-        CalendarSyncProgressHandler? onCalendarSyncStart = null,
-        EventSyncProgressHandler? onEventSyncStart = null)
+    public async Task<SyncResult> SyncAllAccountsAsync(CancellationToken cancellationToken = default)
     {
         var result = new SyncResult();
+        WeakReferenceMessenger.Default.Send(new SyncStartedMessage());
 
         try
         {
@@ -104,8 +104,13 @@ public class SyncService
                 var account = accounts[i];
                 try
                 {
-                    onAccountSyncStart?.Invoke(account.Name, i, accounts.Count);
-                    await SyncAccountAsync(account, cancellationToken, onCalendarSyncStart, onEventSyncStart);
+                    WeakReferenceMessenger.Default.Send(new SyncAccountProgressMessage
+                    {
+                        AccountName = account.Name,
+                        AccountIndex = i,
+                        TotalAccounts = accounts.Count
+                    });
+                    await SyncAccountAsync(account, cancellationToken);
                     result.SyncedAccounts++;
                 }
                 catch (Exception ex)
@@ -124,6 +129,10 @@ public class SyncService
             result.Success = false;
             result.Errors.Add(ex.Message);
         }
+        finally
+        {
+            WeakReferenceMessenger.Default.Send(new SyncEndedMessage());
+        }
 
         return result;
     }
@@ -133,9 +142,7 @@ public class SyncService
     /// </summary>
     private async Task SyncAccountAsync(
         AccountDbo account,
-        CancellationToken cancellationToken,
-        CalendarSyncProgressHandler? onCalendarSyncStart = null,
-        EventSyncProgressHandler? onEventSyncStart = null)
+        CancellationToken cancellationToken)
     {
         Console.WriteLine($"Syncing account: {account.Name} (Type: {account.Type})");
 
@@ -164,8 +171,13 @@ public class SyncService
             var calendar = enabledCalendars[i];
             try
             {
-                onCalendarSyncStart?.Invoke(calendar.Name, i, enabledCalendars.Count);
-                await SyncCalendarEventsAsync(provider, calendar, credentials, account.Type, cancellationToken, onEventSyncStart);
+                WeakReferenceMessenger.Default.Send(new SyncCalendarProgressMessage
+                {
+                    CalendarName = calendar.Name,
+                    CalendarIndex = i,
+                    TotalCalendars = enabledCalendars.Count
+                });
+                await SyncCalendarEventsAsync(provider, calendar, credentials, account.Type, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -267,8 +279,7 @@ public class SyncService
         CalendarDbo calendar,
         AccountCredentials credentials,
         string accountType,
-        CancellationToken cancellationToken,
-        EventSyncProgressHandler? onEventSyncStart = null)
+        CancellationToken cancellationToken)
     {
         Console.WriteLine($"Syncing events for calendar: {calendar.Name}");
 
@@ -368,7 +379,11 @@ public class SyncService
         }
 
         Console.WriteLine($"Synced {result.Events.Count} events for calendar {calendar.Name}");
-        onEventSyncStart?.Invoke(calendar.Name, result.Events.Count);
+        WeakReferenceMessenger.Default.Send(new SyncEventsProgressMessage
+        {
+            CalendarName = calendar.Name,
+            EventCount = result.Events.Count
+        });
     }
 
     /// <summary>

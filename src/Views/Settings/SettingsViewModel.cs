@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using perinma.Messaging;
 using perinma.Services;
 using perinma.Services.CalDAV;
 using perinma.Services.Google;
@@ -19,7 +21,12 @@ public class SettingsPage
     public required ViewModelBase ViewModel { get; init; }
 }
 
-public partial class SettingsViewModel : ViewModelBase
+public partial class SettingsViewModel : ObservableRecipient,
+    IRecipient<SyncAccountProgressMessage>,
+    IRecipient<SyncCalendarProgressMessage>,
+    IRecipient<SyncEventsProgressMessage>,
+    IRecipient<SyncCompletedMessage>,
+    IRecipient<SyncFailedMessage>
 {
     private readonly SqliteStorage _storage;
 
@@ -27,6 +34,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private SettingsPage? _selectedPage;
+
+    [ObservableProperty]
+    private string _syncStatusText = string.Empty;
 
     public SettingsViewModel(DatabaseService databaseService, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, SyncService syncService, Window parentWindow)
     {
@@ -43,6 +53,9 @@ public partial class SettingsViewModel : ViewModelBase
 
         // Select first page by default
         SelectedPage = Pages[0];
+
+        // Enable message registration
+        IsActive = true;
     }
 
     [RelayCommand(IncludeCancelCommand = true)]
@@ -71,6 +84,31 @@ public partial class SettingsViewModel : ViewModelBase
     public void Abort()
     {
         WaitForHttpCommand.Cancel();
+    }
+
+    public void Receive(SyncAccountProgressMessage message)
+    {
+        SyncStatusText = $"Syncing account {message.AccountIndex + 1} of {message.TotalAccounts}: {message.AccountName}";
+    }
+
+    public void Receive(SyncCalendarProgressMessage message)
+    {
+        SyncStatusText = $"  Syncing calendar {message.CalendarIndex + 1} of {message.TotalCalendars}: {message.CalendarName}";
+    }
+
+    public void Receive(SyncEventsProgressMessage message)
+    {
+        SyncStatusText = $"  Syncing events for {message.CalendarName} ({message.EventCount} events)...";
+    }
+
+    public void Receive(SyncCompletedMessage message)
+    {
+        SyncStatusText = $"Sync completed successfully. Synced {message.SyncedAccounts} accounts.";
+    }
+
+    public void Receive(SyncFailedMessage message)
+    {
+        SyncStatusText = $"Sync completed with {message.FailedAccounts} error(s).";
     }
 
 }
