@@ -6,9 +6,10 @@
         x:DataType="reminders:ReminderListViewModel"
         mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="450"
         x:Class="perinma.Views.Reminders.ReminderNotificationWindow"
-        Title="Reminders" Width="450" MaxHeight="600" MinHeight="200" SizeToContent="Height"
-        CanResize="False" WindowStartupLocation="CenterOwner"
-        Icon="/Assets/avalonia-logo.ico">
+         Title="Reminders" Width="450" MaxHeight="600" MinHeight="200" SizeToContent="Height"
+         CanResize="False" WindowStartupLocation="CenterOwner"
+         Icon="/Assets/avalonia-logo.ico"
+         ShowInTaskbar="True">
 
     <Window.Styles>
         <Style Selector="Button.DismissAllButton">
