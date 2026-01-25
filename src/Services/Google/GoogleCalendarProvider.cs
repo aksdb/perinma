@@ -243,6 +243,79 @@ public class GoogleCalendarProvider : ICalendarProvider
     }
 
     /// <inheritdoc/>
+     public Task<DateTimeOffset?> GetEventStartTimeAsync(
+         string rawEventData,
+         DateTime? occurrenceTime = null,
+         CancellationToken cancellationToken = default)
+     {
+         try
+         {
+             var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(rawEventData);
+             if (googleEvent == null)
+             {
+                 return Task.FromResult<DateTimeOffset?>(null);
+             }
+
+             var isRecurring = googleEvent.Recurrence is { Count: > 0 };
+
+             // For non-recurring events or when no occurrence time is specified, return base event start time
+             if (!isRecurring || !occurrenceTime.HasValue)
+             {
+                 return Task.FromResult<DateTimeOffset?>(ParseGoogleDateTimeWithTimezone(googleEvent.Start));
+             }
+
+             // For recurring events with a specific occurrence time, find matching occurrence
+             var icalString = BuildIcalString(googleEvent.Recurrence);
+             if (string.IsNullOrEmpty(icalString))
+             {
+                 return Task.FromResult<DateTimeOffset?>(ParseGoogleDateTimeWithTimezone(googleEvent.Start));
+             }
+
+             var calendar = Calendar.Load(icalString);
+             var icalEvent = calendar?.Events.FirstOrDefault();
+
+             if (icalEvent == null)
+             {
+                 return Task.FromResult<DateTimeOffset?>(ParseGoogleDateTimeWithTimezone(googleEvent.Start));
+             }
+
+             var occurrences = icalEvent.GetOccurrences(startTime: new CalDateTime(occurrenceTime.Value.ToUniversalTime()));
+
+             var firstOccurrence = occurrences.FirstOrDefault();
+             if (firstOccurrence != null)
+             {
+                 var firstOccurrenceTime = firstOccurrence.Period.StartTime.AsUtc;
+                 return Task.FromResult<DateTimeOffset?>(new DateTimeOffset(firstOccurrenceTime));
+             }
+
+             // Fallback to base event start time
+             return Task.FromResult<DateTimeOffset?>(ParseGoogleDateTimeWithTimezone(googleEvent.Start));
+         }
+         catch (Exception)
+         {
+             return Task.FromResult<DateTimeOffset?>(null);
+         }
+     }
+
+    private static DateTimeOffset? ParseGoogleDateTimeWithTimezone(EventDateTime? eventDateTime)
+    {
+        if (eventDateTime == null)
+            return null;
+
+        if (eventDateTime.DateTimeRaw != null && DateTimeOffset.TryParse(eventDateTime.DateTimeRaw, out var dateTimeOffset))
+        {
+            return dateTimeOffset;
+        }
+
+        if (eventDateTime.Date != null && DateTimeOffset.TryParse(eventDateTime.Date, out var dateOffset))
+        {
+            return dateOffset;
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc/>
     public Task<IList<int>> GetReminderMinutesAsync(
         string rawEventData,
         string? rawCalendarData = null,

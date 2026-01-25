@@ -19,14 +19,22 @@ public partial class ReminderNotificationWindow : Window
     public ReminderNotificationWindow(ReminderService reminderService, List<ReminderWithEvent> reminders)
     {
         InitializeComponent();
-        
+
         _tcs = new TaskCompletionSource<bool>();
         _viewModel = new ReminderListViewModel(reminderService, reminders);
-        
+
         DataContext = _viewModel;
-        
+
         _viewModel.AllRemindersDismissed += OnAllRemindersDismissed;
         Closed += OnClosed;
+
+        // Initialize async without awaiting (fire and forget)
+        _ = InitializeAsync();
+    }
+
+    private async Task InitializeAsync()
+    {
+        await _viewModel.InitializeAsync();
     }
 
     public static Task ShowAsync(Window owner, ReminderService reminderService, List<ReminderWithEvent> reminders)

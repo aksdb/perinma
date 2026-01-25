@@ -80,6 +80,18 @@ public interface ICalendarProvider
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the event start time from raw event data, preserving timezone information.
+    /// </summary>
+    /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
+    /// <param name="occurrenceTime">Optional occurrence time for recurring events. If provided, returns the start time for this specific occurrence.</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Event start time with timezone information, or null if parsing fails</returns>
+    Task<DateTimeOffset?> GetEventStartTimeAsync(
+        string rawEventData,
+        DateTime? occurrenceTime = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Responds to an event invitation with the specified status.
     /// </summary>
     /// <param name="accountId">Account ID to respond with</param>

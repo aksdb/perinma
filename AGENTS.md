@@ -72,6 +72,8 @@ mise set -E local GOOGLE_CLIENT_SECRET=your-client-secret
 - Use expression-bodied members for simple properties and methods
 - Use collection expressions: `var items = [];` instead of `var items = new List<T>();`
 - Use `using var` for disposable resources with automatic disposal
+- When get Ical occurrences, provide a sensible starttime and then iterate the returned Enumeration
+  for as many occurrences as you need. Do not fetch them all.
 
 ### MVVM Patterns
 - ViewModels inherit from `ViewModelBase` (which inherits `ObservableObject`)

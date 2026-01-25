@@ -106,6 +106,15 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
         return Task.FromResult<IList<int>>([]);
     }
 
+    public Task<DateTimeOffset?> GetEventStartTimeAsync(
+        string rawEventData,
+        DateTime? occurrenceTime = null,
+        CancellationToken cancellationToken = default)
+    {
+        // Return null by default - tests can override if needed
+        return Task.FromResult<DateTimeOffset?>(null);
+    }
+
     public Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
         string rawEventData,
         string? rawCalendarData = null,

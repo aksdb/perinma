@@ -4,56 +4,164 @@
              x:Class="perinma.Views.Reminders.ReminderItemControl"
              x:DataType="reminders:ReminderViewModel">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto"
-          ColumnDefinitions="*,Auto">
-        <TextBlock Grid.Row="0" Grid.Column="0"
-                   Text="{Binding Title}"
-                   FontWeight="SemiBold"
-                   FontSize="15"
-                   TextWrapping="Wrap"
-                   Margin="0,0,10,8"/>
+    <UserControl.Styles>
+        <Style Selector="Button.SnoozeButton">
+            <Setter Property="Background" Value="{DynamicResource SystemAltMediumLowBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemChromeMediumColor}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="MinWidth" Value="80"/>
+        </Style>
+        <Style Selector="Button.SnoozeButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemAltMediumHighBrush}"/>
+        </Style>
+        <Style Selector="Button.DismissButton">
+            <Setter Property="Background" Value="#E53935"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="MinWidth" Value="70"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.DismissButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#C62828"/>
+        </Style>
+        <Style Selector="Button:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+        <Style Selector="Button.SnoozeOptionButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style Selector="Button.SnoozeOptionButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemAltMediumHighBrush}"/>
+        </Style>
+    </UserControl.Styles>
 
-        <TextBlock Grid.Row="1" Grid.Column="0"
-                   Text="{Binding CalendarName}"
-                   FontSize="12"
-                   Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}"
-                   Margin="0,0,10,5"/>
+    <Border Background="{DynamicResource SystemAltMediumHighBrush}"
+            CornerRadius="8"
+            BorderBrush="{DynamicResource SystemChromeLowColor}"
+            BorderThickness="1">
+        <Grid RowDefinitions="Auto,Auto">
+            <!-- Main Content -->
+            <Grid Grid.Row="0" RowDefinitions="Auto,Auto,Auto" Margin="12">
+                <!-- Header Row: Calendar Color + Title -->
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*">
+                    <Border Grid.Column="0"
+                            Width="6"
+                            CornerRadius="3"
+                            Background="{Binding CalendarColor}"
+                            Margin="0,0,10,0"/>
 
-        <TextBlock Grid.Row="2" Grid.Column="0"
-                   Text="{Binding StartTime, StringFormat='{}{0:ddd, MMM d, yyyy \u2022 h:mm tt}'}"
-                   FontSize="13"
-                   Margin="0,0,10,15"/>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding Title}"
+                               FontWeight="SemiBold"
+                               FontSize="16"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Top"
+                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                </Grid>
 
-        <TextBlock Grid.Row="0" Grid.Column="1"
-                   Text="Snooze:"
-                   FontSize="11"
-                   Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}"
-                   VerticalAlignment="Top"
-                   Margin="0,0,0,8"/>
+                <!-- Calendar & Time Info -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Margin="16,6,0,8">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Ellipse Grid.Column="0" Width="8" Height="8"
+                                 Fill="{Binding CalendarColor}"
+                                 VerticalAlignment="Center"
+                                 Margin="0,0,6,0"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding CalendarName}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
 
-        <ItemsControl Grid.Row="1" Grid.Column="1"
-                  ItemsSource="{Binding SnoozeIntervals}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <WrapPanel />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="reminders:SnoozeIntervalItem">
-                    <Button Content="{Binding Label}"
-                            Padding="8,5"
-                            Margin="0,0,0,5"
-                            FontSize="11"
-                            Click="SnoozeClick"/>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+                    <TextBlock Text="•"
+                               FontSize="12"
+                                Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}"
+                                VerticalAlignment="Center"/>
 
-        <Button Grid.Row="2" Grid.Column="1"
-                Content="Dismiss"
-                Command="{Binding DismissCommand}"
-                Padding="15,6"
-                Margin="0,10,0,0"
-                FontSize="12"/>
-    </Grid>
+                    <TextBlock Text="{Binding StartTime, StringFormat='{}{0:ddd, MMM d, yyyy • HH:mm}'}"
+                               FontSize="12"
+                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Action Buttons -->
+            <Border Grid.Row="1"
+                    Background="{DynamicResource SystemAltLowBrush}"
+                    Padding="12"
+                    CornerRadius="0,0,8,8">
+                <Grid ColumnDefinitions="1*,Auto">
+                    <!-- Snooze Button with Dropdown -->
+                    <Button Grid.Column="0"
+                            Name="SnoozeButton"
+                            Content="Snooze"
+                            Classes="SnoozeButton"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center">
+                        <Button.Flyout>
+                            <Flyout Placement="TopEdgeAlignedLeft">
+                                <Border Background="{DynamicResource SystemChromeMediumHighColor}"
+                                        CornerRadius="8"
+                                        BorderBrush="{DynamicResource SystemChromeMediumColor}"
+                                        BorderThickness="1"
+                                        MaxWidth="200">
+                                    <StackPanel Spacing="0">
+                                        <Button Content="1 minute"
+                                                Classes="SnoozeOptionButton"
+                                                Click="Snooze1MinClick"/>
+                                        <Button Content="5 minutes"
+                                                Classes="SnoozeOptionButton"
+                                                Click="Snooze5MinClick"/>
+                                        <Button Content="10 minutes"
+                                                Classes="SnoozeOptionButton"
+                                                Click="Snooze10MinClick"/>
+                                        <Button Content="15 minutes"
+                                                Classes="SnoozeOptionButton"
+                                                Click="Snooze15MinClick"/>
+                                        <Button Content="30 minutes"
+                                                Classes="SnoozeOptionButton"
+                                                Click="Snooze30MinClick"/>
+                                        <Button Content="1 hour"
+                                                Classes="SnoozeOptionButton"
+                                                Click="Snooze1HourClick"/>
+                                        <Button Content="2 hours"
+                                                Classes="SnoozeOptionButton"
+                                                Click="Snooze2HourClick"/>
+                                        <Button Content="Tomorrow"
+                                                Classes="SnoozeOptionButton"
+                                                Click="SnoozeTomorrowClick"/>
+                                        <Button Content="1 minute before start"
+                                                Classes="SnoozeOptionButton"
+                                                Click="Snooze1MinBeforeClick"/>
+                                        <Button Content="When it starts"
+                                                Classes="SnoozeOptionButton"
+                                                Click="SnoozeStartClick"/>
+                                    </StackPanel>
+                                </Border>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <!-- Dismiss Button -->
+                    <Button Grid.Column="1"
+                            Content="Dismiss"
+                            Classes="DismissButton"
+                            Command="{Binding DismissCommand}"
+                            Margin="8,0,0,0"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
 </UserControl>

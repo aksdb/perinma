@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using perinma.Models;
 using perinma.Services;
 using perinma.Storage.Models;
 
@@ -16,6 +17,11 @@ public partial class ReminderViewModel : ViewModelBase
 {
     private readonly ReminderService _reminderService;
     private readonly string _reminderId;
+    private readonly string _eventId;
+    private readonly AccountType _accountType;
+    private readonly long _targetTime;
+
+    private bool _startTimeInitialized;
 
     [ObservableProperty]
     private string _title = string.Empty;
@@ -41,13 +47,40 @@ public partial class ReminderViewModel : ViewModelBase
     {
         _reminderService = reminderService;
         _reminderId = reminder.ReminderId;
+        _eventId = reminder.TargetId;
+        _accountType = Enum.TryParse<AccountType>(reminder.AccountType, ignoreCase: true, out var accountType)
+            ? accountType
+            : throw new ArgumentException($"Unknown account type: {reminder.AccountType}");
+        _targetTime = reminder.TargetTime;
         _title = reminder.EventTitle;
         _calendarName = reminder.CalendarName;
         _calendarColor = reminder.CalendarColor ?? "#1976D2";
-        _startTime = reminder.StartTime;
-        _timeUntilEvent = reminder.StartTime - DateTime.UtcNow;
 
         InitializeSnoozeIntervals();
+    }
+
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        if (_startTimeInitialized)
+        {
+            return;
+        }
+
+        var occurrenceTime = DateTimeOffset.FromUnixTimeSeconds(_targetTime).LocalDateTime;
+        var startTime = await _reminderService.GetEventStartTimeAsync(_eventId, occurrenceTime, _accountType, cancellationToken);
+        if (startTime.HasValue)
+        {
+            StartTime = startTime.Value;
+            TimeUntilEvent = StartTime - DateTime.Now;
+        }
+        else
+        {
+            // Fallback to the stored occurrence time (already local time)
+            StartTime = occurrenceTime;
+            TimeUntilEvent = StartTime - DateTime.Now;
+        }
+
+        _startTimeInitialized = true;
     }
 
     private void InitializeSnoozeIntervals()
@@ -147,6 +180,12 @@ public partial class ReminderListViewModel : ViewModelBase
             };
             Reminders.Add(reminderViewModel);
         }
+    }
+
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        var tasks = Reminders.Select(vm => vm.InitializeAsync(cancellationToken));
+        await Task.WhenAll(tasks);
     }
 
     [RelayCommand]

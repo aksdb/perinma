@@ -147,4 +147,27 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
     {
         _firedReminders.Clear();
     }
+
+    public async Task<DateTime?> GetEventStartTimeAsync(string eventId, DateTime occurrenceTime, AccountType accountType, CancellationToken cancellationToken = default)
+    {
+        var rawData = await storage.GetEventData(eventId, "rawData");
+
+        if (string.IsNullOrEmpty(rawData))
+        {
+            return null;
+        }
+
+        if (!providers.TryGetValue(accountType, out var provider))
+        {
+            return null;
+        }
+
+        var startTimeOffset = await provider.GetEventStartTimeAsync(rawData, occurrenceTime, cancellationToken);
+        if (startTimeOffset.HasValue)
+        {
+            return startTimeOffset.Value.LocalDateTime;
+        }
+
+        return null;
+    }
 }

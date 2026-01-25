@@ -21,7 +21,8 @@ public class ReminderWithEvent
     public required string EventTitle { get; init; }
     public required string CalendarName { get; init; }
     public required string CalendarColor { get; init; }
-    public required DateTime StartTime { get; init; }
+    public required long StartTime { get; init; }
+    public required string AccountType { get; init; }
 }
 
 public enum SnoozeInterval

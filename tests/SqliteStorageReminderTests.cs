@@ -169,7 +169,7 @@ public class SqliteStorageReminderTests
             Assert.That(reminder.EventTitle, Is.EqualTo("Test Event"));
             Assert.That(reminder.CalendarName, Is.EqualTo("Test Calendar"));
             Assert.That(reminder.CalendarColor, Is.EqualTo("#FF0000"));
-            Assert.That(reminder.StartTime, Is.EqualTo(startTime));
+            Assert.That(DateTimeOffset.FromUnixTimeSeconds(reminder.StartTime).DateTime, Is.EqualTo(startTime));
             Assert.That(reminder.TargetType, Is.EqualTo((int)TargetType.CalendarEvent));
             Assert.That(reminder.TargetId, Is.EqualTo(eventId));
         });

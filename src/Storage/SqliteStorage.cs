@@ -738,10 +738,12 @@ public class SqliteStorage : IDisposable
                 ce.title AS EventTitle,
                 c.name AS CalendarName,
                 c.color AS CalendarColor,
-                datetime(ce.start_time, 'unixepoch') AS StartTime
+                r.target_time AS StartTime,
+                a.type AS AccountType
             FROM reminder r
             INNER JOIN calendar_event ce ON r.target_id = ce.event_id
             INNER JOIN calendar c ON ce.calendar_id = c.calendar_id
+            INNER JOIN account a ON c.account_id = a.account_id
             WHERE r.target_type = @TargetType
               AND r.trigger_time <= @Now
               AND r.reminder_id NOT IN @FiredReminderIds

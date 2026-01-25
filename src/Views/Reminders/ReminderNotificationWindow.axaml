@@ -4,52 +4,70 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:reminders="clr-namespace:perinma.Views.Reminders"
         x:DataType="reminders:ReminderListViewModel"
-        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="600"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="450"
         x:Class="perinma.Views.Reminders.ReminderNotificationWindow"
-        Title="Reminders" Width="500" Height="600"
+        Title="Reminders" Width="450" MaxHeight="600" MinHeight="200" SizeToContent="Height"
         CanResize="False" WindowStartupLocation="CenterOwner"
         Icon="/Assets/avalonia-logo.ico">
 
     <Window.Styles>
-        <Style Selector="Button:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColor2}" />
+        <Style Selector="Button.DismissAllButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="White"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style Selector="Button.DismissAllButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#40FFFFFF"/>
         </Style>
         <Style Selector="Button:pointerover">
-            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Cursor" Value="Hand"/>
         </Style>
     </Window.Styles>
 
     <Grid RowDefinitions="Auto,*">
-        <Border Grid.Row="0" Background="{DynamicResource AccentColor3}"
-                Padding="20,15">
+        <!-- Header -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource AccentColor3}"
+                Padding="16,12"
+                CornerRadius="8,8,0,0">
             <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0"
-                           Text="{Binding Reminders.Count, StringFormat='Reminders ({0})'}"
-                           FontSize="18"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource AccentForeground2}"/>
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Text="Upcoming Reminders"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource AccentForeground2}"/>
+
+                    <TextBlock Text="{Binding Reminders.Count, StringFormat='{}{0} event(s)'}"
+                               FontSize="12"
+                               Opacity="0.85"
+                               Foreground="{DynamicResource AccentForeground2}"/>
+                </StackPanel>
 
                 <Button Grid.Column="1"
                         Content="Dismiss All"
+                        Classes="DismissAllButton"
                         Command="{Binding DismissAllCommand}"
-                        Padding="15,8"
-                        Margin="10,0,0,0"
                         IsEnabled="{Binding Reminders.Count, Mode=OneWay}"/>
             </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="1">
+        <!-- Reminder List -->
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
             <ItemsControl ItemsSource="{Binding Reminders}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="8"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="reminders:ReminderViewModel">
-                        <Border Background="{DynamicResource SystemAltMediumHighBrush}"
-                                Margin="15,10"
-                                Padding="0"
-                                CornerRadius="5"
-                                BorderBrush="{DynamicResource SystemChromeMediumColor}"
-                                BorderThickness="1">
-                            <reminders:ReminderItemControl/>
-                        </Border>
+                        <reminders:ReminderItemControl/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
