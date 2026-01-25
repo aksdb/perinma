@@ -199,26 +199,20 @@ public class CalDavCalendarProvider : ICalendarProvider
 
             foreach (var alarm in alarms)
             {
-                if (alarm.Trigger == null)
+                if (alarm.Trigger?.IsRelative != true || !alarm.Trigger.Duration.HasValue)
                 {
                     continue;
                 }
 
-                if (alarm.Trigger.IsRelative)
+                var duration = alarm.Trigger.Duration.Value;
+                // Use ToTimeSpanUnspecified() to convert Duration to TimeSpan
+                // Negative values mean "before the event"
+                var totalMinutes = (int)duration.ToTimeSpanUnspecified().TotalMinutes;
+
+                // For reminders, we want positive "minutes before" values
+                if (totalMinutes < 0)
                 {
-                    var duration = alarm.Trigger.Duration;
-                    if (duration.HasValue)
-                    {
-                        var weeks = duration.Value.Weeks ?? 0;
-                        var days = duration.Value.Days ?? 0;
-                        var hours = duration.Value.Hours ?? 0;
-                        var minutes = duration.Value.Minutes ?? 0;
-                        var totalMinutes = (int)(-(weeks * 7 * 24 * 60 + days * 24 * 60 + hours * 60 + minutes) * duration.Value.Sign);
-                        if (totalMinutes > 0)
-                        {
-                            reminderMinutes.Add(totalMinutes);
-                        }
-                    }
+                    reminderMinutes.Add(-totalMinutes);
                 }
             }
 
