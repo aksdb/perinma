@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+#MISE description="Build and package for macOS (Intel) with ZIP archive"
+
+set -e
+
+# Configuration
+APP_NAME="perinma"
+APP_VERSION="0.1.0"
+RID="osx-x64"
+OUTPUT_DIR="build/$RID"
+
+# Clean previous builds
+rm -rf "$OUTPUT_DIR"
+mkdir -p "$OUTPUT_DIR/${APP_NAME}.app/Contents/MacOS"
+mkdir -p "$OUTPUT_DIR/${APP_NAME}.app/Contents/Resources"
+
+# Step 1: Publish .NET application
+echo "Publishing .NET application for macOS (Intel)..."
+dotnet publish src/perinma.csproj \
+  -c Release \
+  -r "$RID" \
+  -o "$OUTPUT_DIR/${APP_NAME}.app/Contents/MacOS" \
+  -p:SelfContained=true \
+  -p:PublishTrimmed=true \
+  -p:TrimMode=partial \
+  -p:PublishSingleFile=false \
+  -p:IncludeNativeLibrariesForSelfExtract=true
+
+# Step 2: Create Info.plist
+echo "Creating Info.plist..."
+cat > "$OUTPUT_DIR/${APP_NAME}.app/Contents/Info.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>perinma</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.perinma.app</string>
+    <key>CFBundleName</key>
+    <string>perinma</string>
+    <key>CFBundleDisplayName</key>
+    <string>perinma</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$APP_VERSION</string>
+    <key>CFBundleVersion</key>
+    <string>$APP_VERSION</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.15</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+# Step 3: Make executable
+chmod +x "$OUTPUT_DIR/${APP_NAME}.app/Contents/MacOS/perinma"
+
+echo "✓ macOS app bundle created: $OUTPUT_DIR/${APP_NAME}.app"
+
+# Step 4: Create ZIP archive
+echo "Creating ZIP archive..."
+cd "$OUTPUT_DIR"
+zip -r "${APP_NAME}-${APP_VERSION}-${RID}.zip" "${APP_NAME}.app"
+cd -
+
+echo "✓ Distribution archive created: $OUTPUT_DIR/${APP_NAME}-${APP_VERSION}-${RID}.zip"
