@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Ical.Net.DataTypes;
 using perinma.Storage.Models;
 using perinma.Utils;
 
@@ -225,9 +226,10 @@ public class CalDavCalendarProvider : ICalendarProvider
     }
 
     /// <inheritdoc/>
-    public async Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetReminderOccurrencesAsync(
+    public async Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
         string rawEventData,
         string? rawCalendarData = null,
+        DateTime referenceTime = default,
         CancellationToken cancellationToken = default)
     {
         try
@@ -252,30 +254,27 @@ public class CalDavCalendarProvider : ICalendarProvider
             }
 
             var isRecurring = evt.RecurrenceRules.Count > 0;
-            var now = DateTime.UtcNow;
+            var startTime = referenceTime == default ? DateTime.UtcNow : referenceTime;
             var result = new List<(DateTime Occurrence, DateTime TriggerTime)>();
 
             if (isRecurring)
             {
-                var recurrenceEndTime = RecurrenceParser.CalculateRecurrenceEndTime(evt);
-                var searchEnd = recurrenceEndTime ?? now.AddYears(10);
-
-                foreach (var occurrence in evt.GetOccurrences())
+                // Get all occurrences
+                var occurrences = evt.GetOccurrences(startTime: new CalDateTime(startTime));
+                var nextOccurrence = occurrences.FirstOrDefault();
+                if (nextOccurrence == null)
                 {
-                    var occurrenceTime = occurrence.Period.StartTime.AsUtc;
-                    if (occurrenceTime < now || occurrenceTime > searchEnd)
-                    {
-                        continue;
-                    }
+                    return [];
+                }
 
-                    foreach (var minutes in reminderMinutes)
+                var occurrenceTime = nextOccurrence.Period.StartTime.AsUtc;
+                foreach (var minutes in reminderMinutes)
+                {
+                    var triggerTime = occurrenceTime.AddMinutes(-minutes);
+                    if (triggerTime > startTime)
                     {
-                        var triggerTime = occurrenceTime.AddMinutes(-minutes);
-                        if (triggerTime > now)
-                        {
-                            result.Add((occurrenceTime, triggerTime));
-                            break;
-                        }
+                        result.Add((occurrenceTime, triggerTime));
+                        break;
                     }
                 }
             }
@@ -284,7 +283,7 @@ public class CalDavCalendarProvider : ICalendarProvider
                 foreach (var minutes in reminderMinutes)
                 {
                     var triggerTime = eventStartTime.Value.AddMinutes(-minutes);
-                    if (triggerTime > now)
+                    if (triggerTime > startTime)
                     {
                         result.Add((eventStartTime.Value, triggerTime));
                     }

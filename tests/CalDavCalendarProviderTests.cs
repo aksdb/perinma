@@ -111,8 +111,8 @@ public class CalDavCalendarProviderTests
         var unknownAccountId = Guid.NewGuid().ToString();
 
         // Act & Assert
-        var ex = Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await _provider.GetCalendarsAsync(unknownAccountId));
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await _provider.GetCalendarsAsync(unknownAccountId));
         Assert.That(ex!.Message, Does.Contain("No CalDAV credentials found"));
     }
 
@@ -526,14 +526,13 @@ public class CalDavCalendarProviderTests
         var unknownAccountId = Guid.NewGuid().ToString();
 
         // Act & Assert
-        var ex = Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await _provider.RespondToEventAsync(
-                unknownAccountId,
-                "https://caldav.example.com/calendars/work",
-                "https://caldav.example.com/calendars/work/event1.ics",
-                "{}",
-                "ACCEPTED"
-            ));
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(async () => await _provider.RespondToEventAsync(
+            unknownAccountId,
+            "https://caldav.example.com/calendars/work",
+            "https://caldav.example.com/calendars/work/event1.ics",
+            "{}",
+            "ACCEPTED"
+        ));
         Assert.That(ex!.Message, Does.Contain("No CalDAV credentials found"));
     }
 
@@ -563,7 +562,7 @@ public class CalDavCalendarProviderTests
                            "END:VCALENDAR";
 
         // Act
-        var result = await _provider.GetReminderOccurrencesAsync(rawEventData);
+        var result = await _provider.GetNextReminderOccurrencesAsync(rawEventData);
 
         // Assert
         Assert.That(result, Has.Count.EqualTo(1));
@@ -597,10 +596,79 @@ public class CalDavCalendarProviderTests
                            "END:VCALENDAR";
 
         // Act
-        var result = await _provider.GetReminderOccurrencesAsync(rawEventData);
+        var result = await _provider.GetNextReminderOccurrencesAsync(rawEventData);
 
         // Assert
         Assert.That(result, Is.Empty);
+    }
+
+    [Test]
+    public async Task GetReminderOccurrencesAsync_WithRecurringEvent_ReturnsTriggerTime()
+    {
+        var rawEventData =
+            """
+            BEGIN:VCALENDAR
+            PRODID:-//SomeClient/1.2.3.4
+            VERSION:2.0
+            BEGIN:VTIMEZONE
+            TZID:Europe/Berlin
+            LAST-MODIFIED:20250324T091428Z
+            X-LIC-LOCATION:Europe/Berlin
+            BEGIN:DAYLIGHT
+            TZNAME:CEST
+            TZOFFSETFROM:+0100
+            TZOFFSETTO:+0200
+            DTSTART:19700329T020000
+            RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU
+            END:DAYLIGHT
+            BEGIN:STANDARD
+            TZNAME:CET
+            TZOFFSETFROM:+0200
+            TZOFFSETTO:+0100
+            DTSTART:19701025T030000
+            RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
+            END:STANDARD
+            END:VTIMEZONE
+            BEGIN:VEVENT
+            UID:15E7-696A9000-3-739CD300
+            SUMMARY:Testtermin
+            LOCATION:Irgendwo sonst
+            DESCRIPTION:Mal bissl description.\nMehrzeilig?\nOk.
+            CLASS:PUBLIC
+            X-SOGO-SEND-APPOINTMENT-NOTIFICATIONS:NO
+            TRANSP:OPAQUE
+            DTSTART;TZID=Europe/Berlin:20260116T130000
+            DTEND;TZID=Europe/Berlin:20260116T140000
+            CREATED:20260116T192252Z
+            DTSTAMP:20260123T141142Z
+            LAST-MODIFIED:20260123T141142Z
+            RRULE:FREQ=WEEKLY
+            SEQUENCE:1
+            X-MICROSOFT-CDO-BUSYSTATUS:BUSY
+            BEGIN:VALARM
+            TRIGGER;RELATED=START:-PT5M
+            ACTION:DISPLAY
+            SUMMARY:Testtermin
+            DESCRIPTION:Mal bissl description.\nMehrzeilig?\nOk.
+            X-MOZ-LASTACK:20260130T115400Z
+            ACKNOWLEDGED:20260130T115400Z
+            X-WR-ALARMUID:cf31d062-0599-45ef-9f04-e272312ec155
+            END:VALARM
+            END:VEVENT
+            END:VCALENDAR
+            """;
+
+        var referenceTime = new DateTime(2026, 01, 20);
+        var result = await _provider.GetNextReminderOccurrencesAsync(rawEventData, referenceTime: referenceTime);
+
+        // Assert
+        Assert.That(result, Has.Count.EqualTo(1));
+        /*var (occurrence, triggerTime) = result[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(occurrence.Date, Is.EqualTo(futureStart.Date));
+            Assert.That(triggerTime, Is.LessThan(occurrence));
+        });*/
     }
 
     #endregion

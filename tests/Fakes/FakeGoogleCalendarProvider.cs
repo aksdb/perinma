@@ -139,9 +139,10 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
         return Task.FromResult<IList<int>>([]);
     }
 
-    public Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetReminderOccurrencesAsync(
+    public Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
         string rawEventData,
         string? rawCalendarData = null,
+        DateTime referenceTime = default,
         CancellationToken cancellationToken = default)
     {
         // Return empty list by default - tests can override if needed

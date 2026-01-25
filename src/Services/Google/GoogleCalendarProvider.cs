@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
+using Ical.Net.DataTypes;
 using perinma.Utils;
 using Calendar = Ical.Net.Calendar;
 
@@ -286,9 +287,10 @@ public class GoogleCalendarProvider : ICalendarProvider
     }
 
     /// <inheritdoc/>
-    public async Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetReminderOccurrencesAsync(
+    public async Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
         string rawEventData,
         string? rawCalendarData = null,
+        DateTime referenceTime = default,
         CancellationToken cancellationToken = default)
     {
         try
@@ -312,16 +314,11 @@ public class GoogleCalendarProvider : ICalendarProvider
             }
 
             var isRecurring = googleEvent.Recurrence is { Count: > 0 };
-            var now = DateTime.UtcNow;
+            var startTime = referenceTime == default ? DateTime.UtcNow : referenceTime;
             var result = new List<(DateTime Occurrence, DateTime TriggerTime)>();
 
             if (isRecurring)
             {
-                var recurrenceEndTime = RecurrenceParser.GetRecurrenceEndTime(
-                    googleEvent.Recurrence,
-                    eventStartTime.Value,
-                    eventStartTime.Value.AddHours(1));
-
                 var icalString = BuildIcalString(googleEvent.Recurrence);
                 if (string.IsNullOrEmpty(icalString))
                 {
@@ -333,24 +330,22 @@ public class GoogleCalendarProvider : ICalendarProvider
 
                 if (icalEvent != null)
                 {
-                    var searchEnd = recurrenceEndTime ?? now.AddYears(10);
-
-                    foreach (var occurrence in icalEvent.GetOccurrences())
+                    var occurrences = icalEvent.GetOccurrences(startTime: new CalDateTime(startTime));
+                    var nextOccurrence = occurrences.FirstOrDefault();
+                    if (nextOccurrence == null)
                     {
-                        var occurrenceTime = occurrence.Period.StartTime.AsUtc;
-                        if (occurrenceTime < now || occurrenceTime > searchEnd)
-                        {
-                            continue;
-                        }
+                        return [];
+                    }
 
-                        foreach (var minutes in reminderMinutes)
+                    var occurrenceTime = nextOccurrence.Period.StartTime.AsUtc;
+
+                    foreach (var minutes in reminderMinutes)
+                    {
+                        var triggerTime = occurrenceTime.AddMinutes(-minutes);
+                        if (triggerTime > startTime)
                         {
-                            var triggerTime = occurrenceTime.AddMinutes(-minutes);
-                            if (triggerTime > now)
-                            {
-                                result.Add((occurrenceTime, triggerTime));
-                                break;
-                            }
+                            result.Add((occurrenceTime, triggerTime));
+                            break;
                         }
                     }
                 }
@@ -360,7 +355,7 @@ public class GoogleCalendarProvider : ICalendarProvider
                 foreach (var minutes in reminderMinutes)
                 {
                     var triggerTime = eventStartTime.Value.AddMinutes(-minutes);
-                    if (triggerTime > now)
+                    if (triggerTime > startTime)
                     {
                         result.Add((eventStartTime.Value, triggerTime));
                     }

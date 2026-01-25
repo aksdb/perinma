@@ -70,11 +70,13 @@ public interface ICalendarProvider
     /// </summary>
     /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
     /// <param name="rawCalendarData">Optional raw calendar data for default reminders (JSON for Google)</param>
+    /// <param name="referenceTime">Reference time for filtering (defaults to UTC now)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of tuples containing occurrence time and trigger time for each reminder</returns>
-    Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetReminderOccurrencesAsync(
+    Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
         string rawEventData,
         string? rawCalendarData = null,
+        DateTime referenceTime = default,
         CancellationToken cancellationToken = default);
 
     /// <summary>

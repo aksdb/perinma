@@ -37,7 +37,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         }
 
         // Get reminder occurrences from the provider
-        var reminderOccurrences = await provider.GetReminderOccurrencesAsync(rawData, rawCalendarData, cancellationToken);
+        var reminderOccurrences = await provider.GetNextReminderOccurrencesAsync(rawData, rawCalendarData, DateTime.UtcNow, cancellationToken);
 
         if (reminderOccurrences.Count == 0)
         {
