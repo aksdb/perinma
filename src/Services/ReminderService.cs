@@ -99,10 +99,11 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         var calendarId = await storage.GetEventCalendarIdAsync(reminder.TargetId);
         if (!string.IsNullOrEmpty(calendarId))
         {
-            var accountType = await storage.GetAccountTypeForCalendarAsync(calendarId);
-            if (accountType.HasValue)
+            var calendar = storage.GetCachedCalendar(new Guid(calendarId));
+            if (calendar != null)
             {
-                await PopulateRemindersForEventAsync(reminder.TargetId, calendarId, accountType.Value, cancellationToken);
+                await PopulateRemindersForEventAsync(reminder.TargetId, calendarId, calendar.Account.Type,
+                    cancellationToken);
             }
         }
 

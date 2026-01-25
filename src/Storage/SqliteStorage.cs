@@ -868,7 +868,7 @@ public class SqliteStorage : IDisposable
 
         foreach (var accountDbo in accountDbos)
         {
-            if (!Enum.TryParse<AccountType>(accountDbo.Type, out var accountType))
+            if (!Enum.TryParse<AccountType>(accountDbo.Type, ignoreCase: true, out var accountType))
             {
                 continue;
             }
