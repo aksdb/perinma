@@ -7,7 +7,7 @@ namespace perinma.Views.CalendarList;
 
 public partial class CalendarListView : UserControl
 {
-    private AccountGroupViewModel? _draggedItem;
+    private int _draggedItemIndex = -1;
     private bool _isDragging;
 
     public CalendarListView()
@@ -21,6 +21,8 @@ public partial class CalendarListView : UserControl
     {
         if (sender is not Border dragHandle)
             return;
+        if (DataContext is not CalendarListViewModel viewModel)
+            return;
 
         // Find the parent border with AccountGroupViewModel
         var accountBorder = FindAccountGroupBorder(dragHandle);
@@ -31,35 +33,35 @@ public partial class CalendarListView : UserControl
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
 
-        _draggedItem = accountGroup;
+        _draggedItemIndex = viewModel.AccountGroups.IndexOf(accountGroup);
         _isDragging = false;
         e.Handled = true;
     }
 
     private async void AccountGroup_PointerMoved(object? sender, PointerEventArgs e)
     {
-        if (_draggedItem == null || _isDragging)
+        if (_draggedItemIndex < 0 || _isDragging)
             return;
 
         var point = e.GetCurrentPoint(this);
         if (!point.Properties.IsLeftButtonPressed)
         {
-            _draggedItem = null;
+            _draggedItemIndex = -1;
             return;
         }
 
         _isDragging = true;
 
-        var dragData = new DataObject();
-        dragData.Set("AccountGroup", _draggedItem);
+        var dragData = new DataTransfer();
+        dragData.Add(DataTransferItem.CreateText(_draggedItemIndex.ToString()));
 
         try
         {
-            await DragDrop.DoDragDrop(e, dragData, DragDropEffects.Move);
+            await DragDrop.DoDragDropAsync(e, dragData, DragDropEffects.Move);
         }
         finally
         {
-            _draggedItem = null;
+            _draggedItemIndex = -1;
             _isDragging = false;
         }
     }
@@ -68,7 +70,7 @@ public partial class CalendarListView : UserControl
     {
         e.DragEffects = DragDropEffects.None;
 
-        if (!e.Data.Contains("AccountGroup"))
+        if (!e.DataTransfer.Contains(DataFormat.Text))
             return;
 
         // Find the target border under the cursor
@@ -81,28 +83,23 @@ public partial class CalendarListView : UserControl
 
     private void OnDrop(object? sender, DragEventArgs e)
     {
-        if (!e.Data.Contains("AccountGroup"))
+        if (DataContext is not CalendarListViewModel viewModel)
+            return;
+        
+        if (!e.DataTransfer.Contains(DataFormat.Text))
             return;
 
-        var sourceItem = e.Data.Get("AccountGroup") as AccountGroupViewModel;
-        if (sourceItem == null)
+        if (!int.TryParse(e.DataTransfer.TryGetText(), out var sourceIndex))
             return;
 
         // Find the target border under the cursor
         var targetBorder = FindAccountGroupBorder(e.Source as Visual);
         if (targetBorder?.DataContext is not AccountGroupViewModel targetItem)
             return;
-
-        if (sourceItem == targetItem)
-            return;
-
-        if (DataContext is not CalendarListViewModel viewModel)
-            return;
-
-        var sourceIndex = viewModel.AccountGroups.IndexOf(sourceItem);
+        
         var targetIndex = viewModel.AccountGroups.IndexOf(targetItem);
-
-        if (sourceIndex < 0 || targetIndex < 0)
+        
+        if (sourceIndex == targetIndex || sourceIndex < 0 || targetIndex < 0)
             return;
 
         viewModel.AccountGroups.Move(sourceIndex, targetIndex);

@@ -18,7 +18,7 @@ public abstract class SyncTestBase
 {
     protected DatabaseService? Database { get; private set; }
     protected CredentialManagerService CredentialManager { get; private set; } = null!;
-    protected SqliteStorage? Storage { get; private set; } = null;
+    protected SqliteStorage Storage { get; private set; } = null!;
     protected FakeGoogleCalendarService FakeGoogleService { get; private set; } = null!;
     protected FakeCalDavService FakeCalDavService { get; private set; } = null!;
     protected Dictionary<AccountType, ICalendarProvider> Providers { get; private set; } = null!;

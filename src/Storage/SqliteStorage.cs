@@ -821,17 +821,17 @@ public class SqliteStorage : IDisposable
 
     public Account? GetCachedAccount(Guid accountId)
     {
-        EnsureCacheInitializedAsync().Wait();
+        EnsureCacheInitializedAsync();
         return _accountCache.TryGetValue(accountId, out var account) ? account : null;
     }
 
     public Calendar? GetCachedCalendar(Guid calendarId)
     {
-        EnsureCacheInitializedAsync().Wait();
+        EnsureCacheInitializedAsync();
         return _calendarCache.TryGetValue(calendarId, out var calendar) ? calendar : null;
     }
 
-    private async Task EnsureCacheInitializedAsync()
+    private void EnsureCacheInitializedAsync()
     {
         if (_cacheInitialized)
         {

@@ -10,10 +10,6 @@
         CanResize="False" WindowStartupLocation="CenterOwner"
         Icon="/Assets/icon.ico">
 
-    <Design.DataContext>
-        <reminders:ReminderListViewModel />
-    </Design.DataContext>
-
     <Window.Styles>
         <Style Selector="Button:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AccentColor2}" />
