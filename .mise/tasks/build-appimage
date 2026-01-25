@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+#MISE description="Build an AppImage for Linux"
+#MISE depends=["prepare-secrets"]
+#MISE tools={ "github:AppImage/AppImageKit" = "continuous" }
+
+set -e
+
+# Configuration
+APP_NAME="perinma"
+APP_VERSION="0.1.0"
+RID="linux-x64"
+OUTPUT_DIR="build/AppImage"
+
+# Clean previous builds
+rm -rf "$OUTPUT_DIR"
+mkdir -p "$OUTPUT_DIR"
+
+# Step 1: Publish .NET application (self-contained for .NET 9)
+echo "Publishing .NET application..."
+dotnet publish src/perinma.csproj \
+  -c Release \
+  -r "$RID" \
+  -p:SelfContained=true \
+  -p:PublishTrimmed=true \
+  -p:TrimMode=partial \
+  -p:PublishSingleFile=false \
+  -p:IncludeNativeLibrariesForSelfExtract=true \
+  -o "$OUTPUT_DIR/publish"
+
+# Step 2: Create AppDir structure
+APPDIR="$OUTPUT_DIR/${APP_NAME}.AppDir"
+echo "Creating AppDir structure..."
+mkdir -p "$APPDIR/usr/bin"
+mkdir -p "$APPDIR/usr/lib"
+mkdir -p "$APPDIR/usr/share/applications"
+
+# Step 3: Copy published files
+echo "Copying published files..."
+cp -r "$OUTPUT_DIR/publish/"* "$APPDIR/usr/bin/"
+
+# Step 4: Ensure Avalonia native libraries are present
+echo "Checking for Avalonia native libraries..."
+if [ -f "$APPDIR/usr/bin/libSkiaSharp.so" ]; then
+    echo "Found libSkiaSharp.so"
+else
+    echo "Warning: libSkiaSharp.so not found in publish output"
+fi
+
+if [ -f "$APPDIR/usr/bin/libHarfBuzzSharp.so" ]; then
+    echo "Found libHarfBuzzSharp.so"
+else
+    echo "Warning: libHarfBuzzSharp.so not found in publish output"
+fi
+
+# Step 5: Create desktop entry file
+echo "Creating .desktop file..."
+cat > "$APPDIR/${APP_NAME}.desktop" <<EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Perinma
+Comment=Calendar Management Application
+Exec=perinma
+Icon=perinma
+Terminal=false
+Categories=Office;Calendar;
+StartupWMClass=perinma
+EOF
+
+# Step 6: Copy or create icon
+echo "Setting up icon..."
+if [ -f "src/Assets/perinma.png" ]; then
+    cp "src/Assets/perinma.png" "$APPDIR/${APP_NAME}.png"
+elif [ -f "src/Assets/avalonia-logo.png" ]; then
+    cp "src/Assets/avalonia-logo.png" "$APPDIR/${APP_NAME}.png"
+else
+    echo "Warning: No PNG icon found. Please add src/Assets/perinma.png"
+fi
+
+# Step 7: Create AppRun launcher script
+echo "Creating AppRun script..."
+cat > "$APPDIR/AppRun" <<'APPRUN_EOF'
+#!/bin/bash
+SELF=$(readlink -f "$0")
+HERE=${SELF%/*}
+export PATH="${HERE}/usr/bin:${PATH}"
+export LD_LIBRARY_PATH="${HERE}/usr/lib:${HERE}/usr/bin:${LD_LIBRARY_PATH}"
+export APPIMAGE="${SELF}"
+
+# Change to app directory to handle relative paths correctly
+cd "$HERE"
+
+# Run the application
+exec "${HERE}/usr/bin/perinma" "$@"
+APPRUN_EOF
+
+chmod +x "$APPDIR/AppRun"
+
+# Step 8: Create .DirIcon symlink
+if [ -f "$APPDIR/${APP_NAME}.png" ]; then
+    ln -sf "${APP_NAME}.png" "$APPDIR/.DirIcon"
+fi
+
+# Step 9: Build AppImage (appimagetool is now available in PATH via mise)
+echo "Building AppImage..."
+VERSION="$APP_VERSION" ARCH="x86_64" appimagetool.AppImage "$APPDIR" "$OUTPUT_DIR/${APP_NAME}-${APP_VERSION}-${RID}.AppImage"
+
+# Step 10: Set executable
+chmod +x "$OUTPUT_DIR/${APP_NAME}-${APP_VERSION}-${RID}.AppImage"
+
+echo "✓ AppImage created: $OUTPUT_DIR/${APP_NAME}-${APP_VERSION}-${RID}.AppImage"
+echo "Run with: ./$OUTPUT_DIR/${APP_NAME}-${APP_VERSION}-${RID}.AppImage"
