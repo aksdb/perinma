@@ -738,7 +738,7 @@ public class SqliteStorage : IDisposable
                 ce.title AS EventTitle,
                 c.name AS CalendarName,
                 c.color AS CalendarColor,
-                ce.start_time AS StartTime
+                datetime(ce.start_time, 'unixepoch') AS StartTime
             FROM reminder r
             INNER JOIN calendar_event ce ON r.target_id = ce.event_id
             INNER JOIN calendar c ON ce.calendar_id = c.calendar_id

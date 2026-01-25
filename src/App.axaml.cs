@@ -20,6 +20,7 @@ public partial class App : Application
 {
     private DatabaseService? _databaseService;
     private CredentialManagerService? _credentialManager;
+    private ReminderSchedulerService? _reminderSchedulerService;
 
     public override void Initialize()
     {
@@ -63,6 +64,13 @@ public partial class App : Application
                 {
                     DataContext = new MainWindowViewModel(_databaseService, _credentialManager, syncService, calDavService),
                 };
+
+                // Initialize and start the reminder scheduler
+                _reminderSchedulerService = new ReminderSchedulerService(reminderService, desktop.MainWindow);
+                _reminderSchedulerService.Start();
+
+                // Stop the scheduler when the app exits
+                desktop.Exit += (_, _) => _reminderSchedulerService?.Stop();
             }
         }
         catch (Exception ex)
