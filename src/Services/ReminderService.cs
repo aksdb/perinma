@@ -13,7 +13,8 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 {
     private readonly HashSet<string> _firedReminders = new();
 
-    public async Task PopulateRemindersForEventAsync(string eventId, string calendarId, AccountType accountType, CancellationToken cancellationToken = default)
+    public async Task PopulateRemindersForEventAsync(string eventId, string calendarId, AccountType accountType,
+        CancellationToken cancellationToken = default)
     {
         var rawData = await storage.GetEventData(eventId, "rawData");
 
@@ -37,7 +38,9 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         }
 
         // Get reminder occurrences from the provider
-        var reminderOccurrences = await provider.GetNextReminderOccurrencesAsync(rawData, rawCalendarData, DateTime.UtcNow, cancellationToken);
+        var reminderOccurrences =
+            await provider.GetNextReminderOccurrencesAsync(rawData, rawCalendarData, DateTime.UtcNow,
+                cancellationToken);
 
         if (reminderOccurrences.Count == 0)
         {
@@ -47,7 +50,8 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         var existingReminders = await storage.GetRemindersByEventAsync(eventId);
 
         var remindersToDelete = existingReminders
-            .Where(r => reminderOccurrences.All(o => o.TriggerTime != DateTimeOffset.FromUnixTimeSeconds(r.TriggerTime).DateTime))
+            .Where(r => reminderOccurrences.All(o =>
+                o.TriggerTime != DateTimeOffset.FromUnixTimeSeconds(r.TriggerTime).DateTime))
             .Select(r => r.ReminderId)
             .ToList();
 
@@ -80,7 +84,8 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         await HandleDismissAsync(reminderId, cancellationToken);
     }
 
-    public async Task SnoozeReminderAsync(string reminderId, SnoozeInterval interval, CancellationToken cancellationToken = default)
+    public async Task SnoozeReminderAsync(string reminderId, SnoozeInterval interval,
+        CancellationToken cancellationToken = default)
     {
         _firedReminders.Remove(reminderId);
         await HandleSnoozeAsync(reminderId, interval, cancellationToken);
@@ -110,24 +115,51 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         await storage.DeleteReminderAsync(reminderId);
     }
 
-    private async Task HandleSnoozeAsync(string reminderId, SnoozeInterval interval, CancellationToken cancellationToken)
+    private async Task HandleSnoozeAsync(string reminderId, SnoozeInterval interval,
+        CancellationToken cancellationToken)
     {
         var reminder = await storage.GetReminderAsync(reminderId);
-
         if (reminder == null)
         {
             return;
         }
 
-        var newTriggerTime = CalculateSnoozeTime(reminder.TargetTime, interval);
-        await storage.CreateReminderAsync(reminder.TargetId, DateTimeOffset.FromUnixTimeSeconds(reminder.TargetTime).DateTime, newTriggerTime);
         await storage.DeleteReminderAsync(reminderId);
+
+        var targetTime = DateTimeOffset.FromUnixTimeMilliseconds(reminder.TargetTime).DateTime;
+
+        DateTime newTriggerTime;
+        if (interval == SnoozeInterval.WhenItStarts || interval == SnoozeInterval.OneMinuteBeforeStart)
+        {
+            if (reminder.TargetType != 1)
+            {
+                // Not a calendar reminder; nothing to be done 
+                return;
+            }
+
+            var calendarId = await storage.GetEventCalendarIdAsync(reminder.TargetId);
+            if (calendarId == null) return;
+
+            var calendar = storage.GetCachedCalendar(new Guid(calendarId));
+            if (calendar == null) return;
+
+            var occurrenceStartTime = await GetEventStartTimeAsync(reminder.TargetId,
+                DateTimeOffset.FromUnixTimeSeconds(reminder.TargetTime).DateTime,
+                calendar.Account.Type, cancellationToken);
+            if (occurrenceStartTime == null) return;
+
+            newTriggerTime = CalculateSnoozeTime(occurrenceStartTime.Value, interval);
+        }
+        else
+        {
+            newTriggerTime = CalculateSnoozeTime(targetTime, interval);
+        }
+
+        await storage.CreateReminderAsync(reminder.TargetId, targetTime, newTriggerTime);
     }
 
-    private DateTime CalculateSnoozeTime(long targetTimeUnix, SnoozeInterval interval)
+    private DateTime CalculateSnoozeTime(DateTime targetTime, SnoozeInterval interval)
     {
-        var targetTime = DateTimeOffset.FromUnixTimeSeconds(targetTimeUnix).DateTime;
-
         return interval switch
         {
             SnoozeInterval.OneMinute => DateTime.UtcNow.AddMinutes(1),
@@ -149,7 +181,8 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         _firedReminders.Clear();
     }
 
-    public async Task<DateTime?> GetEventStartTimeAsync(string eventId, DateTime occurrenceTime, AccountType accountType, CancellationToken cancellationToken = default)
+    public async Task<DateTime?> GetEventStartTimeAsync(string eventId, DateTime occurrenceTime,
+        AccountType accountType, CancellationToken cancellationToken = default)
     {
         var rawData = await storage.GetEventData(eventId, "rawData");
 
