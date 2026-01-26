@@ -45,8 +45,8 @@ mise set -E local GOOGLE_CLIENT_SECRET=your-client-secret
 - Tests have `ImplicitUsings` enabled; main project uses explicit usings
 
 ### Formatting & Structure
-- Target: .NET 9.0 (net9.0)
-- C# language version: latest (C# 12)
+- Target: .NET 10.0 (net10.0)
+- C# language version: latest (C# 14)
 - Nullable reference types enabled: `<Nullable>enable</Nullable>`
 - Use `record` or `class` as appropriate (prefer `class` unless immutability is required)
 - Use primary constructor syntax where parameters are simple: `public class SqliteStorage(DatabaseService databaseService)`
