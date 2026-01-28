@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 #MISE description="Build an AppImage for Linux"
-#MISE depends=["prepare-secrets"]
 #MISE tools={ "github:AppImage/AppImageKit" = "continuous" }
 
 set -e
@@ -20,11 +19,6 @@ echo "Publishing .NET application..."
 dotnet publish src/perinma.csproj \
   -c Release \
   -r "$RID" \
-  -p:SelfContained=true \
-  -p:PublishTrimmed=true \
-  -p:TrimMode=partial \
-  -p:PublishSingleFile=false \
-  -p:IncludeNativeLibrariesForSelfExtract=true \
   -o "$OUTPUT_DIR/publish"
 
 # Step 2: Create AppDir structure

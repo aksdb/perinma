@@ -19,12 +19,7 @@ echo "Publishing .NET application for macOS (Intel)..."
 dotnet publish src/perinma.csproj \
   -c Release \
   -r "$RID" \
-  -o "$OUTPUT_DIR/${APP_NAME}.app/Contents/MacOS" \
-  -p:SelfContained=true \
-  -p:PublishTrimmed=true \
-  -p:TrimMode=partial \
-  -p:PublishSingleFile=false \
-  -p:IncludeNativeLibrariesForSelfExtract=true
+  -o "$OUTPUT_DIR/${APP_NAME}.app/Contents/MacOS"
 
 # Step 2: Create Info.plist
 echo "Creating Info.plist..."
