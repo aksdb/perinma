@@ -16,6 +16,9 @@ using perinma.Storage.Models;
 
 namespace perinma.Services.Google;
 
+[JsonSerializable(typeof(GoogleCalendarService.TokenExchangeResponse))]
+internal partial class GoogleCalendarContext : JsonSerializerContext { }
+
 public class GoogleCalendarService : IGoogleCalendarService
 {
     /// <summary>
@@ -115,7 +118,7 @@ public class GoogleCalendarService : IGoogleCalendarService
                 $"Token exchange failed with status {response.StatusCode}: {responseContent}");
         }
 
-        var tokenResponse = JsonSerializer.Deserialize<TokenExchangeResponse>(responseContent);
+        var tokenResponse = JsonSerializer.Deserialize(responseContent, GoogleCalendarContext.Default.TokenExchangeResponse);
 
         if (tokenResponse == null)
         {
@@ -174,7 +177,7 @@ public class GoogleCalendarService : IGoogleCalendarService
                 $"Token refresh failed with status {response.StatusCode}: {responseContent}");
         }
 
-        var tokenResponse = JsonSerializer.Deserialize<TokenExchangeResponse>(responseContent);
+        var tokenResponse = JsonSerializer.Deserialize(responseContent, GoogleCalendarContext.Default.TokenExchangeResponse);
         if (tokenResponse == null)
         {
             throw new InvalidOperationException("Failed to parse token refresh response");
@@ -368,7 +371,7 @@ public class GoogleCalendarService : IGoogleCalendarService
         public string? SyncToken { get; init; }
     }
 
-    private class TokenExchangeResponse
+    internal partial class TokenExchangeResponse
     {
         [JsonPropertyName( "access_token")]
         public string AccessToken { get; set; } = string.Empty;

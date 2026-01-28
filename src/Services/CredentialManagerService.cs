@@ -9,7 +9,7 @@ public class CredentialManagerService(ICredentialStore store)
     public void StoreGoogleCredentials(string accountId, GoogleCredentials credentials)
     {
         var service = GetServiceName(accountId);
-        var json = JsonSerializer.Serialize(credentials);
+        var json = JsonSerializer.Serialize(credentials, CredentialsContext.Default.GoogleCredentials);
         store.AddOrUpdate(service, accountId, json);
     }
 
@@ -25,7 +25,7 @@ public class CredentialManagerService(ICredentialStore store)
 
         try
         {
-            return JsonSerializer.Deserialize<GoogleCredentials>(credential.Password);
+            return JsonSerializer.Deserialize(credential.Password, CredentialsContext.Default.GoogleCredentials);
         }
         catch (JsonException)
         {
@@ -36,10 +36,10 @@ public class CredentialManagerService(ICredentialStore store)
     public void StoreCalDavCredentials(string accountId, CalDavCredentials credentials)
     {
         var service = GetServiceName(accountId);
-        var json = JsonSerializer.Serialize(credentials);
+        var json = JsonSerializer.Serialize(credentials, CredentialsContext.Default.CalDavCredentials);
         store.AddOrUpdate(service, accountId, json);
     }
-    
+
     public CalDavCredentials? GetCalDavCredentials(string accountId)
     {
         var service = GetServiceName(accountId);
@@ -52,20 +52,20 @@ public class CredentialManagerService(ICredentialStore store)
 
         try
         {
-            return JsonSerializer.Deserialize<CalDavCredentials>(credential.Password);
+            return JsonSerializer.Deserialize(credential.Password, CredentialsContext.Default.CalDavCredentials);
         }
         catch (JsonException)
         {
             return null;
         }
     }
-    
+
     public bool DeleteCredentials(string accountId)
     {
         var service = GetServiceName(accountId);
         return store.Remove(service, accountId);
     }
-    
+
     public bool HasCredentials(string accountId)
     {
         var service = GetServiceName(accountId);
