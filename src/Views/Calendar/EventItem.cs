@@ -47,10 +47,16 @@ public partial class EventItem : TemplatedControl
     private IBrush _borderBrush = Brushes.Transparent;
     
     /// <summary>
-    /// Indicates whether this event needs a response from the user (not yet accepted).
+    /// Indicates whether this event needs a response from the user (not yet accepted, tentative, or declined).
     /// </summary>
     [AvaStyledProperty]
     private bool _needsResponse = false;
+
+    /// <summary>
+    /// Indicates whether the user has declined this event invitation.
+    /// </summary>
+    [AvaStyledProperty]
+    private bool _isDeclined = false;
 
     public int TieBreaker { get; set; }
     public bool IsFullDay { get; set; }
@@ -119,6 +125,16 @@ public partial class EventItem : TemplatedControl
             case nameof(Storage):
             case nameof(Providers):
                 EventViewModel = CreateViewModel() as IRespondableEventViewModel;
+                break;
+            case nameof(IsDeclined):
+                if (IsDeclined)
+                {
+                    Classes.Add("declined");
+                }
+                else
+                {
+                    Classes.Remove("declined");
+                }
                 break;
         }
     }

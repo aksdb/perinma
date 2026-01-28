@@ -59,12 +59,13 @@
                                      </MenuItem>
                                  </ContextMenu>
                              </Border.ContextMenu>
-                             <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">
-                                 <TextBlock Text="{Binding Title, RelativeSource={RelativeSource TemplatedParent}}"
-                                            FontWeight="Bold"
-                                            TextTrimming="CharacterEllipsis"
-                                            FontSize="{DynamicResource CalendarTimeHourFontSize}"
-                                            Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
+                              <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">
+                                  <TextBlock Name="TitleTextBlock"
+                                             Text="{Binding Title, RelativeSource={RelativeSource TemplatedParent}}"
+                                             FontWeight="Bold"
+                                             TextTrimming="CharacterEllipsis"
+                                             FontSize="{DynamicResource CalendarTimeHourFontSize}"
+                                             Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
 
                                  <!-- Inline variant: single line with emoji and range -->
                                  <TextBlock
@@ -97,6 +98,11 @@
                     </Grid>
                 </ControlTemplate>
             </Setter>
+        </Style>
+
+        <!-- Style to apply strikethrough to declined event titles -->
+        <Style Selector="cal|EventItem.declined /template/ TextBlock#TitleTextBlock">
+            <Setter Property="TextDecorations" Value="Strikethrough" />
         </Style>
     </UserControl.Styles>
 

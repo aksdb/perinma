@@ -182,8 +182,11 @@ public partial class CalendarWeekViewModel : ViewModelBase
                     // Detect all-day events: modeled as midnight-to-midnight spans
                     var isFullDay = e.StartTime.TimeOfDay == TimeSpan.Zero && e.EndTime.TimeOfDay == TimeSpan.Zero;
 
-                    // Determine if this event needs a response (not yet accepted and can respond)
-                    var needsResponse = e.ResponseStatus is EventResponseStatus.NeedsAction or EventResponseStatus.Tentative;
+                    // Determine if this event needs a response (not yet accepted, tentative, or declined)
+                    var needsResponse = e.ResponseStatus is EventResponseStatus.NeedsAction or EventResponseStatus.Tentative or EventResponseStatus.Declined;
+                    
+                    // Determine if this event has been declined
+                    var isDeclined = e.ResponseStatus == EventResponseStatus.Declined;
                     
                     var vm = new EventItem
                     {
@@ -203,6 +206,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         Storage = _storage,
                         Providers = _providers,
                         NeedsResponse = needsResponse,
+                        IsDeclined = isDeclined,
                     };
                     viewModels.Add(vm);
                 }
