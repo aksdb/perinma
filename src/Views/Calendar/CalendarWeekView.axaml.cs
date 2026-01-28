@@ -163,10 +163,32 @@ public partial class CalendarWeekView : UserControl
         public event EventHandler? SettingsLoaded;
 
         private readonly Canvas _canvas = new();
-        
+        private System.Timers.Timer? _currentTimeUpdateTimer;
+
         public MainView()
         {
             Content = _canvas;
+            StartCurrentTimeTimer();
+        }
+
+        private void StartCurrentTimeTimer()
+        {
+            _currentTimeUpdateTimer = new System.Timers.Timer(60000); // Update every minute
+            _currentTimeUpdateTimer.Elapsed += (sender, e) =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    InvalidateVisual(); // Trigger redraw
+                });
+            };
+            _currentTimeUpdateTimer.Start();
+        }
+
+        protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            base.OnDetachedFromVisualTree(e);
+            _currentTimeUpdateTimer?.Stop();
+            _currentTimeUpdateTimer?.Dispose();
         }
 
         public async Task LoadSettingsAsync()
@@ -306,6 +328,57 @@ public partial class CalendarWeekView : UserControl
             {
                 context.DrawLine(thickPen, new Point(i * columnWidth, 0), new Point(i * columnWidth, height));
             }
+
+            // Draw current time indicator
+            DrawCurrentTimeIndicatorIfTodayVisible(context, width, columnWidth);
+        }
+
+        private void DrawCurrentTimeIndicatorIfTodayVisible(DrawingContext context, double width, double columnWidth)
+        {
+            var today = DateTime.Now;
+            var todayDate = today.Date;
+
+            // Check if today is within the displayed week
+            var weekEnd = WeekStart.AddDays(DayColumns);
+            if (todayDate < WeekStart.Date || todayDate >= weekEnd.Date)
+                return;
+
+            // Calculate which day column is today
+            var daysFromStart = (todayDate - WeekStart.Date).Days;
+            var currentDayColumn = daysFromStart;
+
+            // Calculate Y position
+            var currentMinutes = today.Hour * 60 + today.Minute;
+            var currentSlot = currentMinutes / 15.0;
+            var yPosition = currentSlot * RowHeight;
+
+            // Don't draw if out of bounds
+            if (yPosition < 0 || yPosition > Bounds.Height)
+                return;
+
+            // Calculate X positions for the current day column
+            var leftX = currentDayColumn * columnWidth;
+            var rightX = (currentDayColumn + 1) * columnWidth;
+
+            // Define indicator styling
+            var indicatorColor = Color.FromRgb(0xFF, 0x52, 0x52); // #FF5252
+            var indicatorBrush = new SolidColorBrush(indicatorColor);
+
+            // Draw glow first (behind the line)
+            var glowBrush = new SolidColorBrush(Color.FromArgb(60, 0xFF, 0x52, 0x52));
+            context.DrawLine(new Pen(glowBrush, 6), new Point(leftX, yPosition), new Point(rightX, yPosition));
+
+            // Draw main line
+            context.DrawLine(new Pen(indicatorBrush, 2.5), new Point(leftX, yPosition), new Point(rightX, yPosition));
+
+            // Draw left indicator circle
+            const double circleRadius = 4;
+            var circleCenter = new Point(leftX + circleRadius, yPosition);
+            context.DrawEllipse(indicatorBrush, null, circleCenter, circleRadius, circleRadius);
+
+            // Draw circle glow
+            var circleGlowBrush = new SolidColorBrush(Color.FromArgb(40, 0xFF, 0x52, 0x52));
+            context.DrawEllipse(circleGlowBrush, null, circleCenter, circleRadius + 4, circleRadius + 4);
         }
     }
 
