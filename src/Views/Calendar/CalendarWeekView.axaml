@@ -37,13 +37,12 @@
             <Setter Property="Template">
                 <ControlTemplate>
                     <Grid>
-                        <!-- Dashed border rectangle (only visible when NeedsResponse) -->
+                        <!-- Dashed border rectangle (only visible when needsResponse class is present) -->
                         <Rectangle Name="DashedBorder"
                                    RadiusX="10" RadiusY="10"
                                    StrokeThickness="2"
                                    Stroke="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                                   StrokeDashArray="4,2"
-                                   IsVisible="{Binding NeedsResponse, RelativeSource={RelativeSource TemplatedParent}}" />
+                                   StrokeDashArray="4,2" />
                         
                          <Border Name="Border"
                                  CornerRadius="10"
@@ -98,6 +97,16 @@
                     </Grid>
                 </ControlTemplate>
             </Setter>
+        </Style>
+
+        <!-- Style to show dashed border for events needing response (pending or declined) -->
+        <Style Selector="cal|EventItem.needsResponse /template/ Rectangle#DashedBorder">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <!-- Style to hide dashed border for accepted events -->
+        <Style Selector="cal|EventItem:not(.needsResponse) /template/ Rectangle#DashedBorder">
+            <Setter Property="IsVisible" Value="False" />
         </Style>
 
         <!-- Style to apply strikethrough to declined event titles -->

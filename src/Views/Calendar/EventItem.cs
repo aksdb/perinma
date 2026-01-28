@@ -47,6 +47,19 @@ public partial class EventItem : TemplatedControl
     private IBrush _borderBrush = Brushes.Transparent;
     
     /// <summary>
+    /// Visual state of the event for styling purposes.
+    /// </summary>
+    public enum EventVisualState
+    {
+        /// <summary>Event has been accepted (default styling)</summary>
+        Accepted,
+        /// <summary>Event needs response (pending or tentative)</summary>
+        NeedsResponse,
+        /// <summary>Event has been declined</summary>
+        Declined
+    }
+
+    /// <summary>
     /// Indicates whether this event needs a response from the user (not yet accepted, tentative, or declined).
     /// </summary>
     [AvaStyledProperty]
@@ -57,6 +70,12 @@ public partial class EventItem : TemplatedControl
     /// </summary>
     [AvaStyledProperty]
     private bool _isDeclined = false;
+
+    /// <summary>
+    /// Visual state of the event (for CSS styling).
+    /// </summary>
+    [AvaStyledProperty]
+    private EventVisualState _visualState = EventVisualState.Accepted;
 
     public int TieBreaker { get; set; }
     public bool IsFullDay { get; set; }
@@ -111,7 +130,8 @@ public partial class EventItem : TemplatedControl
                 break;
             case nameof(Color):
             case nameof(NeedsResponse):
-                UpdateBrushes();
+            case nameof(IsDeclined):
+                UpdateVisualState();
                 break;
             case nameof(InlineTimeText):
             case nameof(FontFamily):
@@ -126,40 +146,63 @@ public partial class EventItem : TemplatedControl
             case nameof(Providers):
                 EventViewModel = CreateViewModel() as IRespondableEventViewModel;
                 break;
-            case nameof(IsDeclined):
-                if (IsDeclined)
-                {
-                    Classes.Add("declined");
-                }
-                else
-                {
-                    Classes.Remove("declined");
-                }
-                break;
         }
     }
-    
-    private void UpdateBrushes()
+
+    /// <summary>
+    /// Updates all visual properties based on the current event state.
+    /// This is the single source of truth for how each visual state should look.
+    /// </summary>
+    private void UpdateVisualState()
     {
-        if (NeedsResponse)
+        // Determine the visual state based on response status
+        if (IsDeclined)
         {
-            // Make the background much brighter for events needing response
-            var brighterColor = MakeBrighter(Color, 0.8);
-            BackgroundBrush = new SolidColorBrush(brighterColor, 0.9);
-            ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(brighterColor));
-            
-            // Set border color for the dashed rectangle
-            BorderBrush = new SolidColorBrush(Color);
+            VisualState = EventVisualState.Declined;
+        }
+        else if (NeedsResponse)
+        {
+            VisualState = EventVisualState.NeedsResponse;
         }
         else
         {
-            // Normal styling
-            BackgroundBrush = new SolidColorBrush(Color, 0.8);
-            ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(Color));
-            BorderBrush = Brushes.Transparent;
+            VisualState = EventVisualState.Accepted;
+        }
+
+        // Apply visual rendering based on state
+        switch (VisualState)
+        {
+            case EventVisualState.Accepted:
+                // Accepted events: Normal opacity, no border
+                BackgroundBrush = new SolidColorBrush(Color, 0.8);
+                ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(Color));
+                BorderBrush = Brushes.Transparent;
+                Classes.Set("needsResponse", false);
+                Classes.Set("declined", false);
+                break;
+
+            case EventVisualState.NeedsResponse:
+                // Pending/tentative events: Brighter background, dashed border
+                var brighterColor = MakeBrighter(Color, 0.8);
+                BackgroundBrush = new SolidColorBrush(brighterColor, 0.9);
+                ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(brighterColor));
+                BorderBrush = new SolidColorBrush(Color);
+                Classes.Set("needsResponse", true);
+                Classes.Set("declined", false);
+                break;
+
+            case EventVisualState.Declined:
+                // Declined events: Brighter background, dashed border, strikethrough
+                var declinedBrightColor = MakeBrighter(Color, 0.8);
+                BackgroundBrush = new SolidColorBrush(declinedBrightColor, 0.9);
+                ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(declinedBrightColor));
+                BorderBrush = new SolidColorBrush(Color);
+                Classes.Set("needsResponse", true);  // Reuses dashed border styling
+                Classes.Set("declined", true);        // Adds strikethrough
+                break;
         }
     }
-    
+
     /// <summary>
     /// Makes a color brighter by interpolating toward white.
     /// </summary>
