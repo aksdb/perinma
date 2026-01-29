@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Google.Apis.Calendar.v3.Data;
@@ -38,6 +39,29 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
 
     [ObservableProperty]
     private string _description = string.Empty;
+
+    private string? _rawDescription;
+
+    /// <summary>
+    /// Wraps HTML content with inline styles for consistent rendering.
+    /// </summary>
+    private void WrapDescriptionWithStyles()
+    {
+        if (!string.IsNullOrEmpty(_rawDescription))
+        {
+            // Get system default font family directly
+            var defaultFontFamily = FontManager.Current.DefaultFontFamily;
+            var fontFamily = defaultFontFamily?.Name ?? "sans-serif";
+            var fontSize = "12px";
+            
+            var wrapped = $"""
+                <div style="font-size: {fontSize}; line-height: 1.4; font-family: '{fontFamily}', sans-serif;">
+                    {_rawDescription}
+                </div>
+                """;
+            Description = wrapped;
+        }
+    }
 
     [ObservableProperty]
     private string _location = string.Empty;
@@ -87,8 +111,11 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
                 if (googleEvent != null)
                 {
                     GoogleMeetLink = ExtractGoogleMeetLink(googleEvent);
-                    Description = googleEvent.Description ?? string.Empty;
+                    _rawDescription = googleEvent.Description;
                     Location = googleEvent.Location ?? string.Empty;
+
+                    // Apply HTML styles with actual system font
+                    WrapDescriptionWithStyles();
 
                     Organizer = googleEvent.Organizer != null
                         ? $"{googleEvent.Organizer.DisplayName ?? googleEvent.Organizer.Email}"
@@ -184,7 +211,7 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
             });
         }
     }
-    
+
     private string ExtractGoogleMeetLink(Event googleEvent)
     {
         if (!string.IsNullOrEmpty(googleEvent.HangoutLink))
