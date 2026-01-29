@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Media;
 using perinma.Services;
 
@@ -89,7 +90,7 @@ public partial class CalendarWeekView : UserControl
                     break;
                 case nameof(CalendarWeekViewModel.WeekStart):
                     _mainView.WeekStart = _viewModel.WeekStart;
-                    _mainView.InvalidateVisual();
+                    _mainView.RefreshContent();
                     break;
             }
         };
@@ -163,11 +164,19 @@ public partial class CalendarWeekView : UserControl
         public event EventHandler? SettingsLoaded;
 
         private readonly Canvas _canvas = new();
+        private readonly Canvas _overlayCanvas = new()
+        {
+            IsHitTestVisible = false
+        };
+        private readonly Grid _contentGrid = new();
         private System.Timers.Timer? _currentTimeUpdateTimer;
 
         public MainView()
         {
-            Content = _canvas;
+            _contentGrid.Children.Add(_canvas);
+            _overlayCanvas.Children.Add(_currentTimeIndicator);
+            _contentGrid.Children.Add(_overlayCanvas);
+            Content = _contentGrid;
             StartCurrentTimeTimer();
         }
 
@@ -178,7 +187,7 @@ public partial class CalendarWeekView : UserControl
             {
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
-                    InvalidateVisual(); // Trigger redraw
+                    _currentTimeIndicator.Update(WeekStart, DayColumns, RowHeight);
                 });
             };
             _currentTimeUpdateTimer.Start();
@@ -259,8 +268,18 @@ public partial class CalendarWeekView : UserControl
                 eventView.Height = slotSpan * RowHeight;
                 eventView.Width = innerWidth;
             }
-            
+
             _ = LoadSettingsAsync();
+
+            // Size overlay to fill entire view
+            _overlayCanvas.Width = Bounds.Width;
+            _overlayCanvas.Height = Height;
+            _currentTimeIndicator.Width = Bounds.Width;
+            _currentTimeIndicator.Height = Height;
+
+            // Update current time indicator
+            _currentTimeIndicator.Update(WeekStart, DayColumns, RowHeight);
+
             InvalidateVisual();
         }
 
@@ -328,58 +347,81 @@ public partial class CalendarWeekView : UserControl
             {
                 context.DrawLine(thickPen, new Point(i * columnWidth, 0), new Point(i * columnWidth, height));
             }
-
-            // Draw current time indicator
-            DrawCurrentTimeIndicatorIfTodayVisible(context, width, columnWidth);
         }
 
-        private void DrawCurrentTimeIndicatorIfTodayVisible(DrawingContext context, double width, double columnWidth)
+        private class CurrentTimeIndicator : Control
         {
-            var today = DateTime.Now;
-            var todayDate = today.Date;
+            private DateTime _weekStart;
+            private int _dayColumns;
+            private double _rowHeight;
 
-            // Check if today is within the displayed week
-            var weekEnd = WeekStart.AddDays(DayColumns);
-            if (todayDate < WeekStart.Date || todayDate >= weekEnd.Date)
-                return;
+            public void Update(DateTime weekStart, int dayColumns, double rowHeight)
+            {
+                _weekStart = weekStart;
+                _dayColumns = dayColumns;
+                _rowHeight = rowHeight;
+                InvalidateVisual();
+                // Force immediate invalidation of parent to ensure update happens
+                ((Canvas?)Parent)?.InvalidateVisual();
+            }
 
-            // Calculate which day column is today
-            var daysFromStart = (todayDate - WeekStart.Date).Days;
-            var currentDayColumn = daysFromStart;
+            public override void Render(DrawingContext context)
+            {
+                base.Render(context);
 
-            // Calculate Y position
-            var currentMinutes = today.Hour * 60 + today.Minute;
-            var currentSlot = currentMinutes / 15.0;
-            var yPosition = currentSlot * RowHeight;
+                if (_rowHeight <= 0)
+                    return;
 
-            // Don't draw if out of bounds
-            if (yPosition < 0 || yPosition > Bounds.Height)
-                return;
+                var today = DateTime.Now;
+                var todayDate = today.Date;
 
-            // Calculate X positions for the current day column
-            var leftX = currentDayColumn * columnWidth;
-            var rightX = (currentDayColumn + 1) * columnWidth;
+                // Check if today is within the displayed week
+                var weekEnd = _weekStart.AddDays(_dayColumns);
+                if (todayDate < _weekStart.Date || todayDate >= weekEnd.Date)
+                    return;
 
-            // Define indicator styling
-            var indicatorColor = Color.FromRgb(0xFF, 0x52, 0x52); // #FF5252
-            var indicatorBrush = new SolidColorBrush(indicatorColor);
+                // Calculate which day column is today
+                var daysFromStart = (todayDate - _weekStart.Date).Days;
+                var currentDayColumn = daysFromStart;
 
-            // Draw glow first (behind the line)
-            var glowBrush = new SolidColorBrush(Color.FromArgb(60, 0xFF, 0x52, 0x52));
-            context.DrawLine(new Pen(glowBrush, 6), new Point(leftX, yPosition), new Point(rightX, yPosition));
+                // Calculate Y position
+                var currentMinutes = today.Hour * 60 + today.Minute;
+                var currentSlot = currentMinutes / 15.0;
+                var yPosition = currentSlot * _rowHeight;
 
-            // Draw main line
-            context.DrawLine(new Pen(indicatorBrush, 2.5), new Point(leftX, yPosition), new Point(rightX, yPosition));
+                // Don't draw if out of bounds
+                if (yPosition < 0 || yPosition > Bounds.Height)
+                    return;
 
-            // Draw left indicator circle
-            const double circleRadius = 4;
-            var circleCenter = new Point(leftX + circleRadius, yPosition);
-            context.DrawEllipse(indicatorBrush, null, circleCenter, circleRadius, circleRadius);
+                // Calculate X positions for the current day column
+                var width = Bounds.Width;
+                var columnWidth = width / _dayColumns;
+                var leftX = currentDayColumn * columnWidth;
+                var rightX = (currentDayColumn + 1) * columnWidth;
 
-            // Draw circle glow
-            var circleGlowBrush = new SolidColorBrush(Color.FromArgb(40, 0xFF, 0x52, 0x52));
-            context.DrawEllipse(circleGlowBrush, null, circleCenter, circleRadius + 4, circleRadius + 4);
+                // Define indicator styling
+                var indicatorColor = Color.FromRgb(0xFF, 0x52, 0x52); // #FF5252
+                var indicatorBrush = new SolidColorBrush(indicatorColor);
+
+                // Draw glow first (behind the line)
+                var glowBrush = new SolidColorBrush(Color.FromArgb(60, 0xFF, 0x52, 0x52));
+                context.DrawLine(new Pen(glowBrush, 6), new Point(leftX, yPosition), new Point(rightX, yPosition));
+
+                // Draw main line
+                context.DrawLine(new Pen(indicatorBrush, 2.5), new Point(leftX, yPosition), new Point(rightX, yPosition));
+
+                // Draw left indicator circle
+                const double circleRadius = 4;
+                var circleCenter = new Point(leftX + circleRadius, yPosition);
+                context.DrawEllipse(indicatorBrush, null, circleCenter, circleRadius, circleRadius);
+
+                // Draw circle glow
+                var circleGlowBrush = new SolidColorBrush(Color.FromArgb(40, 0xFF, 0x52, 0x52));
+                context.DrawEllipse(circleGlowBrush, null, circleCenter, circleRadius + 4, circleRadius + 4);
+            }
         }
+
+        private readonly CurrentTimeIndicator _currentTimeIndicator = new();
     }
 
     private class TopBarView : ContentControl
