@@ -237,6 +237,19 @@ public class SyncService
                 continue;
             }
 
+            // CalDAV doesn't have a "selected" concept, so preserve user's enabled preference
+            // Google calendars do have selected status, so use the provider's value
+            int enabled;
+            if (account.AccountTypeEnum == AccountType.CalDav)
+            {
+                var existingCalendar = await _storage.GetCalendarByExternalIdAsync(account.AccountId, calendar.ExternalId ?? string.Empty);
+                enabled = existingCalendar?.Enabled ?? (calendar.Selected ? 1 : 0);
+            }
+            else
+            {
+                enabled = calendar.Selected ? 1 : 0;
+            }
+
             var calendarDbo = new CalendarDbo
             {
                 AccountId = account.AccountId,
@@ -244,7 +257,7 @@ public class SyncService
                 ExternalId = calendar.ExternalId,
                 Name = calendar.Name,
                 Color = calendar.Color,
-                Enabled = calendar.Selected ? 1 : 0,
+                Enabled = enabled,
                 LastSync = currentSyncTime,
             };
 

@@ -139,6 +139,61 @@ public class SyncServiceTests : SyncTestBase
     }
 
     [Test]
+    public async Task CalDavCalendar_PreservesEnabledStatusAcrossSyncs()
+    {
+        // Arrange
+        var account = await CreateCalDavAccountAsync();
+        StoreCalDavCredentials(account.AccountId);
+
+        // First sync: Create calendars with default enabled status (CalDAV always returns selected=true)
+        FakeCalDavService.SetCalendars(
+            new CalDavCalendar
+            {
+                Url = "https://caldav.example.com/calendars/work",
+                DisplayName = "Work Calendar",
+                Deleted = false
+            },
+            new CalDavCalendar
+            {
+                Url = "https://caldav.example.com/calendars/personal",
+                DisplayName = "Personal Calendar",
+                Deleted = false
+            }
+        );
+
+        // Act - First sync
+        await SyncService.SyncAllAccountsAsync();
+
+        // Assert - Both calendars should be enabled by default
+        var calendarsAfterFirstSync = await Storage.GetCalendarsByAccountAsync(account.AccountId);
+        var calendarListAfterFirstSync = calendarsAfterFirstSync.ToList();
+
+        Assert.That(calendarListAfterFirstSync, Has.Count.EqualTo(2));
+        Assert.That(calendarListAfterFirstSync.Any(c => c.ExternalId == "https://caldav.example.com/calendars/work" && c.Enabled == 1), Is.True);
+        Assert.That(calendarListAfterFirstSync.Any(c => c.ExternalId == "https://caldav.example.com/calendars/personal" && c.Enabled == 1), Is.True);
+
+        // Disable one calendar (simulating user action in UI)
+        var workCalendar = calendarListAfterFirstSync.First(c => c.ExternalId == "https://caldav.example.com/calendars/work");
+        await Storage.UpdateCalendarEnabledAsync(workCalendar.CalendarId, false);
+
+        // Verify calendar is disabled
+        var calendarsAfterDisable = await Storage.GetCalendarsByAccountAsync(account.AccountId);
+        var workCalendarAfterDisable = calendarsAfterDisable.First(c => c.ExternalId == "https://caldav.example.com/calendars/work");
+        Assert.That(workCalendarAfterDisable.Enabled, Is.EqualTo(0));
+
+        // Act - Second sync (CalDAV still returns selected=true for all calendars)
+        await SyncService.SyncAllAccountsAsync();
+
+        // Assert - The disabled status should be preserved, not overwritten
+        var calendarsAfterSecondSync = await Storage.GetCalendarsByAccountAsync(account.AccountId);
+        var calendarListAfterSecondSync = calendarsAfterSecondSync.ToList();
+
+        Assert.That(calendarListAfterSecondSync, Has.Count.EqualTo(2));
+        Assert.That(calendarListAfterSecondSync.Any(c => c.ExternalId == "https://caldav.example.com/calendars/work" && c.Enabled == 0), Is.True);
+        Assert.That(calendarListAfterSecondSync.Any(c => c.ExternalId == "https://caldav.example.com/calendars/personal" && c.Enabled == 1), Is.True);
+    }
+
+    [Test]
     public async Task WithDeletedFlag_SkipsDeletedCalendars()
     {
         // Arrange
