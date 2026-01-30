@@ -9,6 +9,7 @@ public class CalDavCalendar
     public string? Color { get; init; }
     public string? CTag { get; init; }
     public bool Deleted { get; init; }
+    public string? Owner { get; init; }
 }
 
 public class CalDavEvent

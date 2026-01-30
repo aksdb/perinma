@@ -32,6 +32,11 @@ public class CalDavClient
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
     }
 
+    public void SetUserAgent(string userAgent)
+    {
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+    }
+
     public async Task<bool> TestConnectionAsync(string serverUrl, CancellationToken cancellationToken = default)
     {
         try
@@ -206,6 +211,7 @@ public class CalDavClient
             var ctag = prop.Element(xcs + "getctag")?.Value;
             var syncToken = prop.Element(xd + "sync-token")?.Value;
             var calendarHomeSet = prop.Element(xc + "calendar-home-set")?.Element(xd + "href")?.Value;
+            var owner = prop.Element(xd + "owner")?.Element(xd + "href")?.Value;
 
             responses.Add(new PropfindItem
             {
@@ -215,7 +221,8 @@ public class CalDavClient
                 Color = color,
                 CTag = ctag,
                 SyncToken = syncToken,
-                CalendarHomeSet = calendarHomeSet
+                CalendarHomeSet = calendarHomeSet,
+                Owner = owner
             });
         }
 
@@ -288,6 +295,7 @@ public class PropfindItem
     public string? CTag { get; init; }
     public string? SyncToken { get; init; }
     public string? CalendarHomeSet { get; init; }
+    public string? Owner { get; init; }
 }
 
 public class SyncCollectionResponse

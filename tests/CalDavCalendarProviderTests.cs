@@ -137,9 +137,32 @@ public class CalDavCalendarProviderTests
     }
 
     [Test]
-    public async Task GetCalendarsAsync_RawDataIsNull()
+    public async Task GetCalendarsAsync_WithOwner_RawDataContainsOwner()
     {
-        // Arrange - CalDAV doesn't store raw calendar data
+        // Arrange - CalDAV calendar with owner (shared calendar)
+        _fakeService.SetCalendars(
+            new CalDavCalendar
+            {
+                Url = "https://caldav.example.com/calendars/shared",
+                DisplayName = "Shared Calendar",
+                Deleted = false,
+                Owner = "https://caldav.example.com/principals/otheruser/"
+            }
+        );
+
+        // Act
+        var result = await _provider.GetCalendarsAsync(_accountId);
+
+        // Assert - RawData should contain owner information
+        Assert.That(result.Calendars[0].RawData, Is.Not.Null);
+        Assert.That(result.Calendars[0].RawData, Does.Contain("owner"));
+        Assert.That(result.Calendars[0].RawData, Does.Contain("otheruser"));
+    }
+
+    [Test]
+    public async Task GetCalendarsAsync_WithoutOwner_RawDataIsNull()
+    {
+        // Arrange - CalDAV calendar without owner (owned calendar or server doesn't support owner property)
         _fakeService.SetCalendars(
             new CalDavCalendar
             {

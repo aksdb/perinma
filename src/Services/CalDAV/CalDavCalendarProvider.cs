@@ -51,7 +51,7 @@ public class CalDavCalendarProvider : ICalendarProvider
             Color = c.Color,
             Selected = true, // CalDAV doesn't have a "selected" concept, default to enabled
             Deleted = c.Deleted,
-            RawData = null // CalDAV doesn't have additional raw data to store for calendars
+            RawData = c.Owner != null ? System.Text.Json.JsonSerializer.Serialize(new { owner = c.Owner }) : null
         }).ToList();
 
         return new CalendarSyncResult

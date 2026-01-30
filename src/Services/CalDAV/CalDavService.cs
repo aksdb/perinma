@@ -56,6 +56,10 @@ public class CalDavService : ICalDavService
         // Step 3: Full sync - list all calendars via PROPFIND
         var calendars = await ListCalendarsAsync(client, calendarHomeUrl, cancellationToken);
 
+        // Step 4: Try to discover shared calendars from common paths
+        var sharedCalendars = await DiscoverSharedCalendarsAsync(client, calendarHomeUrl, credentials, cancellationToken);
+        calendars.AddRange(sharedCalendars);
+
         return new ICalDavService.CalendarSyncResult
         {
             Calendars = calendars,
@@ -208,6 +212,9 @@ public class CalDavService : ICalDavService
     {
         var client = new CalDavClient();
         client.SetBasicAuth(credentials.Username, credentials.Password);
+        // Set User-Agent to iCal/Calendar.app to get SOGo to return shared calendars
+        // SOGo has special handling for iCal that includes subscribed calendars in responses
+        client.SetUserAgent("iCal/8.0 (1936) Mac OS X/10.14");
         return client;
     }
 
@@ -271,7 +278,8 @@ public class CalDavService : ICalDavService
             new XElement(xa + "calendar-color"),
             new XElement(xcs + "calendar-color"),
             new XElement(xcs + "getctag"),
-            new XElement(xd + "sync-token")
+            new XElement(xd + "sync-token"),
+            new XElement(xd + "owner")
         };
 
         var response = await client.PropfindAsync(calendarHomeUrl, 1, properties, cancellationToken);
@@ -298,7 +306,8 @@ public class CalDavService : ICalDavService
                 DisplayName = item.DisplayName ?? "Unnamed Calendar",
                 Color = item.Color,
                 CTag = item.CTag,
-                Deleted = false
+                Deleted = false,
+                Owner = item.Owner
             });
         }
 
@@ -339,7 +348,8 @@ public class CalDavService : ICalDavService
                     // Request calendar-color from both namespaces for maximum compatibility
                     new XElement(xa + "calendar-color"),
                     new XElement(xcs + "calendar-color"),
-                    new XElement(xcs + "getctag")
+                    new XElement(xcs + "getctag"),
+                    new XElement(xd + "owner")
                 };
 
                 var propResponse = await client.PropfindAsync(item.Href, 0, properties, cancellationToken);
@@ -353,7 +363,8 @@ public class CalDavService : ICalDavService
                         DisplayName = props.DisplayName ?? "Unnamed Calendar",
                         Color = props.Color,
                         CTag = props.CTag,
-                        Deleted = false
+                        Deleted = false,
+                        Owner = props.Owner
                     });
                 }
             }
@@ -382,5 +393,68 @@ public class CalDavService : ICalDavService
         }
 
         return lastSegment ?? url;
+    }
+
+    private async Task<List<CalDavCalendar>> DiscoverSharedCalendarsAsync(
+        CalDavClient client,
+        string calendarHomeUrl,
+        CalDavCredentials credentials,
+        CancellationToken cancellationToken)
+    {
+        var sharedCalendars = new List<CalDavCalendar>();
+
+        // Common paths to try for shared calendars
+        var sharedPaths = new List<string>
+        {
+            // SOGo: Shared calendars might be in different user paths
+            // We can't guess these without API access, but iCal User-Agent helps
+            // Generic shared folder
+            $"{TrimTrailingSlash(calendarHomeUrl)}/shared/",
+            // Generic others folder
+            $"{TrimTrailingSlash(calendarHomeUrl)}/others/",
+            // For servers that use "public" for shared
+            $"{TrimTrailingSlash(calendarHomeUrl)}/public/",
+        };
+
+        var xd = XNamespace.Get(DavNamespace);
+
+        foreach (var path in sharedPaths)
+        {
+            try
+            {
+                // Try a shallow PROPFIND to see if the path exists
+                var properties = new[]
+                {
+                    new XElement(xd + "resourcetype")
+                };
+
+                var response = await client.PropfindAsync(path, 0, properties, cancellationToken);
+
+                if (response.Items.Count > 0)
+                {
+                    var item = response.Items[0];
+                    var isCollection = item.Href != null; // If we got a response, path exists
+
+                    if (isCollection)
+                    {
+                        // Path exists, try to list calendars in it
+                        var calendarsInPath = await ListCalendarsAsync(client, path, cancellationToken);
+                        sharedCalendars.AddRange(calendarsInPath);
+                    }
+                }
+            }
+            catch
+            {
+                // Path doesn't exist or isn't accessible, skip it
+                continue;
+            }
+        }
+
+        return sharedCalendars;
+    }
+
+    private static string TrimTrailingSlash(string url)
+    {
+        return url.EndsWith('/') ? url.TrimEnd('/') : url;
     }
 }
