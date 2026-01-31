@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -59,6 +60,9 @@ public class CalDavService : ICalDavService
         // Step 4: Try to discover shared calendars from common paths
         var sharedCalendars = await DiscoverSharedCalendarsAsync(client, calendarHomeUrl, credentials, cancellationToken);
         calendars.AddRange(sharedCalendars);
+
+        // Step 5: Fetch ACLs for calendars (gracefully, as some servers don't support it)
+        await FetchAclsForCalendarsAsync(client, calendars, cancellationToken);
 
         return new ICalDavService.CalendarSyncResult
         {
@@ -279,9 +283,7 @@ public class CalDavService : ICalDavService
             new XElement(xcs + "calendar-color"),
             new XElement(xcs + "getctag"),
             new XElement(xd + "sync-token"),
-            new XElement(xd + "owner"),
-            new XElement(xd + "acl"),
-            new XElement(xd + "current-user-privilege-set")
+            new XElement(xd + "owner")
         };
 
         var response = await client.PropfindAsync(calendarHomeUrl, 1, properties, cancellationToken);
@@ -353,9 +355,7 @@ public class CalDavService : ICalDavService
                     new XElement(xa + "calendar-color"),
                     new XElement(xcs + "calendar-color"),
                     new XElement(xcs + "getctag"),
-                    new XElement(xd + "owner"),
-                    new XElement(xd + "acl"),
-                    new XElement(xd + "current-user-privilege-set")
+                    new XElement(xd + "owner")
                 };
 
                 var propResponse = await client.PropfindAsync(item.Href, 0, properties, cancellationToken);
@@ -464,5 +464,47 @@ public class CalDavService : ICalDavService
     private static string TrimTrailingSlash(string url)
     {
         return url.EndsWith('/') ? url.TrimEnd('/') : url;
+    }
+
+    private async Task FetchAclsForCalendarsAsync(
+        CalDavClient client,
+        List<CalDavCalendar> calendars,
+        CancellationToken cancellationToken)
+    {
+        var xd = XNamespace.Get(DavNamespace);
+
+        var aclProperties = new[]
+        {
+            new XElement(xd + "acl"),
+            new XElement(xd + "current-user-privilege-set")
+        };
+
+        foreach (var calendar in calendars)
+        {
+            try
+            {
+                // Fetch ACL properties for this calendar
+                var response = await client.PropfindAsync(calendar.Url, 0, aclProperties, cancellationToken);
+
+                var item = response.Items.FirstOrDefault();
+                if (item != null)
+                {
+                    calendar.AclXml = item.AclXml;
+                    calendar.CurrentUserPrivilegeSetXml = item.CurrentUserPrivilegeSetXml;
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                // If server doesn't support ACL properties (e.g., SOGo returns 501),
+                // log and continue without ACL data
+                var statusCode = ex.StatusCode.HasValue ? ((int)ex.StatusCode).ToString() : "unknown";
+                Console.WriteLine($"Failed to fetch ACL for calendar {calendar.DisplayName} ({calendar.Url}): {ex.Message} (Status: {statusCode})");
+            }
+            catch (Exception ex)
+            {
+                // Other errors (network, parsing, etc.)
+                Console.WriteLine($"Error fetching ACL for calendar {calendar.DisplayName} ({calendar.Url}): {ex.Message}");
+            }
+        }
     }
 }
