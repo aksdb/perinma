@@ -44,14 +44,34 @@ public class CalDavCalendarProvider : ICalendarProvider
         var result = await _calDavService.GetCalendarsAsync(calDavCredentials, syncToken, cancellationToken);
 
         // Convert to provider-agnostic format
-        var calendars = result.Calendars.Select(c => new ProviderCalendar
+        var calendars = result.Calendars.Select(c =>
         {
-            ExternalId = c.Url,
-            Name = c.DisplayName,
-            Color = c.Color,
-            Selected = true, // CalDAV doesn't have a "selected" concept, default to enabled
-            Deleted = c.Deleted,
-            RawData = c.Owner != null ? System.Text.Json.JsonSerializer.Serialize(new { owner = c.Owner }) : null
+            var rawDataDict = new Dictionary<string, string?>();
+
+            if (c.Owner != null)
+            {
+                rawDataDict["owner"] = c.Owner;
+            }
+
+            if (c.AclXml != null)
+            {
+                rawDataDict["acl"] = c.AclXml;
+            }
+
+            if (c.CurrentUserPrivilegeSetXml != null)
+            {
+                rawDataDict["currentUserPrivilegeSet"] = c.CurrentUserPrivilegeSetXml;
+            }
+
+            return new ProviderCalendar
+            {
+                ExternalId = c.Url,
+                Name = c.DisplayName,
+                Color = c.Color,
+                Selected = true, // CalDAV doesn't have a "selected" concept, default to enabled
+                Deleted = c.Deleted,
+                RawData = rawDataDict.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(rawDataDict) : null
+            };
         }).ToList();
 
         return new CalendarSyncResult

@@ -279,7 +279,9 @@ public class CalDavService : ICalDavService
             new XElement(xcs + "calendar-color"),
             new XElement(xcs + "getctag"),
             new XElement(xd + "sync-token"),
-            new XElement(xd + "owner")
+            new XElement(xd + "owner"),
+            new XElement(xd + "acl"),
+            new XElement(xd + "current-user-privilege-set")
         };
 
         var response = await client.PropfindAsync(calendarHomeUrl, 1, properties, cancellationToken);
@@ -307,7 +309,9 @@ public class CalDavService : ICalDavService
                 Color = item.Color,
                 CTag = item.CTag,
                 Deleted = false,
-                Owner = item.Owner
+                Owner = item.Owner,
+                AclXml = item.AclXml,
+                CurrentUserPrivilegeSetXml = item.CurrentUserPrivilegeSetXml
             });
         }
 
@@ -349,7 +353,9 @@ public class CalDavService : ICalDavService
                     new XElement(xa + "calendar-color"),
                     new XElement(xcs + "calendar-color"),
                     new XElement(xcs + "getctag"),
-                    new XElement(xd + "owner")
+                    new XElement(xd + "owner"),
+                    new XElement(xd + "acl"),
+                    new XElement(xd + "current-user-privilege-set")
                 };
 
                 var propResponse = await client.PropfindAsync(item.Href, 0, properties, cancellationToken);
@@ -364,7 +370,9 @@ public class CalDavService : ICalDavService
                         Color = props.Color,
                         CTag = props.CTag,
                         Deleted = false,
-                        Owner = props.Owner
+                        Owner = props.Owner,
+                        AclXml = props.AclXml,
+                        CurrentUserPrivilegeSetXml = props.CurrentUserPrivilegeSetXml
                     });
                 }
             }

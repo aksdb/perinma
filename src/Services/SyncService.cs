@@ -120,7 +120,7 @@ public class SyncService
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error syncing account {account.Name}: {ex.Message}");
+                    Console.WriteLine($"Error syncing account {account.Name}: {ex}");
                     result.FailedAccounts++;
                     result.Errors.Add($"{account.Name}: {ex.Message}");
                 }

@@ -10,6 +10,8 @@ public class CalDavCalendar
     public string? CTag { get; init; }
     public bool Deleted { get; init; }
     public string? Owner { get; init; }
+    public string? AclXml { get; init; }
+    public string? CurrentUserPrivilegeSetXml { get; init; }
 }
 
 public class CalDavEvent

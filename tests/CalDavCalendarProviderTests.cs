@@ -179,6 +179,65 @@ public class CalDavCalendarProviderTests
         Assert.That(result.Calendars[0].RawData, Is.Null);
     }
 
+    [Test]
+    public async Task GetCalendarsAsync_WithAcl_RawDataContainsAcl()
+    {
+        // Arrange - CalDAV calendar with ACL
+        var aclXml = @"<D:acl xmlns:D=""DAV:"">
+          <D:ace>
+            <D:principal><D:all/></D:principal>
+            <D:grant>
+              <D:privilege><D:read/></D:privilege>
+            </D:grant>
+          </D:ace>
+        </D:acl>";
+
+        _fakeService.SetCalendars(
+            new CalDavCalendar
+            {
+                Url = "https://caldav.example.com/calendars/shared",
+                DisplayName = "Shared Calendar",
+                Deleted = false,
+                Owner = "https://caldav.example.com/principals/otheruser/",
+                AclXml = aclXml
+            }
+        );
+
+        // Act
+        var result = await _provider.GetCalendarsAsync(_accountId);
+
+        // Assert - RawData should contain ACL information
+        Assert.That(result.Calendars[0].RawData, Is.Not.Null);
+        Assert.That(result.Calendars[0].RawData, Does.Contain("acl"));
+    }
+
+    [Test]
+    public async Task GetCalendarsAsync_WithCurrentUserPrivilegeSet_RawDataContainsPrivileges()
+    {
+        // Arrange - CalDAV calendar with current user privileges
+        var privilegeSetXml = @"<D:current-user-privilege-set xmlns:D=""DAV:"">
+          <D:privilege><D:read/></D:privilege>
+          <D:privilege><D:write/></D:privilege>
+        </D:current-user-privilege-set>";
+
+        _fakeService.SetCalendars(
+            new CalDavCalendar
+            {
+                Url = "https://caldav.example.com/calendars/test",
+                DisplayName = "Test Calendar",
+                Deleted = false,
+                CurrentUserPrivilegeSetXml = privilegeSetXml
+            }
+        );
+
+        // Act
+        var result = await _provider.GetCalendarsAsync(_accountId);
+
+        // Assert - RawData should contain privilege set
+        Assert.That(result.Calendars[0].RawData, Is.Not.Null);
+        Assert.That(result.Calendars[0].RawData, Does.Contain("currentUserPrivilegeSet"));
+    }
+
     #endregion
 
     #region GetEventsAsync Tests

@@ -169,6 +169,38 @@ public class CalDavClient
         return Calendar.Load(icalData);
     }
 
+    public async Task<string> GetAclAsync(string url, CancellationToken cancellationToken = default)
+    {
+        var xd = XNamespace.Get(DavNamespace);
+
+        var properties = new[]
+        {
+            new XElement(xd + "acl")
+        };
+
+        var response = await PropfindAsync(url, 0, properties, cancellationToken);
+
+        var acl = response.Items.FirstOrDefault()?.AclXml
+            ?? throw new InvalidOperationException("ACL not found in response");
+
+        return acl;
+    }
+
+    public async Task SetAclAsync(string url, WebDavAcl acl, CancellationToken cancellationToken = default)
+    {
+        var aclXml = WebDavAclParser.BuildAclXml(acl);
+
+        var request = new HttpRequestMessage(new HttpMethod("ACL"), url)
+        {
+            Content = new StringContent(aclXml, System.Text.Encoding.UTF8, "application/xml")
+        };
+
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return;
+    }
+
     private PropfindResponse ParsePropfindResponse(string xml)
     {
         var doc = XDocument.Parse(xml);
@@ -212,6 +244,10 @@ public class CalDavClient
             var syncToken = prop.Element(xd + "sync-token")?.Value;
             var calendarHomeSet = prop.Element(xc + "calendar-home-set")?.Element(xd + "href")?.Value;
             var owner = prop.Element(xd + "owner")?.Element(xd + "href")?.Value;
+            var aclElement = prop.Element(xd + "acl");
+            var aclXml = aclElement != null ? aclElement.ToString() : null;
+            var currentUserPrivilegeSetElement = prop.Element(xd + "current-user-privilege-set");
+            var currentUserPrivilegeSetXml = currentUserPrivilegeSetElement != null ? currentUserPrivilegeSetElement.ToString() : null;
 
             responses.Add(new PropfindItem
             {
@@ -222,7 +258,9 @@ public class CalDavClient
                 CTag = ctag,
                 SyncToken = syncToken,
                 CalendarHomeSet = calendarHomeSet,
-                Owner = owner
+                Owner = owner,
+                AclXml = aclXml,
+                CurrentUserPrivilegeSetXml = currentUserPrivilegeSetXml
             });
         }
 
@@ -296,6 +334,8 @@ public class PropfindItem
     public string? SyncToken { get; init; }
     public string? CalendarHomeSet { get; init; }
     public string? Owner { get; init; }
+    public string? AclXml { get; init; }
+    public string? CurrentUserPrivilegeSetXml { get; init; }
 }
 
 public class SyncCollectionResponse
