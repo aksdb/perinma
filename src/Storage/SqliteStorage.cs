@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
@@ -16,7 +17,7 @@ public class SqliteStorage : IDisposable
     private readonly DatabaseService _databaseService;
     private readonly CredentialManagerService _credentialManager;
     private readonly SqliteConnection _connection;
-    
+
     // In-memory cache for Account and Calendar models (low cardinality)
     private readonly ConcurrentDictionary<Guid, Account> _accountCache = new();
     private readonly ConcurrentDictionary<Guid, Calendar> _calendarCache = new();
@@ -164,7 +165,7 @@ public class SqliteStorage : IDisposable
         if (rowsAffected > 0)
         {
             _credentialManager.DeleteCredentials(accountId);
-            
+
             if (_cacheInitialized)
             {
                 InvalidateAccountCache(Guid.Parse(accountId));
@@ -199,7 +200,7 @@ public class SqliteStorage : IDisposable
                 .Where(kvp => kvp.Value.Account.Id == accountGuid)
                 .Select(kvp => kvp.Key)
                 .ToList();
-            
+
             foreach (var calendarId in calendarsToRemove)
             {
                 _calendarCache.TryRemove(calendarId, out _);
@@ -274,8 +275,8 @@ public class SqliteStorage : IDisposable
                     cachedCalendar.Name = calendar.Name;
                     cachedCalendar.Color = calendar.Color;
                     cachedCalendar.Enabled = calendar.Enabled != 0;
-                    cachedCalendar.LastSync = calendar.LastSync.HasValue 
-                        ? DateTimeOffset.FromUnixTimeSeconds(calendar.LastSync.Value).DateTime 
+                    cachedCalendar.LastSync = calendar.LastSync.HasValue
+                        ? DateTimeOffset.FromUnixTimeSeconds(calendar.LastSync.Value).DateTime
                         : null;
                 }
             }
@@ -316,8 +317,8 @@ public class SqliteStorage : IDisposable
                         Name = calendar.Name,
                         Color = calendar.Color,
                         Enabled = calendar.Enabled != 0,
-                        LastSync = calendar.LastSync.HasValue 
-                            ? DateTimeOffset.FromUnixTimeSeconds(calendar.LastSync.Value).DateTime 
+                        LastSync = calendar.LastSync.HasValue
+                            ? DateTimeOffset.FromUnixTimeSeconds(calendar.LastSync.Value).DateTime
                             : null
                     };
                     _calendarCache[calendarModel.Id] = calendarModel;
@@ -350,7 +351,7 @@ public class SqliteStorage : IDisposable
         return rowsAffected;
     }
 
-    public async Task<bool> SetCalendarData(CalendarDbo calendar, string key, string value)
+    public async Task<bool> SetCalendarDataAsync(string calendarId, string key, string value)
     {
         var rowsAffected = await _connection.ExecuteAsync(
             """
@@ -358,29 +359,29 @@ public class SqliteStorage : IDisposable
                 SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
                 WHERE calendar_id = @calendar_id
             """,
-            param: new { key = $"$.{key}", value, calendar_id = calendar.CalendarId },
+            param: new { key = $"$.{key}", value, calendar_id = calendarId },
             commandTimeout: 30
         );
 
         return rowsAffected > 0;
     }
-    
-    public async Task<bool> SetCalendarDataJson(CalendarDbo calendar, string key, string jsonValue)
+
+    public async Task<bool> SetCalendarDataJsonAsync(string calendarId, string key, string jsonValue)
     {
         var rowsAffected = await _connection.ExecuteAsync(
             """
                 UPDATE calendar
-                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, jsonb(@jsonValue))
-                WHERE calendar_id = @calendar_id
+                    SET data = jsonb_set(coalesce(data, jsonb_object()), @key, jsonb(@jsonValue))
+                    WHERE calendar_id = @calendar_id
             """,
-            param: new { key = $"$.{key}", jsonValue, calendar_id = calendar.CalendarId },
+            param: new { key = $"$.{key}", jsonValue, calendar_id = calendarId },
             commandTimeout: 30
         );
 
         return rowsAffected > 0;
     }
 
-    public async Task<string?> GetCalendarData(CalendarDbo calendar, string key)
+    public async Task<string?> GetCalendarDataAsync(string calendarId, string key)
     {
         return await _connection.QuerySingleAsync<string?>(
             """
@@ -388,7 +389,7 @@ public class SqliteStorage : IDisposable
             FROM calendar
             WHERE calendar_id = @calendar_id
             """,
-            param: new { key = $"$.{key}", calendar_id = calendar.CalendarId });
+            param: new { key = $"$.{key}", calendar_id = calendarId });
     }
 
     public async Task<bool> UpdateCalendarEnabledAsync(string calendarId, bool enabled)
@@ -518,7 +519,7 @@ public class SqliteStorage : IDisposable
 
         return rowsAffected > 0;
     }
-    
+
     public async Task<bool> SetEventDataJson(string eventId, string key, string jsonValue)
     {
         var rowsAffected = await _connection.ExecuteAsync(
@@ -590,7 +591,10 @@ public class SqliteStorage : IDisposable
                 await CreateEventRelationAsync(parentEventId, childEventId);
                 await _connection.ExecuteAsync(
                     "DELETE FROM calendar_event_relation_backlog WHERE calendar_id = @CalendarId AND parent_external_id = @ParentExternalId AND child_external_id = @ChildExternalId",
-                    new { CalendarId = calendarId, ParentExternalId = parentExternalId, ChildExternalId = childExternalId },
+                    new
+                    {
+                        CalendarId = calendarId, ParentExternalId = parentExternalId, ChildExternalId = childExternalId
+                    },
                     commandTimeout: 30
                 );
             }
@@ -651,7 +655,8 @@ public class SqliteStorage : IDisposable
 
     #endregion
 
-    public async Task<IEnumerable<CalendarEventQueryResult>> GetEventsByTimeRangeAsync(DateTime startTime, DateTime endTime)
+    public async Task<IEnumerable<CalendarEventQueryResult>> GetEventsByTimeRangeAsync(DateTime startTime,
+        DateTime endTime)
     {
         var startTimestamp = new DateTimeOffset(startTime).ToUnixTimeSeconds();
         var endTimestamp = new DateTimeOffset(endTime).ToUnixTimeSeconds();
@@ -753,7 +758,7 @@ public class SqliteStorage : IDisposable
             query,
             new { TargetType = (int)TargetType.CalendarEvent, Now = now, FiredReminderIds = firedReminderIdsList },
             commandTimeout: 30
-        )        ).ToList();
+        )).ToList();
     }
 
     public async Task<ReminderDbo?> GetReminderAsync(string reminderId)
@@ -815,8 +820,6 @@ public class SqliteStorage : IDisposable
         );
     }
 
-
-
     #endregion
 
     #region Cache Management
@@ -827,10 +830,25 @@ public class SqliteStorage : IDisposable
         return _accountCache.TryGetValue(accountId, out var account) ? account : null;
     }
 
+    public IEnumerable<Account> GetCachedAccounts()
+    {
+        EnsureCacheInitializedAsync();
+        return _accountCache.Values.OrderBy(account => account.SortOrder);
+    }
+
     public Calendar? GetCachedCalendar(Guid calendarId)
     {
         EnsureCacheInitializedAsync();
         return _calendarCache.TryGetValue(calendarId, out var calendar) ? calendar : null;
+    }
+
+    public IEnumerable<Calendar> GetCachedCalendars(Account account)
+    {
+        EnsureCacheInitializedAsync();
+        return from calendar in _calendarCache.Values
+            where calendar.Account.Id == account.Id
+            orderby calendar.Name
+            select calendar;
     }
 
     private void EnsureCacheInitializedAsync()
@@ -877,7 +895,8 @@ public class SqliteStorage : IDisposable
             {
                 Id = Guid.Parse(accountDbo.AccountId),
                 Name = accountDbo.Name,
-                Type = accountType
+                Type = accountType,
+                SortOrder = accountDbo.SortOrder,
             };
             _accountCache[account.Id] = account;
         }
@@ -895,8 +914,8 @@ public class SqliteStorage : IDisposable
                     Name = calendarDbo.Name,
                     Color = calendarDbo.Color,
                     Enabled = calendarDbo.Enabled != 0,
-                    LastSync = calendarDbo.LastSync.HasValue 
-                        ? DateTimeOffset.FromUnixTimeSeconds(calendarDbo.LastSync.Value).DateTime 
+                    LastSync = calendarDbo.LastSync.HasValue
+                        ? DateTimeOffset.FromUnixTimeSeconds(calendarDbo.LastSync.Value).DateTime
                         : null
                 };
                 _calendarCache[calendar.Id] = calendar;
@@ -907,12 +926,12 @@ public class SqliteStorage : IDisposable
     private void InvalidateAccountCache(Guid accountId)
     {
         _accountCache.TryRemove(accountId, out _);
-        
+
         var calendarsToRemove = _calendarCache
             .Where(kvp => kvp.Value.Account.Id == accountId)
             .Select(kvp => kvp.Key)
             .ToList();
-        
+
         foreach (var calendarId in calendarsToRemove)
         {
             _calendarCache.TryRemove(calendarId, out _);

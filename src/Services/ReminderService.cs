@@ -34,7 +34,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         var calendar = await storage.GetCalendarByIdAsync(calendarId);
         if (calendar != null)
         {
-            rawCalendarData = await storage.GetCalendarData(calendar, "rawData");
+            rawCalendarData = await storage.GetCalendarDataAsync(calendar.CalendarId, "rawData");
         }
 
         // Get reminder occurrences from the provider

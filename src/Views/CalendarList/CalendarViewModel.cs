@@ -13,6 +13,25 @@ namespace perinma.Views.CalendarList;
 
 public partial class CalendarViewModel : ViewModelBase
 {
+
+    public CalendarViewModel(Models.Calendar calendar)
+    {
+        Calendar = calendar;
+    }
+    
+    private Models.Calendar Calendar
+    {
+        get;
+        set
+        {
+            field = value;
+            Id = value.Id;
+            Name = value.Name;
+            Color = value.Color;
+            Enabled = value.Enabled;
+        }
+    }
+    
     [ObservableProperty]
     private Guid _id;
 
@@ -28,12 +47,14 @@ public partial class CalendarViewModel : ViewModelBase
     /// <summary>
     /// Gets or sets the calendar URL (ExternalId from database).
     /// </summary>
+    // TODO: Really?
     [ObservableProperty]
     private string? _url;
 
     /// <summary>
     /// Gets or sets the raw ACL XML for this calendar.
     /// </summary>
+    // TODO: Why?
     [ObservableProperty]
     private string? _aclXml;
 
@@ -107,9 +128,7 @@ public partial class CalendarViewModel : ViewModelBase
         {
             var result = await AclManagementWindow.ShowAsync(
                 owner: ownerWindow,
-                calendarUrl: Url,
-                calendarName: Name,
-                calendarColor: Color,
+                calendar: Calendar,
                 ownerUrl: Owner,
                 aclXml: AclXml,
                 currentUserPrivilegeSetXml: CurrentUserPrivilegeSetXml,
@@ -120,7 +139,19 @@ public partial class CalendarViewModel : ViewModelBase
             if (result)
             {
                 Console.WriteLine($"ACL saved successfully for calendar '{Name}'");
-                // Note: Calendar data will be refreshed on next sync
+
+                // Reload ACL data from database to get the latest values
+                try
+                {
+                    AclXml = await _storage.GetCalendarDataAsync(Id.ToString(), "rawACL");
+                    CurrentUserPrivilegeSetXml = await _storage.GetCalendarDataAsync(Id.ToString(), "currentUserPrivilegeSet");
+                    Owner = await _storage.GetCalendarDataAsync(Id.ToString(), "owner");
+                    Console.WriteLine($"Reloaded ACL data for calendar '{Name}' (ACL length: {AclXml?.Length ?? 0})");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error reloading ACL data: {ex.Message}");
+                }
             }
         }
         catch (Exception ex)

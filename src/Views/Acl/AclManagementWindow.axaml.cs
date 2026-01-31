@@ -36,38 +36,21 @@ public partial class AclManagementWindow : Window
         }
     }
 
-    /// <summary>
-    /// Shows the ACL management window for a specific calendar.
-    /// </summary>
-    /// <param name="owner">The owner window.</param>
-    /// <param name="calendarUrl">The URL of the calendar.</param>
-    /// <param name="calendarName">The name of the calendar.</param>
-    /// <param name="calendarColor">The color of the calendar.</param>
-    /// <param name="ownerUrl">The owner URL (optional).</param>
-    /// <param name="aclXml">The raw ACL XML (optional, will be fetched if not provided).</param>
-    /// <param name="currentUserPrivilegeSetXml">The current user privileges XML (optional).</param>
-    /// <param name="storage">The storage service.</param>
-    /// <param name="credentialManager">The credential manager service.</param>
-    /// <returns>A task that completes when the window is closed.</returns>
     public static Task<bool> ShowAsync(
         Window owner,
-        string calendarUrl,
-        string calendarName,
-        string? calendarColor = null,
+        Models.Calendar calendar,
         string? ownerUrl = null,
         string? aclXml = null,
         string? currentUserPrivilegeSetXml = null,
         SqliteStorage? storage = null,
-        Services.CredentialManagerService? credentialManager = null)
+        CredentialManagerService? credentialManager = null)
     {
         var window = new AclManagementWindow();
 
         // Initialize ViewModel with calendar data
         var viewModel = new AclManagementViewModel(
             owner,
-            calendarUrl,
-            calendarName,
-            calendarColor,
+            calendar,
             ownerUrl,
             aclXml,
             currentUserPrivilegeSetXml,

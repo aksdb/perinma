@@ -273,10 +273,10 @@ public class SyncService
                 switch (dataPair.Value)
                 {
                     case DataAttribute.Text text:
-                        await _storage.SetCalendarData(calendarDbo, dataPair.Key, text.value);
+                        await _storage.SetCalendarDataAsync(calendarDbo.CalendarId, dataPair.Key, text.value);
                         break;
                     case DataAttribute.JsonText jsonText:
-                        await _storage.SetCalendarDataJson(calendarDbo, dataPair.Key, jsonText.value);
+                        await _storage.SetCalendarDataJsonAsync(calendarDbo.CalendarId, dataPair.Key, jsonText.value);
                         break;
                     default:
                         throw new InvalidOperationException($"Unknown data type ${dataPair.Value.GetType()}");
@@ -316,7 +316,7 @@ public class SyncService
         Console.WriteLine($"Syncing events for calendar: {calendar.Name}");
 
         // Load sync token from calendar data for incremental sync
-        string? syncToken = await _storage.GetCalendarData(calendar, "eventSyncToken");
+        string? syncToken = await _storage.GetCalendarDataAsync(calendar.CalendarId, "eventSyncToken");
         bool isFullSync = string.IsNullOrEmpty(syncToken);
 
         // Fetch events with optional sync token
@@ -411,7 +411,7 @@ public class SyncService
         // Store the new sync token for next incremental sync
         if (!string.IsNullOrEmpty(result.SyncToken))
         {
-            await _storage.SetCalendarData(calendar, "eventSyncToken", result.SyncToken);
+            await _storage.SetCalendarDataAsync(calendar.CalendarId, "eventSyncToken", result.SyncToken);
             Console.WriteLine($"Stored new event sync token for next sync");
         }
 

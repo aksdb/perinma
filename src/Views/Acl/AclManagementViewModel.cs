@@ -17,7 +17,7 @@ namespace perinma.Views.Acl;
 /// </summary>
 public partial class AclManagementViewModel : ViewModelBase
 {
-    private readonly string _calendarUrl;
+    private readonly Models.Calendar _calendar;
     private readonly SqliteStorage _storage;
     private readonly CredentialManagerService _credentialManager;
     private readonly Window _ownerWindow;
@@ -62,7 +62,7 @@ public partial class AclManagementViewModel : ViewModelBase
     public AclManagementViewModel()
     {
         // Design-time constructor
-        _calendarUrl = string.Empty;
+        _calendar = null!;
         _storage = null!;
         _credentialManager = null!;
         _ownerWindow = null!;
@@ -70,9 +70,7 @@ public partial class AclManagementViewModel : ViewModelBase
 
     public AclManagementViewModel(
         Window ownerWindow,
-        string calendarUrl,
-        string calendarName,
-        string? calendarColor,
+        Models.Calendar calendar,
         string? ownerUrl,
         string? aclXml,
         string? currentUserPrivilegeSetXml,
@@ -80,11 +78,11 @@ public partial class AclManagementViewModel : ViewModelBase
         CredentialManagerService credentialManager)
     {
         _ownerWindow = ownerWindow;
-        _calendarUrl = calendarUrl;
+        _calendar = calendar;
         _storage = storage;
         _credentialManager = credentialManager;
-        _calendarName = calendarName;
-        _calendarColor = calendarColor;
+        _calendarName = calendar.Name;
+        _calendarColor = calendar.Color;
 
         OwnerText = string.IsNullOrEmpty(ownerUrl) ? "No owner information" : $"Owner: {ownerUrl}";
 
@@ -162,6 +160,8 @@ public partial class AclManagementViewModel : ViewModelBase
     /// </summary>
     private async Task<string> FetchAclFromServerAsync()
     {
+        // TODO this should be done in the provider
+        
         // Get the account for this calendar
         // This is a simplified approach - in production, you'd need to determine which account owns this calendar
         var accounts = await _storage.GetAllAccountsAsync();
@@ -180,7 +180,7 @@ public partial class AclManagementViewModel : ViewModelBase
 
         var client = new CalDavClient();
         client.SetBasicAuth(credentials.Username, credentials.Password);
-        return await client.GetAclAsync(_calendarUrl);
+        return await client.GetAclAsync(_calendar.ExternalId!);
     }
 
     /// <summary>
@@ -275,21 +275,15 @@ public partial class AclManagementViewModel : ViewModelBase
         try
         {
             IsLoading = true;
+            // TODO this should be done in the provider
 
-            // Build ACL from the modified ACE list
+            // Build ACL from modified ACE list
             var acl = new WebDavAcl(Aces.Select(ace => ace.ToWebDavAce()).ToArray());
             var aclXml = WebDavAclParser.BuildAclXml(acl);
+            Console.WriteLine($"Built ACL XML (length: {aclXml?.Length ?? 0})");
 
             // Get credentials and save to server
-            var accounts = await _storage.GetAllAccountsAsync();
-            var calDavAccount = accounts.FirstOrDefault(a => a.AccountTypeEnum == Models.AccountType.CalDav);
-
-            if (calDavAccount == null)
-            {
-                throw new InvalidOperationException("No CalDAV account found for this calendar");
-            }
-
-            var credentials = _credentialManager.GetCalDavCredentials(calDavAccount.AccountId);
+            var credentials = _credentialManager.GetCalDavCredentials(_calendar.Account.Id.ToString());
             if (credentials == null)
             {
                 throw new InvalidOperationException("No CalDAV credentials found");
@@ -297,7 +291,11 @@ public partial class AclManagementViewModel : ViewModelBase
 
             var client = new CalDavClient();
             client.SetBasicAuth(credentials.Username, credentials.Password);
-            await client.SetAclAsync(_calendarUrl, acl);
+            await client.SetAclAsync(_calendar.ExternalId!, acl);
+
+            // Update local database with new ACL data
+            await _storage.SetCalendarDataAsync(_calendar.Id.ToString(), "rawACL", aclXml);
+            Console.WriteLine($"Updated ACL in database for calendar {_calendar.Name}");
 
             WasSaved = true;
             await MessageBoxWindow.ShowAsync(

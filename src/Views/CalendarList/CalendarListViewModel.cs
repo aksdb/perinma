@@ -74,41 +74,38 @@ public partial class CalendarListViewModel : ViewModelBase
 
         try
         {
-            var accounts = await _storage.GetAllAccountsAsync();
+            var accounts = _storage.GetCachedAccounts().ToList();
 
             foreach (var account in accounts)
             {
                 var accountGroup = new AccountGroupViewModel
                 {
-                    AccountId = Guid.Parse(account.AccountId),
+                    AccountId = account.Id,
                     AccountName = account.Name
                 };
 
-                var calendars = await _storage.GetCalendarsByAccountAsync(account.AccountId);
-
+                var calendars = _storage.GetCachedCalendars(account).ToList();
+                    
                 foreach (var calendar in calendars)
                 {
-                    var calendarViewModel = new CalendarViewModel
+                    var calendarViewModel = new CalendarViewModel(calendar)
                     {
-                        Id = Guid.Parse(calendar.CalendarId),
-                        Name = calendar.Name,
-                        Color = calendar.Color,
-                        Enabled = calendar.Enabled != 0,
                         Url = calendar.ExternalId,
-                        IsCalDav = account.AccountTypeEnum == AccountType.CalDav
+                        IsCalDav = account.Type == AccountType.CalDav
                     };
 
                     // Set services for ACL management
                     calendarViewModel.SetServices(_storage, _credentialManager);
 
                     // Load ACL data for CalDAV calendars
-                    if (account.AccountTypeEnum == AccountType.CalDav)
+                    if (account.Type == AccountType.CalDav)
                     {
                         try
                         {
-                            calendarViewModel.AclXml = await _storage.GetCalendarData(calendar, "rawACL");
-                            calendarViewModel.CurrentUserPrivilegeSetXml = await _storage.GetCalendarData(calendar, "currentUserPrivilegeSet");
-                            calendarViewModel.Owner = await _storage.GetCalendarData(calendar, "owner");
+                            // TODO can we do this in a better place? This feels like something for the provider.
+                            calendarViewModel.AclXml = await _storage.GetCalendarDataAsync(calendar.Id.ToString(), "rawACL");
+                            calendarViewModel.CurrentUserPrivilegeSetXml = await _storage.GetCalendarDataAsync(calendar.Id.ToString(), "currentUserPrivilegeSet");
+                            calendarViewModel.Owner = await _storage.GetCalendarDataAsync(calendar.Id.ToString(), "owner");
                         }
                         catch (Exception ex)
                         {
