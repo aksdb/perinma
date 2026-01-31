@@ -77,8 +77,7 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
             Name = c.Summary ?? "Unnamed Calendar",
             Color = c.BackgroundColor,
             Selected = c.Selected == true,
-            Deleted = c.Deleted == true,
-            RawData = null
+            Deleted = c.Deleted == true
         }).ToList();
 
         var result = new CalendarSyncResult

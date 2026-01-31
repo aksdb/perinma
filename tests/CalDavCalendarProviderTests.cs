@@ -47,14 +47,16 @@ public class CalDavCalendarProviderTests
                 Url = "https://caldav.example.com/calendars/work",
                 DisplayName = "Work Calendar",
                 Color = "#ff0000",
-                Deleted = false
+                Deleted = false,
+                PropfindXml = ""
             },
             new CalDavCalendar
             {
                 Url = "https://caldav.example.com/calendars/personal",
                 DisplayName = "Personal Calendar",
                 Color = "#00ff00",
-                Deleted = false
+                Deleted = false,
+                PropfindXml = ""
             }
         );
 
@@ -82,13 +84,15 @@ public class CalDavCalendarProviderTests
             {
                 Url = "https://caldav.example.com/calendars/active",
                 DisplayName = "Active Calendar",
-                Deleted = false
+                Deleted = false,
+                PropfindXml = ""
             },
             new CalDavCalendar
             {
                 Url = "https://caldav.example.com/calendars/deleted",
                 DisplayName = "Deleted Calendar",
-                Deleted = true
+                Deleted = true,
+                PropfindXml = ""
             }
         );
 
@@ -125,7 +129,8 @@ public class CalDavCalendarProviderTests
             {
                 Url = "https://caldav.example.com/calendars/test",
                 DisplayName = "Test Calendar",
-                Deleted = false
+                Deleted = false,
+                PropfindXml = ""
             }
         );
 
@@ -137,7 +142,7 @@ public class CalDavCalendarProviderTests
     }
 
     [Test]
-    public async Task GetCalendarsAsync_WithOwner_RawDataContainsOwner()
+    public async Task GetCalendarsAsync_WithOwner_DataContainsOwner()
     {
         // Arrange - CalDAV calendar with owner (shared calendar)
         _fakeService.SetCalendars(
@@ -146,6 +151,7 @@ public class CalDavCalendarProviderTests
                 Url = "https://caldav.example.com/calendars/shared",
                 DisplayName = "Shared Calendar",
                 Deleted = false,
+                PropfindXml = "",
                 Owner = "https://caldav.example.com/principals/otheruser/"
             }
         );
@@ -153,14 +159,16 @@ public class CalDavCalendarProviderTests
         // Act
         var result = await _provider.GetCalendarsAsync(_accountId);
 
-        // Assert - RawData should contain owner information
-        Assert.That(result.Calendars[0].RawData, Is.Not.Null);
-        Assert.That(result.Calendars[0].RawData, Does.Contain("owner"));
-        Assert.That(result.Calendars[0].RawData, Does.Contain("otheruser"));
+        // Assert - Data should contain owner information
+        Assert.That(result.Calendars[0].Data, Has.Count.GreaterThan(0));
+        Assert.That(result.Calendars[0].Data.ContainsKey("owner"), Is.True);
+        Assert.That(result.Calendars[0].Data["owner"], Is.InstanceOf<DataAttribute.Text>());
+        var ownerAttr = (DataAttribute.Text)result.Calendars[0].Data["owner"];
+        Assert.That(ownerAttr.value, Does.Contain("otheruser"));
     }
 
     [Test]
-    public async Task GetCalendarsAsync_WithoutOwner_RawDataIsNull()
+    public async Task GetCalendarsAsync_WithoutOwner_DataDoesNotContainOwner()
     {
         // Arrange - CalDAV calendar without owner (owned calendar or server doesn't support owner property)
         _fakeService.SetCalendars(
@@ -168,19 +176,20 @@ public class CalDavCalendarProviderTests
             {
                 Url = "https://caldav.example.com/calendars/test",
                 DisplayName = "Test Calendar",
-                Deleted = false
+                Deleted = false,
+                PropfindXml = ""
             }
         );
 
         // Act
         var result = await _provider.GetCalendarsAsync(_accountId);
 
-        // Assert
-        Assert.That(result.Calendars[0].RawData, Is.Null);
+        // Assert - Data should not contain owner key
+        Assert.That(result.Calendars[0].Data.ContainsKey("owner"), Is.False);
     }
 
     [Test]
-    public async Task GetCalendarsAsync_WithAcl_RawDataContainsAcl()
+    public async Task GetCalendarsAsync_WithAcl_DataContainsAcl()
     {
         // Arrange - CalDAV calendar with ACL
         var aclXml = @"<D:acl xmlns:D=""DAV:"">
@@ -198,6 +207,7 @@ public class CalDavCalendarProviderTests
                 Url = "https://caldav.example.com/calendars/shared",
                 DisplayName = "Shared Calendar",
                 Deleted = false,
+                PropfindXml = "",
                 Owner = "https://caldav.example.com/principals/otheruser/",
                 AclXml = aclXml
             }
@@ -206,13 +216,15 @@ public class CalDavCalendarProviderTests
         // Act
         var result = await _provider.GetCalendarsAsync(_accountId);
 
-        // Assert - RawData should contain ACL information
-        Assert.That(result.Calendars[0].RawData, Is.Not.Null);
-        Assert.That(result.Calendars[0].RawData, Does.Contain("acl"));
+        // Assert - Data should contain ACL information
+        Assert.That(result.Calendars[0].Data.ContainsKey("rawACL"), Is.True);
+        Assert.That(result.Calendars[0].Data["rawACL"], Is.InstanceOf<DataAttribute.Text>());
+        var aclAttr = (DataAttribute.Text)result.Calendars[0].Data["rawACL"];
+        Assert.That(aclAttr.value, Does.Contain("acl"));
     }
 
     [Test]
-    public async Task GetCalendarsAsync_WithCurrentUserPrivilegeSet_RawDataContainsPrivileges()
+    public async Task GetCalendarsAsync_WithCurrentUserPrivilegeSet_DataContainsPrivileges()
     {
         // Arrange - CalDAV calendar with current user privileges
         var privilegeSetXml = @"<D:current-user-privilege-set xmlns:D=""DAV:"">
@@ -226,6 +238,7 @@ public class CalDavCalendarProviderTests
                 Url = "https://caldav.example.com/calendars/test",
                 DisplayName = "Test Calendar",
                 Deleted = false,
+                PropfindXml = "",
                 CurrentUserPrivilegeSetXml = privilegeSetXml
             }
         );
@@ -233,9 +246,12 @@ public class CalDavCalendarProviderTests
         // Act
         var result = await _provider.GetCalendarsAsync(_accountId);
 
-        // Assert - RawData should contain privilege set
-        Assert.That(result.Calendars[0].RawData, Is.Not.Null);
-        Assert.That(result.Calendars[0].RawData, Does.Contain("currentUserPrivilegeSet"));
+        // Assert - Data should contain privilege set
+        Assert.That(result.Calendars[0].Data.ContainsKey("currentUserPrivilegeSet"), Is.True);
+        Assert.That(result.Calendars[0].Data["currentUserPrivilegeSet"], Is.InstanceOf<DataAttribute.Text>());
+        var privilegeAttr = (DataAttribute.Text)result.Calendars[0].Data["currentUserPrivilegeSet"];
+        // Check for XML element with hyphens, not the camelCase key name
+        Assert.That(privilegeAttr.value, Does.Contain("current-user-privilege-set"));
     }
 
     #endregion

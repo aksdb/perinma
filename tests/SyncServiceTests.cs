@@ -151,13 +151,15 @@ public class SyncServiceTests : SyncTestBase
             {
                 Url = "https://caldav.example.com/calendars/work",
                 DisplayName = "Work Calendar",
-                Deleted = false
+                Deleted = false,
+                PropfindXml = ""
             },
             new CalDavCalendar
             {
                 Url = "https://caldav.example.com/calendars/personal",
                 DisplayName = "Personal Calendar",
-                Deleted = false
+                Deleted = false,
+                PropfindXml = ""
             }
         );
 
@@ -453,7 +455,8 @@ public class SyncServiceTests : SyncTestBase
         {
             Url = "https://caldav.example.com/calendars/work",
             DisplayName = "Work Calendar",
-            Deleted = false
+            Deleted = false,
+            PropfindXml = ""
         });
 
         // Create a recurring event with UNTIL clause via raw iCalendar
@@ -500,7 +503,8 @@ public class SyncServiceTests : SyncTestBase
         {
             Url = "https://caldav.example.com/calendars/personal",
             DisplayName = "Personal Calendar",
-            Deleted = false
+            Deleted = false,
+            PropfindXml = ""
         });
 
         // Create a recurring event with COUNT clause
@@ -553,7 +557,8 @@ public class SyncServiceTests : SyncTestBase
         {
             Url = "https://caldav.example.com/calendars/europe",
             DisplayName = "Europe Calendar",
-            Deleted = false
+            Deleted = false,
+            PropfindXml = ""
         });
 
         // Create a recurring event with Europe/Berlin timezone
@@ -750,7 +755,8 @@ public class SyncServiceTests : SyncTestBase
         {
             Url = "https://caldav.example.com/calendars/work",
             DisplayName = "Work Calendar",
-            Deleted = false
+            Deleted = false,
+            PropfindXml = ""
         });
 
         // Perform initial sync
@@ -769,7 +775,8 @@ public class SyncServiceTests : SyncTestBase
             {
                 Url = "https://caldav.example.com/calendars/personal",
                 DisplayName = "Personal Calendar",
-                Deleted = false
+                Deleted = false,
+                PropfindXml = ""
             }
         );
 

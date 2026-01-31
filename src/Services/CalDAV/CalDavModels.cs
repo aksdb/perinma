@@ -6,6 +6,7 @@ public class CalDavCalendar
 {
     public required string Url { get; init; }
     public required string DisplayName { get; init; }
+    public required string PropfindXml { get; init; }
     public string? Color { get; init; }
     public string? CTag { get; init; }
     public bool Deleted { get; init; }

@@ -40,7 +40,8 @@ public class SyncService
     /// Forces a complete resync of an account by clearing all local data and sync tokens,
     /// then performing a full sync from the remote server.
     /// </summary>
-    public async Task<SyncResult> ForceResyncAccountAsync(string accountId, CancellationToken cancellationToken = default)
+    public async Task<SyncResult> ForceResyncAccountAsync(string accountId,
+        CancellationToken cancellationToken = default)
     {
         var result = new SyncResult();
         WeakReferenceMessenger.Default.Send(new SyncStartedMessage());
@@ -211,9 +212,11 @@ public class SyncService
         try
         {
             result = await provider.GetCalendarsAsync(account.AccountId, syncToken, cancellationToken);
-            Console.WriteLine($"Found {result.Calendars.Count} calendar {(isFullSync ? "items" : "changes")} for account {account.Name}");
+            Console.WriteLine(
+                $"Found {result.Calendars.Count} calendar {(isFullSync ? "items" : "changes")} for account {account.Name}");
         }
-        catch (Exception ex) when (ex.Message.Contains("410") || ex.Message.Contains("invalid") || ex.Message.Contains("Sync token"))
+        catch (Exception ex) when (ex.Message.Contains("410") || ex.Message.Contains("invalid") ||
+                                   ex.Message.Contains("Sync token"))
         {
             // Sync token is invalid or expired, fall back to full sync
             Console.WriteLine($"Sync token invalid, performing full sync: {ex.Message}");
@@ -242,7 +245,8 @@ public class SyncService
             int enabled;
             if (account.AccountTypeEnum == AccountType.CalDav)
             {
-                var existingCalendar = await _storage.GetCalendarByExternalIdAsync(account.AccountId, calendar.ExternalId ?? string.Empty);
+                var existingCalendar =
+                    await _storage.GetCalendarByExternalIdAsync(account.AccountId, calendar.ExternalId ?? string.Empty);
                 enabled = existingCalendar?.Enabled ?? (calendar.Selected ? 1 : 0);
             }
             else
@@ -264,9 +268,19 @@ public class SyncService
             await _storage.CreateOrUpdateCalendarAsync(calendarDbo);
 
             // Store raw provider data if available
-            if (!string.IsNullOrEmpty(calendar.RawData))
+            foreach (var dataPair in calendar.Data)
             {
-                await _storage.SetCalendarDataJson(calendarDbo, "rawData", calendar.RawData);
+                switch (dataPair.Value)
+                {
+                    case DataAttribute.Text text:
+                        await _storage.SetCalendarData(calendarDbo, dataPair.Key, text.value);
+                        break;
+                    case DataAttribute.JsonText jsonText:
+                        await _storage.SetCalendarDataJson(calendarDbo, dataPair.Key, jsonText.value);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unknown data type ${dataPair.Value.GetType()}");
+                }
             }
         }
 
@@ -309,15 +323,19 @@ public class SyncService
         EventSyncResult result;
         try
         {
-            result = await provider.GetEventsAsync(calendar.AccountId, calendar.ExternalId ?? string.Empty, syncToken, cancellationToken);
-            Console.WriteLine($"Found {result.Events.Count} event {(isFullSync ? "items" : "changes")} for calendar {calendar.Name}");
+            result = await provider.GetEventsAsync(calendar.AccountId, calendar.ExternalId ?? string.Empty, syncToken,
+                cancellationToken);
+            Console.WriteLine(
+                $"Found {result.Events.Count} event {(isFullSync ? "items" : "changes")} for calendar {calendar.Name}");
         }
-        catch (Exception ex) when (ex.Message.Contains("410") || ex.Message.Contains("invalid") || ex.Message.Contains("Sync token"))
+        catch (Exception ex) when (ex.Message.Contains("410") || ex.Message.Contains("invalid") ||
+                                   ex.Message.Contains("Sync token"))
         {
             // Sync token is invalid or expired, fall back to full sync
             Console.WriteLine($"Event sync token invalid, performing full sync: {ex.Message}");
             isFullSync = true;
-            result = await provider.GetEventsAsync(calendar.AccountId, calendar.ExternalId ?? string.Empty, null, cancellationToken);
+            result = await provider.GetEventsAsync(calendar.AccountId, calendar.ExternalId ?? string.Empty, null,
+                cancellationToken);
             Console.WriteLine($"Found {result.Events.Count} events in full sync for calendar {calendar.Name}");
         }
 
@@ -356,12 +374,14 @@ public class SyncService
             }
 
             // Populate reminders for this event
-            await _reminderService.PopulateRemindersForEventAsync(eventId, calendar.CalendarId, reminderAccountType, cancellationToken);
+            await _reminderService.PopulateRemindersForEventAsync(eventId, calendar.CalendarId, reminderAccountType,
+                cancellationToken);
 
             // Handle override relationship (Google-specific)
             if (!string.IsNullOrEmpty(evt.RecurringEventId))
             {
-                var parentEventId = await _storage.GetEventIdByExternalIdAsync(calendar.CalendarId, evt.RecurringEventId);
+                var parentEventId =
+                    await _storage.GetEventIdByExternalIdAsync(calendar.CalendarId, evt.RecurringEventId);
 
                 if (parentEventId != null)
                 {
@@ -369,7 +389,8 @@ public class SyncService
                 }
                 else
                 {
-                    await _storage.AddEventRelationToBacklogAsync(calendar.CalendarId, evt.RecurringEventId, evt.ExternalId);
+                    await _storage.AddEventRelationToBacklogAsync(calendar.CalendarId, evt.RecurringEventId,
+                        evt.ExternalId);
                 }
             }
         }

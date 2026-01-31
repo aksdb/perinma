@@ -54,8 +54,7 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
             Name = c.DisplayName,
             Color = c.Color,
             Selected = true, // CalDAV doesn't have "selected" concept
-            Deleted = c.Deleted,
-            RawData = null
+            Deleted = c.Deleted
         }).ToList();
 
         var result = new CalendarSyncResult
@@ -175,7 +174,8 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
             Url = url,
             DisplayName = displayName,
             Color = color,
-            Deleted = false
+            Deleted = false,
+            PropfindXml = ""
         };
     }
 

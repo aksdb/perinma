@@ -308,6 +308,7 @@ public class CalDavService : ICalDavService
             {
                 Url = absoluteUrl,
                 DisplayName = item.DisplayName ?? "Unnamed Calendar",
+                PropfindXml = item.RawXml,
                 Color = item.Color,
                 CTag = item.CTag,
                 Deleted = false,
@@ -334,6 +335,7 @@ public class CalDavService : ICalDavService
                 calendars.Add(new CalDavCalendar
                 {
                     Url = item.Href,
+                    PropfindXml = String.Empty,
                     DisplayName = string.Empty,
                     Deleted = true
                 });
@@ -366,6 +368,7 @@ public class CalDavService : ICalDavService
                     calendars.Add(new CalDavCalendar
                     {
                         Url = item.Href,
+                        PropfindXml = props.RawXml,
                         DisplayName = props.DisplayName ?? "Unnamed Calendar",
                         Color = props.Color,
                         CTag = props.CTag,

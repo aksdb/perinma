@@ -476,11 +476,13 @@ public class GoogleCalendarProviderTests
         var result = await _provider.GetCalendarsAsync(_accountId);
 
         // Assert
-        Assert.That(result.Calendars[0].RawData, Is.Not.Null.And.Not.Empty);
+        Assert.That(result.Calendars[0].Data.ContainsKey("rawData"), Is.True);
+        Assert.That(result.Calendars[0].Data["rawData"], Is.InstanceOf<DataAttribute.JsonText>());
+        var rawDataAttr = (DataAttribute.JsonText)result.Calendars[0].Data["rawData"];
         Assert.Multiple(() =>
         {
-            Assert.That(result.Calendars[0].RawData, Does.Contain("cal1"));
-            Assert.That(result.Calendars[0].RawData, Does.Contain("Work Calendar"));
+            Assert.That(rawDataAttr.value, Does.Contain("cal1"));
+            Assert.That(rawDataAttr.value, Does.Contain("Work Calendar"));
         });
     }
 

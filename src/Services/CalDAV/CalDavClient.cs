@@ -252,6 +252,7 @@ public class CalDavClient
             responses.Add(new PropfindItem
             {
                 Href = href,
+                RawXml = propstat.ToString(),
                 DisplayName = displayName,
                 IsCalendar = isCalendar,
                 Color = color,
@@ -327,6 +328,7 @@ public class PropfindResponse
 public class PropfindItem
 {
     public required string Href { get; init; }
+    public required string RawXml { get; init; }
     public string? DisplayName { get; init; }
     public bool IsCalendar { get; init; }
     public string? Color { get; init; }

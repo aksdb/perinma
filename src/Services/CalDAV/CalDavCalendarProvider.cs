@@ -46,22 +46,18 @@ public class CalDavCalendarProvider : ICalendarProvider
         // Convert to provider-agnostic format
         var calendars = result.Calendars.Select(c =>
         {
-            var rawDataDict = new Dictionary<string, string?>();
+            var data = new Dictionary<string, DataAttribute>();
 
+            data["rawData"] = new DataAttribute.Text(c.PropfindXml);
+            
             if (c.Owner != null)
-            {
-                rawDataDict["owner"] = c.Owner;
-            }
+                data["owner"] = new DataAttribute.Text(c.Owner);
 
             if (c.AclXml != null)
-            {
-                rawDataDict["acl"] = c.AclXml;
-            }
+                data["rawACL"] =  new DataAttribute.Text(c.AclXml);
 
             if (c.CurrentUserPrivilegeSetXml != null)
-            {
-                rawDataDict["currentUserPrivilegeSet"] = c.CurrentUserPrivilegeSetXml;
-            }
+                data["currentUserPrivilegeSet"] = new DataAttribute.Text(c.CurrentUserPrivilegeSetXml);
 
             return new ProviderCalendar
             {
@@ -70,7 +66,7 @@ public class CalDavCalendarProvider : ICalendarProvider
                 Color = c.Color,
                 Selected = true, // CalDAV doesn't have a "selected" concept, default to enabled
                 Deleted = c.Deleted,
-                RawData = rawDataDict.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(rawDataDict) : null
+                Data = data,
             };
         }).ToList();
 

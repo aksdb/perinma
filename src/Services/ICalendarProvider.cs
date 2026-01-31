@@ -174,9 +174,15 @@ public class ProviderCalendar
     public bool Deleted { get; init; }
 
     /// <summary>
-    /// Raw provider data serialized as JSON for later use.
+    /// Provider specific data.
     /// </summary>
-    public string? RawData { get; init; }
+    public Dictionary<string, DataAttribute> Data { get; init; } = new();
+}
+
+public abstract record DataAttribute
+{
+    public record Text(string value) : DataAttribute;
+    public record JsonText(string value) : DataAttribute;
 }
 
 /// <summary>

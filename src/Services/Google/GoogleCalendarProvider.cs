@@ -57,7 +57,10 @@ public class GoogleCalendarProvider : ICalendarProvider
             Color = c.BackgroundColor,
             Selected = c.Selected == true,
             Deleted = c.Deleted == true,
-            RawData = NewtonsoftJsonSerializer.Instance.Serialize(c)
+            Data = new()
+            {
+                {"rawData", new DataAttribute.JsonText(NewtonsoftJsonSerializer.Instance.Serialize(c))}
+            }
         }).ToList();
 
         return new CalendarSyncResult
