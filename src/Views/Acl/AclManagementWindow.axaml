@@ -1,0 +1,312 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:acl="using:perinma.Views.Acl"
+        x:DataType="acl:AclManagementViewModel"
+        mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="600"
+        x:Class="perinma.Views.Acl.AclManagementWindow"
+        Title="Manage Permissions"
+        Width="700"
+        MaxWidth="900"
+        MinWidth="600"
+        MaxHeight="800"
+        SizeToContent="WidthAndHeight"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Design.DataContext>
+        <acl:AclManagementViewModel />
+    </Design.DataContext>
+
+    <Window.Resources>
+        <acl:BooleanToColorConverter x:Key="BooleanToColorConverter" />
+        <acl:SelectedBorderColorConverter x:Key="SelectedBorderColorConverter" />
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Calendar Info Header -->
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource SystemChromeAltMediumLowColor}"
+                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                BorderThickness="0,0,0,1"
+                Padding="20,16">
+            <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <!-- Color indicator -->
+                    <Border Width="24"
+                            Height="24"
+                            CornerRadius="4"
+                            Background="{Binding CalendarColor}"
+                            VerticalAlignment="Center" />
+
+                    <!-- Calendar name -->
+                    <TextBlock Text="{Binding CalendarName}"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Owner info -->
+                <TextBlock Text="{Binding OwnerText}"
+                           FontSize="12"
+                           Foreground="Gray"
+                           Margin="36,0,0,0"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- Current User Privileges Banner -->
+        <Border DockPanel.Dock="Top"
+                BorderBrush="Gray"
+                BorderThickness="0,0,0,1"
+                Padding="20,12"
+                IsVisible="{Binding ShowCurrentUserPrivileges}">
+            <StackPanel Orientation="Horizontal" Spacing="16">
+                <TextBlock Text="Your Access:"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+
+                <!-- Read-only badge -->
+                <Border Background="#107C10"
+                        CornerRadius="4"
+                        Padding="8,4"
+                        IsVisible="{Binding CanRead}">
+                    <TextBlock Text="Read"
+                               FontSize="12"
+                               Foreground="White"
+                               FontWeight="SemiBold" />
+                </Border>
+
+                <!-- Read-write badge -->
+                <Border Background="#0078D4"
+                        CornerRadius="4"
+                        Padding="8,4"
+                        IsVisible="{Binding CanWrite}">
+                    <TextBlock Text="Write"
+                               FontSize="12"
+                               Foreground="White"
+                               FontWeight="SemiBold" />
+                </Border>
+
+                <!-- Write-ACL badge -->
+                <Border Background="#8A2BE2"
+                        CornerRadius="4"
+                        Padding="8,4"
+                        IsVisible="{Binding CanWriteAcl}">
+                    <TextBlock Text="Manage Permissions"
+                               FontSize="12"
+                               Foreground="White"
+                               FontWeight="SemiBold" />
+                </Border>
+
+                <!-- No access badge -->
+                <Border Background="#A80000"
+                        CornerRadius="4"
+                        Padding="8,4"
+                        IsVisible="{Binding NotHasWriteAcl}">
+                    <TextBlock Text="View Only (cannot edit permissions)"
+                               FontSize="12"
+                               Foreground="White"
+                               FontWeight="SemiBold" />
+                </Border>
+            </StackPanel>
+        </Border>
+
+        <!-- Toolbar for Add/Remove actions -->
+        <Border DockPanel.Dock="Top"
+                BorderBrush="Gray"
+                BorderThickness="0,0,0,1"
+                Padding="20,12"
+                IsVisible="{Binding CanWriteAcl}">
+            <StackPanel Orientation="Horizontal"
+                        Spacing="10"
+                        HorizontalAlignment="Right">
+                <Button Content="+ Add Permission"
+                        Command="{Binding AddAceCommand}"
+                        Padding="16,6"
+                        IsEnabled="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}" />
+                <Button Content="Remove Selected"
+                        Command="{Binding RemoveSelectedAceCommand}"
+                        Padding="16,6"
+                        IsEnabled="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}" />
+            </StackPanel>
+        </Border>
+
+        <!-- Main ACL List -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      DockPanel.Dock="Top"
+                      MaxHeight="400">
+            <ItemsControl ItemsSource="{Binding Aces}"
+                          IsEnabled="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="acl:AceItemViewModel">
+                        <Border Background="Transparent"
+                                Margin="20,8,20,4"
+                                Padding="16,12"
+                                CornerRadius="6"
+                                BorderThickness="1"
+                                BorderBrush="{Binding IsSelected, Converter={x:Static acl:SelectedBorderColorConverter.Instance}}"
+                                PointerPressed="OnAceBorderPointerPressed"
+                                Tag="{Binding}">
+
+                            <DockPanel>
+                                <!-- Action buttons (right-aligned) -->
+                                <StackPanel DockPanel.Dock="Right"
+                                            Orientation="Horizontal"
+                                            Spacing="8"
+                                            Margin="12,0,0,0"
+                                            IsVisible="{Binding IsInherited, Converter={x:Static BoolConverters.Not}}">
+
+                                    <!-- Edit button -->
+                                    <Button Width="28"
+                                            Height="28"
+                                            Padding="0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            ToolTip.Tip="Edit"
+                                            Command="{Binding EditCommand}"
+                                            IsEnabled="{Binding IsProtected, Converter={x:Static BoolConverters.Not}}">
+                                        <TextBlock Text="✏"
+                                                   FontSize="14"
+                                                   Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                   VerticalAlignment="Center"
+                                                   HorizontalAlignment="Center" />
+                                    </Button>
+
+                                    <!-- Delete button -->
+                                    <Button Width="28"
+                                            Height="28"
+                                            Padding="0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            ToolTip.Tip="Remove"
+                                            Command="{Binding DeleteCommand}"
+                                            IsEnabled="{Binding IsProtected, Converter={x:Static BoolConverters.Not}}">
+                                        <TextBlock Text="✕"
+                                                   FontSize="16"
+                                                   Foreground="#D13438"
+                                                   VerticalAlignment="Center"
+                                                   HorizontalAlignment="Center" />
+                                    </Button>
+                                </StackPanel>
+
+                                <!-- Principal info -->
+                                <StackPanel DockPanel.Dock="Left" Spacing="6">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <!-- Principal icon/type -->
+                                        <Border Width="20"
+                                                Height="20"
+                                                CornerRadius="4"
+                                                Background="{Binding PrincipalTypeColor}"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding PrincipalTypeIcon}"
+                                                       FontSize="10"
+                                                       Foreground="White"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center" />
+                                        </Border>
+
+                                        <!-- Principal name/URL -->
+                                        <TextBlock Text="{Binding PrincipalDisplayText}"
+                                                   FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="350" />
+                                    </StackPanel>
+
+                                    <!-- Inherited badge -->
+                                    <Border Background="{DynamicResource SystemChromeLowColor}"
+                                            CornerRadius="3"
+                                            Padding="6,2"
+                                            IsVisible="{Binding IsInherited}"
+                                            Margin="28,0,0,0">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="📋"
+                                                       FontSize="10"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Text="Inherited"
+                                                       FontSize="10"
+                                                       Foreground="Gray"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Protected badge -->
+                                    <Border Background="{DynamicResource SystemChromeLowColor}"
+                                            CornerRadius="3"
+                                            Padding="6,2"
+                                            IsVisible="{Binding IsProtected}"
+                                            Margin="28,0,0,0">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="🔒"
+                                                       FontSize="10"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Text="Protected"
+                                                       FontSize="10"
+                                                       Foreground="Gray"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- Grant/Deny indicator -->
+                                <Border DockPanel.Dock="Right"
+                                        CornerRadius="4"
+                                        Padding="8,4"
+                                        Margin="12,0,12,0">
+                                    <Border.Background>
+                                        <SolidColorBrush Color="{Binding IsGrant, Converter={StaticResource BooleanToColorConverter}}" />
+                                    </Border.Background>
+                                    <TextBlock Text="{Binding GrantDenyText}"
+                                               FontSize="11"
+                                               Foreground="White"
+                                               FontWeight="SemiBold" />
+                                </Border>
+                            </DockPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Loading indicator -->
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource SystemChromeAltMediumLowColor}"
+                IsVisible="{Binding IsLoading}">
+            <StackPanel HorizontalAlignment="Center" Spacing="8">
+                <ProgressBar Width="200"
+                             Height="4"
+                             IsIndeterminate="True" />
+                <TextBlock Text="Loading permissions..."
+                           FontSize="12"
+                           Foreground="Gray"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- Save/Cancel buttons -->
+        <Border DockPanel.Dock="Bottom"
+                BorderBrush="Gray"
+                BorderThickness="0,1,0,0"
+                Padding="20,16">
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="10">
+                <Button Content="Cancel"
+                        Command="{Binding CancelCommand}"
+                        Width="100"
+                        Padding="0,8"
+                        IsEnabled="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}" />
+                <Button Content="Save Changes"
+                        Command="{Binding SaveCommand}"
+                        Width="120"
+                        Padding="0,8"
+                        IsEnabled="{Binding HasChanges}"
+                        Classes="Accent" />
+            </StackPanel>
+        </Border>
+    </DockPanel>
+
+</Window>

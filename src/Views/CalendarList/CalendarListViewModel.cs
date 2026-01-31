@@ -93,8 +93,28 @@ public partial class CalendarListViewModel : ViewModelBase
                         Id = Guid.Parse(calendar.CalendarId),
                         Name = calendar.Name,
                         Color = calendar.Color,
-                        Enabled = calendar.Enabled != 0
+                        Enabled = calendar.Enabled != 0,
+                        Url = calendar.ExternalId,
+                        IsCalDav = account.AccountTypeEnum == AccountType.CalDav
                     };
+
+                    // Set services for ACL management
+                    calendarViewModel.SetServices(_storage, _credentialManager);
+
+                    // Load ACL data for CalDAV calendars
+                    if (account.AccountTypeEnum == AccountType.CalDav)
+                    {
+                        try
+                        {
+                            calendarViewModel.AclXml = await _storage.GetCalendarData(calendar, "rawACL");
+                            calendarViewModel.CurrentUserPrivilegeSetXml = await _storage.GetCalendarData(calendar, "currentUserPrivilegeSet");
+                            calendarViewModel.Owner = await _storage.GetCalendarData(calendar, "owner");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error loading ACL data for calendar '{calendar.Name}': {ex.Message}");
+                        }
+                    }
 
                     calendarViewModel.EnabledChanged += OnCalendarEnabledChanged;
                     accountGroup.Calendars.Add(calendarViewModel);

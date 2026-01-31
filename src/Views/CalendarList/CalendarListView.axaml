@@ -89,6 +89,13 @@
                                                 <Border Padding="5,4"
                                                         Margin="0,2"
                                                         Background="Transparent">
+                                                    <Border.ContextMenu>
+                                                        <ContextMenu>
+                                                            <MenuItem Header="Manage Permissions..."
+                                                                      Command="{Binding ManagePermissionsCommand}"
+                                                                      IsVisible="{Binding IsCalDav}" />
+                                                        </ContextMenu>
+                                                    </Border.ContextMenu>
                                                     <DockPanel>
                                                         <!-- Checkbox on right -->
                                                         <CheckBox IsChecked="{Binding Enabled}"
