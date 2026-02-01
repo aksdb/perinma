@@ -9,6 +9,7 @@ using CredentialStore;
 using perinma.Models;
 using perinma.Services;
 using perinma.Services.CalDAV;
+using perinma.Services.CardDAV;
 using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Views.Main;
@@ -42,18 +43,33 @@ public partial class App : Application
             var calDavService = new CalDavService();
 
             // Create calendar providers
-            var googleProvider = new GoogleCalendarProvider(googleCalendarService, _credentialManager);
-            var calDavProvider = new CalDavCalendarProvider(calDavService, _credentialManager);
+            var googleCalendarProvider = new GoogleCalendarProvider(googleCalendarService, _credentialManager);
+            var calDavCalendarProvider = new CalDavCalendarProvider(calDavService, _credentialManager);
 
-            // Create providers dictionary for ReminderService
-            var providers = new Dictionary<AccountType, ICalendarProvider>
+            // Create calendar providers dictionary for ReminderService
+            var calendarProviders = new Dictionary<AccountType, ICalendarProvider>
             {
-                [AccountType.Google] = googleProvider,
-                [AccountType.CalDav] = calDavProvider
+                [AccountType.Google] = googleCalendarProvider,
+                [AccountType.CalDav] = calDavCalendarProvider
             };
 
-            var reminderService = new ReminderService(storage, providers);
-            var syncService = new SyncService(storage, _credentialManager, providers, reminderService);
+            var reminderService = new ReminderService(storage, calendarProviders);
+            var syncService = new SyncService(storage, _credentialManager, calendarProviders, reminderService);
+
+            // Create contact providers
+            var googlePeopleService = new GooglePeopleService();
+            var googleContactProvider = new GoogleContactProvider(googlePeopleService, _credentialManager);
+            var cardDavService = new CardDavService();
+            var cardDavContactProvider = new CardDavContactProvider(cardDavService, _credentialManager);
+
+            // Create contact providers dictionary
+            var contactProviders = new Dictionary<AccountType, IContactProvider>
+            {
+                [AccountType.Google] = googleContactProvider,
+                [AccountType.CardDav] = cardDavContactProvider
+            };
+
+            var contactSyncService = new ContactSyncService(storage, contactProviders);
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {

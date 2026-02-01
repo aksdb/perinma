@@ -44,6 +44,7 @@
         <PackageReference Include="dbup-core" Version="6.0.15" />
         <PackageReference Include="dbup-sqlite" Version="6.0.4" />
         <PackageReference Include="Google.Apis.Calendar.v3" Version="1.73.0.3993" />
+        <PackageReference Include="Google.Apis.PeopleService.v1" Version="1.72.0.3973" />
         <PackageReference Include="Ical.Net" Version="5.2.0" />
         <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.2" />
     </ItemGroup>

@@ -59,3 +59,60 @@ public class CalendarEventQueryResult
 
     public AccountType AccountTypeEnum => Enum.TryParse<AccountType>(AccountType, ignoreCase: true, out var result) ? result : perinma.Models.AccountType.Google;
 }
+
+public class AddressBookDbo
+{
+    public required string AccountId { get; set; }
+    public required string AddressBookId { get; set; }
+    public string? ExternalId { get; set; }
+    public required string Name { get; set; }
+    public int Enabled { get; set; }
+    public long? LastSync { get; set; }
+}
+
+public class ContactDbo
+{
+    public string AddressBookId { get; set; } = string.Empty;
+    public string ContactId { get; set; } = string.Empty;
+    public string? ExternalId { get; set; }
+    public string? DisplayName { get; set; }
+    public string? GivenName { get; set; }
+    public string? FamilyName { get; set; }
+    public string? PrimaryEmail { get; set; }
+    public string? PrimaryPhone { get; set; }
+    public string? PhotoUrl { get; set; }
+    public long? ChangedAt { get; set; }
+}
+
+public class ContactGroupDbo
+{
+    public required string AccountId { get; set; }
+    public required string GroupId { get; set; }
+    public string? ExternalId { get; set; }
+    public required string Name { get; set; }
+    public int SystemGroup { get; set; }
+}
+
+public class ContactQueryResult
+{
+    public required string ContactId { get; init; }
+    public string? ExternalId { get; init; }
+    public string? DisplayName { get; init; }
+    public string? GivenName { get; init; }
+    public string? FamilyName { get; init; }
+    public string? PrimaryEmail { get; init; }
+    public string? PrimaryPhone { get; init; }
+    public string? PhotoUrl { get; init; }
+    public long? ChangedAt { get; init; }
+    public string? RawData { get; init; }
+    public required string AddressBookId { get; init; }
+    public string? AddressBookExternalId { get; init; }
+    public required string AddressBookName { get; init; }
+    public int AddressBookEnabled { get; init; }
+    public long? AddressBookLastSync { get; init; }
+    public required string AccountId { get; init; }
+    public required string AccountName { get; init; }
+    public required string AccountType { get; init; }
+
+    public AccountType AccountTypeEnum => Enum.TryParse<AccountType>(AccountType, ignoreCase: true, out var result) ? result : perinma.Models.AccountType.Google;
+}

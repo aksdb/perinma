@@ -23,3 +23,10 @@ public class CalDavCredentials : AccountCredentials
     public required string Username { get; set; }
     public required string Password { get; set; }
 }
+
+public class CardDavCredentials : AccountCredentials
+{
+    public required string ServerUrl { get; set; }
+    public required string Username { get; set; }
+    public required string Password { get; set; }
+}

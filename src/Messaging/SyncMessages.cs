@@ -67,3 +67,36 @@ public class SyncEndedMessage
 /// Message sent when an account requires re-authentication
 /// </summary>
 public sealed record ReAuthenticationRequiredMessage(string AccountId, string ProviderType);
+
+/// <summary>
+/// Message sent when contact sync starts
+/// </summary>
+public class ContactSyncStartedMessage
+{
+}
+
+/// <summary>
+/// Message sent when syncing an address book
+/// </summary>
+public class SyncAddressBookProgressMessage
+{
+    public required string AddressBookName { get; init; }
+    public required int AddressBookIndex { get; init; }
+    public required int TotalAddressBooks { get; init; }
+}
+
+/// <summary>
+/// Message sent when syncing contacts for an address book
+/// </summary>
+public class SyncContactsProgressMessage
+{
+    public required string AddressBookName { get; init; }
+    public required int ContactCount { get; init; }
+}
+
+/// <summary>
+/// Message sent when contact sync completes
+/// </summary>
+public class ContactSyncEndedMessage
+{
+}

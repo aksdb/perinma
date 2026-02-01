@@ -40,10 +40,9 @@ public partial class AddAceDialog : Window
 
         dialog.DataContext = viewModel;
 
-        var result = await dialog.ShowDialog<AceItemViewModel?>(owner);
+        var result = await dialog.ShowDialog<WebDavAce?>(owner);
 
-        // Return the WebDavAce from the AceItemViewModel
-        return result?.ToWebDavAce();
+        return result;
     }
 
     private void OnSearchResultPointerPressed(object? sender, PointerPressedEventArgs e)

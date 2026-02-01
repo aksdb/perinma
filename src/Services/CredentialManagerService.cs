@@ -66,6 +66,33 @@ public class CredentialManagerService(ICredentialStore store)
         return store.Remove(service, accountId);
     }
 
+    public void StoreCardDavCredentials(string accountId, CardDavCredentials credentials)
+    {
+        var service = GetServiceName(accountId);
+        var json = JsonSerializer.Serialize(credentials, CredentialsContext.Default.CardDavCredentials);
+        store.AddOrUpdate(service, accountId, json);
+    }
+
+    public CardDavCredentials? GetCardDavCredentials(string accountId)
+    {
+        var service = GetServiceName(accountId);
+        var credential = store.Get(service, accountId);
+
+        if (credential == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize(credential.Password, CredentialsContext.Default.CardDavCredentials);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     public bool HasCredentials(string accountId)
     {
         var service = GetServiceName(accountId);

@@ -5,7 +5,8 @@ namespace perinma.Models;
 public enum AccountType
 {
     Google,
-    CalDav
+    CalDav,
+    CardDav
 }
 
 public class Account

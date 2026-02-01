@@ -952,6 +952,436 @@ public class SqliteStorage : IDisposable
 
     #endregion
 
+    #region Address Book Methods
+
+    public async Task<IEnumerable<AddressBookDbo>> GetAddressBooksByAccountAsync(string accountId)
+    {
+        return await _connection.QueryAsync<AddressBookDbo>(
+            "SELECT account_id AS AccountId, address_book_id AS AddressBookId, external_id AS ExternalId, " +
+            "name AS Name, enabled AS Enabled, last_sync AS LastSync " +
+            "FROM address_book WHERE account_id = @AccountId",
+            new { AccountId = accountId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<AddressBookDbo?> GetAddressBookByExternalIdAsync(string accountId, string externalId)
+    {
+        return await _connection.QuerySingleOrDefaultAsync<AddressBookDbo>(
+            "SELECT account_id AS AccountId, address_book_id AS AddressBookId, external_id AS ExternalId, " +
+            "name AS Name, enabled AS Enabled, last_sync AS LastSync " +
+            "FROM address_book WHERE account_id = @AccountId AND external_id = @ExternalId",
+            new { AccountId = accountId, ExternalId = externalId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<AddressBookDbo?> GetAddressBookByIdAsync(string addressBookId)
+    {
+        return await _connection.QuerySingleOrDefaultAsync<AddressBookDbo>(
+            "SELECT account_id AS AccountId, address_book_id AS AddressBookId, external_id AS ExternalId, " +
+            "name AS Name, enabled AS Enabled, last_sync AS LastSync " +
+            "FROM address_book WHERE address_book_id = @AddressBookId",
+            new { AddressBookId = addressBookId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<bool> CreateOrUpdateAddressBookAsync(AddressBookDbo addressBook)
+    {
+        var existing = await GetAddressBookByExternalIdAsync(addressBook.AccountId, addressBook.ExternalId ?? string.Empty);
+
+        if (existing != null)
+        {
+            var rowsAffected = await _connection.ExecuteAsync(
+                "UPDATE address_book SET name = @Name, enabled = @Enabled, last_sync = @LastSync " +
+                "WHERE account_id = @AccountId AND external_id = @ExternalId",
+                new
+                {
+                    addressBook.Name,
+                    addressBook.Enabled,
+                    addressBook.LastSync,
+                    addressBook.AccountId,
+                    addressBook.ExternalId
+                },
+                commandTimeout: 30
+            );
+
+            addressBook.AddressBookId = existing.AddressBookId;
+            return rowsAffected > 0;
+        }
+        else
+        {
+            var addressBookId = Guid.NewGuid().ToString();
+            var rowsAffected = await _connection.ExecuteAsync(
+                "INSERT INTO address_book (account_id, address_book_id, external_id, name, enabled, last_sync) " +
+                "VALUES (@AccountId, @AddressBookId, @ExternalId, @Name, @Enabled, @LastSync)",
+                new
+                {
+                    addressBook.AccountId,
+                    AddressBookId = addressBookId,
+                    addressBook.ExternalId,
+                    addressBook.Name,
+                    addressBook.Enabled,
+                    addressBook.LastSync
+                },
+                commandTimeout: 30
+            );
+
+            addressBook.AddressBookId = addressBookId;
+            return rowsAffected > 0;
+        }
+    }
+
+    public async Task<bool> DeleteAddressBookAsync(string addressBookId)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            "DELETE FROM address_book WHERE address_book_id = @AddressBookId",
+            new { AddressBookId = addressBookId },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
+    public async Task<int> DeleteAddressBooksNotSyncedAsync(string accountId, long currentSyncTime)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            "DELETE FROM address_book WHERE account_id = @AccountId AND last_sync < @CurrentSyncTime",
+            new { AccountId = accountId, CurrentSyncTime = currentSyncTime },
+            commandTimeout: 30
+        );
+
+        return rowsAffected;
+    }
+
+    public async Task<bool> SetAddressBookDataAsync(string addressBookId, string key, string value)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            """
+                UPDATE address_book
+                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
+                WHERE address_book_id = @address_book_id
+            """,
+            param: new { key = $"$.{key}", value, address_book_id = addressBookId },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
+    public async Task<string?> GetAddressBookDataAsync(string addressBookId, string key)
+    {
+        return await _connection.QuerySingleAsync<string?>(
+            """
+            SELECT coalesce(data ->> @key, '') as value
+            FROM address_book
+            WHERE address_book_id = @address_book_id
+            """,
+            param: new { key = $"$.{key}", address_book_id = addressBookId });
+    }
+
+    public async Task<bool> UpdateAddressBookEnabledAsync(string addressBookId, bool enabled)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            "UPDATE address_book SET enabled = @Enabled WHERE address_book_id = @AddressBookId",
+            new { AddressBookId = addressBookId, Enabled = enabled ? 1 : 0 },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
+    #endregion
+
+    #region Contact Methods
+
+    public async Task<IEnumerable<ContactDbo>> GetContactsByAddressBookAsync(string addressBookId)
+    {
+        return await _connection.QueryAsync<ContactDbo>(
+            "SELECT address_book_id AS AddressBookId, contact_id AS ContactId, external_id AS ExternalId, " +
+            "display_name AS DisplayName, given_name AS GivenName, family_name AS FamilyName, " +
+            "primary_email AS PrimaryEmail, primary_phone AS PrimaryPhone, photo_url AS PhotoUrl, " +
+            "changed_at AS ChangedAt " +
+            "FROM contact WHERE address_book_id = @AddressBookId",
+            new { AddressBookId = addressBookId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<ContactDbo?> GetContactByExternalIdAsync(string addressBookId, string externalId)
+    {
+        return await _connection.QuerySingleOrDefaultAsync<ContactDbo>(
+            "SELECT address_book_id AS AddressBookId, contact_id AS ContactId, external_id AS ExternalId, " +
+            "display_name AS DisplayName, given_name AS GivenName, family_name AS FamilyName, " +
+            "primary_email AS PrimaryEmail, primary_phone AS PrimaryPhone, photo_url AS PhotoUrl, " +
+            "changed_at AS ChangedAt " +
+            "FROM contact WHERE address_book_id = @AddressBookId AND external_id = @ExternalId",
+            new { AddressBookId = addressBookId, ExternalId = externalId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<string> CreateOrUpdateContactAsync(ContactDbo contactDbo)
+    {
+        var existing = await GetContactByExternalIdAsync(contactDbo.AddressBookId, contactDbo.ExternalId ?? string.Empty);
+
+        if (existing != null)
+        {
+            await _connection.ExecuteAsync(
+                "UPDATE contact SET display_name = @display_name, given_name = @given_name, " +
+                "family_name = @family_name, primary_email = @primary_email, primary_phone = @primary_phone, " +
+                "photo_url = @photo_url, changed_at = @changed_at " +
+                "WHERE address_book_id = @address_book_id AND external_id = @external_id",
+                new
+                {
+                    address_book_id = contactDbo.AddressBookId,
+                    external_id = contactDbo.ExternalId,
+                    display_name = contactDbo.DisplayName,
+                    given_name = contactDbo.GivenName,
+                    family_name = contactDbo.FamilyName,
+                    primary_email = contactDbo.PrimaryEmail,
+                    primary_phone = contactDbo.PrimaryPhone,
+                    photo_url = contactDbo.PhotoUrl,
+                    changed_at = contactDbo.ChangedAt
+                },
+                commandTimeout: 30
+            );
+
+            return existing.ContactId;
+        }
+        else
+        {
+            var newContactId = Guid.NewGuid().ToString();
+            await _connection.ExecuteAsync(
+                "INSERT INTO contact (address_book_id, contact_id, external_id, display_name, given_name, " +
+                "family_name, primary_email, primary_phone, photo_url, changed_at) " +
+                "VALUES (@address_book_id, @contact_id, @external_id, @display_name, @given_name, " +
+                "@family_name, @primary_email, @primary_phone, @photo_url, @changed_at)",
+                new
+                {
+                    address_book_id = contactDbo.AddressBookId,
+                    contact_id = newContactId,
+                    external_id = contactDbo.ExternalId,
+                    display_name = contactDbo.DisplayName,
+                    given_name = contactDbo.GivenName,
+                    family_name = contactDbo.FamilyName,
+                    primary_email = contactDbo.PrimaryEmail,
+                    primary_phone = contactDbo.PrimaryPhone,
+                    photo_url = contactDbo.PhotoUrl,
+                    changed_at = contactDbo.ChangedAt
+                },
+                commandTimeout: 30
+            );
+
+            return newContactId;
+        }
+    }
+
+    public async Task<int> DeleteContactsNotSyncedAsync(string addressBookId, long currentSyncTime)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            "DELETE FROM contact WHERE address_book_id = @AddressBookId AND changed_at < @CurrentSyncTime",
+            new { AddressBookId = addressBookId, CurrentSyncTime = currentSyncTime },
+            commandTimeout: 30
+        );
+
+        return rowsAffected;
+    }
+
+    public async Task<bool> SetContactDataAsync(string contactId, string key, string value)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            """
+                UPDATE contact
+                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
+                WHERE contact_id = @contactId
+            """,
+            param: new { key = $"$.{key}", value, contactId },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
+    public async Task<bool> SetContactDataJsonAsync(string contactId, string key, string jsonValue)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            """
+                UPDATE contact
+                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, jsonb(@jsonValue))
+                WHERE contact_id = @contactId
+            """,
+            param: new { key = $"$.{key}", jsonValue, contactId },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
+    public async Task<string?> GetContactDataAsync(string contactId, string key)
+    {
+        return await _connection.QuerySingleAsync<string?>(
+            """
+            SELECT coalesce(data ->> @key, '') as value
+            FROM contact
+            WHERE contact_id = @contactId
+            """,
+            param: new { key = $"$.{key}", contactId });
+    }
+
+    #endregion
+
+    #region Contact Group Methods
+
+    public async Task<IEnumerable<ContactGroupDbo>> GetContactGroupsByAccountAsync(string accountId)
+    {
+        return await _connection.QueryAsync<ContactGroupDbo>(
+            "SELECT account_id AS AccountId, group_id AS GroupId, external_id AS ExternalId, " +
+            "name AS Name, system_group AS SystemGroup " +
+            "FROM contact_group WHERE account_id = @AccountId",
+            new { AccountId = accountId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<ContactGroupDbo?> GetContactGroupByExternalIdAsync(string accountId, string externalId)
+    {
+        return await _connection.QuerySingleOrDefaultAsync<ContactGroupDbo>(
+            "SELECT account_id AS AccountId, group_id AS GroupId, external_id AS ExternalId, " +
+            "name AS Name, system_group AS SystemGroup " +
+            "FROM contact_group WHERE account_id = @AccountId AND external_id = @ExternalId",
+            new { AccountId = accountId, ExternalId = externalId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<bool> CreateOrUpdateContactGroupAsync(ContactGroupDbo groupDbo)
+    {
+        var existing = await GetContactGroupByExternalIdAsync(groupDbo.AccountId, groupDbo.ExternalId ?? string.Empty);
+
+        if (existing != null)
+        {
+            var rowsAffected = await _connection.ExecuteAsync(
+                "UPDATE contact_group SET name = @Name, system_group = @SystemGroup " +
+                "WHERE account_id = @AccountId AND external_id = @ExternalId",
+                new
+                {
+                    groupDbo.Name,
+                    groupDbo.SystemGroup,
+                    groupDbo.AccountId,
+                    groupDbo.ExternalId
+                },
+                commandTimeout: 30
+            );
+
+            groupDbo.GroupId = existing.GroupId;
+            return rowsAffected > 0;
+        }
+        else
+        {
+            var groupId = Guid.NewGuid().ToString();
+            var rowsAffected = await _connection.ExecuteAsync(
+                "INSERT INTO contact_group (account_id, group_id, external_id, name, system_group) " +
+                "VALUES (@AccountId, @GroupId, @ExternalId, @Name, @SystemGroup)",
+                new
+                {
+                    groupDbo.AccountId,
+                    GroupId = groupId,
+                    groupDbo.ExternalId,
+                    groupDbo.Name,
+                    groupDbo.SystemGroup
+                },
+                commandTimeout: 30
+            );
+
+            groupDbo.GroupId = groupId;
+            return rowsAffected > 0;
+        }
+    }
+
+    public async Task<bool> DeleteContactGroupAsync(string groupId)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            "DELETE FROM contact_group WHERE group_id = @GroupId",
+            new { GroupId = groupId },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
+    public async Task SetContactGroupMembershipAsync(string contactId, IEnumerable<string> groupIds)
+    {
+        // Clear existing memberships
+        await _connection.ExecuteAsync(
+            "DELETE FROM contact_group_membership WHERE contact_id = @ContactId",
+            new { ContactId = contactId },
+            commandTimeout: 30
+        );
+
+        // Add new memberships
+        foreach (var groupId in groupIds)
+        {
+            await _connection.ExecuteAsync(
+                "INSERT OR IGNORE INTO contact_group_membership (contact_id, group_id) VALUES (@ContactId, @GroupId)",
+                new { ContactId = contactId, GroupId = groupId },
+                commandTimeout: 30
+            );
+        }
+    }
+
+    public async Task<IEnumerable<string>> GetContactGroupMembershipsAsync(string contactId)
+    {
+        return await _connection.QueryAsync<string>(
+            "SELECT group_id FROM contact_group_membership WHERE contact_id = @ContactId",
+            new { ContactId = contactId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<string?> GetContactGroupIdByExternalIdAsync(string accountId, string externalId)
+    {
+        return await _connection.QuerySingleOrDefaultAsync<string?>(
+            "SELECT group_id FROM contact_group WHERE account_id = @AccountId AND external_id = @ExternalId",
+            new { AccountId = accountId, ExternalId = externalId },
+            commandTimeout: 30
+        );
+    }
+
+    /// <summary>
+    /// Clears all contact sync data for an account, preparing it for a full resync.
+    /// Deletes all address books (and their contacts via cascade) and clears sync tokens.
+    /// </summary>
+    public async Task ClearAccountContactSyncDataAsync(string accountId)
+    {
+        await _connection.ExecuteAsync(
+            "DELETE FROM address_book WHERE account_id = @AccountId",
+            new { AccountId = accountId },
+            commandTimeout: 30
+        );
+
+        await _connection.ExecuteAsync(
+            "DELETE FROM contact_group WHERE account_id = @AccountId",
+            new { AccountId = accountId },
+            commandTimeout: 30
+        );
+
+        await _connection.ExecuteAsync(
+            "UPDATE account SET data = jsonb_remove(coalesce(data, jsonb_object()), '$.addressBookSyncToken') WHERE account_id = @AccountId",
+            new { AccountId = accountId },
+            commandTimeout: 30
+        );
+
+        await _connection.ExecuteAsync(
+            "UPDATE account SET data = jsonb_remove(coalesce(data, jsonb_object()), '$.contactGroupSyncToken') WHERE account_id = @AccountId",
+            new { AccountId = accountId },
+            commandTimeout: 30
+        );
+    }
+
+    #endregion
+
     public void Dispose()
     {
         _connection.Dispose();
