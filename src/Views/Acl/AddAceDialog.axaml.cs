@@ -21,7 +21,7 @@ public partial class AddAceDialog : Window
     /// <summary>
     /// Shows the dialog with services for principal search.
     /// </summary>
-    public static async Task<AceItemViewModel?> ShowAsync(
+    public static async Task<WebDavAce?> ShowAsync(
         Window owner,
         SqliteStorage storage,
         CredentialManagerService credentialManager,
@@ -40,7 +40,10 @@ public partial class AddAceDialog : Window
 
         dialog.DataContext = viewModel;
 
-        return await dialog.ShowDialog<AceItemViewModel?>(owner);
+        var result = await dialog.ShowDialog<AceItemViewModel?>(owner);
+
+        // Return the WebDavAce from the AceItemViewModel
+        return result?.ToWebDavAce();
     }
 
     private void OnSearchResultPointerPressed(object? sender, PointerPressedEventArgs e)

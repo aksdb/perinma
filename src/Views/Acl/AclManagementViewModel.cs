@@ -195,7 +195,7 @@ public partial class AclManagementViewModel : ViewModelBase
 
         foreach (var ace in acl.Aces)
         {
-            var aceViewModel = new AceItemViewModel(ace, _ownerWindow);
+            var aceViewModel = new AceItemViewModel(ace, _ownerWindow, this);
             aceViewModel.PropertyChanged += (_, _) => HasChanges = true;
             Aces.Add(aceViewModel);
         }
@@ -211,14 +211,16 @@ public partial class AclManagementViewModel : ViewModelBase
             return;
 
         // Show the dialog with services for principal search
-        var result = await AddAceDialog.ShowAsync(
+        var ace = await AddAceDialog.ShowAsync(
             _ownerWindow,
             _storage,
             _credentialManager,
             _calendar);
 
-        if (result != null)
+        if (ace != null)
         {
+            // Create AceItemViewModel with parent reference
+            var result = new AceItemViewModel(ace, _ownerWindow, this);
             Aces.Add(result);
             HasChanges = true;
         }
@@ -233,7 +235,19 @@ public partial class AclManagementViewModel : ViewModelBase
         if (!CanEdit || SelectedAce == null)
             return;
 
-        if (SelectedAce.IsProtected || SelectedAce.IsInherited)
+        RemoveAce(SelectedAce);
+    }
+
+    /// <summary>
+    /// Removes a specific ACE from the list.
+    /// </summary>
+    /// <param name="ace">The ACE to remove</param>
+    public async void RemoveAce(AceItemViewModel ace)
+    {
+        if (!CanEdit || ace == null)
+            return;
+
+        if (ace.IsProtected || ace.IsInherited)
         {
             _ = MessageBoxWindow.ShowAsync(
                 _ownerWindow,
@@ -244,21 +258,22 @@ public partial class AclManagementViewModel : ViewModelBase
             return;
         }
 
-        _ = MessageBoxWindow.ShowAsync(
+        var result = await MessageBoxWindow.ShowAsync(
             _ownerWindow,
             "Remove Permission",
-            $"Are you sure you want to remove the permission for '{SelectedAce.PrincipalDisplayText}'?",
+            $"Are you sure you want to remove the permission for '{ace.PrincipalDisplayText}'?",
             MessageBoxType.Confirmation,
-            MessageBoxButtons.YesNo)
-            .ContinueWith(t =>
+            MessageBoxButtons.YesNo);
+
+        if (result == MessageBoxResult.Yes)
+        {
+            Aces.Remove(ace);
+            if (SelectedAce == ace)
             {
-                if (t.Result == MessageBoxResult.Yes)
-                {
-                    Aces.Remove(SelectedAce!);
-                    SelectedAce = null;
-                    HasChanges = true;
-                }
-            }, TaskScheduler.FromCurrentSynchronizationContext());
+                SelectedAce = null;
+            }
+            HasChanges = true;
+        }
     }
 
     /// <summary>
@@ -371,12 +386,15 @@ public partial class AceItemViewModel : ViewModelBase
 
     public string PrincipalTypeColor => GetPrincipalTypeColor();
 
-    public AceItemViewModel(WebDavAce ace, Window ownerWindow)
+    public AceItemViewModel(WebDavAce ace, Window ownerWindow, AclManagementViewModel? parentViewModel = null)
     {
         _originalAce = ace;
         _ownerWindow = ownerWindow;
+        _parentViewModel = parentViewModel;
         Privileges = new ObservableCollection<WebDavPrivilege>(ace.Privileges);
     }
+
+    private readonly AclManagementViewModel? _parentViewModel;
 
     private string GetPrincipalDisplayText()
     {
@@ -444,7 +462,29 @@ public partial class AceItemViewModel : ViewModelBase
     [RelayCommand]
     private void Select()
     {
-        IsSelected = !IsSelected;
+        if (_parentViewModel == null)
+            return;
+
+        // If this ACE is being selected (was not selected before)
+        if (!IsSelected)
+        {
+            // Deselect all other ACEs
+            foreach (var ace in _parentViewModel.Aces)
+            {
+                if (ace != this)
+                    ace.IsSelected = false;
+            }
+
+            // Select this ACE
+            IsSelected = true;
+            _parentViewModel.SelectedAce = this;
+        }
+        // If this ACE is being deselected (was selected before)
+        else
+        {
+            IsSelected = false;
+            _parentViewModel.SelectedAce = null;
+        }
     }
 
     [RelayCommand]
@@ -464,24 +504,9 @@ public partial class AceItemViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task DeleteAsync()
+    private void Delete()
     {
-        if (IsProtected || IsInherited)
-            return;
-
-        var confirm = await MessageBoxWindow.ShowAsync(
-            _ownerWindow,
-            "Remove Permission",
-            $"Are you sure you want to remove the permission for '{PrincipalDisplayText}'?",
-            MessageBoxType.Confirmation,
-            MessageBoxButtons.YesNo);
-
-        if (confirm == MessageBoxResult.Yes)
-        {
-            // This will be handled by the parent ViewModel
-            var parentViewModel = _ownerWindow.DataContext as AclManagementViewModel;
-            parentViewModel?.RemoveSelectedAceCommand.Execute(null);
-        }
+        _parentViewModel?.RemoveAce(this);
     }
 
     public WebDavAce ToWebDavAce()

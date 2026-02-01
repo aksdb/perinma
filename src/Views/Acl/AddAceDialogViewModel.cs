@@ -346,8 +346,7 @@ public record PrincipalTypeItem(string Type, string Icon, string DisplayName);
             privileges.ToArray()
         );
 
-        var aceViewModel = new AceItemViewModel(ace, _ownerWindow);
-        _ownerWindow.Close(aceViewModel);
+        _ownerWindow.Close(ace);
     }
 
     /// <summary>

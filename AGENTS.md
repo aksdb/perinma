@@ -127,7 +127,7 @@ mise set -E local GOOGLE_CLIENT_SECRET=your-client-secret
 - Use `///` for public API documentation
 - Include `<summary>`, `<param>`, `<returns>` where helpful
 - Keep descriptions concise but informative
-- Document non-obvious behavior and edge cases
+- Only document non-obvious behavior and edge cases
 
 ### String Interpolation & Formatting
 - Prefer `$` string interpolation over `String.Format`
