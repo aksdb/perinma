@@ -64,7 +64,7 @@ public partial class AccountListViewModel : ViewModelBase
             wizardVm.AccountAdded -= OnAccountAdded;
             _addAccountWindow = null;
         };
-        _addAccountWindow.Show();
+        _addAccountWindow.Show(_parentWindow);
     }
 
     private async Task LoadAccountsAsync()
@@ -199,7 +199,7 @@ public partial class AccountListViewModel : ViewModelBase
             _reauthenticateWindow = null;
             CanReauthenticate = true;
         };
-        _reauthenticateWindow.Show();
+        _reauthenticateWindow.Show(_parentWindow);
         CanReauthenticate = false;
     }
 

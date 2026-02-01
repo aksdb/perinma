@@ -201,6 +201,84 @@ public class CalDavClient
         return;
     }
 
+    /// <summary>
+    /// Searches for principals using the principal-property-search REPORT (RFC 3744).
+    /// </summary>
+    /// <param name="searchUrl">The URL of the principal collection to search (e.g., /principals/)</param>
+    /// <param name="searchTerm">The search term to match against display names (substring search)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of principals matching the search term</returns>
+    public async Task<IList<PrincipalSearchResult>> SearchPrincipalsAsync(
+        string searchUrl,
+        string searchTerm,
+        CancellationToken cancellationToken = default)
+    {
+        var xd = XNamespace.Get(DavNamespace);
+
+        // Build the principal-property-search REPORT XML
+        // This applies a substring search on the displayname property
+        var searchXml = new XElement(xd + "principal-property-search",
+            new XAttribute(XNamespace.Xmlns + "d", DavNamespace),
+            new XElement(xd + "property-search",
+                new XElement(xd + "match",
+                    new XAttribute("match-type", "substring"),
+                    searchTerm
+                ),
+                new XElement(xd + "prop",
+                    new XElement(xd + "displayname"),
+                    new XElement(xd + "email-address")
+                )
+            ),
+            new XElement(xd + "prop",
+                new XElement(xd + "displayname"),
+                new XElement(xd + "email-address"),
+                new XElement(xd + "href")
+            )
+        );
+
+        var request = new HttpRequestMessage(new HttpMethod("REPORT"), searchUrl)
+        {
+            Content = new StringContent(searchXml.ToString(), Encoding.UTF8, "application/xml")
+        };
+
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var responseXml = await response.Content.ReadAsStringAsync(cancellationToken);
+        return PrincipalSearchResult.Parse(responseXml);
+    }
+
+    /// <summary>
+    /// Discovers the principal collection URL for a resource (RFC 3744).
+    /// Returns the first principal collection URL from the principal-collection-set property.
+    /// </summary>
+    /// <param name="resourceUrl">The URL of the resource (e.g., calendar URL)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The principal collection URL, or null if not found</returns>
+    public async Task<string?> DiscoverPrincipalCollectionUrlAsync(
+        string resourceUrl,
+        CancellationToken cancellationToken = default)
+    {
+        var xd = XNamespace.Get(DavNamespace);
+
+        var properties = new[]
+        {
+            new XElement(xd + "principal-collection-set")
+        };
+
+        var response = await PropfindAsync(resourceUrl, 0, properties, cancellationToken);
+
+        // Get the principal-collection-set from the response
+        var principalCollectionSetHref = response.Items.FirstOrDefault()?.RawXml != null
+            ? XDocument.Parse(response.Items.First().RawXml)
+                .Descendants(xd + "principal-collection-set")
+                .Elements(xd + "href")
+                .FirstOrDefault()?.Value
+            : null;
+
+        return principalCollectionSetHref;
+    }
+
     private PropfindResponse ParsePropfindResponse(string xml)
     {
         var doc = XDocument.Parse(xml);

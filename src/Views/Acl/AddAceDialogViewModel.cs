@@ -7,6 +7,8 @@ using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using perinma.Services.CalDAV;
+using perinma.Services;
+using perinma.Storage;
 
 namespace perinma.Views.Acl;
 
@@ -18,9 +20,12 @@ public record PrincipalTypeItem(string Type, string Icon, string DisplayName);
 /// <summary>
 /// ViewModel for the Add ACE dialog.
 /// </summary>
-public partial class AddAceDialogViewModel : ViewModelBase
+    public partial class AddAceDialogViewModel : ViewModelBase
 {
     private readonly Window _ownerWindow;
+    private readonly SqliteStorage? _storage;
+    private readonly CredentialManagerService? _credentialManager;
+    private readonly Models.Calendar? _calendar;
 
     [ObservableProperty]
     private int _selectedPrincipalTypeIndex = 0;
@@ -30,6 +35,16 @@ public partial class AddAceDialogViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isGrant = true;
+
+    // Principal search properties
+    [ObservableProperty]
+    private string _searchTerm = string.Empty;
+
+    private ObservableCollection<PrincipalSearchResult> _searchResults = [];
+    public ObservableCollection<PrincipalSearchResult> SearchResults => _searchResults;
+
+    [ObservableProperty]
+    private bool _isSearching;
 
     // Privilege checkboxes
     [ObservableProperty]
@@ -66,9 +81,33 @@ public partial class AddAceDialogViewModel : ViewModelBase
     /// </summary>
     public bool ShowUrlInput => SelectedPrincipalTypeIndex == 5; // Index of "User or Group URL"
 
-    public AddAceDialogViewModel(Window ownerWindow)
+    /// <summary>
+    /// Gets whether to show principal search UI.
+    /// </summary>
+    public bool CanSearchPrincipals => _storage != null && _credentialManager != null && _calendar != null && _calendar.Account?.Type == Models.AccountType.CalDav;
+
+    /// <summary>
+    /// Gets whether there are search results to display.
+    /// </summary>
+    public bool HasSearchResults => _searchResults.Count > 0;
+
+    /// <summary>
+    /// Gets whether a principal URL has been entered/selected.
+    /// </summary>
+    public bool HasPrincipalUrl => !string.IsNullOrEmpty(PrincipalUrl);
+
+    public AddAceDialogViewModel(
+        Window ownerWindow,
+        SqliteStorage storage,
+        CredentialManagerService credentialManager,
+        Models.Calendar? calendar,
+        string? principalCollectionUrl = null)
     {
         _ownerWindow = ownerWindow;
+        _storage = storage;
+        _credentialManager = credentialManager;
+        _calendar = calendar;
+        _principalCollectionUrl = principalCollectionUrl;
 
         PrincipalTypes = new ObservableCollection<PrincipalTypeItem>
         {
@@ -81,9 +120,128 @@ public partial class AddAceDialogViewModel : ViewModelBase
         };
     }
 
+    private string? _principalCollectionUrl;
+
     partial void OnSelectedPrincipalTypeIndexChanged(int value)
     {
         OnPropertyChanged(nameof(ShowUrlInput));
+    }
+
+        partial void OnSearchTermChanged(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                _searchResults.Clear();
+                return;
+            }
+
+            // Debounced search - fire and forget, but return the Task
+            _ = SearchPrincipalsAsync();
+        }
+
+    /// <summary>
+    /// Searches for principals using the principal-property-search REPORT.
+    /// </summary>
+    [RelayCommand]
+    private async Task SearchPrincipalsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(SearchTerm) || _storage == null || _credentialManager == null || _calendar == null)
+        {
+            _searchResults.Clear();
+            return;
+        }
+
+        IsSearching = true;
+
+        try
+        {
+            Console.WriteLine($"Starting principal search for: {SearchTerm}");
+
+            var calDavAccount = _calendar.Account;
+            if (calDavAccount == null || calDavAccount.Type != Models.AccountType.CalDav)
+            {
+                Console.WriteLine($"Calendar is not a CalDAV calendar (Type: {_calendar?.Account?.Type})");
+                _searchResults.Clear();
+                return;
+            }
+
+            Console.WriteLine($"Using CalDAV account: {calDavAccount.Name} ({calDavAccount.Id})");
+
+            var credentials = _credentialManager.GetCalDavCredentials(calDavAccount.Id.ToString());
+            if (credentials == null)
+            {
+                Console.WriteLine("No CalDAV credentials found for principal search");
+                _searchResults.Clear();
+                return;
+            }
+
+            // Use the provided principal collection URL or try to discover it
+            var searchUrl = _principalCollectionUrl;
+            if (string.IsNullOrEmpty(searchUrl))
+            {
+                // Try to discover from the account's server URL
+                // This is a best effort - some servers may not support principal-collection-set discovery
+                Console.WriteLine($"Discovering principal collection URL from: {credentials.ServerUrl}");
+                var discoveryClient = new CalDavClient();
+                discoveryClient.SetBasicAuth(credentials.Username, credentials.Password);
+                var discoveredUrl = await discoveryClient.DiscoverPrincipalCollectionUrlAsync(credentials.ServerUrl);
+                Console.WriteLine($"Discovered URL: {discoveredUrl}, will cache and use for search");
+                searchUrl = discoveredUrl;
+                _principalCollectionUrl = searchUrl; // Cache for future searches
+            }
+
+            if (string.IsNullOrEmpty(searchUrl))
+            {
+                Console.WriteLine("No principal collection URL available for search");
+                _searchResults.Clear();
+                return;
+            }
+
+            Console.WriteLine($"Searching for principals at: {searchUrl}");
+
+            var client = new CalDavClient();
+            client.SetBasicAuth(credentials.Username, credentials.Password);
+            var results = await client.SearchPrincipalsAsync(searchUrl, SearchTerm);
+
+            Console.WriteLine($"Found {results.Count} principals");
+
+            _searchResults.Clear();
+            foreach (var result in results)
+            {
+                _searchResults.Add(result);
+                Console.WriteLine($"  - {result.DisplayName} ({result.Href})");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error searching principals: {ex.Message}");
+            _searchResults.Clear();
+        }
+        finally
+        {
+            IsSearching = false;
+        }
+    }
+
+    /// <summary>
+    /// Selects a principal from the search results.
+    /// </summary>
+    public void SelectPrincipal(PrincipalSearchResult principal)
+    {
+        PrincipalUrl = principal.Href;
+        SearchTerm = string.Empty;
+        _searchResults.Clear();
+    }
+
+    /// <summary>
+    /// Clears the principal selection.
+    /// </summary>
+    [RelayCommand]
+    private void ClearPrincipalSelection()
+    {
+        PrincipalUrl = string.Empty;
+        SearchTerm = string.Empty;
+        _searchResults.Clear();
     }
 
     /// <summary>

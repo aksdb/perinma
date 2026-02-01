@@ -210,9 +210,12 @@ public partial class AclManagementViewModel : ViewModelBase
         if (!CanEdit)
             return;
 
-        // Create a new ACE dialog
-        var newAceDialog = new AddAceDialog();
-        var result = await newAceDialog.ShowDialog<AceItemViewModel?>(_ownerWindow);
+        // Show the dialog with services for principal search
+        var result = await AddAceDialog.ShowAsync(
+            _ownerWindow,
+            _storage,
+            _credentialManager,
+            _calendar);
 
         if (result != null)
         {
