@@ -260,8 +260,18 @@ public class ContactSyncService
 
         var currentSyncTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-        foreach (var contact in result.Contacts)
+        for (int i = 0; i < result.Contacts.Count; i++)
         {
+            var contact = result.Contacts[i];
+
+            // Send progress update before processing each contact
+            WeakReferenceMessenger.Default.Send(new SyncContactProcessingProgressMessage
+            {
+                AddressBookName = addressBook.Name,
+                ContactIndex = i,
+                TotalContacts = result.Contacts.Count
+            });
+
             if (contact.Deleted)
             {
                 Console.WriteLine($"Contact {contact.DisplayName} was deleted, will clean up");

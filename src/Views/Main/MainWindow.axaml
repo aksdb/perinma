@@ -120,7 +120,8 @@
                             Width="80"
                             Height="3"
                             Margin="0,0,12,0"
-                            IsIndeterminate="True"
+                            IsIndeterminate="{Binding SyncProgressIsIndeterminate}"
+                            Value="{Binding SyncProgress}"
                             IsVisible="{Binding IsSyncing}"
                             Foreground="{DynamicResource SystemAccentColor}"
                             Background="{DynamicResource SystemBaseLowColor}"/>

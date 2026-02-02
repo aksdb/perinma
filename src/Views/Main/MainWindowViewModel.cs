@@ -33,7 +33,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
     IRecipient<ContactSyncStartedMessage>,
     IRecipient<ContactSyncEndedMessage>,
     IRecipient<SyncAddressBookProgressMessage>,
-    IRecipient<SyncContactsProgressMessage>
+    IRecipient<SyncContactsProgressMessage>,
+    IRecipient<SyncContactProcessingProgressMessage>
 {
     private readonly DatabaseService _databaseService;
     private readonly CredentialManagerService _credentialManager;
@@ -367,6 +368,13 @@ public partial class MainWindowViewModel : ObservableRecipient,
     public void Receive(SyncContactsProgressMessage message)
     {
         SyncStatusText = $"  Syncing contacts for {message.AddressBookName} ({message.ContactCount} contacts)...";
+    }
+
+    public void Receive(SyncContactProcessingProgressMessage message)
+    {
+        SyncStatusText = $"  Syncing contact {message.ContactIndex + 1} of {message.TotalContacts} for {message.AddressBookName}...";
+        SyncProgress = message.ProgressPercentage;
+        SyncProgressIsIndeterminate = false;
     }
     #endregion
 

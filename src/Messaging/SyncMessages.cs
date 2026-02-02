@@ -95,6 +95,17 @@ public class SyncContactsProgressMessage
 }
 
 /// <summary>
+/// Message sent when processing individual contacts for an address book
+/// </summary>
+public class SyncContactProcessingProgressMessage
+{
+    public required string AddressBookName { get; init; }
+    public required int ContactIndex { get; init; }
+    public required int TotalContacts { get; init; }
+    public double ProgressPercentage => TotalContacts > 0 ? (double)ContactIndex / TotalContacts * 100 : 0;
+}
+
+/// <summary>
 /// Message sent when contact sync completes
 /// </summary>
 public class ContactSyncEndedMessage
