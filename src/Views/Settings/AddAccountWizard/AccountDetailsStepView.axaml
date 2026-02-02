@@ -27,6 +27,7 @@
                 <ComboBox.Items>
                     <models:AccountType>Google</models:AccountType>
                     <models:AccountType>CalDav</models:AccountType>
+                    <models:AccountType>CardDav</models:AccountType>
                 </ComboBox.Items>
             </ComboBox>
         </StackPanel>

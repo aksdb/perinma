@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Calendar.v3;
+using Google.Apis.PeopleService.v1;
 using perinma.Storage.Models;
 using perinma.Utils;
 
@@ -11,7 +12,8 @@ public class GoogleOAuthService
 {
     private static readonly string RequiredScopes = string.Join(separator: " ",
         CalendarService.Scope.Calendar,
-        CalendarService.Scope.CalendarEvents
+        CalendarService.Scope.CalendarEvents,
+        PeopleServiceService.Scope.ContactsReadonly
     );
 
     private readonly GoogleCalendarService _googleCalendarService;

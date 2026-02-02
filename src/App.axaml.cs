@@ -78,7 +78,7 @@ public partial class App : Application
                 DisableAvaloniaDataAnnotationValidation();
                 desktop.MainWindow = new MainWindow
                 {
-                    DataContext = new MainWindowViewModel(_databaseService, _credentialManager, syncService, calDavService),
+                    DataContext = new MainWindowViewModel(_databaseService, _credentialManager, syncService, contactSyncService, calDavService, cardDavService),
                 };
 
                 // Initialize and start the reminder scheduler

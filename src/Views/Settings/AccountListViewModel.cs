@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using perinma.Models;
 using perinma.Services;
 using perinma.Services.CalDAV;
+using perinma.Services.CardDAV;
 using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Views.MessageBox;
@@ -21,6 +22,7 @@ public partial class AccountListViewModel : ViewModelBase
     private readonly CredentialManagerService _credentialManager;
     private readonly GoogleOAuthService _oauthService;
     private readonly ICalDavService _calDavService;
+    private readonly ICardDavService _cardDavService;
     private readonly SyncService _syncService;
     private readonly Window _parentWindow;
     private AddAccountWindow? _addAccountWindow;
@@ -32,12 +34,13 @@ public partial class AccountListViewModel : ViewModelBase
     [ObservableProperty]
     private bool _canReauthenticate = true;
 
-    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, SyncService syncService, Window parentWindow)
+    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService, SyncService syncService, Window parentWindow)
     {
         _storage = storage;
         _credentialManager = credentialManager;
         _oauthService = oauthService;
         _calDavService = calDavService;
+        _cardDavService = cardDavService;
         _syncService = syncService;
         _parentWindow = parentWindow;
         _ = LoadAccountsAsync(); // Fire and forget initial load
@@ -52,7 +55,7 @@ public partial class AccountListViewModel : ViewModelBase
             return;
         }
 
-        var wizardVm = new AddAccountWizardViewModel(_storage, _credentialManager, _oauthService, _calDavService);
+        var wizardVm = new AddAccountWizardViewModel(_storage, _credentialManager, _oauthService, _calDavService, _cardDavService);
         wizardVm.AccountAdded += OnAccountAdded;
 
         _addAccountWindow = new AddAccountWindow

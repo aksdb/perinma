@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using perinma.Models;
 using perinma.Services;
 using perinma.Services.CalDAV;
+using perinma.Services.CardDAV;
 using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Storage.Models;
@@ -18,6 +19,7 @@ public partial class AddAccountWizardViewModel : ViewModelBase
     private readonly CredentialManagerService _credentialManager;
     private readonly GoogleOAuthService _oauthService;
     private readonly ICalDavService _calDavService;
+    private readonly ICardDavService _cardDavService;
 
     [ObservableProperty]
     private int _currentStepIndex = 0;
@@ -33,6 +35,7 @@ public partial class AddAccountWizardViewModel : ViewModelBase
     // Step 2 data
     private GoogleConnectionStepViewModel? _googleConnectionStep;
     private CalDavConnectionStepViewModel? _calDavConnectionStep;
+    private CardDavConnectionStepViewModel? _cardDavConnectionStep;
 
     // Computed properties
     public bool CanGoBack => CurrentStepIndex > 0;
@@ -41,12 +44,13 @@ public partial class AddAccountWizardViewModel : ViewModelBase
     // Event raised when account is successfully added
     public event EventHandler? AccountAdded;
 
-    public AddAccountWizardViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService)
+    public AddAccountWizardViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService)
     {
         _storage = storage;
         _credentialManager = credentialManager;
         _oauthService = oauthService;
         _calDavService = calDavService;
+        _cardDavService = cardDavService;
 
         // Initialize first step
         _accountDetailsStep = new AccountDetailsStepViewModel(storage);
@@ -84,6 +88,14 @@ public partial class AddAccountWizardViewModel : ViewModelBase
                 CurrentStepView = new CalDavConnectionStepView
                 {
                     DataContext = _calDavConnectionStep
+                };
+            }
+            else if (SelectedAccountType == AccountType.CardDav)
+            {
+                _cardDavConnectionStep = new CardDavConnectionStepViewModel(_cardDavService);
+                CurrentStepView = new CardDavConnectionStepView
+                {
+                    DataContext = _cardDavConnectionStep
                 };
             }
 
@@ -128,6 +140,11 @@ public partial class AddAccountWizardViewModel : ViewModelBase
             if (_calDavConnectionStep == null || !_calDavConnectionStep.Validate())
                 return;
         }
+        else if (SelectedAccountType == AccountType.CardDav)
+        {
+            if (_cardDavConnectionStep == null || !_cardDavConnectionStep.Validate())
+                return;
+        }
 
         try
         {
@@ -146,6 +163,11 @@ public partial class AddAccountWizardViewModel : ViewModelBase
             {
                 var credentials = _calDavConnectionStep.GetCredentials();
                 _credentialManager.StoreCalDavCredentials(accountId, credentials);
+            }
+            else if (SelectedAccountType == AccountType.CardDav && _cardDavConnectionStep != null)
+            {
+                var credentials = _cardDavConnectionStep.GetCredentials();
+                _credentialManager.StoreCardDavCredentials(accountId, credentials);
             }
 
             // Create account in database (without credentials)

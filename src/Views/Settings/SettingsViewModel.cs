@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using perinma.Messaging;
 using perinma.Services;
 using perinma.Services.CalDAV;
+using perinma.Services.CardDAV;
 using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Utils;
@@ -38,7 +39,7 @@ public partial class SettingsViewModel : ObservableRecipient,
     [ObservableProperty]
     private string _syncStatusText = string.Empty;
 
-    public SettingsViewModel(DatabaseService databaseService, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, SyncService syncService, Window parentWindow)
+    public SettingsViewModel(DatabaseService databaseService, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService, SyncService syncService, Window parentWindow)
     {
         _storage = new SqliteStorage(databaseService, credentialManager);
         var settingsService = new SettingsService(_storage);
@@ -48,7 +49,7 @@ public partial class SettingsViewModel : ObservableRecipient,
         {
             new SettingsPage { Name = "General", ViewModel = new GeneralSettingsViewModel() },
             new SettingsPage { Name = "Calendar", ViewModel = new CalendarSettingsViewModel(settingsService) },
-            new SettingsPage { Name = "Accounts", ViewModel = new AccountListViewModel(_storage, credentialManager, oauthService, calDavService, syncService, parentWindow) }
+            new SettingsPage { Name = "Accounts", ViewModel = new AccountListViewModel(_storage, credentialManager, oauthService, calDavService, cardDavService, syncService, parentWindow) }
         };
 
         // Select first page by default

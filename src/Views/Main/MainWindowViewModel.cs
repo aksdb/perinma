@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using perinma.Messaging;
 using perinma.Services;
 using perinma.Services.CalDAV;
+using perinma.Services.CardDAV;
 using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Views.Calendar;
@@ -27,14 +28,20 @@ public partial class MainWindowViewModel : ObservableRecipient,
     IRecipient<SyncEventsProgressMessage>,
     IRecipient<SyncCompletedMessage>,
     IRecipient<SyncFailedMessage>,
-    IRecipient<ReAuthenticationRequiredMessage>
+    IRecipient<ReAuthenticationRequiredMessage>,
+    IRecipient<ContactSyncStartedMessage>,
+    IRecipient<ContactSyncEndedMessage>,
+    IRecipient<SyncAddressBookProgressMessage>,
+    IRecipient<SyncContactsProgressMessage>
 {
     private readonly DatabaseService _databaseService;
     private readonly CredentialManagerService _credentialManager;
     private readonly SyncService _syncService;
+    private readonly ContactSyncService _contactSyncService;
     private readonly GoogleCalendarService _googleCalendarService;
     private readonly GoogleOAuthService _googleOAuthService;
     private readonly ICalDavService _calDavService;
+    private readonly ICardDavService _cardDavService;
     private readonly ThemeService _themeService;
     private readonly SettingsService _settingsService;
 
@@ -57,12 +64,16 @@ public partial class MainWindowViewModel : ObservableRecipient,
         DatabaseService databaseService,
         CredentialManagerService credentialManager,
         SyncService syncService,
-        ICalDavService calDavService)
+        ContactSyncService contactSyncService,
+        ICalDavService calDavService,
+        ICardDavService cardDavService)
     {
         _databaseService = databaseService;
         _credentialManager = credentialManager;
         _syncService = syncService;
+        _contactSyncService = contactSyncService;
         _calDavService = calDavService;
+        _cardDavService = cardDavService;
         _themeService = new ThemeService();
 
         var storage = new SqliteStorage(databaseService, credentialManager);
@@ -90,7 +101,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         }
 
         _settingsWindow = new SettingsWindow();
-        _settingsWindow.DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService, _calDavService, _syncService, _settingsWindow);
+        _settingsWindow.DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService, _calDavService, _cardDavService, _syncService, _settingsWindow);
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
     }
@@ -131,18 +142,36 @@ public partial class MainWindowViewModel : ObservableRecipient,
         {
             Console.WriteLine("Starting sync...");
 
-            var result = await _syncService.SyncAllAccountsAsync(cancellationToken);
+            // Sync calendars
+            var calendarResult = await _syncService.SyncAllAccountsAsync(cancellationToken);
 
             // Status updates are now handled by the Receive methods via messages
-            if (result.Success)
+            if (calendarResult.Success)
             {
-                Console.WriteLine($"Sync completed successfully. Synced {result.SyncedAccounts} accounts.");
+                Console.WriteLine($"Calendar sync completed successfully. Synced {calendarResult.SyncedAccounts} accounts.");
                 await CalendarListViewModel.LoadCalendarsAsync();
             }
             else
             {
-                Console.WriteLine($"Sync completed with errors. Synced: {result.SyncedAccounts}, Failed: {result.FailedAccounts}");
-                foreach (var error in result.Errors)
+                Console.WriteLine($"Calendar sync completed with errors. Synced: {calendarResult.SyncedAccounts}, Failed: {calendarResult.FailedAccounts}");
+                foreach (var error in calendarResult.Errors)
+                {
+                    Console.WriteLine($"  - {error}");
+                }
+            }
+
+            // Sync contacts
+            Console.WriteLine("Starting contact sync...");
+            var contactResult = await _contactSyncService.SyncAllAccountsAsync(cancellationToken);
+
+            if (contactResult.Success)
+            {
+                Console.WriteLine($"Contact sync completed successfully. Synced {contactResult.SyncedAccounts} accounts.");
+            }
+            else
+            {
+                Console.WriteLine($"Contact sync completed with errors. Synced: {contactResult.SyncedAccounts}, Failed: {contactResult.FailedAccounts}");
+                foreach (var error in contactResult.Errors)
                 {
                     Console.WriteLine($"  - {error}");
                 }
@@ -293,6 +322,26 @@ public partial class MainWindowViewModel : ObservableRecipient,
         {
             Console.WriteLine($"Error in re-authentication flow: {ex.Message}");
         }
+    }
+
+    public void Receive(ContactSyncStartedMessage message)
+    {
+        SyncStatusText = "Syncing contacts...";
+    }
+
+    public void Receive(ContactSyncEndedMessage message)
+    {
+        // Contact sync ended - status will be updated by calendar sync completion
+    }
+
+    public void Receive(SyncAddressBookProgressMessage message)
+    {
+        SyncStatusText = $"  Syncing address book {message.AddressBookIndex + 1} of {message.TotalAddressBooks}: {message.AddressBookName}";
+    }
+
+    public void Receive(SyncContactsProgressMessage message)
+    {
+        SyncStatusText = $"  Syncing contacts for {message.AddressBookName} ({message.ContactCount} contacts)...";
     }
     #endregion
 
