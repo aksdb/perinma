@@ -20,6 +20,8 @@ public class GooglePeopleService : IGooglePeopleService
     private const string PersonFields = "names,emailAddresses,phoneNumbers,photos,memberships";
     private const string GroupFields = "name,groupType,memberCount";
 
+    private sealed record CombinedSyncToken(string? Personal, string? Directory);
+
     /// <summary>
     /// Creates a PeopleServiceService from GoogleCredentials
     /// </summary>
@@ -141,6 +143,47 @@ public class GooglePeopleService : IGooglePeopleService
     }
 
     /// <summary>
+    /// Creates a combined sync token from personal and directory sync tokens
+    /// </summary>
+    private string? CreateCombinedSyncToken(string? personalSyncToken, string? directorySyncToken)
+    {
+        if (string.IsNullOrEmpty(personalSyncToken) && string.IsNullOrEmpty(directorySyncToken))
+        {
+            return null;
+        }
+
+        var combined = new CombinedSyncToken(personalSyncToken, directorySyncToken);
+        return JsonSerializer.Serialize(combined);
+    }
+
+    /// <summary>
+    /// Parses a combined sync token into personal and directory sync tokens
+    /// </summary>
+    private (string? PersonalSyncToken, string? DirectorySyncToken) ParseCombinedSyncToken(string? combinedToken)
+    {
+        if (string.IsNullOrEmpty(combinedToken))
+        {
+            return (null, null);
+        }
+
+        try
+        {
+            var combined = JsonSerializer.Deserialize<CombinedSyncToken>(combinedToken);
+            if (combined != null)
+            {
+                return (combined.Personal, combined.Directory);
+            }
+        }
+        catch (JsonException)
+        {
+            // Not a JSON token, treat as legacy personal-only token
+            return (combinedToken, null);
+        }
+
+        return (null, null);
+    }
+
+    /// <summary>
     /// Fetches all contacts for the authenticated user, including personal contacts and directory contacts
     /// </summary>
     public async Task<ContactSyncResult> GetContactsAsync(
@@ -150,7 +193,10 @@ public class GooglePeopleService : IGooglePeopleService
     {
         var allContacts = new List<Person>();
         string? pageToken = null;
-        string? newSyncToken = null;
+        string? newPersonalSyncToken = null;
+
+        // Parse combined sync token
+        var (personalSyncToken, directorySyncToken) = ParseCombinedSyncToken(syncToken);
 
         // Fetch personal contacts (connections)
         do
@@ -160,14 +206,10 @@ public class GooglePeopleService : IGooglePeopleService
             request.PageSize = 1000; // Max allowed
 
             // Use sync token for incremental sync if provided
-            if (!string.IsNullOrEmpty(syncToken))
+            request.RequestSyncToken = true;
+            if (!string.IsNullOrEmpty(personalSyncToken))
             {
-                request.SyncToken = syncToken;
-                request.RequestSyncToken = true;
-            }
-            else
-            {
-                request.RequestSyncToken = true;
+                request.SyncToken = personalSyncToken;
             }
 
             if (!string.IsNullOrEmpty(pageToken))
@@ -183,12 +225,13 @@ public class GooglePeopleService : IGooglePeopleService
             }
 
             pageToken = response.NextPageToken;
-            newSyncToken = response.NextSyncToken;
+            newPersonalSyncToken = response.NextSyncToken;
 
         } while (!string.IsNullOrEmpty(pageToken));
 
         // Fetch directory contacts (corporate directory)
         string? directoryPageToken = null;
+        string? newDirectorySyncToken = null;
         do
         {
             var directoryRequest = service.People.ListDirectoryPeople();
@@ -196,6 +239,12 @@ public class GooglePeopleService : IGooglePeopleService
             directoryRequest.Sources = PeopleResource.ListDirectoryPeopleRequest.SourcesEnum.DIRECTORYSOURCETYPEDOMAINPROFILE;
             directoryRequest.PageSize = 1000;
 
+            directoryRequest.RequestSyncToken = true;
+            if (!string.IsNullOrEmpty(directorySyncToken))
+            {
+                directoryRequest.SyncToken = directorySyncToken;
+            }
+            
             if (!string.IsNullOrEmpty(directoryPageToken))
             {
                 directoryRequest.PageToken = directoryPageToken;
@@ -211,6 +260,7 @@ public class GooglePeopleService : IGooglePeopleService
                 }
 
                 directoryPageToken = directoryResponse.NextPageToken;
+                newDirectorySyncToken = directoryResponse.NextSyncToken;
             }
             catch (Exception ex) when (ex.Message.Contains("403") || ex.Message.Contains("Forbidden"))
             {
@@ -224,7 +274,7 @@ public class GooglePeopleService : IGooglePeopleService
         return new ContactSyncResult
         {
             Contacts = allContacts,
-            SyncToken = newSyncToken
+            SyncToken = CreateCombinedSyncToken(newPersonalSyncToken, newDirectorySyncToken)
         };
     }
 
