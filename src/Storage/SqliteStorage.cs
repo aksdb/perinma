@@ -1257,6 +1257,46 @@ public class SqliteStorage : IDisposable
     }
 
     /// <summary>
+    /// Finds a contact by email address (case-insensitive)
+    /// </summary>
+    public async Task<ContactQueryResult?> GetContactByEmailAsync(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return null;
+
+        return await _connection.QueryFirstOrDefaultAsync<ContactQueryResult>(
+            """
+            SELECT 
+                c.contact_id AS ContactId,
+                c.external_id AS ExternalId,
+                c.display_name AS DisplayName,
+                c.given_name AS GivenName,
+                c.family_name AS FamilyName,
+                c.primary_email AS PrimaryEmail,
+                c.primary_phone AS PrimaryPhone,
+                c.photo_url AS PhotoUrl,
+                c.changed_at AS ChangedAt,
+                c.data ->> '$.rawData' AS RawData,
+                ab.address_book_id AS AddressBookId,
+                ab.external_id AS AddressBookExternalId,
+                ab.name AS AddressBookName,
+                ab.enabled AS AddressBookEnabled,
+                ab.last_sync AS AddressBookLastSync,
+                a.account_id AS AccountId,
+                a.name AS AccountName,
+                a.type AS AccountType
+            FROM contact c
+            INNER JOIN address_book ab ON c.address_book_id = ab.address_book_id
+            INNER JOIN account a ON ab.account_id = a.account_id
+            WHERE c.primary_email = @Email COLLATE NOCASE
+            LIMIT 1
+            """,
+            new { Email = email },
+            commandTimeout: 30
+        );
+    }
+
+    /// <summary>
     /// Gets all contacts with their address book and account information
     /// </summary>
     public async Task<IEnumerable<ContactQueryResult>> GetAllContactsAsync()

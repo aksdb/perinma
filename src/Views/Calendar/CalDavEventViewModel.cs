@@ -50,7 +50,7 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
     [ObservableProperty]
     private EventResponseStatus _currentResponseStatus = EventResponseStatus.None;
 
-    public ObservableCollection<EventAttendee> Attendees { get; } = [];
+    public ObservableCollection<AttendeeViewModel> Attendees { get; } = [];
 
     public CalDavEventViewModel(
         CalendarEvent calendarEvent,
@@ -104,25 +104,7 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
                     // Extract attendees with response status
                     if (iCalEvent.Attendees != null && iCalEvent.Attendees.Count > 0)
                     {
-                        foreach (var attendee in iCalEvent.Attendees)
-                        {
-                            var name = !string.IsNullOrEmpty(attendee.CommonName)
-                                ? attendee.CommonName
-                                : ExtractEmailFromUri(attendee.Value?.ToString());
-
-                            if (string.IsNullOrEmpty(name))
-                            {
-                                continue;
-                            }
-
-                            var responseStatus = ParseParticipationStatus(attendee.ParticipationStatus);
-
-                            Attendees.Add(new EventAttendee
-                            {
-                                Name = name,
-                                ResponseStatus = responseStatus
-                            });
-                        }
+                        await ExtractAttendeesAsync(iCalEvent);
 
                         // Check if user can respond (is an attendee)
                         CanRespond = Attendees.Count > 0;
@@ -139,6 +121,58 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
         {
             IsLoading = false;
         }
+    }
+
+    private async Task ExtractAttendeesAsync(Ical.Net.CalendarComponents.CalendarEvent iCalEvent)
+    {
+        if (iCalEvent.Attendees == null)
+            return;
+
+        foreach (var attendee in iCalEvent.Attendees)
+        {
+            var email = ExtractEmailFromUri(attendee.Value?.ToString());
+            var name = !string.IsNullOrEmpty(attendee.CommonName)
+                ? attendee.CommonName
+                : email;
+
+            if (string.IsNullOrEmpty(name))
+            {
+                continue;
+            }
+
+            var responseStatus = ParseParticipationStatus(attendee.ParticipationStatus);
+
+            var attendeeVm = AttendeeViewModel.Create(
+                name,
+                email,
+                responseStatus,
+                isOrganizer: false);
+
+            // Try to enrich with contact data
+            if (!string.IsNullOrEmpty(email))
+            {
+                var contact = await _storage.GetContactByEmailAsync(email);
+                if (contact != null)
+                {
+                    attendeeVm.EnrichWithContact(contact);
+                }
+            }
+
+            Attendees.Add(attendeeVm);
+        }
+
+        // Load photos in background
+        _ = LoadAttendeePhotosAsync();
+    }
+
+    private async Task LoadAttendeePhotosAsync()
+    {
+        await Parallel.ForEachAsync(Attendees,
+            new ParallelOptions { MaxDegreeOfParallelism = 3 },
+            async (attendee, cancellationToken) =>
+            {
+                await attendee.LoadPhotoAsync(cancellationToken);
+            });
     }
 
     private static string ExtractEmailFromUri(string? mailtoUri)

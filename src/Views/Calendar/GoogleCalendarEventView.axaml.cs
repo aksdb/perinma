@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using perinma.Utils;
 using TheArtOfDev.HtmlRenderer.Avalonia;
@@ -38,6 +39,15 @@ public partial class GoogleCalendarEventView : UserControl
         {
             PlatformUtil.OpenBrowser(fileUrl);
             e.Handled = true;
+        }
+    }
+
+    private void OnAttendeePointerEntered(object? sender, PointerEventArgs e)
+    {
+        // Find the parent Border that has the flyout attached
+        if (sender is Grid grid && grid.Parent is Border border)
+        {
+            FlyoutBase.ShowAttachedFlyout(border);
         }
     }
 }

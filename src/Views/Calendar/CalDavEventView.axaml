@@ -50,18 +50,99 @@
                 <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
                     <ItemsControl ItemsSource="{Binding Attendees}">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="models:EventAttendee">
-                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
-                                    <TextBlock Text="{Binding StatusIcon}"
-                                               Foreground="{Binding StatusColor}"
-                                               FontWeight="Bold"
-                                               VerticalAlignment="Center"
-                                               ToolTip.Tip="{Binding StatusTooltip}" />
-                                    <TextBlock Text="{Binding Name}"
-                                               VerticalAlignment="Center"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxWidth="280" />
-                                </StackPanel>
+                            <DataTemplate x:DataType="cal:AttendeeViewModel">
+                                <Border Padding="4,3" Margin="0,1" Background="Transparent"
+                                        CornerRadius="4">
+                                    <Border.Styles>
+                                        <Style Selector="Border:pointerover">
+                                            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}" />
+                                        </Style>
+                                    </Border.Styles>
+                                    <FlyoutBase.AttachedFlyout>
+                                        <Flyout Placement="Right" ShowMode="TransientWithDismissOnPointerMoveAway">
+                                            <Border Padding="12" MinWidth="240" MaxWidth="300">
+                                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                                                    <!-- Avatar -->
+                                                    <Border Grid.RowSpan="2"
+                                                            Width="48" Height="48"
+                                                            CornerRadius="24"
+                                                            Background="{DynamicResource SystemAccentColorLight2}"
+                                                            Margin="0,0,12,0"
+                                                            VerticalAlignment="Top">
+                                                        <Panel>
+                                                            <Image Source="{Binding PhotoBitmap}"
+                                                                   Stretch="UniformToFill"
+                                                                   IsVisible="{Binding HasPhoto}" />
+                                                            <TextBlock Text="{Binding Initials}"
+                                                                       FontSize="16"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="White"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center"
+                                                                       IsVisible="{Binding !HasPhoto}" />
+                                                        </Panel>
+                                                    </Border>
+                                                    
+                                                    <!-- Name and status -->
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                   FontSize="14"
+                                                                   FontWeight="SemiBold"
+                                                                   TextWrapping="Wrap" />
+                                                        <TextBlock Text="{Binding StatusIcon}"
+                                                                   Foreground="{Binding StatusColor}"
+                                                                   FontWeight="Bold"
+                                                                   VerticalAlignment="Center"
+                                                                   ToolTip.Tip="{Binding StatusTooltip}" />
+                                                    </StackPanel>
+                                                    
+                                                    <!-- Email -->
+                                                    <TextBlock Grid.Column="1" Grid.Row="1"
+                                                               Text="{Binding Email}"
+                                                               FontSize="12"
+                                                               Foreground="Gray"
+                                                               TextWrapping="Wrap"
+                                                               Margin="0,2,0,0" />
+                                                </Grid>
+                                            </Border>
+                                        </Flyout>
+                                    </FlyoutBase.AttachedFlyout>
+                                    <Grid ColumnDefinitions="28,16,*" PointerEntered="OnAttendeePointerEntered">
+                                        <!-- Avatar (small) - fixed 24px + 4px spacing -->
+                                        <Border Width="24" Height="24"
+                                                CornerRadius="12"
+                                                Background="{DynamicResource SystemAccentColorLight2}">
+                                            <Panel>
+                                                <Image Source="{Binding PhotoBitmap}"
+                                                       Stretch="UniformToFill"
+                                                       IsVisible="{Binding HasPhoto}" />
+                                                <TextBlock Text="{Binding Initials}"
+                                                           FontSize="9"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="White"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           IsVisible="{Binding !HasPhoto}" />
+                                            </Panel>
+                                        </Border>
+                                        
+                                        <!-- Status icon - fixed 16px width for alignment -->
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding StatusIcon}"
+                                                   Foreground="{Binding StatusColor}"
+                                                   FontWeight="Bold"
+                                                   VerticalAlignment="Center"
+                                                   HorizontalAlignment="Center"
+                                                   ToolTip.Tip="{Binding StatusTooltip}" />
+                                        
+                                        <!-- Name - starts at fixed position -->
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding DisplayName}"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Margin="4,0,0,0" />
+                                    </Grid>
+                                </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

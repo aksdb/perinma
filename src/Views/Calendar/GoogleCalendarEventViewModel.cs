@@ -86,7 +86,7 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
 
     public ObservableCollection<EventAttachment> Attachments { get; } = [];
 
-    public ObservableCollection<Models.EventAttendee> Attendees { get; } = [];
+    public ObservableCollection<AttendeeViewModel> Attendees { get; } = [];
 
     public GoogleCalendarEventViewModel(
         CalendarEvent calendarEvent,
@@ -125,7 +125,7 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
                         ? $"{googleEvent.Creator.DisplayName ?? googleEvent.Creator.Email}"
                         : string.Empty;
 
-                    ExtractAttendees(googleEvent);
+                    await ExtractAttendeesAsync(googleEvent);
                     ExtractAttachments(googleEvent);
 
                     // Check if user can respond (is an attendee and not the organizer)
@@ -145,7 +145,7 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
         }
     }
 
-    private void ExtractAttendees(Event googleEvent)
+    private async Task ExtractAttendeesAsync(Event googleEvent)
     {
         if (googleEvent.Attendees == null)
         {
@@ -155,6 +155,8 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
         foreach (var attendee in googleEvent.Attendees)
         {
             var name = attendee.DisplayName ?? attendee.Email;
+            var email = attendee.Email;
+
             if (string.IsNullOrEmpty(name))
             {
                 continue;
@@ -162,13 +164,37 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
 
             var responseStatus = ParseGoogleResponseStatus(attendee.ResponseStatus);
 
-            Attendees.Add(new Models.EventAttendee
+            var attendeeVm = AttendeeViewModel.Create(
+                name,
+                email,
+                responseStatus,
+                attendee.Organizer ?? false);
+
+            // Try to enrich with contact data
+            if (!string.IsNullOrEmpty(email))
             {
-                Name = name,
-                ResponseStatus = responseStatus,
-                IsOrganizer = attendee.Organizer ?? false
-            });
+                var contact = await _storage.GetContactByEmailAsync(email);
+                if (contact != null)
+                {
+                    attendeeVm.EnrichWithContact(contact);
+                }
+            }
+
+            Attendees.Add(attendeeVm);
         }
+
+        // Load photos in background
+        _ = LoadAttendeePhotosAsync();
+    }
+
+    private async Task LoadAttendeePhotosAsync()
+    {
+        await Parallel.ForEachAsync(Attendees,
+            new ParallelOptions { MaxDegreeOfParallelism = 3 },
+            async (attendee, cancellationToken) =>
+            {
+                await attendee.LoadPhotoAsync(cancellationToken);
+            });
     }
 
     private static EventResponseStatus ParseGoogleResponseStatus(string? status)
@@ -313,16 +339,10 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
             };
 
             // Update the attendee list to reflect the change
-            var selfAttendee = Attendees.FirstOrDefault(a => a.Name == _calendarEvent.Calendar.Account.Name);
+            var selfAttendee = Attendees.FirstOrDefault(a => a.DisplayName == _calendarEvent.Calendar.Account.Name);
             if (selfAttendee != null)
             {
-                var index = Attendees.IndexOf(selfAttendee);
-                Attendees[index] = new Models.EventAttendee
-                {
-                    Name = selfAttendee.Name,
-                    ResponseStatus = CurrentResponseStatus,
-                    IsOrganizer = selfAttendee.IsOrganizer
-                };
+                selfAttendee.ResponseStatus = CurrentResponseStatus;
             }
         }
         catch (Exception ex)
