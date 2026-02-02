@@ -133,3 +133,19 @@ public class AddressBookQueryResult
     public bool IsEnabled => Enabled == 1;
     public AccountType AccountTypeEnum => Enum.TryParse<AccountType>(AccountType, ignoreCase: true, out var result) ? result : perinma.Models.AccountType.Google;
 }
+
+public class ContactGroupQueryResult
+{
+    public required string GroupId { get; init; }
+    public string? ExternalId { get; init; }
+    public required string Name { get; init; }
+    public int SystemGroup { get; init; }
+    public required string AccountId { get; init; }
+    public required string AccountName { get; init; }
+    public required string AccountType { get; init; }
+    public int AccountSortOrder { get; init; }
+    public int MemberCount { get; init; }
+
+    public bool IsSystemGroup => SystemGroup == 1;
+    public AccountType AccountTypeEnum => Enum.TryParse<AccountType>(AccountType, ignoreCase: true, out var result) ? result : perinma.Models.AccountType.Google;
+}

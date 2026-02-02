@@ -103,6 +103,39 @@
                                    FontSize="12"
                                    Margin="0,10"
                                    IsVisible="{Binding !AccountGroups.Count}" />
+
+                        <!-- Groups Section -->
+                        <Separator Margin="0,12,0,8" IsVisible="{Binding ContactGroups.Count}" />
+
+                        <TextBlock Text="Groups"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,8"
+                                   IsVisible="{Binding ContactGroups.Count}" />
+
+                        <ListBox ItemsSource="{Binding ContactGroups}"
+                                 SelectedItem="{Binding SelectedGroup}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 IsVisible="{Binding ContactGroups.Count}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="contacts:ContactGroupViewModel">
+                                    <Border Padding="4,3" Background="Transparent">
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Right"
+                                                       Text="{Binding MemberCount, StringFormat='({0})'}"
+                                                       FontSize="11"
+                                                       Foreground="Gray"
+                                                       VerticalAlignment="Center"
+                                                       Margin="4,0,0,0" />
+                                            <TextBlock Text="{Binding Name}"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
@@ -132,6 +165,30 @@
                                    VerticalAlignment="Center"
                                    Margin="8,0,0,0" />
                     </DockPanel>
+
+                    <!-- Group filter indicator -->
+                    <Border IsVisible="{Binding HasSelectedGroup}"
+                            Background="{DynamicResource SystemAccentColorLight2}"
+                            CornerRadius="4"
+                            Padding="8,4">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right"
+                                    Content="X"
+                                    Command="{Binding ClearGroupFilterCommand}"
+                                    Width="20"
+                                    Height="20"
+                                    Padding="0"
+                                    FontSize="10"
+                                    VerticalContentAlignment="Center"
+                                    HorizontalContentAlignment="Center"
+                                    Background="Transparent"
+                                    BorderThickness="0" />
+                            <TextBlock VerticalAlignment="Center">
+                                <Run Text="Group: " FontWeight="SemiBold" />
+                                <Run Text="{Binding SelectedGroup.Name}" />
+                            </TextBlock>
+                        </DockPanel>
+                    </Border>
 
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBox Grid.Column="0"

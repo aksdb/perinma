@@ -1333,6 +1333,43 @@ public class SqliteStorage : IDisposable
 
     #region Contact Group Methods
 
+    /// <summary>
+    /// Gets all contact groups with their account information and member counts
+    /// </summary>
+    public async Task<IEnumerable<ContactGroupQueryResult>> GetAllContactGroupsAsync()
+    {
+        return await _connection.QueryAsync<ContactGroupQueryResult>(
+            """
+            SELECT 
+                cg.group_id AS GroupId,
+                cg.external_id AS ExternalId,
+                cg.name AS Name,
+                cg.system_group AS SystemGroup,
+                a.account_id AS AccountId,
+                a.name AS AccountName,
+                a.type AS AccountType,
+                a.sort_order AS AccountSortOrder,
+                (SELECT COUNT(*) FROM contact_group_membership cgm WHERE cgm.group_id = cg.group_id) AS MemberCount
+            FROM contact_group cg
+            INNER JOIN account a ON cg.account_id = a.account_id
+            ORDER BY a.sort_order, a.name, cg.system_group DESC, cg.name
+            """,
+            commandTimeout: 30
+        );
+    }
+
+    /// <summary>
+    /// Gets all contact IDs that belong to a specific group
+    /// </summary>
+    public async Task<IEnumerable<string>> GetContactIdsByGroupAsync(string groupId)
+    {
+        return await _connection.QueryAsync<string>(
+            "SELECT contact_id FROM contact_group_membership WHERE group_id = @GroupId",
+            new { GroupId = groupId },
+            commandTimeout: 30
+        );
+    }
+
     public async Task<IEnumerable<ContactGroupDbo>> GetContactGroupsByAccountAsync(string accountId)
     {
         return await _connection.QueryAsync<ContactGroupDbo>(

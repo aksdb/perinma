@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -22,20 +23,55 @@ public partial class ContactsViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(HasSelectedContact))]
     private ContactItemViewModel? _selectedContact;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedGroup))]
+    private ContactGroupViewModel? _selectedGroup;
+
+    // Contact IDs in the selected group (for filtering)
+    private HashSet<string> _selectedGroupContactIds = [];
+
     public bool HasSelectedContact => SelectedContact != null;
+    public bool HasSelectedGroup => SelectedGroup != null;
 
     public ObservableCollection<AddressBookAccountGroupViewModel> AccountGroups { get; } = [];
+    public ObservableCollection<ContactGroupViewModel> ContactGroups { get; } = [];
     public ObservableCollection<ContactItemViewModel> FilteredContacts { get; } = [];
 
     public ContactsViewModel(SqliteStorage storage)
     {
         _storage = storage;
-        _ = LoadAddressBooksAsync();
+        _ = LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        await LoadAddressBooksAsync();
+        await LoadContactGroupsAsync();
     }
 
     partial void OnSearchTextChanged(string value)
     {
         _ = LoadContactsAsync();
+    }
+
+    partial void OnSelectedGroupChanged(ContactGroupViewModel? value)
+    {
+        _ = OnGroupSelectionChangedAsync(value);
+    }
+
+    private async Task OnGroupSelectionChangedAsync(ContactGroupViewModel? group)
+    {
+        if (group == null)
+        {
+            _selectedGroupContactIds = [];
+        }
+        else
+        {
+            var contactIds = await _storage.GetContactIdsByGroupAsync(group.GroupId.ToString());
+            _selectedGroupContactIds = contactIds.ToHashSet();
+        }
+
+        await LoadContactsAsync();
     }
 
     [RelayCommand]
@@ -83,6 +119,30 @@ public partial class ContactsViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    public async Task LoadContactGroupsAsync()
+    {
+        ContactGroups.Clear();
+
+        try
+        {
+            var allGroups = await _storage.GetAllContactGroupsAsync();
+
+            foreach (var group in allGroups)
+            {
+                // Skip system groups with no members (like empty "My Contacts")
+                if (group.IsSystemGroup && group.MemberCount == 0)
+                    continue;
+
+                ContactGroups.Add(new ContactGroupViewModel(group));
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading contact groups: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
     public async Task LoadContactsAsync()
     {
         FilteredContacts.Clear();
@@ -92,6 +152,20 @@ public partial class ContactsViewModel : ViewModelBase
         {
             var allContacts = await _storage.GetAllContactsAsync();
             var contactsList = allContacts.ToList();
+
+            // Filter by selected group
+            if (SelectedGroup != null && _selectedGroupContactIds.Count > 0)
+            {
+                contactsList = contactsList
+                    .Where(c => _selectedGroupContactIds.Contains(c.ContactId))
+                    .ToList();
+            }
+            else if (SelectedGroup != null && _selectedGroupContactIds.Count == 0)
+            {
+                // Group selected but has no members - show empty list
+                TotalContactCount = 0;
+                return;
+            }
 
             // Filter by search text if provided
             if (!string.IsNullOrWhiteSpace(SearchText))
@@ -138,6 +212,12 @@ public partial class ContactsViewModel : ViewModelBase
     private void ClearSearch()
     {
         SearchText = string.Empty;
+    }
+
+    [RelayCommand]
+    private void ClearGroupFilter()
+    {
+        SelectedGroup = null;
     }
 
     [RelayCommand]
