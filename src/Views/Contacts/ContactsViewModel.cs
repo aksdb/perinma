@@ -113,11 +113,25 @@ public partial class ContactsViewModel : ViewModelBase
             }
 
             TotalContactCount = FilteredContacts.Count;
+
+            // Load photos in background with limited concurrency
+            _ = LoadPhotosAsync();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading contacts: {ex.Message}");
         }
+    }
+
+    private async Task LoadPhotosAsync()
+    {
+        // Load photos with limited concurrency to avoid overwhelming the network
+        await Parallel.ForEachAsync(FilteredContacts,
+            new ParallelOptions { MaxDegreeOfParallelism = 5 },
+            async (contact, cancellationToken) =>
+            {
+                await contact.LoadPhotoAsync(cancellationToken);
+            });
     }
 
     [RelayCommand]

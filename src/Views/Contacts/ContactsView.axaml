@@ -159,22 +159,30 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="contacts:ContactItemViewModel">
                             <Border Padding="4,6" Background="Transparent">
-                                <DockPanel>
-                                    <!-- Avatar -->
-                                    <Border DockPanel.Dock="Left"
-                                            Width="36"
-                                            Height="36"
-                                            CornerRadius="18"
-                                            Background="{DynamicResource SystemAccentColorLight2}"
-                                            VerticalAlignment="Center"
-                                            Margin="0,0,10,0">
-                                        <TextBlock Text="{Binding Initials}"
-                                                   FontSize="13"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="White"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" />
-                                    </Border>
+                                 <DockPanel>
+                                     <!-- Avatar with photo or initials -->
+                                     <Border DockPanel.Dock="Left"
+                                             Width="36"
+                                             Height="36"
+                                             CornerRadius="18"
+                                             Background="{DynamicResource SystemAccentColorLight2}"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,10,0">
+                                         <Panel>
+                                             <!-- Photo -->
+                                             <Image Source="{Binding PhotoBitmap}"
+                                                    Stretch="UniformToFill"
+                                                    IsVisible="{Binding HasPhoto}" />
+                                             <!-- Fallback initials -->
+                                             <TextBlock Text="{Binding Initials}"
+                                                        FontSize="13"
+                                                        FontWeight="SemiBold"
+                                                        Foreground="White"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        IsVisible="{Binding !HasPhoto}" />
+                                         </Panel>
+                                     </Border>
 
                                     <!-- Name and subtitle -->
                                     <StackPanel VerticalAlignment="Center" Spacing="2">
@@ -226,28 +234,36 @@
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20" Spacing="16"
                                 DataContext="{Binding SelectedContact}">
-                        <!-- Header with avatar and name -->
-                        <StackPanel Orientation="Horizontal" Spacing="16">
-                            <Border Width="64"
-                                    Height="64"
-                                    CornerRadius="32"
-                                    Background="{DynamicResource SystemAccentColorLight2}">
-                                <TextBlock Text="{Binding Initials}"
-                                           FontSize="24"
-                                           FontWeight="SemiBold"
-                                           Foreground="White"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel VerticalAlignment="Center" Spacing="4">
-                                <TextBlock Text="{Binding DisplayName}"
-                                           FontSize="20"
-                                           FontWeight="Bold" />
-                                <TextBlock Text="{Binding AddressBookName}"
-                                           FontSize="12"
-                                           Foreground="Gray" />
-                            </StackPanel>
-                        </StackPanel>
+                         <!-- Header with avatar and name -->
+                         <StackPanel Orientation="Horizontal" Spacing="16">
+                             <Border Width="64"
+                                     Height="64"
+                                     CornerRadius="32"
+                                     Background="{DynamicResource SystemAccentColorLight2}">
+                                 <Panel>
+                                     <!-- Photo -->
+                                     <Image Source="{Binding PhotoBitmap}"
+                                            Stretch="UniformToFill"
+                                            IsVisible="{Binding HasPhoto}" />
+                                     <!-- Fallback initials -->
+                                     <TextBlock Text="{Binding Initials}"
+                                                FontSize="24"
+                                                FontWeight="SemiBold"
+                                                Foreground="White"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                IsVisible="{Binding !HasPhoto}" />
+                                 </Panel>
+                             </Border>
+                             <StackPanel VerticalAlignment="Center" Spacing="4">
+                                 <TextBlock Text="{Binding DisplayName}"
+                                            FontSize="20"
+                                            FontWeight="Bold" />
+                                 <TextBlock Text="{Binding AddressBookName}"
+                                            FontSize="12"
+                                            Foreground="Gray" />
+                             </StackPanel>
+                         </StackPanel>
 
                         <Separator/>
 

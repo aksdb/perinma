@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Messaging;
@@ -267,6 +268,9 @@ public class ContactSyncService
                 continue;
             }
 
+            // Download photo and convert to blob:// URL
+            var photoBlobUrl = await DownloadPhotoAsBlobAsync(contact.PhotoUrl, cancellationToken);
+
             var contactDbo = new ContactDbo
             {
                 AddressBookId = addressBook.AddressBookId,
@@ -277,7 +281,7 @@ public class ContactSyncService
                 FamilyName = contact.FamilyName,
                 PrimaryEmail = contact.PrimaryEmail,
                 PrimaryPhone = contact.PrimaryPhone,
-                PhotoUrl = contact.PhotoUrl,
+                PhotoUrl = photoBlobUrl,
                 ChangedAt = currentSyncTime
             };
 
@@ -382,6 +386,38 @@ public class ContactSyncService
     public IContactProvider? GetProviderForAccountType(AccountType accountType)
     {
         return _providers.GetValueOrDefault(accountType);
+    }
+
+    /// <summary>
+    /// Downloads a photo URL and converts it to a blob:// URL with base64 data.
+    /// </summary>
+    private static async Task<string?> DownloadPhotoAsBlobAsync(string? photoUrl, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(photoUrl) || !photoUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return photoUrl; // Already a blob:// URL or invalid
+        }
+
+        try
+        {
+            using var httpClient = new HttpClient();
+            using var response = await httpClient.GetAsync(photoUrl, cancellationToken).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Failed to download photo: {response.StatusCode}");
+                return null;
+            }
+
+            var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+            var base64 = Convert.ToBase64String(bytes);
+            return $"blob://{base64}";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error downloading photo: {ex.Message}");
+            return null;
+        }
     }
 }
 

@@ -1,4 +1,9 @@
 using System;
+using System.IO;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using perinma.Models;
 using perinma.Storage.Models;
@@ -69,6 +74,14 @@ public partial class ContactItemViewModel : ObservableObject
     [ObservableProperty]
     private string? _rawData;
 
+    [ObservableProperty]
+    private Bitmap? _photoBitmap;
+
+    /// <summary>
+    /// Gets whether a photo is available for display
+    /// </summary>
+    public bool HasPhoto => PhotoBitmap != null;
+
     /// <summary>
     /// Gets the subtitle to display (email or phone)
     /// </summary>
@@ -95,5 +108,56 @@ public partial class ContactItemViewModel : ObservableObject
         }
 
         return "?";
+    }
+
+    /// <summary>
+    /// Loads the contact photo asynchronously from the PhotoUrl
+    /// </summary>
+    public async Task LoadPhotoAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(PhotoUrl))
+        {
+            PhotoBitmap = null;
+            return;
+        }
+
+        try
+        {
+            // Handle blob:// URLs (embedded base64 data)
+            if (PhotoUrl.StartsWith("blob://", StringComparison.OrdinalIgnoreCase))
+            {
+                var base64Data = PhotoUrl["blob://".Length..];
+                var bytes = Convert.FromBase64String(base64Data);
+                using var stream = new MemoryStream(bytes);
+                PhotoBitmap = new Bitmap(stream);
+                return;
+            }
+
+            // Handle https:// URLs (download from network)
+            if (PhotoUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                using var httpClient = new HttpClient();
+                using var response = await httpClient.GetAsync(PhotoUrl, cancellationToken).ConfigureAwait(false);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+                    PhotoBitmap = new Bitmap(stream);
+                }
+                else
+                {
+                    PhotoBitmap = null;
+                }
+                return;
+            }
+
+            // Unknown protocol
+            PhotoBitmap = null;
+        }
+        catch
+        {
+            // Silently fail on photo load errors - will show initials instead
+            PhotoBitmap = null;
+        }
     }
 }
