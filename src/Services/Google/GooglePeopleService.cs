@@ -17,7 +17,7 @@ namespace perinma.Services.Google;
 public class GooglePeopleService : IGooglePeopleService
 {
     // Fields to request from the People API
-    private const string PersonFields = "names,emailAddresses,phoneNumbers,photos,memberships";
+    private const string PersonFields = "names,emailAddresses,phoneNumbers,addresses,photos,memberships";
     private const string GroupFields = "name,groupType,memberCount";
 
     private sealed record CombinedSyncToken(string? Personal, string? Directory);

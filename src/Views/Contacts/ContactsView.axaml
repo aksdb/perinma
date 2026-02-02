@@ -280,16 +280,49 @@
                                 <TextBlock Text="{Binding FamilyName}" FontSize="14" />
                             </StackPanel>
 
-                            <!-- Email -->
-                            <StackPanel IsVisible="{Binding PrimaryEmail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <TextBlock Text="Email" FontSize="11" Foreground="Gray" />
-                                <TextBlock Text="{Binding PrimaryEmail}" FontSize="14" />
+                            <!-- Emails -->
+                            <StackPanel IsVisible="{Binding HasEmails}" Spacing="8">
+                                <TextBlock Text="Email" FontSize="13" FontWeight="SemiBold" Foreground="Gray" />
+                                <ItemsControl ItemsSource="{Binding Emails}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="contacts:ContactEmailField">
+                                            <StackPanel Margin="0,0,0,6">
+                                                <TextBlock Text="{Binding DisplayLabel}" FontSize="11" Foreground="Gray" />
+                                                <TextBlock Text="{Binding Value}" FontSize="14" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
 
-                            <!-- Phone -->
-                            <StackPanel IsVisible="{Binding PrimaryPhone, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <TextBlock Text="Phone" FontSize="11" Foreground="Gray" />
-                                <TextBlock Text="{Binding PrimaryPhone}" FontSize="14" />
+                            <!-- Phones -->
+                            <StackPanel IsVisible="{Binding HasPhones}" Spacing="8">
+                                <TextBlock Text="Phone" FontSize="13" FontWeight="SemiBold" Foreground="Gray" />
+                                <ItemsControl ItemsSource="{Binding Phones}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="contacts:ContactPhoneField">
+                                            <StackPanel Margin="0,0,0,6">
+                                                <TextBlock Text="{Binding DisplayLabel}" FontSize="11" Foreground="Gray" />
+                                                <TextBlock Text="{Binding Value}" FontSize="14" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- Addresses -->
+                            <StackPanel IsVisible="{Binding HasAddresses}" Spacing="8">
+                                <TextBlock Text="Address" FontSize="13" FontWeight="SemiBold" Foreground="Gray" />
+                                <ItemsControl ItemsSource="{Binding Addresses}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="contacts:ContactAddressField">
+                                            <StackPanel Margin="0,0,0,6">
+                                                <TextBlock Text="{Binding DisplayLabel}" FontSize="11" Foreground="Gray" />
+                                                <TextBlock Text="{Binding DisplayValue}" FontSize="14" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
 
                             <Separator/>
