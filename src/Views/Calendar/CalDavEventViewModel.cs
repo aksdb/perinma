@@ -27,7 +27,10 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
     private string _location = string.Empty;
 
     [ObservableProperty]
-    private string _organizer = string.Empty;
+    [NotifyPropertyChangedFor(nameof(HasOrganizer))]
+    private AttendeeViewModel? _organizer;
+
+    public bool HasOrganizer => Organizer != null;
 
     [ObservableProperty]
     private string _status = string.Empty;
@@ -81,9 +84,11 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
                     // Extract organizer name or email
                     if (iCalEvent.Organizer != null)
                     {
-                        Organizer = !string.IsNullOrEmpty(iCalEvent.Organizer.CommonName)
+                        var organizerEmail = ExtractEmailFromUri(iCalEvent.Organizer.Value?.ToString());
+                        var organizerName = !string.IsNullOrEmpty(iCalEvent.Organizer.CommonName)
                             ? iCalEvent.Organizer.CommonName
-                            : ExtractEmailFromUri(iCalEvent.Organizer.Value?.ToString());
+                            : organizerEmail;
+                        Organizer = await CreateContactViewModelAsync(organizerName, organizerEmail);
                     }
 
                     // Format status (CONFIRMED, CANCELLED, TENTATIVE)
@@ -189,6 +194,31 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
         }
 
         return mailtoUri;
+    }
+
+    /// <summary>
+    /// Creates an AttendeeViewModel for organizer with contact enrichment
+    /// </summary>
+    private async Task<AttendeeViewModel?> CreateContactViewModelAsync(string? displayName, string? email)
+    {
+        if (string.IsNullOrEmpty(displayName) && string.IsNullOrEmpty(email))
+            return null;
+
+        var name = displayName ?? email ?? string.Empty;
+        var vm = AttendeeViewModel.Create(name, email, EventResponseStatus.None, isOrganizer: false);
+
+        // Try to enrich with contact data
+        if (!string.IsNullOrEmpty(email))
+        {
+            var contact = await _storage.GetContactByEmailAsync(email);
+            if (contact != null)
+            {
+                vm.EnrichWithContact(contact);
+                _ = vm.LoadPhotoAsync();
+            }
+        }
+
+        return vm;
     }
 
     private static string FormatStatus(string? status)

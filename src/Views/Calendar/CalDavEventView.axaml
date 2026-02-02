@@ -40,9 +40,53 @@
                 <TextBlock Text="{Binding Description}" TextWrapping="Wrap" MaxHeight="200" />
             </StackPanel>
 
-            <StackPanel Spacing="4" IsVisible="{Binding Organizer, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <StackPanel Spacing="4" IsVisible="{Binding HasOrganizer}">
                 <TextBlock Text="Organizer" FontWeight="SemiBold" FontSize="12" />
-                <TextBlock Text="{Binding Organizer}" />
+                <Border Padding="4,3" Background="Transparent" CornerRadius="4"
+                        DataContext="{Binding Organizer}">
+                    <Border.Styles>
+                        <Style Selector="Border:pointerover">
+                            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}" />
+                        </Style>
+                    </Border.Styles>
+                    <FlyoutBase.AttachedFlyout>
+                        <Flyout Placement="Right" ShowMode="TransientWithDismissOnPointerMoveAway">
+                            <Border Padding="12" MinWidth="240" MaxWidth="300">
+                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                                    <Border Grid.RowSpan="2" Width="48" Height="48" CornerRadius="24"
+                                            Background="{DynamicResource SystemAccentColorLight2}"
+                                            Margin="0,0,12,0" VerticalAlignment="Top">
+                                        <Panel>
+                                            <Image Source="{Binding PhotoBitmap}" Stretch="UniformToFill"
+                                                   IsVisible="{Binding HasPhoto}" />
+                                            <TextBlock Text="{Binding Initials}" FontSize="16" FontWeight="SemiBold"
+                                                       Foreground="White" HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" IsVisible="{Binding !HasPhoto}" />
+                                        </Panel>
+                                    </Border>
+                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}"
+                                               FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Email}"
+                                               FontSize="12" Foreground="Gray" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                </Grid>
+                            </Border>
+                        </Flyout>
+                    </FlyoutBase.AttachedFlyout>
+                    <Grid ColumnDefinitions="28,*" PointerEntered="OnContactPointerEntered">
+                        <Border Width="24" Height="24" CornerRadius="12"
+                                Background="{DynamicResource SystemAccentColorLight2}">
+                            <Panel>
+                                <Image Source="{Binding PhotoBitmap}" Stretch="UniformToFill"
+                                       IsVisible="{Binding HasPhoto}" />
+                                <TextBlock Text="{Binding Initials}" FontSize="9" FontWeight="SemiBold"
+                                           Foreground="White" HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" IsVisible="{Binding !HasPhoto}" />
+                            </Panel>
+                        </Border>
+                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}"
+                                   VerticalAlignment="Center" Margin="4,0,0,0" />
+                    </Grid>
+                </Border>
             </StackPanel>
 
             <StackPanel Spacing="4" IsVisible="{Binding Attendees.Count}">

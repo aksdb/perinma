@@ -67,10 +67,15 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
     private string _location = string.Empty;
 
     [ObservableProperty]
-    private string _organizer = string.Empty;
+    [NotifyPropertyChangedFor(nameof(HasOrganizer))]
+    private AttendeeViewModel? _organizer;
 
     [ObservableProperty]
-    private string _creator = string.Empty;
+    [NotifyPropertyChangedFor(nameof(HasCreator))]
+    private AttendeeViewModel? _creator;
+
+    public bool HasOrganizer => Organizer != null;
+    public bool HasCreator => Creator != null;
 
     [ObservableProperty]
     private bool _isLoading;
@@ -117,13 +122,13 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
                     // Apply HTML styles with actual system font
                     WrapDescriptionWithStyles();
 
-                    Organizer = googleEvent.Organizer != null
-                        ? $"{googleEvent.Organizer.DisplayName ?? googleEvent.Organizer.Email}"
-                        : string.Empty;
+                    Organizer = await CreateContactViewModelAsync(
+                        googleEvent.Organizer?.DisplayName,
+                        googleEvent.Organizer?.Email);
 
-                    Creator = googleEvent.Creator != null
-                        ? $"{googleEvent.Creator.DisplayName ?? googleEvent.Creator.Email}"
-                        : string.Empty;
+                    Creator = await CreateContactViewModelAsync(
+                        googleEvent.Creator?.DisplayName,
+                        googleEvent.Creator?.Email);
 
                     await ExtractAttendeesAsync(googleEvent);
                     ExtractAttachments(googleEvent);
@@ -195,6 +200,31 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
             {
                 await attendee.LoadPhotoAsync(cancellationToken);
             });
+    }
+
+    /// <summary>
+    /// Creates an AttendeeViewModel for organizer/creator with contact enrichment
+    /// </summary>
+    private async Task<AttendeeViewModel?> CreateContactViewModelAsync(string? displayName, string? email)
+    {
+        if (string.IsNullOrEmpty(displayName) && string.IsNullOrEmpty(email))
+            return null;
+
+        var name = displayName ?? email ?? string.Empty;
+        var vm = AttendeeViewModel.Create(name, email, EventResponseStatus.None, isOrganizer: false);
+
+        // Try to enrich with contact data
+        if (!string.IsNullOrEmpty(email))
+        {
+            var contact = await _storage.GetContactByEmailAsync(email);
+            if (contact != null)
+            {
+                vm.EnrichWithContact(contact);
+                _ = vm.LoadPhotoAsync();
+            }
+        }
+
+        return vm;
     }
 
     private static EventResponseStatus ParseGoogleResponseStatus(string? status)
