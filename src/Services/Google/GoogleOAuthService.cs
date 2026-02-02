@@ -13,7 +13,8 @@ public class GoogleOAuthService
     private static readonly string RequiredScopes = string.Join(separator: " ",
         CalendarService.Scope.Calendar,
         CalendarService.Scope.CalendarEvents,
-        PeopleServiceService.Scope.ContactsReadonly
+        PeopleServiceService.Scope.ContactsReadonly,
+        PeopleServiceService.Scope.DirectoryReadonly
     );
 
     private readonly GoogleCalendarService _googleCalendarService;

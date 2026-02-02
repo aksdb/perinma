@@ -141,7 +141,7 @@ public class GooglePeopleService : IGooglePeopleService
     }
 
     /// <summary>
-    /// Fetches all contacts for the authenticated user
+    /// Fetches all contacts for the authenticated user, including personal contacts and directory contacts
     /// </summary>
     public async Task<ContactSyncResult> GetContactsAsync(
         PeopleServiceService service,
@@ -152,6 +152,7 @@ public class GooglePeopleService : IGooglePeopleService
         string? pageToken = null;
         string? newSyncToken = null;
 
+        // Fetch personal contacts (connections)
         do
         {
             var request = service.People.Connections.List("people/me");
@@ -185,6 +186,40 @@ public class GooglePeopleService : IGooglePeopleService
             newSyncToken = response.NextSyncToken;
 
         } while (!string.IsNullOrEmpty(pageToken));
+
+        // Fetch directory contacts (corporate directory)
+        string? directoryPageToken = null;
+        do
+        {
+            var directoryRequest = service.People.ListDirectoryPeople();
+            directoryRequest.ReadMask = PersonFields;
+            directoryRequest.Sources = PeopleResource.ListDirectoryPeopleRequest.SourcesEnum.DIRECTORYSOURCETYPEDOMAINPROFILE;
+            directoryRequest.PageSize = 1000;
+
+            if (!string.IsNullOrEmpty(directoryPageToken))
+            {
+                directoryRequest.PageToken = directoryPageToken;
+            }
+
+            try
+            {
+                var directoryResponse = await directoryRequest.ExecuteAsync(cancellationToken);
+
+                if (directoryResponse.People != null)
+                {
+                    allContacts.AddRange(directoryResponse.People);
+                }
+
+                directoryPageToken = directoryResponse.NextPageToken;
+            }
+            catch (Exception ex) when (ex.Message.Contains("403") || ex.Message.Contains("Forbidden"))
+            {
+                // Directory contacts may not be available for all accounts
+                Console.WriteLine($"Directory contacts not available: {ex.Message}");
+                break;
+            }
+
+        } while (!string.IsNullOrEmpty(directoryPageToken));
 
         return new ContactSyncResult
         {
