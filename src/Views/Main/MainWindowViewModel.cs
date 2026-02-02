@@ -15,6 +15,7 @@ using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Views.Calendar;
 using perinma.Views.CalendarList;
+using perinma.Views.Contacts;
 using perinma.Views.MessageBox;
 using perinma.Views.Settings;
 
@@ -57,8 +58,16 @@ public partial class MainWindowViewModel : ObservableRecipient,
     [ObservableProperty]
     private bool _syncProgressIsIndeterminate = true;
 
+    // View switching
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsContactsViewActive))]
+    private bool _isCalendarViewActive = true;
+
+    public bool IsContactsViewActive => !IsCalendarViewActive;
+
     public CalendarWeekViewModel CalendarWeekViewModel { get; }
     public CalendarListViewModel CalendarListViewModel { get; }
+    public ContactsViewModel ContactsViewModel { get; }
 
     public MainWindowViewModel(
         DatabaseService databaseService,
@@ -84,8 +93,21 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _settingsService = new SettingsService(storage);
         CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, storage, _settingsService, syncService.Providers);
         CalendarListViewModel = new CalendarListViewModel(storage, _googleCalendarService, credentialManager, CalendarWeekViewModel);
+        ContactsViewModel = new ContactsViewModel(storage);
 
         Initialize();
+    }
+
+    [RelayCommand]
+    private void ShowCalendarView()
+    {
+        IsCalendarViewActive = true;
+    }
+
+    [RelayCommand]
+    private void ShowContactsView()
+    {
+        IsCalendarViewActive = false;
     }
 
     #region Settings
@@ -167,6 +189,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
             if (contactResult.Success)
             {
                 Console.WriteLine($"Contact sync completed successfully. Synced {contactResult.SyncedAccounts} accounts.");
+                await ContactsViewModel.LoadAddressBooksAsync();
             }
             else
             {
@@ -175,6 +198,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
                 {
                     Console.WriteLine($"  - {error}");
                 }
+                // Still refresh the contact list to show any contacts that were synced
+                await ContactsViewModel.LoadAddressBooksAsync();
             }
         }
         catch (Exception ex)

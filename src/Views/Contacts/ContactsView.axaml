@@ -1,0 +1,306 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:contacts="using:perinma.Views.Contacts"
+             x:DataType="contacts:ContactsViewModel"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
+             x:Class="perinma.Views.Contacts.ContactsView">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220" MinWidth="180"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="300" MinWidth="200"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*" MinWidth="300"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Pane: Address Books -->
+        <Border Grid.Column="0"
+                BorderBrush="Gray"
+                BorderThickness="0,0,1,0">
+            <DockPanel Margin="10">
+                <TextBlock DockPanel.Dock="Top"
+                           Text="Address Books"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           Margin="0,0,0,10" />
+
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <ItemsControl ItemsSource="{Binding AccountGroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="contacts:AddressBookAccountGroupViewModel">
+                                    <Border Background="Transparent" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <!-- Account Header -->
+                                            <DockPanel Margin="0,0,0,4">
+                                                <ToggleButton DockPanel.Dock="Left"
+                                                              IsChecked="{Binding IsExpanded}"
+                                                              Width="16" Height="16"
+                                                              Padding="0"
+                                                              Background="Transparent"
+                                                              BorderThickness="0"
+                                                              VerticalAlignment="Center"
+                                                              Margin="0,0,4,0">
+                                                    <Panel>
+                                                        <TextBlock Text="&#x25B6;"
+                                                                   FontSize="8"
+                                                                   IsVisible="{Binding !IsExpanded}"
+                                                                   VerticalAlignment="Center"
+                                                                   HorizontalAlignment="Center" />
+                                                        <TextBlock Text="&#x25BC;"
+                                                                   FontSize="8"
+                                                                   IsVisible="{Binding IsExpanded}"
+                                                                   VerticalAlignment="Center"
+                                                                   HorizontalAlignment="Center" />
+                                                    </Panel>
+                                                </ToggleButton>
+                                                <TextBlock Text="{Binding AccountName}"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="Gray"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </DockPanel>
+
+                                            <!-- Address Books -->
+                                            <ItemsControl ItemsSource="{Binding AddressBooks}"
+                                                          IsVisible="{Binding IsExpanded}"
+                                                          Margin="20,0,0,0">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="contacts:AddressBookViewModel">
+                                                        <Border Padding="4,3" Margin="0,1" Background="Transparent">
+                                                            <DockPanel>
+                                                                <CheckBox IsChecked="{Binding Enabled}"
+                                                                          DockPanel.Dock="Right"
+                                                                          VerticalAlignment="Center"
+                                                                          Margin="8,0,0,0" />
+                                                                <TextBlock DockPanel.Dock="Right"
+                                                                           Text="{Binding ContactCount, StringFormat='({0})'}"
+                                                                           FontSize="11"
+                                                                           Foreground="Gray"
+                                                                           VerticalAlignment="Center"
+                                                                           Margin="4,0,0,0" />
+                                                                <TextBlock Text="{Binding Name}"
+                                                                           VerticalAlignment="Center"
+                                                                           TextTrimming="CharacterEllipsis" />
+                                                            </DockPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="No address books"
+                                   Foreground="Gray"
+                                   FontSize="12"
+                                   Margin="0,10"
+                                   IsVisible="{Binding !AccountGroups.Count}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <GridSplitter Grid.Column="1"
+                      Width="4"
+                      Background="Transparent"
+                      ResizeDirection="Columns"
+                      ResizeBehavior="PreviousAndNext"/>
+
+        <!-- Center Pane: Contact List -->
+        <Border Grid.Column="2"
+                BorderBrush="Gray"
+                BorderThickness="0,0,1,0">
+            <DockPanel Margin="10">
+                <!-- Header with search -->
+                <StackPanel DockPanel.Dock="Top" Spacing="8">
+                    <DockPanel>
+                        <TextBlock Text="Contacts"
+                                   FontSize="16"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding TotalContactCount, StringFormat='({0})'}"
+                                   FontSize="12"
+                                   Foreground="Gray"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0" />
+                    </DockPanel>
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding SearchText}"
+                                 Watermark="Search contacts..."
+                                 Margin="0,0,4,0" />
+                        <Button Grid.Column="1"
+                                Content="X"
+                                Command="{Binding ClearSearchCommand}"
+                                IsVisible="{Binding SearchText.Length}"
+                                Width="24"
+                                Height="24"
+                                Padding="0"
+                                VerticalContentAlignment="Center"
+                                HorizontalContentAlignment="Center" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Contact List -->
+                <ListBox ItemsSource="{Binding FilteredContacts}"
+                         SelectedItem="{Binding SelectedContact}"
+                         Margin="0,10,0,0"
+                         Background="Transparent"
+                         BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="contacts:ContactItemViewModel">
+                            <Border Padding="4,6" Background="Transparent">
+                                <DockPanel>
+                                    <!-- Avatar -->
+                                    <Border DockPanel.Dock="Left"
+                                            Width="36"
+                                            Height="36"
+                                            CornerRadius="18"
+                                            Background="{DynamicResource SystemAccentColorLight2}"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,10,0">
+                                        <TextBlock Text="{Binding Initials}"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="White"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+
+                                    <!-- Name and subtitle -->
+                                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Text="{Binding DisplayName}"
+                                                   FontSize="13"
+                                                   FontWeight="Medium"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Subtitle}"
+                                                   FontSize="11"
+                                                   Foreground="Gray"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <GridSplitter Grid.Column="3"
+                      Width="4"
+                      Background="Transparent"
+                      ResizeDirection="Columns"
+                      ResizeBehavior="PreviousAndNext"/>
+
+        <!-- Right Pane: Contact Detail -->
+        <Border Grid.Column="4">
+            <Panel>
+                <!-- No contact selected -->
+                <StackPanel IsVisible="{Binding !HasSelectedContact}"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center">
+                    <TextBlock Text="Select a contact"
+                               FontSize="16"
+                               Foreground="Gray"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="to view details"
+                               FontSize="14"
+                               Foreground="Gray"
+                               HorizontalAlignment="Center"
+                               Margin="0,4,0,0" />
+                </StackPanel>
+
+                <!-- Contact detail view -->
+                <ScrollViewer IsVisible="{Binding HasSelectedContact}"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20" Spacing="16"
+                                DataContext="{Binding SelectedContact}">
+                        <!-- Header with avatar and name -->
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <Border Width="64"
+                                    Height="64"
+                                    CornerRadius="32"
+                                    Background="{DynamicResource SystemAccentColorLight2}">
+                                <TextBlock Text="{Binding Initials}"
+                                           FontSize="24"
+                                           FontWeight="SemiBold"
+                                           Foreground="White"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center" Spacing="4">
+                                <TextBlock Text="{Binding DisplayName}"
+                                           FontSize="20"
+                                           FontWeight="Bold" />
+                                <TextBlock Text="{Binding AddressBookName}"
+                                           FontSize="12"
+                                           Foreground="Gray" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Separator/>
+
+                        <!-- Contact fields -->
+                        <StackPanel Spacing="12">
+                            <!-- Name fields -->
+                            <StackPanel IsVisible="{Binding GivenName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="First Name" FontSize="11" Foreground="Gray" />
+                                <TextBlock Text="{Binding GivenName}" FontSize="14" />
+                            </StackPanel>
+
+                            <StackPanel IsVisible="{Binding FamilyName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="Last Name" FontSize="11" Foreground="Gray" />
+                                <TextBlock Text="{Binding FamilyName}" FontSize="14" />
+                            </StackPanel>
+
+                            <!-- Email -->
+                            <StackPanel IsVisible="{Binding PrimaryEmail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="Email" FontSize="11" Foreground="Gray" />
+                                <TextBlock Text="{Binding PrimaryEmail}" FontSize="14" />
+                            </StackPanel>
+
+                            <!-- Phone -->
+                            <StackPanel IsVisible="{Binding PrimaryPhone, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="Phone" FontSize="11" Foreground="Gray" />
+                                <TextBlock Text="{Binding PrimaryPhone}" FontSize="14" />
+                            </StackPanel>
+
+                            <Separator/>
+
+                            <!-- Metadata -->
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Details" FontSize="13" FontWeight="SemiBold" Foreground="Gray" />
+                                
+                                <StackPanel>
+                                    <TextBlock Text="Account" FontSize="11" Foreground="Gray" />
+                                    <TextBlock Text="{Binding AccountName}" FontSize="13" />
+                                </StackPanel>
+
+                                <StackPanel>
+                                    <TextBlock Text="Address Book" FontSize="11" Foreground="Gray" />
+                                    <TextBlock Text="{Binding AddressBookName}" FontSize="13" />
+                                </StackPanel>
+
+                                <StackPanel IsVisible="{Binding ExternalId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                    <TextBlock Text="External ID" FontSize="11" Foreground="Gray" />
+                                    <TextBlock Text="{Binding ExternalId}" FontSize="11" Foreground="Gray" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Panel>
+        </Border>
+    </Grid>
+</UserControl>

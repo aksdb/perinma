@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:cal="using:perinma.Views.Calendar"
         xmlns:callist="using:perinma.Views.CalendarList"
+        xmlns:contacts="using:perinma.Views.Contacts"
         xmlns:main="using:perinma.Views.Main"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         Width="1200" Height="600"
@@ -19,50 +20,94 @@
     </Design.DataContext>
     
     <Grid x:Name="MainGrid" RowDefinitions="Auto,*,Auto">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="250" MinWidth="250"/> <!-- Sidebar -->
-            <ColumnDefinition Width="Auto"/> <!-- Splitter -->
-            <ColumnDefinition Width="*"/> <!-- Main Content -->
-        </Grid.ColumnDefinitions>
-        
-        <Menu Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3">
-            <MenuItem Header="_File">
-                <MenuItem Header="_Settings" Name="MnuSettings" Command="{Binding ShowSettingsCommand}"/>
-                <MenuItem Header="_Sync" Command="{Binding SyncCommand}"/>
-                <MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"/>
-            </MenuItem>
-            <MenuItem Header="_View">
-                <MenuItem Header="_Theme">
-                    <MenuItem Header="_Light" Command="{Binding SetLightThemeCommand}">
+        <!-- Menu Bar with View Switcher -->
+        <DockPanel Grid.Row="0">
+            <Menu DockPanel.Dock="Left">
+                <MenuItem Header="_File">
+                    <MenuItem Header="_Settings" Name="MnuSettings" Command="{Binding ShowSettingsCommand}"/>
+                    <MenuItem Header="_Sync" Command="{Binding SyncCommand}"/>
+                    <MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"/>
+                </MenuItem>
+                <MenuItem Header="_View">
+                    <MenuItem Header="_Calendar" Command="{Binding ShowCalendarViewCommand}">
                         <MenuItem.Icon>
-                            <CheckBox IsChecked="{Binding IsLightTheme}" IsHitTestVisible="False"/>
+                            <CheckBox IsChecked="{Binding IsCalendarViewActive}" IsHitTestVisible="False"/>
                         </MenuItem.Icon>
                     </MenuItem>
-                    <MenuItem Header="_Dark" Command="{Binding SetDarkThemeCommand}">
+                    <MenuItem Header="C_ontacts" Command="{Binding ShowContactsViewCommand}">
                         <MenuItem.Icon>
-                            <CheckBox IsChecked="{Binding IsDarkTheme}" IsHitTestVisible="False"/>
+                            <CheckBox IsChecked="{Binding IsContactsViewActive}" IsHitTestVisible="False"/>
                         </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="_Theme">
+                        <MenuItem Header="_Light" Command="{Binding SetLightThemeCommand}">
+                            <MenuItem.Icon>
+                                <CheckBox IsChecked="{Binding IsLightTheme}" IsHitTestVisible="False"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="_Dark" Command="{Binding SetDarkThemeCommand}">
+                            <MenuItem.Icon>
+                                <CheckBox IsChecked="{Binding IsDarkTheme}" IsHitTestVisible="False"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
                     </MenuItem>
                 </MenuItem>
-            </MenuItem>
-        </Menu>
+            </Menu>
+            
+            <!-- View Switcher Buttons -->
+            <StackPanel DockPanel.Dock="Right" 
+                        Orientation="Horizontal" 
+                        Margin="0,0,10,0"
+                        VerticalAlignment="Center"
+                        Spacing="4">
+                <ToggleButton Content="Calendar" 
+                              IsChecked="{Binding IsCalendarViewActive}"
+                              Command="{Binding ShowCalendarViewCommand}"
+                              Padding="12,4"
+                              FontSize="12"/>
+                <ToggleButton Content="Contacts" 
+                              IsChecked="{Binding IsContactsViewActive}"
+                              Command="{Binding ShowContactsViewCommand}"
+                              Padding="12,4"
+                              FontSize="12"/>
+            </StackPanel>
+            
+            <Border/> <!-- Spacer -->
+        </DockPanel>
         
-        <Border Grid.Row="1" Grid.Column="0"
-                BorderBrush="Gray"
-                BorderThickness="0,0,1,0">
-            <callist:CalendarListView DataContext="{Binding CalendarListViewModel}"/>
-        </Border>
+        <!-- Main Content Area -->
+        <Panel Grid.Row="1">
+            <!-- Calendar View -->
+            <Grid x:Name="CalendarViewGrid" IsVisible="{Binding IsCalendarViewActive}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="250" MinWidth="200"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <Border Grid.Column="0"
+                        BorderBrush="Gray"
+                        BorderThickness="0,0,1,0">
+                    <callist:CalendarListView DataContext="{Binding CalendarListViewModel}"/>
+                </Border>
 
-        <GridSplitter Grid.Row="1" Grid.Column="1"
-                      Width="4"
-                      Background="Transparent"
-                      ResizeDirection="Columns"
-                      ResizeBehavior="PreviousAndNext"/>
+                <GridSplitter Grid.Column="1"
+                              Width="4"
+                              Background="Transparent"
+                              ResizeDirection="Columns"
+                              ResizeBehavior="PreviousAndNext"/>
 
-        <cal:CalendarWeekView Grid.Row="1" Grid.Column="2" DataContext="{Binding CalendarWeekViewModel}"/>
+                <cal:CalendarWeekView Grid.Column="2" DataContext="{Binding CalendarWeekViewModel}"/>
+            </Grid>
+            
+            <!-- Contacts View -->
+            <contacts:ContactsView IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsContactsViewActive}"
+                                   DataContext="{Binding ContactsViewModel}"/>
+        </Panel>
 
-        <!-- Status Bar (Row 2) -->
-        <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+        <!-- Status Bar -->
+        <Border Grid.Row="2"
                 Background="{DynamicResource SystemChromeMediumLowColor}"
                 BorderBrush="{DynamicResource SystemChromeLowColor}"
                 BorderThickness="0,1,0,0"

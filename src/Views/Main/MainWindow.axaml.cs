@@ -31,9 +31,9 @@ public partial class MainWindow : Window
                 Height = height;
             }
 
-            if (sidebarWidth > 0)
+            if (sidebarWidth > 0 && CalendarViewGrid.ColumnDefinitions.Count > 0)
             {
-                MainGrid.ColumnDefinitions[0].Width = new GridLength(sidebarWidth);
+                CalendarViewGrid.ColumnDefinitions[0].Width = new GridLength(sidebarWidth);
             }
         }
     }
@@ -42,7 +42,9 @@ public partial class MainWindow : Window
     {
         if (DataContext is MainWindowViewModel viewModel)
         {
-            var sidebarWidth = (int)MainGrid.ColumnDefinitions[0].Width.Value;
+            var sidebarWidth = CalendarViewGrid.ColumnDefinitions.Count > 0 
+                ? (int)CalendarViewGrid.ColumnDefinitions[0].Width.Value 
+                : 250;
             await viewModel.SaveWindowSettingsAsync(Position.X, Position.Y, (int)Width, (int)Height, sidebarWidth);
         }
     }

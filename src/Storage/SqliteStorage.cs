@@ -1092,6 +1092,32 @@ public class SqliteStorage : IDisposable
         return rowsAffected > 0;
     }
 
+    /// <summary>
+    /// Gets all address books with their account information
+    /// </summary>
+    public async Task<IEnumerable<AddressBookQueryResult>> GetAllAddressBooksAsync()
+    {
+        return await _connection.QueryAsync<AddressBookQueryResult>(
+            """
+            SELECT 
+                ab.address_book_id AS AddressBookId,
+                ab.external_id AS ExternalId,
+                ab.name AS Name,
+                ab.enabled AS Enabled,
+                ab.last_sync AS LastSync,
+                a.account_id AS AccountId,
+                a.name AS AccountName,
+                a.type AS AccountType,
+                a.sort_order AS AccountSortOrder,
+                (SELECT COUNT(*) FROM contact c WHERE c.address_book_id = ab.address_book_id) AS ContactCount
+            FROM address_book ab
+            INNER JOIN account a ON ab.account_id = a.account_id
+            ORDER BY a.sort_order, a.name, ab.name
+            """,
+            commandTimeout: 30
+        );
+    }
+
     #endregion
 
     #region Contact Methods
@@ -1228,6 +1254,79 @@ public class SqliteStorage : IDisposable
             WHERE contact_id = @contactId
             """,
             param: new { key = $"$.{key}", contactId });
+    }
+
+    /// <summary>
+    /// Gets all contacts with their address book and account information
+    /// </summary>
+    public async Task<IEnumerable<ContactQueryResult>> GetAllContactsAsync()
+    {
+        return await _connection.QueryAsync<ContactQueryResult>(
+            """
+            SELECT 
+                c.contact_id AS ContactId,
+                c.external_id AS ExternalId,
+                c.display_name AS DisplayName,
+                c.given_name AS GivenName,
+                c.family_name AS FamilyName,
+                c.primary_email AS PrimaryEmail,
+                c.primary_phone AS PrimaryPhone,
+                c.photo_url AS PhotoUrl,
+                c.changed_at AS ChangedAt,
+                CAST(c.data AS TEXT) AS RawData,
+                ab.address_book_id AS AddressBookId,
+                ab.external_id AS AddressBookExternalId,
+                ab.name AS AddressBookName,
+                ab.enabled AS AddressBookEnabled,
+                ab.last_sync AS AddressBookLastSync,
+                a.account_id AS AccountId,
+                a.name AS AccountName,
+                a.type AS AccountType
+            FROM contact c
+            INNER JOIN address_book ab ON c.address_book_id = ab.address_book_id
+            INNER JOIN account a ON ab.account_id = a.account_id
+            WHERE ab.enabled = 1
+            ORDER BY a.sort_order, a.name, ab.name, c.display_name
+            """,
+            commandTimeout: 30
+        );
+    }
+
+    /// <summary>
+    /// Gets contacts for a specific account with address book information
+    /// </summary>
+    public async Task<IEnumerable<ContactQueryResult>> GetContactsByAccountAsync(string accountId)
+    {
+        return await _connection.QueryAsync<ContactQueryResult>(
+            """
+            SELECT 
+                c.contact_id AS ContactId,
+                c.external_id AS ExternalId,
+                c.display_name AS DisplayName,
+                c.given_name AS GivenName,
+                c.family_name AS FamilyName,
+                c.primary_email AS PrimaryEmail,
+                c.primary_phone AS PrimaryPhone,
+                c.photo_url AS PhotoUrl,
+                c.changed_at AS ChangedAt,
+                CAST(c.data AS TEXT) AS RawData,
+                ab.address_book_id AS AddressBookId,
+                ab.external_id AS AddressBookExternalId,
+                ab.name AS AddressBookName,
+                ab.enabled AS AddressBookEnabled,
+                ab.last_sync AS AddressBookLastSync,
+                a.account_id AS AccountId,
+                a.name AS AccountName,
+                a.type AS AccountType
+            FROM contact c
+            INNER JOIN address_book ab ON c.address_book_id = ab.address_book_id
+            INNER JOIN account a ON ab.account_id = a.account_id
+            WHERE a.account_id = @AccountId AND ab.enabled = 1
+            ORDER BY ab.name, c.display_name
+            """,
+            new { AccountId = accountId },
+            commandTimeout: 30
+        );
     }
 
     #endregion

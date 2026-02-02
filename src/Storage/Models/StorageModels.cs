@@ -116,3 +116,20 @@ public class ContactQueryResult
 
     public AccountType AccountTypeEnum => Enum.TryParse<AccountType>(AccountType, ignoreCase: true, out var result) ? result : perinma.Models.AccountType.Google;
 }
+
+public class AddressBookQueryResult
+{
+    public required string AddressBookId { get; init; }
+    public string? ExternalId { get; init; }
+    public required string Name { get; init; }
+    public int Enabled { get; init; }
+    public long? LastSync { get; init; }
+    public required string AccountId { get; init; }
+    public required string AccountName { get; init; }
+    public required string AccountType { get; init; }
+    public int AccountSortOrder { get; init; }
+    public int ContactCount { get; init; }
+
+    public bool IsEnabled => Enabled == 1;
+    public AccountType AccountTypeEnum => Enum.TryParse<AccountType>(AccountType, ignoreCase: true, out var result) ? result : perinma.Models.AccountType.Google;
+}
