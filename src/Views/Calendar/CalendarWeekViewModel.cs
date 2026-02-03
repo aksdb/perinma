@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -122,6 +123,25 @@ public partial class CalendarWeekViewModel : ViewModelBase
         SettingsService = settingsService;
         DayColumns = 7;
         ViewStart = DateTime.Now;
+    }
+
+    public async Task InitializeAsync()
+    {
+        if (SettingsService == null)
+            return;
+
+        try
+        {
+            var lastViewMode = await SettingsService.GetLastCalendarViewModeAsync();
+            if (Enum.TryParse<CalendarViewMode>(lastViewMode, out var savedViewMode))
+            {
+                ViewMode = savedViewMode;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load last calendar view mode: {ex.Message}");
+        }
     }
 
     partial void OnViewModeChanged(CalendarViewMode value)

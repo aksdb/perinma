@@ -100,9 +100,10 @@ public partial class MainWindowViewModel : ObservableRecipient,
     }
 
     [RelayCommand]
-    private void ShowCalendarView()
+    private async void ShowCalendarView()
     {
         IsCalendarViewActive = true;
+        await CalendarWeekViewModel.InitializeAsync();
     }
 
     [RelayCommand]
@@ -387,10 +388,53 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
     #region Window Settings
 
-    private void Initialize()
+    private async void Initialize()
     {
         // Enable message registration
         IsActive = true;
+
+        // Load and restore last view state
+        await LoadViewStateAsync();
+    }
+
+    private async Task LoadViewStateAsync()
+    {
+        try
+        {
+            var lastActiveView = await _settingsService.GetLastActiveViewAsync();
+            if (lastActiveView.Equals("contacts", StringComparison.OrdinalIgnoreCase))
+            {
+                IsCalendarViewActive = false;
+            }
+            else
+            {
+                IsCalendarViewActive = true;
+                await CalendarWeekViewModel.InitializeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load view state: {ex.Message}");
+        }
+    }
+
+    public async Task SaveViewStateAsync()
+    {
+        try
+        {
+            // Save which view is active
+            await _settingsService.SetLastActiveViewAsync(IsCalendarViewActive ? "calendar" : "contacts");
+
+            // Save calendar view mode if in calendar view
+            if (IsCalendarViewActive)
+            {
+                await _settingsService.SetLastCalendarViewModeAsync(CalendarWeekViewModel.ViewMode.ToString());
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to save view state: {ex.Message}");
+        }
     }
 
     public async Task SaveWindowSettingsAsync(int x, int y, int width, int height, int sidebarWidth)

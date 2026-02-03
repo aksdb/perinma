@@ -42,10 +42,11 @@ public partial class MainWindow : Window
     {
         if (DataContext is MainWindowViewModel viewModel)
         {
-            var sidebarWidth = CalendarViewGrid.ColumnDefinitions.Count > 0 
-                ? (int)CalendarViewGrid.ColumnDefinitions[0].Width.Value 
+            var sidebarWidth = CalendarViewGrid.ColumnDefinitions.Count > 0
+                ? (int)CalendarViewGrid.ColumnDefinitions[0].Width.Value
                 : 250;
             await viewModel.SaveWindowSettingsAsync(Position.X, Position.Y, (int)Width, (int)Height, sidebarWidth);
+            await viewModel.SaveViewStateAsync();
         }
     }
 
