@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using perinma.Models;
+using perinma.Services;
+using perinma.Storage;
 using perinma.Utils;
 
 namespace perinma.Views.Calendar;
@@ -47,6 +50,10 @@ public partial class AgendaEventViewModel : ObservableObject
     [ObservableProperty]
     private CalendarEvent? _calendarEvent;
 
+    // Dependencies for creating event detail view model
+    public SqliteStorage? Storage { get; set; }
+    public IReadOnlyDictionary<AccountType, ICalendarProvider>? Providers { get; set; }
+
     public string TimeDisplay => IsFullDay ? "All day" : StartTime.ToString("HH:mm");
 
     public string DurationDisplay
@@ -86,6 +93,36 @@ public partial class AgendaEventViewModel : ObservableObject
             var textColor = ColorUtils.ContrastTextColor(Color);
             // Make it slightly more transparent for secondary text
             return new SolidColorBrush(Color.FromArgb(180, textColor.R, textColor.G, textColor.B));
+        }
+    }
+
+    /// <summary>
+    /// Creates the appropriate event detail view model based on account type.
+    /// </summary>
+    public object? EventViewModel
+    {
+        get
+        {
+            if (CalendarEvent == null)
+                return null;
+
+            if (Storage == null)
+                return new CalendarEventViewModel(CalendarEvent);
+
+            ICalendarProvider? calendarProvider = null;
+            var accountType = CalendarEvent.Calendar.Account.Type;
+
+            if (Providers != null && Providers.TryGetValue(accountType, out var provider))
+            {
+                calendarProvider = provider;
+            }
+
+            return accountType switch
+            {
+                AccountType.Google => new GoogleCalendarEventViewModel(CalendarEvent, Storage, calendarProvider),
+                AccountType.CalDav => new CalDavEventViewModel(CalendarEvent, Storage, calendarProvider),
+                _ => new CalendarEventViewModel(CalendarEvent)
+            };
         }
     }
 }

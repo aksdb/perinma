@@ -113,10 +113,29 @@
                         <ItemsControl ItemsSource="{Binding Events}" Margin="8,0,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="cal:AgendaEventViewModel">
-                                    <Border Background="{Binding Background}"
+                                    <Button Background="{Binding Background}"
                                             CornerRadius="6"
                                             Padding="12,8"
-                                            Margin="0,4">
+                                            Margin="0,4"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Stretch"
+                                            BorderThickness="0"
+                                            Cursor="Hand">
+                                        <Button.Styles>
+                                            <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                                <Setter Property="Background" Value="{Binding Background}"/>
+                                                <Setter Property="Opacity" Value="0.8"/>
+                                            </Style>
+                                            <Style Selector="Button:pressed /template/ ContentPresenter">
+                                                <Setter Property="Background" Value="{Binding Background}"/>
+                                                <Setter Property="Opacity" Value="0.6"/>
+                                            </Style>
+                                        </Button.Styles>
+                                        <Button.Flyout>
+                                            <Flyout Placement="Right">
+                                                <ContentControl Content="{Binding EventViewModel}"/>
+                                            </Flyout>
+                                        </Button.Flyout>
                                         <Grid ColumnDefinitions="Auto,*">
                                             <!-- Time Column -->
                                             <StackPanel Grid.Column="0" 
@@ -144,7 +163,7 @@
                                                            Margin="0,2,0,0"/>
                                             </StackPanel>
                                         </Grid>
-                                    </Border>
+                                    </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

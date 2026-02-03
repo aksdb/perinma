@@ -140,15 +140,34 @@
                                 <ItemsControl ItemsSource="{Binding Events}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="cal:MonthEventViewModel">
-                                            <Border Background="{Binding Background}"
+                                            <Button Background="{Binding Background}"
                                                     CornerRadius="3"
                                                     Padding="4,1"
-                                                    Margin="0,1">
+                                                    Margin="0,1"
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Left"
+                                                    BorderThickness="0"
+                                                    Cursor="Hand">
+                                                <Button.Styles>
+                                                    <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                                        <Setter Property="Background" Value="{Binding Background}"/>
+                                                        <Setter Property="Opacity" Value="0.8"/>
+                                                    </Style>
+                                                    <Style Selector="Button:pressed /template/ ContentPresenter">
+                                                        <Setter Property="Background" Value="{Binding Background}"/>
+                                                        <Setter Property="Opacity" Value="0.6"/>
+                                                    </Style>
+                                                </Button.Styles>
+                                                <Button.Flyout>
+                                                    <Flyout Placement="Right">
+                                                        <ContentControl Content="{Binding EventViewModel}"/>
+                                                    </Flyout>
+                                                </Button.Flyout>
                                                 <TextBlock Text="{Binding Title}"
                                                            FontSize="11"
                                                            Foreground="{Binding Foreground}"
                                                            TextTrimming="CharacterEllipsis"/>
-                                            </Border>
+                                            </Button>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>

@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using perinma.Models;
+using perinma.Services;
+using perinma.Storage;
 using perinma.Utils;
 
 namespace perinma.Views.Calendar;
@@ -53,6 +56,10 @@ public partial class MonthEventViewModel : ObservableObject
     [ObservableProperty]
     private string _timeText = string.Empty;
 
+    // Dependencies for creating event detail view model
+    public SqliteStorage? Storage { get; set; }
+    public IReadOnlyDictionary<AccountType, ICalendarProvider>? Providers { get; set; }
+
     public IBrush Background => new SolidColorBrush(Color);
 
     public IBrush Foreground
@@ -61,6 +68,36 @@ public partial class MonthEventViewModel : ObservableObject
         {
             var textColor = ColorUtils.ContrastTextColor(Color);
             return new SolidColorBrush(textColor);
+        }
+    }
+
+    /// <summary>
+    /// Creates the appropriate event detail view model based on account type.
+    /// </summary>
+    public object? EventViewModel
+    {
+        get
+        {
+            if (CalendarEvent == null)
+                return null;
+
+            if (Storage == null)
+                return new CalendarEventViewModel(CalendarEvent);
+
+            ICalendarProvider? calendarProvider = null;
+            var accountType = CalendarEvent.Calendar.Account.Type;
+
+            if (Providers != null && Providers.TryGetValue(accountType, out var provider))
+            {
+                calendarProvider = provider;
+            }
+
+            return accountType switch
+            {
+                AccountType.Google => new GoogleCalendarEventViewModel(CalendarEvent, Storage, calendarProvider),
+                AccountType.CalDav => new CalDavEventViewModel(CalendarEvent, Storage, calendarProvider),
+                _ => new CalendarEventViewModel(CalendarEvent)
+            };
         }
     }
 }

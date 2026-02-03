@@ -429,7 +429,9 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         : Color.Parse(evt.Calendar.Color),
                     CalendarEvent = evt,
                     IsFullDay = isFullDay,
-                    TimeText = isFullDay ? string.Empty : evt.StartTime.ToString("HH:mm")
+                    TimeText = isFullDay ? string.Empty : evt.StartTime.ToString("HH:mm"),
+                    Storage = _storage,
+                    Providers = _providers
                 });
             }
 
@@ -475,7 +477,9 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
                         : Color.Parse(evt.Calendar.Color),
                     CalendarName = evt.Calendar.Name,
-                    CalendarEvent = evt
+                    CalendarEvent = evt,
+                    Storage = _storage,
+                    Providers = _providers
                 });
             }
 
