@@ -173,6 +173,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
             {
                 Console.WriteLine($"Calendar sync completed successfully. Synced {calendarResult.SyncedAccounts} accounts.");
                 await CalendarListViewModel.LoadCalendarsAsync();
+                CalendarWeekViewModel.Load();
             }
             else
             {
@@ -181,6 +182,9 @@ public partial class MainWindowViewModel : ObservableRecipient,
                 {
                     Console.WriteLine($"  - {error}");
                 }
+                // Still refresh to show any events that were synced
+                await CalendarListViewModel.LoadCalendarsAsync();
+                CalendarWeekViewModel.Load();
             }
 
             // Sync contacts
