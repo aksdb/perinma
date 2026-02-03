@@ -206,6 +206,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
                 // Still refresh the contact list to show any contacts that were synced
                 await ContactsViewModel.LoadAddressBooksAsync();
             }
+
+            SyncStatusText = "Ready";
         }
         catch (Exception ex)
         {
@@ -224,9 +226,10 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
     public void Receive(SyncEndedMessage message)
     {
+        // Only reset syncing state - status text is managed by the Sync() method
+        // to show completion/error messages before resetting to "Ready"
         IsSyncing = false;
         SyncProgress = 0.0;
-        SyncStatusText = "Ready";
     }
 
     public void Receive(SyncAccountProgressMessage message)
