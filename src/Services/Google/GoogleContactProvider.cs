@@ -185,7 +185,15 @@ public class GoogleContactProvider : IContactProvider
             .ToList();
 
         // Check if contact is deleted (for incremental sync)
-        var isDeleted = person.Metadata?.Deleted == true;
+        // A contact is considered deleted if:
+        // 1. Metadata.Deleted is explicitly true, OR
+        // 2. The contact has no meaningful data (only etag/resourceName) - this can happen
+        //    with directory contacts that are removed but don't have Metadata.Deleted set
+        var hasNoData = primaryName == null
+                        && primaryEmail == null
+                        && primaryPhone == null
+                        && (person.Memberships == null || person.Memberships.Count == 0);
+        var isDeleted = person.Metadata?.Deleted == true || hasNoData;
 
         return new ProviderContact
         {
