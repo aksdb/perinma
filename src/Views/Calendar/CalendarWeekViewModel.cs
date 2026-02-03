@@ -413,11 +413,10 @@ public partial class CalendarWeekViewModel : ViewModelBase
                 IsToday = date.Date == DateTime.Today
             };
 
-            // Add events for this day (limit to 3 for display)
+            // Add events for this day
             var dayEvents = events
                 .Where(e => e.StartTime.Date <= date && e.EndTime.Date >= date)
-                .OrderBy(e => e.StartTime)
-                .Take(3);
+                .OrderBy(e => e.StartTime);
 
             foreach (var evt in dayEvents)
             {
