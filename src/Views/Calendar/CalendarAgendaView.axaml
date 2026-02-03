@@ -1,0 +1,157 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cal="using:perinma.Views.Calendar"
+             x:DataType="cal:CalendarWeekViewModel"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="450"
+             x:Class="perinma.Views.Calendar.CalendarAgendaView">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Navigation Bar -->
+        <Grid Grid.Row="0" Margin="0, 10, 0, 10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- View Mode Buttons (Left) -->
+            <StackPanel Grid.Column="0"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Left"
+                        Margin="10, 0, 0, 0"
+                        Spacing="2">
+                <ToggleButton Content="Month"
+                              IsChecked="{Binding IsMonthView}"
+                              Command="{Binding SetViewModeCommand}"
+                              CommandParameter="{x:Static cal:CalendarViewMode.Month}"
+                              Padding="8, 4"
+                              FontSize="12"/>
+                <ToggleButton Content="Week"
+                              IsChecked="{Binding IsWeekView}"
+                              Command="{Binding SetViewModeCommand}"
+                              CommandParameter="{x:Static cal:CalendarViewMode.Week}"
+                              Padding="8, 4"
+                              FontSize="12"/>
+                <ToggleButton Content="5 Days"
+                              IsChecked="{Binding IsFiveDaysView}"
+                              Command="{Binding SetViewModeCommand}"
+                              CommandParameter="{x:Static cal:CalendarViewMode.FiveDays}"
+                              Padding="8, 4"
+                              FontSize="12"/>
+                <ToggleButton Content="Day"
+                              IsChecked="{Binding IsDayView}"
+                              Command="{Binding SetViewModeCommand}"
+                              CommandParameter="{x:Static cal:CalendarViewMode.Day}"
+                              Padding="8, 4"
+                              FontSize="12"/>
+                <ToggleButton Content="List"
+                              IsChecked="{Binding IsListView}"
+                              Command="{Binding SetViewModeCommand}"
+                              CommandParameter="{x:Static cal:CalendarViewMode.List}"
+                              Padding="8, 4"
+                              FontSize="12"/>
+            </StackPanel>
+            
+            <!-- Navigation Controls (Center) -->
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center">
+                <Button Command="{Binding PreviousCommand}"
+                        Margin="0, 0, 8, 0"
+                        Padding="8, 4">
+                    ←
+                </Button>
+                <TextBlock Text="{Binding DateRangeDisplay}"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           MinWidth="200"
+                           TextAlignment="Center"
+                           Margin="0, 0, 8, 0"/>
+                <Button Command="{Binding TodayCommand}"
+                        Margin="0, 0, 8, 0"
+                        Padding="8, 4">
+                    Today
+                </Button>
+                <Button Command="{Binding NextCommand}"
+                        Padding="8, 4">
+                    →
+                </Button>
+            </StackPanel>
+            
+            <!-- Spacer (Right) -->
+            <Border Grid.Column="2"/>
+        </Grid>
+        
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <ItemsControl ItemsSource="{Binding AgendaDays}" Margin="10">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="cal:AgendaDayViewModel">
+                    <StackPanel Margin="0,0,0,16" IsVisible="{Binding HasEvents}">
+                        <!-- Day Header -->
+                        <Border Background="{DynamicResource SystemChromeMediumLowColor}"
+                                CornerRadius="4"
+                                Padding="12,8"
+                                Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="{Binding DayOfWeek}"
+                                           FontWeight="SemiBold"
+                                           FontSize="14"/>
+                                <TextBlock Text="{Binding DateDisplay}"
+                                           FontSize="14"
+                                           Foreground="Gray"/>
+                                <TextBlock Text="Today"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource SystemAccentColor}"
+                                           IsVisible="{Binding IsToday}"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Events for this day -->
+                        <ItemsControl ItemsSource="{Binding Events}" Margin="8,0,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="cal:AgendaEventViewModel">
+                                    <Border Background="{Binding Background}"
+                                            CornerRadius="6"
+                                            Padding="12,8"
+                                            Margin="0,4">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <!-- Time Column -->
+                                            <StackPanel Grid.Column="0" 
+                                                        Width="80"
+                                                        VerticalAlignment="Top">
+                                                <TextBlock Text="{Binding TimeDisplay}"
+                                                           FontSize="13"
+                                                           Foreground="{Binding Foreground}"/>
+                                                <TextBlock Text="{Binding DurationDisplay}"
+                                                           FontSize="11"
+                                                           Foreground="{Binding SecondaryForeground}"
+                                                           IsVisible="{Binding ShowDuration}"/>
+                                            </StackPanel>
+                                            
+                                            <!-- Event Details -->
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="14"
+                                                           Foreground="{Binding Foreground}"
+                                                           TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding CalendarName}"
+                                                           FontSize="12"
+                                                           Foreground="{Binding SecondaryForeground}"
+                                                           Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

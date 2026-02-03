@@ -1,0 +1,159 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cal="using:perinma.Views.Calendar"
+             x:DataType="cal:CalendarWeekViewModel"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="perinma.Views.Calendar.CalendarMonthView">
+
+    <Grid RowDefinitions="Auto,Auto,*">
+        <!-- Navigation Bar -->
+        <Grid Grid.Row="0" Margin="0, 10, 0, 10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- View Mode Buttons (Left) -->
+            <StackPanel Grid.Column="0"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Left"
+                        Margin="10, 0, 0, 0"
+                        Spacing="2">
+                <ToggleButton Content="Month"
+                              IsChecked="{Binding IsMonthView}"
+                              Command="{Binding SetViewModeCommand}"
+                              CommandParameter="{x:Static cal:CalendarViewMode.Month}"
+                              Padding="8, 4"
+                              FontSize="12"/>
+                <ToggleButton Content="Week"
+                              IsChecked="{Binding IsWeekView}"
+                              Command="{Binding SetViewModeCommand}"
+                              CommandParameter="{x:Static cal:CalendarViewMode.Week}"
+                              Padding="8, 4"
+                              FontSize="12"/>
+                <ToggleButton Content="5 Days"
+                              IsChecked="{Binding IsFiveDaysView}"
+                              Command="{Binding SetViewModeCommand}"
+                              CommandParameter="{x:Static cal:CalendarViewMode.FiveDays}"
+                              Padding="8, 4"
+                              FontSize="12"/>
+                <ToggleButton Content="Day"
+                              IsChecked="{Binding IsDayView}"
+                              Command="{Binding SetViewModeCommand}"
+                              CommandParameter="{x:Static cal:CalendarViewMode.Day}"
+                              Padding="8, 4"
+                              FontSize="12"/>
+                <ToggleButton Content="List"
+                              IsChecked="{Binding IsListView}"
+                              Command="{Binding SetViewModeCommand}"
+                              CommandParameter="{x:Static cal:CalendarViewMode.List}"
+                              Padding="8, 4"
+                              FontSize="12"/>
+            </StackPanel>
+            
+            <!-- Navigation Controls (Center) -->
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center">
+                <Button Command="{Binding PreviousCommand}"
+                        Margin="0, 0, 8, 0"
+                        Padding="8, 4">
+                    ←
+                </Button>
+                <TextBlock Text="{Binding DateRangeDisplay}"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           MinWidth="200"
+                           TextAlignment="Center"
+                           Margin="0, 0, 8, 0"/>
+                <Button Command="{Binding TodayCommand}"
+                        Margin="0, 0, 8, 0"
+                        Padding="8, 4">
+                    Today
+                </Button>
+                <Button Command="{Binding NextCommand}"
+                        Padding="8, 4">
+                    →
+                </Button>
+            </StackPanel>
+            
+            <!-- Spacer (Right) -->
+            <Border Grid.Column="2"/>
+        </Grid>
+        
+        <!-- Weekday Headers -->
+        <UniformGrid Grid.Row="1" Columns="7">
+            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+                <TextBlock Text="Mon" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
+            </Border>
+            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+                <TextBlock Text="Tue" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
+            </Border>
+            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+                <TextBlock Text="Wed" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
+            </Border>
+            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+                <TextBlock Text="Thu" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
+            </Border>
+            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+                <TextBlock Text="Fri" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
+            </Border>
+            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+                <TextBlock Text="Sat" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
+            </Border>
+            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+                <TextBlock Text="Sun" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
+            </Border>
+        </UniformGrid>
+
+        <!-- Month Grid -->
+        <ItemsControl Grid.Row="2" Name="MonthGrid" ItemsSource="{Binding MonthDays}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Columns="7" Rows="6"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="cal:MonthDayViewModel">
+                    <Border BorderBrush="LightGray" 
+                            BorderThickness="0,0,1,1"
+                            Background="{Binding Background}"
+                            MinHeight="80">
+                        <Grid RowDefinitions="Auto,*">
+                            <!-- Day Number -->
+                            <TextBlock Grid.Row="0"
+                                       Text="{Binding DayNumber}"
+                                       FontWeight="{Binding FontWeight}"
+                                       Foreground="{Binding Foreground}"
+                                       HorizontalAlignment="Right"
+                                       Margin="4"/>
+                            
+                            <!-- Events List -->
+                            <ItemsControl Grid.Row="1" 
+                                          ItemsSource="{Binding Events}"
+                                          Margin="2,0,2,2">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="cal:MonthEventViewModel">
+                                        <Border Background="{Binding Background}"
+                                                CornerRadius="3"
+                                                Padding="4,1"
+                                                Margin="0,1">
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontSize="11"
+                                                       Foreground="{Binding Foreground}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Grid>
+</UserControl>

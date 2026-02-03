@@ -98,7 +98,17 @@
                               ResizeDirection="Columns"
                               ResizeBehavior="PreviousAndNext"/>
 
-                <cal:CalendarWeekView Grid.Column="2" DataContext="{Binding CalendarWeekViewModel}"/>
+                <!-- Calendar Views - switch based on ViewMode -->
+                <Panel Grid.Column="2" DataContext="{Binding CalendarWeekViewModel}">
+                    <!-- Time Grid Views (Week, 5-Day, Day) -->
+                    <cal:CalendarWeekView IsVisible="{Binding IsTimeGridView}"/>
+                    
+                    <!-- Month View -->
+                    <cal:CalendarMonthView IsVisible="{Binding IsMonthView}"/>
+                    
+                    <!-- List/Agenda View -->
+                    <cal:CalendarAgendaView IsVisible="{Binding IsListView}"/>
+                </Panel>
             </Grid>
             
             <!-- Contacts View -->

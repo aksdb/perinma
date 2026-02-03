@@ -24,32 +24,84 @@ public partial class CalendarWeekViewModel : ViewModelBase
     // Full-day events are kept separate so they don't interfere with timed event column calculations
     public ObservableCollection<EventItem> FullDayEvents { get; } = [];
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(WeekStartOffset))]
-    [NotifyPropertyChangedFor(nameof(WeekDisplay))]
-    private DateTime _weekStart;
+    // Month view data
+    public ObservableCollection<MonthDayViewModel> MonthDays { get; } = [];
 
-    public string WeekDisplay
+    // Agenda/List view data
+    public ObservableCollection<AgendaDayViewModel> AgendaDays { get; } = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ViewStartOffset))]
+    [NotifyPropertyChangedFor(nameof(DateRangeDisplay))]
+    private DateTime _viewStart;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DateRangeDisplay))]
+    [NotifyPropertyChangedFor(nameof(IsMonthView))]
+    [NotifyPropertyChangedFor(nameof(IsWeekView))]
+    [NotifyPropertyChangedFor(nameof(IsFiveDaysView))]
+    [NotifyPropertyChangedFor(nameof(IsDayView))]
+    [NotifyPropertyChangedFor(nameof(IsListView))]
+    [NotifyPropertyChangedFor(nameof(IsTimeGridView))]
+    private CalendarViewMode _viewMode = CalendarViewMode.Week;
+
+    public bool IsMonthView => ViewMode == CalendarViewMode.Month;
+    public bool IsWeekView => ViewMode == CalendarViewMode.Week;
+    public bool IsFiveDaysView => ViewMode == CalendarViewMode.FiveDays;
+    public bool IsDayView => ViewMode == CalendarViewMode.Day;
+    public bool IsListView => ViewMode == CalendarViewMode.List;
+
+    /// <summary>
+    /// True for views that show a time grid (Week, FiveDays, Day). False for Month and List views.
+    /// </summary>
+    public bool IsTimeGridView => ViewMode is CalendarViewMode.Week or CalendarViewMode.FiveDays or CalendarViewMode.Day;
+
+    public string DateRangeDisplay
     {
         get
         {
-            var weekStart = WeekStart.Date;
-            var weekEnd = weekStart.AddDays(6);
-
-            var sameYear = weekStart.Year == weekEnd.Year;
-            var sameMonth = sameYear && weekStart.Month == weekEnd.Month;
-
-            var startFormat = sameYear ? "MMM d" : "MMM d, yyyy";
-            var endFormat = sameMonth ? "d, yyyy" : "MMM d, yyyy";
-
-            return $"{weekStart.ToString(startFormat)} - {weekEnd.ToString(endFormat)}";
+            return ViewMode switch
+            {
+                CalendarViewMode.Month => ViewStart.ToString("MMMM yyyy"),
+                CalendarViewMode.Day => ViewStart.ToString("dddd, MMMM d, yyyy"),
+                CalendarViewMode.List => $"Upcoming from {ViewStart:MMM d, yyyy}",
+                _ => FormatDateRange(ViewStart, ViewStart.AddDays(DayColumns - 1))
+            };
         }
     }
 
+    private static string FormatDateRange(DateTime start, DateTime end)
+    {
+        var sameYear = start.Year == end.Year;
+        var sameMonth = sameYear && start.Month == end.Month;
+
+        var startFormat = sameYear ? "MMM d" : "MMM d, yyyy";
+        var endFormat = sameMonth ? "d, yyyy" : "MMM d, yyyy";
+
+        return $"{start.ToString(startFormat)} - {end.ToString(endFormat)}";
+    }
+
+    // Legacy property for backward compatibility with CalendarListView's CalendarPicker
+    public DateTime WeekStart
+    {
+        get => ViewStart;
+        set => ViewStart = value;
+    }
+
+    // Legacy property for backward compatibility
+    public string WeekDisplay => DateRangeDisplay;
+
+    public DateTimeOffset ViewStartOffset
+    {
+        get => new(ViewStart);
+        set => ViewStart = value.Date;
+    }
+
+    // Legacy property for backward compatibility
     public DateTimeOffset WeekStartOffset
     {
-        get => new(WeekStart);
-        set => WeekStart = value.Date;
+        get => ViewStartOffset;
+        set => ViewStartOffset = value;
     }
 
     [ObservableProperty]
@@ -69,58 +121,155 @@ public partial class CalendarWeekViewModel : ViewModelBase
         _providers = providers;
         SettingsService = settingsService;
         DayColumns = 7;
-        WeekStart = DateTime.Now;
+        ViewStart = DateTime.Now;
     }
 
-    partial void OnWeekStartChanged(DateTime value)
+    partial void OnViewModeChanged(CalendarViewMode value)
     {
-        var diff = ((int)value.DayOfWeek + 6) % 7; // Monday=0
-        var actualWeekStart = value.Date.AddDays(-diff);
-
-        if (WeekStart == actualWeekStart)
+        // Update day columns based on view mode
+        DayColumns = value switch
         {
-            // We didn't have to correct the DateTime, so we can load the data.
-            _weekDayHeaders.ForEach(vm => vm.ReferenceDate = actualWeekStart);
-            Load();
+            CalendarViewMode.Month => 7, // Month view still uses 7 columns for the grid
+            CalendarViewMode.Week => 7,
+            CalendarViewMode.FiveDays => 5,
+            CalendarViewMode.Day => 1,
+            CalendarViewMode.List => 1, // List view doesn't use columns but needs a value
+            _ => 7
+        };
+
+        // Recalculate view start based on new mode
+        AdjustViewStartForMode(ViewStart);
+    }
+
+    partial void OnViewStartChanged(DateTime value)
+    {
+        AdjustViewStartForMode(value);
+    }
+
+    private void AdjustViewStartForMode(DateTime value)
+    {
+        DateTime adjustedStart;
+
+        switch (ViewMode)
+        {
+            case CalendarViewMode.Month:
+                // Start at first day of month
+                adjustedStart = new DateTime(value.Year, value.Month, 1);
+                break;
+
+            case CalendarViewMode.Week:
+                // Start at Monday of the week
+                var weekDiff = ((int)value.DayOfWeek + 6) % 7;
+                adjustedStart = value.Date.AddDays(-weekDiff);
+                break;
+
+            case CalendarViewMode.FiveDays:
+                // Start at Monday of the week (work week)
+                var fiveDayDiff = ((int)value.DayOfWeek + 6) % 7;
+                adjustedStart = value.Date.AddDays(-fiveDayDiff);
+                break;
+
+            case CalendarViewMode.Day:
+            case CalendarViewMode.List:
+                // Just use the date as-is
+                adjustedStart = value.Date;
+                break;
+
+            default:
+                adjustedStart = value.Date;
+                break;
+        }
+
+        if (ViewStart != adjustedStart)
+        {
+            ViewStart = adjustedStart;
         }
         else
         {
-            // We had to adjust the DateTime, so we will trigger a new Change event.
-            WeekStart = actualWeekStart;
+            // Update headers and load data
+            WeekDayHeaders.ForEach(vm => vm.ReferenceDate = adjustedStart);
+            Load();
         }
     }
 
     [RelayCommand]
-    private void NextWeek()
+    private void Next()
     {
-        WeekStart = WeekStart.AddDays(7);
+        ViewStart = ViewMode switch
+        {
+            CalendarViewMode.Month => ViewStart.AddMonths(1),
+            CalendarViewMode.Week => ViewStart.AddDays(7),
+            CalendarViewMode.FiveDays => ViewStart.AddDays(7),
+            CalendarViewMode.Day => ViewStart.AddDays(1),
+            CalendarViewMode.List => ViewStart.AddDays(7),
+            _ => ViewStart.AddDays(7)
+        };
     }
 
     [RelayCommand]
-    private void PreviousWeek()
+    private void Previous()
     {
-        WeekStart = WeekStart.AddDays(-7);
+        ViewStart = ViewMode switch
+        {
+            CalendarViewMode.Month => ViewStart.AddMonths(-1),
+            CalendarViewMode.Week => ViewStart.AddDays(-7),
+            CalendarViewMode.FiveDays => ViewStart.AddDays(-7),
+            CalendarViewMode.Day => ViewStart.AddDays(-1),
+            CalendarViewMode.List => ViewStart.AddDays(-7),
+            _ => ViewStart.AddDays(-7)
+        };
     }
 
     [RelayCommand]
     private void Today()
     {
-        WeekStart = DateTime.Today;
+        ViewStart = DateTime.Today;
     }
+
+    [RelayCommand]
+    private void SetViewMode(CalendarViewMode mode)
+    {
+        ViewMode = mode;
+    }
+
+    // Legacy commands for backward compatibility
+    [RelayCommand]
+    private void NextWeek() => Next();
+
+    [RelayCommand]
+    private void PreviousWeek() => Previous();
 
     public void Load()
     {
         Events.Clear();
         FullDayEvents.Clear();
-        
+        MonthDays.Clear();
+        AgendaDays.Clear();
+
         // TODO: why the fuck is this even initialized to year 0 at one point?!
         //   Make sure we don't actually set that; for now, this is good enough as a workaround.
-        if (WeekStart.Year < 1900)
+        if (ViewStart.Year < 1900)
         {
             return;
         }
 
-        var start = WeekStart;
+        switch (ViewMode)
+        {
+            case CalendarViewMode.Month:
+                LoadMonthView();
+                break;
+            case CalendarViewMode.List:
+                LoadAgendaView();
+                break;
+            default:
+                LoadTimeGridView();
+                break;
+        }
+    }
+
+    private void LoadTimeGridView()
+    {
+        var start = ViewStart;
         var end = start.AddDays(DayColumns);
 
         var tieBreaker = 0;
@@ -184,10 +333,10 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
                     // Determine if this event needs a response (not yet accepted, tentative, or declined)
                     var needsResponse = e.ResponseStatus is EventResponseStatus.NeedsAction or EventResponseStatus.Tentative or EventResponseStatus.Declined;
-                    
+
                     // Determine if this event has been declined
                     var isDeclined = e.ResponseStatus == EventResponseStatus.Declined;
-                    
+
                     var vm = new EventItem
                     {
                         Title = string.IsNullOrEmpty(e.Title) ? "[no title]" : e.Title,
@@ -235,6 +384,104 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
         timed.ForEach(Events.Add);
         fullDay.ForEach(FullDayEvents.Add);
+    }
+
+    private void LoadMonthView()
+    {
+        var firstOfMonth = new DateTime(ViewStart.Year, ViewStart.Month, 1);
+        var lastOfMonth = firstOfMonth.AddMonths(1).AddDays(-1);
+
+        // Find the Monday before or on the first of the month
+        var startOffset = ((int)firstOfMonth.DayOfWeek + 6) % 7;
+        var gridStart = firstOfMonth.AddDays(-startOffset);
+
+        // Always show 6 weeks (42 days) for consistent grid
+        var gridEnd = gridStart.AddDays(42);
+
+        // Get all events for the visible range
+        var events = _calendarSource.GetCalendarEvents(gridStart, gridEnd).ToList();
+
+        // Build day view models
+        for (var i = 0; i < 42; i++)
+        {
+            var date = gridStart.AddDays(i);
+            var dayVm = new MonthDayViewModel
+            {
+                Date = date,
+                DayNumber = date.Day,
+                IsCurrentMonth = date.Month == ViewStart.Month,
+                IsToday = date.Date == DateTime.Today
+            };
+
+            // Add events for this day (limit to 3 for display)
+            var dayEvents = events
+                .Where(e => e.StartTime.Date <= date && e.EndTime.Date >= date)
+                .OrderBy(e => e.StartTime)
+                .Take(3);
+
+            foreach (var evt in dayEvents)
+            {
+                var isFullDay = evt.StartTime.TimeOfDay == TimeSpan.Zero && evt.EndTime.TimeOfDay == TimeSpan.Zero;
+                dayVm.Events.Add(new MonthEventViewModel
+                {
+                    Title = string.IsNullOrEmpty(evt.Title) ? "[no title]" : evt.Title,
+                    Color = string.IsNullOrEmpty(evt.Calendar.Color)
+                        ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
+                        : Color.Parse(evt.Calendar.Color),
+                    CalendarEvent = evt,
+                    IsFullDay = isFullDay,
+                    TimeText = isFullDay ? string.Empty : evt.StartTime.ToString("HH:mm")
+                });
+            }
+
+            MonthDays.Add(dayVm);
+        }
+    }
+
+    private void LoadAgendaView()
+    {
+        // Show 14 days in agenda view
+        const int agendaDays = 14;
+        var start = ViewStart;
+        var end = start.AddDays(agendaDays);
+
+        var events = _calendarSource.GetCalendarEvents(start, end)
+            .OrderBy(e => e.StartTime)
+            .ToList();
+
+        // Group events by day
+        for (var i = 0; i < agendaDays; i++)
+        {
+            var date = start.AddDays(i);
+            var dayVm = new AgendaDayViewModel
+            {
+                Date = date,
+                IsToday = date.Date == DateTime.Today
+            };
+
+            var dayEvents = events
+                .Where(e => e.StartTime.Date == date || (e.StartTime.Date < date && e.EndTime.Date >= date))
+                .OrderBy(e => e.StartTime.TimeOfDay == TimeSpan.Zero ? TimeSpan.MinValue : e.StartTime.TimeOfDay);
+
+            foreach (var evt in dayEvents)
+            {
+                var isFullDay = evt.StartTime.TimeOfDay == TimeSpan.Zero && evt.EndTime.TimeOfDay == TimeSpan.Zero;
+                dayVm.Events.Add(new AgendaEventViewModel
+                {
+                    Title = string.IsNullOrEmpty(evt.Title) ? "[no title]" : evt.Title,
+                    StartTime = evt.StartTime,
+                    EndTime = evt.EndTime,
+                    IsFullDay = isFullDay,
+                    Color = string.IsNullOrEmpty(evt.Calendar.Color)
+                        ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
+                        : Color.Parse(evt.Calendar.Color),
+                    CalendarName = evt.Calendar.Name,
+                    CalendarEvent = evt
+                });
+            }
+
+            AgendaDays.Add(dayVm);
+        }
     }
 
     private static void AssignEventColumns(List<EventItem> items)
@@ -320,7 +567,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
         var newHeaders = new List<WeekDayHeaderViewModel>();
         for (var i = 0; i < value; i++)
         {
-            newHeaders.Add(new WeekDayHeaderViewModel {ReferenceDate = WeekStart, Offset = i});
+            newHeaders.Add(new WeekDayHeaderViewModel { ReferenceDate = ViewStart, Offset = i });
         }
         WeekDayHeaders = newHeaders;
         Load();

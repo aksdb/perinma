@@ -88,13 +88,17 @@ public partial class CalendarWeekView : UserControl
                 case nameof(CalendarWeekViewModel.DayColumns):
                     RebuildColumns();
                     break;
-                case nameof(CalendarWeekViewModel.WeekStart):
-                    _mainView.WeekStart = _viewModel.WeekStart;
+                case nameof(CalendarWeekViewModel.ViewStart):
+                    _mainView.WeekStart = _viewModel.ViewStart;
                     _mainView.RefreshContent();
+                    break;
+                case nameof(CalendarWeekViewModel.ViewMode):
+                    _mainView.WeekStart = _viewModel.ViewStart;
+                    RebuildColumns();
                     break;
             }
         };
-        _mainView.WeekStart = _viewModel.WeekStart;
+        _mainView.WeekStart = _viewModel.ViewStart;
         RebuildColumns();
     }
 
