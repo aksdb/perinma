@@ -15,10 +15,10 @@
         SizeToContent="WidthAndHeight"
         WindowStartupLocation="CenterOwner">
 
-    <DockPanel Margin="20">
+    <StackPanel Margin="20">
         <!-- Principal Selection -->
-        <StackPanel DockPanel.Dock="Top" Spacing="12">
-            <TextBlock Text="Who should have access?" FontWeight="SemiBold" />
+        <StackPanel Spacing="12">
+            <TextBlock Text="Who should have access?" FontWeight="SemiBold" FontSize="16" />
 
             <!-- Principal Type Selection -->
             <ComboBox Name="PrincipalTypeComboBox"
@@ -58,7 +58,7 @@
                                   IsVisible="{Binding HasSearchResults}">
                         <Border BorderBrush="Gray"
                                 BorderThickness="1"
-                                CornerRadius="4"
+                                CornerRadius="5"
                                 Padding="8">
                             <ItemsControl ItemsSource="{Binding SearchResults}">
                                 <ItemsControl.ItemTemplate>
@@ -116,11 +116,11 @@
         </StackPanel>
 
         <!-- Privilege Selection -->
-        <StackPanel DockPanel.Dock="Top" Spacing="12" Margin="0,16,0,0">
-            <TextBlock Text="What permissions?" FontWeight="SemiBold" />
+        <StackPanel Spacing="12" Margin="0,20,0,0">
+            <TextBlock Text="What permissions?" FontWeight="SemiBold" FontSize="16" />
 
             <!-- Preset Buttons -->
-            <StackPanel Orientation="Horizontal" Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="10">
                 <Button Content="Read Only"
                         Command="{Binding SetPresetCommand}"
                         CommandParameter="Read"
@@ -136,46 +136,35 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- Custom Privileges (scrollable) -->
-        <ScrollViewer DockPanel.Dock="Top"
-                    VerticalScrollBarVisibility="Auto"
-                    HorizontalScrollBarVisibility="Disabled"
-                    MaxHeight="250"
-                    Margin="0,8,0,0">
-            <Border BorderBrush="Gray"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    Padding="12">
-                <StackPanel Spacing="8">
-                    <TextBlock Text="Custom privileges:" FontSize="12" FontWeight="SemiBold" />
+        <!-- Custom Privileges -->
+        <StackPanel Spacing="8" Margin="0,12,0,0">
+            <TextBlock Text="Custom privileges:" FontSize="12" FontWeight="SemiBold" />
 
-                    <!-- Read Privileges -->
-                    <StackPanel Spacing="4">
-                        <CheckBox Content="Read" IsChecked="{Binding CanRead}" />
-                        <CheckBox Content="Read ACL" IsChecked="{Binding CanReadAcl}" />
-                    </StackPanel>
+            <!-- Read Privileges -->
+            <StackPanel Spacing="4">
+                <CheckBox Content="Read" IsChecked="{Binding CanRead}" />
+                <CheckBox Content="Read ACL" IsChecked="{Binding CanReadAcl}" />
+            </StackPanel>
 
-                    <!-- Write Privileges -->
-                    <StackPanel Spacing="4" Margin="0,4,0,0">
-                        <CheckBox Content="Write" IsChecked="{Binding CanWrite}" />
-                        <CheckBox Content="Write Properties" IsChecked="{Binding CanWriteProperties}" />
-                        <CheckBox Content="Write Content" IsChecked="{Binding CanWriteContent}" />
-                        <CheckBox Content="Bind" IsChecked="{Binding CanBind}" />
-                        <CheckBox Content="Unbind" IsChecked="{Binding CanUnbind}" />
-                        <CheckBox Content="Unlock" IsChecked="{Binding CanUnlock}" />
-                    </StackPanel>
+            <!-- Write Privileges -->
+            <StackPanel Spacing="4" Margin="0,8,0,0">
+                <CheckBox Content="Write" IsChecked="{Binding CanWrite}" />
+                <CheckBox Content="Write Properties" IsChecked="{Binding CanWriteProperties}" />
+                <CheckBox Content="Write Content" IsChecked="{Binding CanWriteContent}" />
+                <CheckBox Content="Bind" IsChecked="{Binding CanBind}" />
+                <CheckBox Content="Unbind" IsChecked="{Binding CanUnbind}" />
+                <CheckBox Content="Unlock" IsChecked="{Binding CanUnlock}" />
+            </StackPanel>
 
-                    <!-- Admin Privileges -->
-                    <StackPanel Spacing="4" Margin="0,4,0,0">
-                        <CheckBox Content="Write ACL" IsChecked="{Binding CanWriteAcl}" />
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-        </ScrollViewer>
+            <!-- Admin Privileges -->
+            <StackPanel Spacing="4" Margin="0,8,0,0">
+                <CheckBox Content="Write ACL" IsChecked="{Binding CanWriteAcl}" />
+            </StackPanel>
+        </StackPanel>
 
         <!-- Grant/Deny Toggle -->
-        <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,16,0,0">
-            <TextBlock Text="Action:" FontWeight="SemiBold" />
+        <StackPanel Spacing="8" Margin="0,20,0,0">
+            <TextBlock Text="Action:" FontWeight="SemiBold" FontSize="16" />
             <StackPanel Orientation="Horizontal" Spacing="16">
                 <RadioButton Content="Grant" GroupName="GrantDeny" IsChecked="{Binding IsGrant}" />
                 <RadioButton Content="Deny" GroupName="GrantDeny" IsChecked="{Binding IsGrant, Converter={x:Static BoolConverters.Not}}" />
@@ -183,8 +172,7 @@
         </StackPanel>
 
         <!-- Buttons -->
-        <StackPanel DockPanel.Dock="Bottom"
-                    Orientation="Horizontal"
+        <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Spacing="10"
                     Margin="0,20,0,0">
@@ -198,6 +186,6 @@
                     Padding="0,8"
                     Classes="Accent" />
         </StackPanel>
-    </DockPanel>
+    </StackPanel>
 
 </Window>
