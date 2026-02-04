@@ -204,4 +204,55 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
         return null;
     }
+
+    public async Task<RemindersRebuildResult> RebuildAllRemindersAsync(CancellationToken cancellationToken = default)
+    {
+        var result = new RemindersRebuildResult();
+
+        await storage.DeleteAllRemindersAsync();
+
+        var accounts = (await storage.GetAllAccountsAsync()).ToList();
+
+        foreach (var account in accounts)
+        {
+            var calendars = storage.GetCachedCalendars(new Models.Account
+            {
+                Id = Guid.Parse(account.AccountId),
+                Name = account.Name,
+                Type = account.AccountTypeEnum
+            }).Where(c => c.Enabled).ToList();
+
+            result.TotalCalendars = calendars.Count;
+
+            foreach (var calendar in calendars)
+            {
+                var events = (await storage.GetEventsByCalendarAsync(calendar.Id.ToString())).ToList();
+                result.TotalEvents += events.Count;
+
+                foreach (var evt in events)
+                {
+                    try
+                    {
+                        await PopulateRemindersForEventAsync(evt.EventId, calendar.Id.ToString(), calendar.Account.Type,
+                            cancellationToken);
+                        result.EventsProcessed++;
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Errors.Add($"Event {evt.EventId} in calendar {calendar.Name}: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+}
+
+public class RemindersRebuildResult
+{
+    public int TotalCalendars { get; set; }
+    public int TotalEvents { get; set; }
+    public int EventsProcessed { get; set; }
+    public List<string> Errors { get; set; } = new();
 }

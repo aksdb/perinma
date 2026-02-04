@@ -16,6 +16,7 @@ using perinma.Storage;
 using perinma.Views.Calendar;
 using perinma.Views.CalendarList;
 using perinma.Views.Contacts;
+using perinma.Views.Debug;
 using perinma.Views.MessageBox;
 using perinma.Views.Settings;
 
@@ -46,6 +47,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private readonly ICardDavService _cardDavService;
     private readonly ThemeService _themeService;
     private readonly SettingsService _settingsService;
+    private DebugWindow? _debugWindow;
 
     [ObservableProperty]
     private bool _isSyncing;
@@ -128,6 +130,26 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _settingsWindow.DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService, _calDavService, _cardDavService, _syncService, _settingsWindow);
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
+    }
+    #endregion
+
+    #region Debug
+    [RelayCommand]
+    private void ShowDebugWindow()
+    {
+        if (_debugWindow != null)
+        {
+            _debugWindow.Activate();
+            return;
+        }
+
+        var storage = new SqliteStorage(_databaseService, _credentialManager);
+        var reminderService = new ReminderService(storage, _syncService.Providers);
+
+        _debugWindow = new DebugWindow();
+        _debugWindow.DataContext = new DebugWindowViewModel(reminderService);
+        _debugWindow.Closed += (_, _) => _debugWindow = null;
+        _debugWindow.Show();
     }
     #endregion
 

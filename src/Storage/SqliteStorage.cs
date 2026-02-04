@@ -820,6 +820,14 @@ public class SqliteStorage : IDisposable
         );
     }
 
+    public async Task<int> DeleteAllRemindersAsync()
+    {
+        return await _connection.ExecuteAsync(
+            "DELETE FROM reminder",
+            commandTimeout: 30
+        );
+    }
+
     #endregion
 
     #region Cache Management

@@ -6,6 +6,7 @@
         xmlns:callist="using:perinma.Views.CalendarList"
         xmlns:contacts="using:perinma.Views.Contacts"
         xmlns:main="using:perinma.Views.Main"
+        xmlns:debug="using:perinma.Views.Debug"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         Width="1200" Height="600"
         x:Class="perinma.Views.Main.MainWindow"
@@ -53,8 +54,11 @@
                         </MenuItem>
                     </MenuItem>
                 </MenuItem>
+                <MenuItem Header="_Tools">
+                    <MenuItem Header="_Debug" Command="{Binding ShowDebugWindowCommand}"/>
+                </MenuItem>
             </Menu>
-            
+
             <!-- View Switcher Buttons -->
             <StackPanel DockPanel.Dock="Right" 
                         Orientation="Horizontal" 

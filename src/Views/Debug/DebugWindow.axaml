@@ -1,0 +1,158 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:debug="using:perinma.Views.Debug"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        Width="800" Height="600"
+        x:Class="perinma.Views.Debug.DebugWindow"
+        x:DataType="debug:DebugWindowViewModel"
+        Title="Debug Tools">
+
+    <Design.DataContext>
+        <debug:DebugWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Header -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource SystemChromeMediumLowColor}"
+                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                BorderThickness="0,0,0,1"
+                Padding="16,12">
+            <StackPanel Spacing="4">
+                <TextBlock Text="Debug Tools"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource SystemBaseHighColor}"/>
+                <TextBlock Text="Developer utilities for troubleshooting and maintenance"
+                           FontSize="13"
+                           Foreground="{DynamicResource SystemBaseMediumHighColor}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Content Area -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="16" Spacing="20">
+                <!-- Rebuild Reminders Section -->
+                <Border Background="{DynamicResource SystemAltMediumColor}"
+                        BorderBrush="{DynamicResource SystemChromeLowColor}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Reminders"
+                                   FontWeight="SemiBold"
+                                   FontSize="16"/>
+                        <TextBlock Text="Rebuild all reminders from existing calendar events."
+                                   TextWrapping="Wrap"
+                                   Foreground="{DynamicResource SystemBaseMediumHighColor}"/>
+
+                        <TextBlock Text="This will:"
+                                   Margin="0,4,0,0"
+                                   FontSize="13">
+                            <Run Text="• Delete all existing reminders"/>
+                            <LineBreak/>
+                            <Run Text="• Re-scan all calendar events"/>
+                            <LineBreak/>
+                            <Run Text="• Recreate reminders based on event settings"/>
+                        </TextBlock>
+
+                        <TextBlock Text="Note: This operation may take a while depending on the number of events."
+                                   Foreground="{DynamicResource SystemAccentColor}"
+                                   FontSize="12"
+                                   Margin="0,8,0,0"/>
+
+                        <!-- Status Display -->
+                        <Border Background="{DynamicResource SystemBaseLowColor}"
+                                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="12"
+                                IsVisible="{Binding IsProcessing}">
+                            <StackPanel Spacing="8">
+                                <ProgressBar IsIndeterminate="False"
+                                            Value="{Binding Progress}"
+                                            Height="4"
+                                            Foreground="{DynamicResource SystemAccentColor}"/>
+                                <TextBlock Text="{Binding StatusText}"
+                                           FontSize="13"
+                                           Foreground="{DynamicResource SystemBaseMediumHighColor}"/>
+                                <TextBlock>
+                                    <Run Text="Processed: "/>
+                                    <Run Text="{Binding EventsProcessed}" FontWeight="SemiBold"/>
+                                    <Run Text=" / "/>
+                                    <Run Text="{Binding TotalEvents}" FontWeight="SemiBold"/>
+                                    <Run Text=" events from "/>
+                                    <Run Text="{Binding TotalCalendars}" FontWeight="SemiBold"/>
+                                    <Run Text=" calendar(s)"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Result Display -->
+                        <Border Background="{DynamicResource SystemBaseLowColor}"
+                                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="12"
+                                IsVisible="{Binding IsComplete}">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Rebuild Complete!"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SystemAccentColorLight2}"/>
+                                <TextBlock>
+                                    <Run Text="Processed "/>
+                                    <Run Text="{Binding EventsProcessed}" FontWeight="SemiBold"/>
+                                    <Run Text=" events from "/>
+                                    <Run Text="{Binding TotalCalendars}" FontWeight="SemiBold"/>
+                                    <Run Text=" calendar(s)"/>
+                                </TextBlock>
+                                <TextBlock>
+                                    <Run Text="Errors: "/>
+                                    <Run Text="{Binding ErrorCount}" FontWeight="SemiBold"
+                                          Foreground="Green"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Error Details -->
+                        <ScrollViewer MaxHeight="150"
+                                      IsVisible="{Binding HasErrors}">
+                            <ItemsControl ItemsSource="{Binding Errors}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource SystemErrorColor}"
+                                                CornerRadius="2"
+                                                Padding="8,4"
+                                                Margin="0,2">
+                                            <TextBlock Text="{Binding}"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="White"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <!-- Action Buttons -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Rebuild Reminders"
+                                    Command="{Binding RebuildRemindersCommand}"
+                                    IsEnabled="{Binding IsProcessing, Converter={x:Static BoolConverters.Not}}"
+                                    Padding="20,8"
+                                    MinWidth="120"/>
+                            <Button Content="Close"
+                                    Command="{Binding CloseCommand}"
+                                    Padding="20,8"
+                                    MinWidth="120"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- More debug features can be added here -->
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>
