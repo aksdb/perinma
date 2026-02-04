@@ -14,7 +14,8 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
     private readonly HashSet<string> _firedReminders = new();
 
     public async Task PopulateRemindersForEventAsync(string eventId, string calendarId, AccountType accountType,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        DateTime referenceTime = default)
     {
         var rawData = await storage.GetEventData(eventId, "rawData");
 
@@ -39,7 +40,8 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
         // Get reminder occurrences from the provider
         var reminderOccurrences =
-            await provider.GetNextReminderOccurrencesAsync(rawData, rawCalendarData, DateTime.UtcNow,
+            await provider.GetNextReminderOccurrencesAsync(rawData, rawCalendarData,
+                referenceTime == default ? DateTime.UtcNow : referenceTime,
                 cancellationToken);
 
         if (reminderOccurrences.Count == 0)
@@ -94,21 +96,19 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
     private async Task HandleDismissAsync(string reminderId, CancellationToken cancellationToken)
     {
         var reminder = await storage.GetReminderAsync(reminderId);
-
         if (reminder == null)
-        {
             return;
-        }
 
-        // Prepare follow-up reminder.
+        // Prepare follow-up reminder using trigger time as reference to get next recurrence
         var calendarId = await storage.GetEventCalendarIdAsync(reminder.TargetId);
         if (!string.IsNullOrEmpty(calendarId))
         {
             var calendar = storage.GetCachedCalendar(new Guid(calendarId));
             if (calendar != null)
             {
+                var triggerTime = DateTimeOffset.FromUnixTimeSeconds(reminder.TriggerTime).DateTime;
                 await PopulateRemindersForEventAsync(reminder.TargetId, calendarId, calendar.Account.Type,
-                    cancellationToken);
+                    cancellationToken, triggerTime);
             }
         }
 
