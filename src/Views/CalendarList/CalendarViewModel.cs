@@ -1,11 +1,13 @@
 using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using perinma.Services;
 using perinma.Services.CalDAV;
 using perinma.Storage;
+using perinma.Utils;
 using perinma.Views.Acl;
 using perinma.Views.MessageBox;
 
@@ -18,7 +20,7 @@ public partial class CalendarViewModel : ViewModelBase
     {
         Calendar = calendar;
     }
-    
+
     private Models.Calendar Calendar
     {
         get;
@@ -31,7 +33,7 @@ public partial class CalendarViewModel : ViewModelBase
             Enabled = value.Enabled;
         }
     }
-    
+
     [ObservableProperty]
     private Guid _id;
 
@@ -39,10 +41,24 @@ public partial class CalendarViewModel : ViewModelBase
     private string _name = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CheckmarkColor))]
     private string? _color;
 
     [ObservableProperty]
     private bool _enabled;
+
+    public IBrush? CheckmarkColor
+    {
+        get
+        {
+            if (Color == null)
+                return null;
+
+            var backgroundColor = Avalonia.Media.Color.Parse(Color);
+            var foregroundColor = ColorUtils.ContrastTextColor(backgroundColor);
+            return new SolidColorBrush(foregroundColor);
+        }
+    }
 
     /// <summary>
     /// Gets or sets the calendar URL (ExternalId from database).

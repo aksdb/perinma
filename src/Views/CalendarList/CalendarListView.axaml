@@ -13,13 +13,13 @@
             <Viewbox MaxHeight="250" Stretch="Uniform" HorizontalAlignment="Center" Margin="0, 0, 0, 10">
                 <Calendar SelectedDate="{Binding CalendarWeekViewModel.WeekStart}" />
             </Viewbox>
-            
+
             <TextBlock Text="Calendars"
                        FontSize="18"
                        FontWeight="Bold"
                        Margin="0,0,0,15" />
         </StackPanel>
-        
+
         <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
             <StackPanel>
@@ -97,21 +97,41 @@
                                                         </ContextMenu>
                                                     </Border.ContextMenu>
                                                     <DockPanel>
-                                                        <!-- Checkbox on right -->
-                                                        <CheckBox IsChecked="{Binding Enabled}"
-                                                                  DockPanel.Dock="Right"
-                                                                  VerticalAlignment="Center"
-                                                                  Margin="8,0,0,0" />
-
-                                                        <!-- Color indicator + Name on left -->
+                                                        <!-- Color indicator + Name -->
                                                         <StackPanel Orientation="Horizontal"
                                                                     Spacing="8">
-                                                            <!-- Color Box -->
+                                                            <!-- Color Box (clickable to toggle) -->
                                                             <Border Width="16"
                                                                     Height="16"
                                                                     CornerRadius="3"
                                                                     Background="{Binding Color}"
-                                                                    VerticalAlignment="Center" />
+                                                                    VerticalAlignment="Center"
+                                                                    Cursor="Hand"
+                                                                    PointerPressed="ColorBox_PointerPressed">
+                                                                <TextBlock Text="&#x2713;"
+                                                                           FontSize="12"
+                                                                           FontWeight="Bold"
+                                                                           Foreground="{Binding CheckmarkColor}"
+                                                                           HorizontalAlignment="Center"
+                                                                           VerticalAlignment="Center"
+                                                                           IsVisible="{Binding Enabled}" />
+                                                                <Border.Styles>
+                                                                    <Style Selector="Border:pointerover">
+                                                                        <Setter Property="Opacity" Value="0.8" />
+                                                                    </Style>
+                                                                    <Style Selector="Border">
+                                                                        <Style.Animations>
+                                                                            <Animation Duration="0:0:0.2"
+                                                                                    Easing="CubicEaseOut">
+                                                                                <KeyFrame Cue="0%">
+                                                                                    <Setter Property="Opacity"
+                                                                                        Value="1" />
+                                                                                </KeyFrame>
+                                                                            </Animation>
+                                                                        </Style.Animations>
+                                                                    </Style>
+                                                                </Border.Styles>
+                                                            </Border>
 
                                                             <!-- Calendar Name -->
                                                             <TextBlock Text="{Binding Name}"

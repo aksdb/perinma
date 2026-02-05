@@ -111,7 +111,7 @@ public partial class CalendarListView : UserControl
         {
             // Look for a Border whose DataContext is AccountGroupViewModel
             // and that has DragDrop.AllowDrop set (the outer container)
-            if (visual is Border border && 
+            if (visual is Border border &&
                 border.DataContext is AccountGroupViewModel &&
                 DragDrop.GetAllowDrop(border))
             {
@@ -121,5 +121,20 @@ public partial class CalendarListView : UserControl
             visual = visual.GetVisualParent();
         }
         return null;
+    }
+
+    private void ColorBox_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Border colorBox)
+            return;
+
+        if (colorBox.DataContext is not CalendarViewModel calendar)
+            return;
+
+        if (!e.GetCurrentPoint(colorBox).Properties.IsLeftButtonPressed)
+            return;
+
+        calendar.Enabled = !calendar.Enabled;
+        e.Handled = true;
     }
 }
