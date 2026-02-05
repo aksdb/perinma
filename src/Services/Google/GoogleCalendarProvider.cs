@@ -268,7 +268,7 @@ public class GoogleCalendarProvider : ICalendarProvider
              }
 
              // For recurring events with a specific occurrence time, find matching occurrence
-             var icalString = BuildIcalString(googleEvent.Recurrence);
+             var icalString = BuildIcalString(googleEvent.Recurrence, googleEvent.Start);
              if (string.IsNullOrEmpty(icalString))
              {
                  return Task.FromResult<DateTimeOffset?>(ParseGoogleDateTimeWithTimezone(googleEvent.Start));
@@ -395,7 +395,7 @@ public class GoogleCalendarProvider : ICalendarProvider
 
             if (isRecurring)
             {
-                var icalString = BuildIcalString(googleEvent.Recurrence);
+                var icalString = BuildIcalString(googleEvent.Recurrence, googleEvent.Start);
                 if (string.IsNullOrEmpty(icalString))
                 {
                     return [];
@@ -446,7 +446,7 @@ public class GoogleCalendarProvider : ICalendarProvider
         }
     }
 
-    private static string BuildIcalString(IList<string>? recurrence)
+    private static string BuildIcalString(IList<string>? recurrence, EventDateTime? eventStart)
     {
         if (recurrence == null || recurrence.Count == 0)
         {
@@ -456,6 +456,26 @@ public class GoogleCalendarProvider : ICalendarProvider
         var sb = new StringBuilder();
         sb.AppendLine("BEGIN:VCALENDAR");
         sb.AppendLine("BEGIN:VEVENT");
+
+        // Add DTSTART with timezone information
+        if (eventStart != null && !string.IsNullOrEmpty(eventStart.DateTimeRaw))
+        {
+            // Try to parse as DateTimeOffset to preserve timezone offset
+            if (DateTimeOffset.TryParse(eventStart.DateTimeRaw, out var dtStartOffset))
+            {
+                // Format as local time in iCal format: YYYYMMDDTHHMMSS
+                // WITHOUT 'Z' suffix so iCal treats it as local time
+                sb.AppendLine($"DTSTART;TZID={eventStart.TimeZone ?? "UTC"}:{dtStartOffset.DateTime:yyyyMMdd'T'HHmmss}");
+            }
+            else if (DateTime.TryParse(eventStart.DateTimeRaw, out var dtStart))
+            {
+                // Fallback: treat as UTC if parsing as DateTimeOffset failed
+                var dtStartUtc = dtStart.Kind == DateTimeKind.Local
+                    ? dtStart.ToUniversalTime()
+                    : (dtStart.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(dtStart, DateTimeKind.Utc) : dtStart);
+                sb.AppendLine($"DTSTART:{dtStartUtc:yyyyMMdd'T'HHmmss'Z'}");
+            }
+        }
 
         foreach (var r in recurrence)
         {

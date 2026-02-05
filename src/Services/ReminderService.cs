@@ -106,9 +106,9 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
             var calendar = storage.GetCachedCalendar(new Guid(calendarId));
             if (calendar != null)
             {
-                var triggerTime = DateTimeOffset.FromUnixTimeSeconds(reminder.TriggerTime).DateTime;
+                var previousTargetTime = DateTimeOffset.FromUnixTimeSeconds(reminder.TargetTime).DateTime;
                 await PopulateRemindersForEventAsync(reminder.TargetId, calendarId, calendar.Account.Type,
-                    cancellationToken, triggerTime);
+                    cancellationToken, previousTargetTime);
             }
         }
 
@@ -133,7 +133,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         {
             if (reminder.TargetType != 1)
             {
-                // Not a calendar reminder; nothing to be done 
+                // Not a calendar reminder; nothing to be done
                 return;
             }
 
