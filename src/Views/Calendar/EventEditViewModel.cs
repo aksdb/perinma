@@ -28,6 +28,7 @@ public partial class EventEditViewModel : ViewModelBase
     private bool _isSaving;
     private string _errorMessage = string.Empty;
     private CalendarModel? _selectedCalendar;
+    private TimeSpan _duration;
 
     public string Title
     {
@@ -60,7 +61,8 @@ public partial class EventEditViewModel : ViewModelBase
         {
             if (SetProperty(ref _startTime, value))
             {
-                EndTime = value.AddMinutes(30);
+                // Update end time to maintain duration
+                EndTime = _startTime.Add(_duration);
                 OnPropertyChanged(nameof(EndTime));
             }
         }
@@ -73,12 +75,17 @@ public partial class EventEditViewModel : ViewModelBase
         {
             if (value < _startTime)
             {
-                _endTime = _startTime.AddMinutes(30);
+                _endTime = _startTime.Add(_duration);
                 OnPropertyChanged();
             }
             else
             {
-                SetProperty(ref _endTime, value);
+                if (SetProperty(ref _endTime, value))
+                {
+                    // Update duration based on new end time
+                    Duration = _endTime - _startTime;
+                    OnPropertyChanged(nameof(Duration));
+                }
             }
             OnPropertyChanged(nameof(StartTime));
         }
@@ -100,6 +107,20 @@ public partial class EventEditViewModel : ViewModelBase
     {
         get => _selectedCalendar;
         set => SetProperty(ref _selectedCalendar, value);
+    }
+
+    public TimeSpan Duration
+    {
+        get => _duration;
+        set
+        {
+            if (SetProperty(ref _duration, value))
+            {
+                // Update end time to maintain duration
+                _endTime = _startTime.Add(_duration);
+                OnPropertyChanged(nameof(EndTime));
+            }
+        }
     }
 
     public bool IsEditMode => _existingEvent != null;
@@ -157,6 +178,7 @@ public partial class EventEditViewModel : ViewModelBase
             Location = string.Empty;
             _startTime = existingEvent.StartTime;
             _endTime = existingEvent.EndTime;
+            _duration = _endTime - _startTime;
             SelectedCalendar = calendar;
 
             var rawDataTask = _storage.GetEventData(existingEvent.Id.ToString(), "rawData");
@@ -168,6 +190,8 @@ public partial class EventEditViewModel : ViewModelBase
             var now = DateTime.Now;
             var rounded = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0, DateTimeKind.Local);
             _startTime = rounded;
+            _duration = TimeSpan.FromMinutes(30);
+            _endTime = _startTime.Add(_duration);
             SelectedCalendar = calendar; // May be null, will select first available
         }
     }

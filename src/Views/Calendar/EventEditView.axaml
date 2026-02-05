@@ -3,66 +3,137 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:cal="using:perinma.Views.Calendar"
-        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="450"
+        xmlns:converters="using:Avalonia.Data.Converters"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="550"
         x:Class="perinma.Views.Calendar.EventEditView"
         x:DataType="cal:EventEditViewModel"
         Title="{Binding WindowTitle}"
-        Width="500" Height="500"
+        Width="500" Height="550"
         WindowStartupLocation="CenterOwner">
 
     <Design.DataContext>
         <cal:EventEditViewModel/>
     </Design.DataContext>
 
+    <Window.Resources>
+        <cal:DateTimeToTimeSpanConverter x:Key="DateTimeToTimeSpanConverter"/>
+    </Window.Resources>
+
     <Grid RowDefinitions="Auto,*,Auto" Margin="16">
-        <StackPanel Grid.Row="0" Spacing="8">
-            <TextBlock Text="Title" FontSize="16" FontWeight="SemiBold"/>
+        <StackPanel Grid.Row="0" Spacing="12">
+            <!-- Calendar Selection -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Calendar" FontWeight="SemiBold" FontSize="12"/>
+                <ComboBox ItemsSource="{Binding Calendars}"
+                          SelectedItem="{Binding SelectedCalendar}"
+                          HorizontalAlignment="Stretch"
+                          PlaceholderText="Select Calendar">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Ellipse Width="12" Height="12" Fill="{Binding Color}" Stroke="{DynamicResource SystemControlForegroundBrush}"/>
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
 
-            <ComboBox ItemsSource="{Binding Calendars}"
-                      SelectedItem="{Binding SelectedCalendar}"
-                      HorizontalAlignment="Stretch"
-                      PlaceholderText="Select Calendar">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Ellipse Width="12" Height="12" Fill="{Binding Color}" Stroke="{DynamicResource SystemControlForegroundBrush}"/>
-                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
+            <!-- Title -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Title" FontWeight="SemiBold" FontSize="12"/>
+                <TextBox Text="{Binding Title}"
+                         Watermark="Event title"
+                         HorizontalAlignment="Stretch"/>
+            </StackPanel>
 
-            <TextBox Text="{Binding Title}"
-                     Watermark="Event title"
-                     HorizontalAlignment="Stretch"/>
+            <!-- Date/Time Section -->
+            <Border BorderBrush="{DynamicResource SystemChromeLowColor}" 
+                    BorderThickness="1" 
+                    CornerRadius="4" 
+                    Padding="12">
+                <StackPanel Spacing="8">
+                    <!-- Start Date/Time -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Start" FontWeight="SemiBold" FontSize="12"/>
+                        <Grid ColumnDefinitions="*,8,*">
+                            <CalendarDatePicker Name="StartDatePicker"
+                                            SelectedDate="{Binding StartTime}"
+                                            HorizontalAlignment="Stretch"
+                                            IsTodayHighlighted="True"/>
+                            <TimePicker Name="StartTimePicker"
+                                       Grid.Column="2"
+                                       ClockIdentifier="24HourClock"
+                                       SelectedTime="{Binding StartTime, Converter={StaticResource DateTimeToTimeSpanConverter}}"
+                                       HorizontalAlignment="Stretch"/>
+                        </Grid>
+                    </StackPanel>
 
-            <TextBox Text="{Binding Description}"
-                     Watermark="Description (optional)"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     HorizontalAlignment="Stretch"
-                     Height="100"/>
+                    <!-- Duration -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Duration" FontWeight="SemiBold" FontSize="12"/>
+                        <Grid ColumnDefinitions="*,8,*,8,*">
+                            <NumericUpDown Value="{Binding Duration.TotalHours}"
+                                          Increment="1"
+                                          Minimum="0"
+                                          Maximum="24"
+                                          FormatString="F0"
+                                          HorizontalAlignment="Stretch"/>
+                            <TextBlock Text="hours"
+                                       Grid.Column="2"
+                                       VerticalAlignment="Center"/>
+                            <NumericUpDown Value="{Binding Duration.Minutes}"
+                                          Grid.Column="4"
+                                          Increment="15"
+                                          Minimum="0"
+                                          Maximum="45"
+                                          FormatString="D2"
+                                          HorizontalAlignment="Stretch"/>
+                            <TextBlock Text="min"
+                                       Grid.Column="6"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </StackPanel>
 
-            <TextBox Text="{Binding Location}"
-                     Watermark="Location (optional)"
-                     HorizontalAlignment="Stretch"/>
+                    <!-- End Date/Time -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="End" FontWeight="SemiBold" FontSize="12"/>
+                        <Grid ColumnDefinitions="*,8,*">
+                            <CalendarDatePicker Name="EndDatePicker"
+                                            SelectedDate="{Binding EndTime}"
+                                            HorizontalAlignment="Stretch"
+                                            IsTodayHighlighted="True"/>
+                            <TimePicker Name="EndTimePicker"
+                                       Grid.Column="2"
+                                       ClockIdentifier="24HourClock"
+                                       SelectedTime="{Binding EndTime, Converter={StaticResource DateTimeToTimeSpanConverter}}"
+                                       HorizontalAlignment="Stretch"/>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Description -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Description" FontWeight="SemiBold" FontSize="12"/>
+                <TextBox Text="{Binding Description}"
+                         Watermark="Description (optional)"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         HorizontalAlignment="Stretch"
+                         Height="80"/>
+            </StackPanel>
+
+            <!-- Location -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Location" FontWeight="SemiBold" FontSize="12"/>
+                <TextBox Text="{Binding Location}"
+                         Watermark="Location (optional)"
+                         HorizontalAlignment="Stretch"/>
+            </StackPanel>
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Spacing="8" Orientation="Horizontal" HorizontalAlignment="Right">
-            <TextBlock Text="{Binding StartTime, StringFormat='{}yyyy-MM-dd HH:mm'}" 
-                       VerticalAlignment="Center" 
-                       FontSize="12" 
-                       Margin="8,0"/>
-            <TextBlock Text="to" 
-                       VerticalAlignment="Center" 
-                       FontSize="12" 
-                       Margin="8,0"/>
-            <TextBlock Text="{Binding EndTime, StringFormat='{}yyyy-MM-dd HH:mm'}" 
-                       VerticalAlignment="Center" 
-                       FontSize="12" 
-                       Margin="8,0"/>
-        </StackPanel>
-
+        <!-- Error Message -->
         <Border Grid.Row="2" 
                 BorderBrush="{DynamicResource SystemChromeLowColor}" 
                 BorderThickness="0,1,0,0" 
@@ -74,6 +145,7 @@
                        TextWrapping="Wrap"/>
         </Border>
 
+        <!-- Buttons -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
             <Button Content="Save" 
                     Command="{Binding SaveCommand}" 

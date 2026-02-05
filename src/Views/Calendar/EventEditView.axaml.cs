@@ -1,7 +1,30 @@
 using System;
+using System.Globalization;
 using Avalonia.Controls;
+using Avalonia.Data.Converters;
 
 namespace perinma.Views.Calendar;
+
+public class DateTimeToTimeSpanConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is DateTime dateTime)
+        {
+            return dateTime.TimeOfDay;
+        }
+        return null;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is TimeSpan timeSpan)
+        {
+            return DateTime.Today.Add(timeSpan);
+        }
+        return null;
+    }
+}
 
 public partial class EventEditView : Window
 {
