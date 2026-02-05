@@ -19,7 +19,7 @@
             <TextBlock Text="Title" FontSize="16" FontWeight="SemiBold"/>
 
             <ComboBox ItemsSource="{Binding Calendars}"
-                      SelectedIndex="0"
+                      SelectedItem="{Binding SelectedCalendar}"
                       HorizontalAlignment="Stretch"
                       PlaceholderText="Select Calendar">
                 <ComboBox.ItemTemplate>

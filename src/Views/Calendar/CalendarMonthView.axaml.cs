@@ -48,7 +48,7 @@ public partial class CalendarMonthView : UserControl
         {
             DataContext = new EventEditViewModel(
                 null,
-                null!,
+                null,
                 _viewModel.Storage!,
                 _viewModel.Providers,
                 onCompleted)
