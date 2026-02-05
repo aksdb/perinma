@@ -12,11 +12,14 @@ using perinma.Storage;
 
 namespace perinma.Views.Calendar;
 
-public partial class CalendarWeekViewModel : ViewModelBase
+    public partial class CalendarWeekViewModel : ViewModelBase
 {
     private readonly ICalendarSource _calendarSource;
     private readonly SqliteStorage? _storage;
     private readonly IReadOnlyDictionary<AccountType, ICalendarProvider>? _providers;
+
+    [ObservableProperty]
+    private CalendarEvent? _selectedEvent;
 
     public SettingsService? SettingsService { get; }
 
@@ -594,6 +597,21 @@ public partial class CalendarWeekViewModel : ViewModelBase
         }
         WeekDayHeaders = newHeaders;
         Load();
+    }
+
+    [RelayCommand]
+    private void OpenEventEditor(CalendarEvent? existingEvent)
+    {
+        if (_calendarSource == null)
+            return;
+
+        _selectedEvent = existingEvent;
+    }
+
+    [RelayCommand]
+    private void CloseEventEditor()
+    {
+        _selectedEvent = null;
     }
 }
 

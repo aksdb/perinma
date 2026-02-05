@@ -382,16 +382,79 @@ public class CalDavCalendarProvider : ICalendarProvider
             throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
         }
 
-        // For CalDAV, we need the user's email (stored in Username)
+        // For CalDAV, we need user's email (stored in Username)
         var userEmail = calDavCredentials.Username;
 
-        // Respond to the event using the service
+        // Respond to event using the service
         await _calDavService.RespondToEventAsync(
             calDavCredentials,
             eventId, // eventId is the event URL for CalDAV
             rawEventData,
             responseStatus,
             userEmail,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<string> CreateEventAsync(
+        string accountId,
+        string calendarId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        var calDavCredentials = _credentialManager.GetCalDavCredentials(accountId);
+        if (calDavCredentials == null)
+        {
+            throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
+        }
+
+        return await _calDavService.CreateEventAsync(
+            calDavCredentials,
+            calendarId,
+            title,
+            description,
+            location,
+            startTime,
+            endTime,
+            rawEventData,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateEventAsync(
+        string accountId,
+        string calendarId,
+        string eventId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        var calDavCredentials = _credentialManager.GetCalDavCredentials(accountId);
+        if (calDavCredentials == null)
+        {
+            throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
+        }
+
+        // For CalDAV, eventId is the event URL and rawEventData contains the current iCalendar data
+        await _calDavService.UpdateEventAsync(
+            calDavCredentials,
+            eventId,
+            rawEventData ?? string.Empty,
+            title,
+            description,
+            location,
+            startTime,
+            endTime,
+            rawEventData,
             cancellationToken);
     }
 }

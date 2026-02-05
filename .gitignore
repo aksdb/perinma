@@ -11,3 +11,4 @@ build/
 
 # Local mise configuration
 mise.local.toml
+/.idea/.idea.perinma/.idea/avalonia.xml

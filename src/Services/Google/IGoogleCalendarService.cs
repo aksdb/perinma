@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Calendar.v3;
@@ -50,10 +51,10 @@ public interface IGoogleCalendarService
         string? redirectUri = null);
 
     /// <summary>
-    /// Updates the user's response status for an event invitation
+    /// Updates user's response status for an event invitation
     /// </summary>
     /// <param name="service">Authenticated CalendarService</param>
-    /// <param name="calendarId">Calendar ID containing the event</param>
+    /// <param name="calendarId">Calendar ID containing event</param>
     /// <param name="eventId">Event ID to respond to</param>
     /// <param name="responseStatus">The response status (accepted, declined, tentative)</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -62,5 +63,54 @@ public interface IGoogleCalendarService
         string calendarId,
         string eventId,
         string responseStatus,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a new event in the specified calendar.
+    /// </summary>
+    /// <param name="service">Authenticated CalendarService</param>
+    /// <param name="calendarId">Calendar ID to create event in</param>
+    /// <param name="title">Event title</param>
+    /// <param name="description">Event description (optional)</param>
+    /// <param name="location">Event location (optional)</param>
+    /// <param name="startTime">Event start time</param>
+    /// <param name="endTime">Event end time</param>
+    /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The external ID of the created event</returns>
+    Task<string> CreateEventAsync(
+        CalendarService service,
+        string calendarId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing event.
+    /// </summary>
+    /// <param name="service">Authenticated CalendarService</param>
+    /// <param name="calendarId">Calendar ID containing event</param>
+    /// <param name="eventId">Event ID to update</param>
+    /// <param name="title">Event title</param>
+    /// <param name="description">Event description (optional)</param>
+    /// <param name="location">Event location (optional)</param>
+    /// <param name="startTime">Event start time</param>
+    /// <param name="endTime">Event end time</param>
+    /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task UpdateEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
         CancellationToken cancellationToken = default);
 }

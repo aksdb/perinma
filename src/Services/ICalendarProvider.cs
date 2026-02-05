@@ -107,6 +107,55 @@ public interface ICalendarProvider
         string rawEventData,
         string responseStatus,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a new event in the specified calendar.
+    /// </summary>
+    /// <param name="accountId">Account ID to create event for</param>
+    /// <param name="calendarId">External ID of the calendar</param>
+    /// <param name="title">Event title</param>
+    /// <param name="description">Event description (optional)</param>
+    /// <param name="location">Event location (optional)</param>
+    /// <param name="startTime">Event start time</param>
+    /// <param name="endTime">Event end time</param>
+    /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The external ID of the created event</returns>
+    Task<string> CreateEventAsync(
+        string accountId,
+        string calendarId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing event.
+    /// </summary>
+    /// <param name="accountId">Account ID to update event for</param>
+    /// <param name="calendarId">External ID of the calendar</param>
+    /// <param name="eventId">External ID of the event to update</param>
+    /// <param name="title">Event title</param>
+    /// <param name="description">Event description (optional)</param>
+    /// <param name="location">Event location (optional)</param>
+    /// <param name="startTime">Event start time</param>
+    /// <param name="endTime">Event end time</param>
+    /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task UpdateEventAsync(
+        string accountId,
+        string calendarId,
+        string eventId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

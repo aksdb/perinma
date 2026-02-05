@@ -5,6 +5,9 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Ical.Net;
+using Ical.Net.CalendarComponents;
+using Ical.Net.DataTypes;
 using perinma.Storage.Models;
 
 namespace perinma.Services.CalDAV;
@@ -203,7 +206,7 @@ public class CalDavService : ICalDavService
 
         // Serialize the updated calendar
         var serializer = new Ical.Net.Serialization.CalendarSerializer();
-        var updatedICalendar = serializer.SerializeToString(calendar) 
+        var updatedICalendar = serializer.SerializeToString(calendar)
             ?? throw new InvalidOperationException("Failed to serialize updated calendar");
 
         // PUT the updated event back to the server
@@ -211,6 +214,106 @@ public class CalDavService : ICalDavService
 
         return updatedICalendar;
     }
+
+    public async Task<string> CreateEventAsync(
+        CalDavCredentials credentials,
+        string calendarUrl,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        var client = CreateClient(credentials);
+
+        var calendar = new Calendar();
+        var evt = new CalendarEvent
+        {
+            Summary = title,
+            Description = description,
+            Location = location,
+            Start = new Ical.Net.DataTypes.CalDateTime(startTime),
+            End = new Ical.Net.DataTypes.CalDateTime(endTime),
+            Uid = Guid.NewGuid().ToString()
+        };
+
+        calendar.Events.Add(evt);
+
+        var serializer = new Ical.Net.Serialization.CalendarSerializer();
+        var iCalendarData = serializer.SerializeToString(calendar)
+            ?? throw new InvalidOperationException("Failed to serialize calendar");
+
+        var eventUid = evt.Uid ?? Guid.NewGuid().ToString();
+        var eventUrl = $"{TrimTrailingSlash(calendarUrl)}{eventUid}.ics";
+
+        await client.PutCalendarObjectAsync(eventUrl, iCalendarData, null, cancellationToken);
+
+        return eventUrl;
+    }
+
+    public async Task<string> UpdateEventAsync(
+        CalDavCredentials credentials,
+        string eventUrl,
+        string rawICalendar,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        var client = CreateClient(credentials);
+
+        var calendar = Ical.Net.Calendar.Load(rawICalendar);
+        var evt = calendar?.Events.FirstOrDefault();
+
+        if (evt == null)
+        {
+            throw new InvalidOperationException("Could not parse event from iCalendar data");
+        }
+
+        evt.Summary = title;
+        evt.Description = description;
+        evt.Location = location;
+        evt.Start = new CalDateTime(startTime);
+        evt.End = new CalDateTime(endTime);
+
+        var serializer = new Ical.Net.Serialization.CalendarSerializer();
+        var updatedICalendar = serializer.SerializeToString(calendar)
+            ?? throw new InvalidOperationException("Failed to serialize updated calendar");
+
+        await client.PutCalendarObjectAsync(eventUrl, updatedICalendar, null, cancellationToken);
+
+        return updatedICalendar;
+    }
+
+    public async Task<string> UpdateEventAsync(
+        CalDavCredentials credentials,
+        string eventUrl,
+        string rawICalendar,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        CancellationToken cancellationToken = default)
+    {
+        return await UpdateEventAsync(
+            credentials,
+            eventUrl,
+            rawICalendar,
+            title,
+            description,
+            location,
+            startTime,
+            endTime,
+            null,
+            cancellationToken);
+    }
+
 
     private CalDavClient CreateClient(CalDavCredentials credentials)
     {

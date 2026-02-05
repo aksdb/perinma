@@ -328,7 +328,7 @@ public class GoogleCalendarService : IGoogleCalendarService
     }
 
     /// <summary>
-    /// Updates the user's response status for an event invitation
+    /// Updates user's response status for an event invitation
     /// </summary>
     public async Task RespondToEventAsync(
         CalendarService service,
@@ -337,7 +337,7 @@ public class GoogleCalendarService : IGoogleCalendarService
         string responseStatus,
         CancellationToken cancellationToken = default)
     {
-        // Get the current event
+        // Get current event
         var googleEvent = await service.Events.Get(calendarId, eventId).ExecuteAsync(cancellationToken);
 
         if (googleEvent.Attendees == null)
@@ -345,18 +345,81 @@ public class GoogleCalendarService : IGoogleCalendarService
             throw new InvalidOperationException("Event has no attendees");
         }
 
-        // Find the current user's attendee entry (marked with Self = true)
+        // Find current user's attendee entry (marked with Self = true)
         var selfAttendee = googleEvent.Attendees.FirstOrDefault(a => a.Self == true);
         if (selfAttendee == null)
         {
             throw new InvalidOperationException("Current user is not an attendee of this event");
         }
 
-        // Update the response status
+        // Update response status
         selfAttendee.ResponseStatus = responseStatus;
 
-        // Send the update to Google
+        // Send update to Google
         await service.Events.Patch(googleEvent, calendarId, eventId).ExecuteAsync(cancellationToken);
+    }
+
+    public async Task<string> CreateEventAsync(
+        CalendarService service,
+        string calendarId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        var googleEvent = new Event
+        {
+            Summary = title,
+            Description = description,
+            Location = location,
+            Start = new EventDateTime
+            {
+                DateTimeRaw = startTime.ToString("o")
+            },
+            End = new EventDateTime
+            {
+                DateTimeRaw = endTime.ToString("o")
+            }
+        };
+
+        var request = service.Events.Insert(googleEvent, calendarId);
+        var createdEvent = await request.ExecuteAsync(cancellationToken);
+
+        return createdEvent.Id;
+    }
+
+    public async Task UpdateEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        // Get current event
+        var googleEvent = await service.Events.Get(calendarId, eventId).ExecuteAsync(cancellationToken);
+
+        googleEvent.Summary = title;
+        googleEvent.Description = description;
+        googleEvent.Location = location;
+        googleEvent.Start = new EventDateTime
+        {
+            DateTimeRaw = startTime.ToString("o")
+        };
+        googleEvent.End = new EventDateTime
+        {
+            DateTimeRaw = endTime.ToString("o")
+        };
+
+        // Send update to Google
+        await service.Events.Update(googleEvent, calendarId, eventId).ExecuteAsync(cancellationToken);
     }
 
     public class CalendarSyncResult

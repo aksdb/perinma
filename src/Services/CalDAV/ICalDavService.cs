@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,6 +39,79 @@ public interface ICalDavService
         string rawICalendar,
         string responseStatus,
         string userEmail,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a new event in specified calendar.
+    /// </summary>
+    /// <param name="credentials">CalDAV credentials</param>
+    /// <param name="calendarUrl">Calendar URL to create event in</param>
+    /// <param name="title">Event title</param>
+    /// <param name="description">Event description (optional)</param>
+    /// <param name="location">Event location (optional)</param>
+    /// <param name="startTime">Event start time</param>
+    /// <param name="endTime">Event end time</param>
+    /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The external ID (URL) of created event</returns>
+    Task<string> CreateEventAsync(
+        CalDavCredentials credentials,
+        string calendarUrl,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing event.
+    /// </summary>
+    /// <param name="credentials">CalDAV credentials</param>
+    /// <param name="eventUrl">URL of event to update</param>
+    /// <param name="rawICalendar">Current iCalendar data</param>
+    /// <param name="title">Event title</param>
+    /// <param name="description">Event description (optional)</param>
+    /// <param name="location">Event location (optional)</param>
+    /// <param name="startTime">Event start time</param>
+    /// <param name="endTime">Event end time</param>
+    /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task<string> UpdateEventAsync(
+        CalDavCredentials credentials,
+        string eventUrl,
+        string rawICalendar,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default);
+
+
+    /// <summary>
+    /// Updates an existing event.
+    /// </summary>
+    /// <param name="credentials">CalDAV credentials</param>
+    /// <param name="eventUrl">URL of the event to update</param>
+    /// <param name="rawICalendar">Current iCalendar data</param>
+    /// <param name="title">Event title</param>
+    /// <param name="description">Event description (optional)</param>
+    /// <param name="location">Event location (optional)</param>
+    /// <param name="startTime">Event start time</param>
+    /// <param name="endTime">Event end time</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task<string> UpdateEventAsync(
+        CalDavCredentials credentials,
+        string eventUrl,
+        string rawICalendar,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
         CancellationToken cancellationToken = default);
 
     public class CalendarSyncResult

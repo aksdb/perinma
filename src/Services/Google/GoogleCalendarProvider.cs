@@ -509,4 +509,49 @@ public class GoogleCalendarProvider : ICalendarProvider
         // Respond to the event using the service
         await _googleCalendarService.RespondToEventAsync(service, calendarId, eventId, responseStatus, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<string> CreateEventAsync(
+        string accountId,
+        string calendarId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        var googleCredentials = _credentialManager.GetGoogleCredentials(accountId);
+        if (googleCredentials == null)
+        {
+            throw new InvalidOperationException($"No Google credentials found for account {accountId}");
+        }
+
+        var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
+        return await _googleCalendarService.CreateEventAsync(service, calendarId, title, description, location, startTime, endTime, rawEventData, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateEventAsync(
+        string accountId,
+        string calendarId,
+        string eventId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        var googleCredentials = _credentialManager.GetGoogleCredentials(accountId);
+        if (googleCredentials == null)
+        {
+            throw new InvalidOperationException($"No Google credentials found for account {accountId}");
+        }
+
+        var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
+        await _googleCalendarService.UpdateEventAsync(service, calendarId, eventId, title, description, location, startTime, endTime, rawEventData, cancellationToken);
+    }
 }
