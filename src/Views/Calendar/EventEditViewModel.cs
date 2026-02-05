@@ -106,6 +106,8 @@ public partial class EventEditViewModel : ViewModelBase
 
     public string WindowTitle => IsEditMode ? "Edit Event" : "New Event";
 
+    public event EventHandler? RequestClose;
+
     public IEnumerable<CalendarModel> Calendars
     {
         get
@@ -213,6 +215,7 @@ public partial class EventEditViewModel : ViewModelBase
                     _existingRawEventData);
 
                 _onCompleted(_existingEvent.ExternalId ?? string.Empty);
+                RequestClose?.Invoke(this, EventArgs.Empty);
             }
             else if (provider != null)
             {
@@ -227,6 +230,7 @@ public partial class EventEditViewModel : ViewModelBase
                     null);
 
                 _onCompleted(newEventId);
+                RequestClose?.Invoke(this, EventArgs.Empty);
             }
             else
             {
@@ -247,5 +251,6 @@ public partial class EventEditViewModel : ViewModelBase
     private void Cancel()
     {
         _onCompleted(string.Empty);
+        RequestClose?.Invoke(this, EventArgs.Empty);
     }
 }
