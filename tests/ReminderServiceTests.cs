@@ -808,6 +808,35 @@ public class FakeReminderProvider : ICalendarProvider
     {
         throw new NotImplementedException();
     }
+
+    public Task<string> CreateEventAsync(
+        string accountId,
+        string calendarId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task UpdateEventAsync(
+        string accountId,
+        string calendarId,
+        string eventId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
 }
 
 #endregion

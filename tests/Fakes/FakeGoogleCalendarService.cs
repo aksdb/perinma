@@ -147,6 +147,35 @@ public class FakeGoogleCalendarService : IGoogleCalendarService
         return Task.CompletedTask;
     }
 
+    public Task<string> CreateEventAsync(
+        CalendarService service,
+        string calendarId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task UpdateEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
     public static CalendarListEntry CreateCalendar(string id, string summary, bool selected = true, string? color = null)
     {
         return new CalendarListEntry

@@ -169,6 +169,35 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
         return Task.CompletedTask;
     }
 
+    public Task<string> CreateEventAsync(
+        string accountId,
+        string calendarId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task UpdateEventAsync(
+        string accountId,
+        string calendarId,
+        string eventId,
+        string title,
+        string? description,
+        string? location,
+        DateTime startTime,
+        DateTime endTime,
+        string? rawEventData = null,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
     private static ProviderEvent? ConvertGoogleEvent(Event evt)
     {
         var isOverride = !string.IsNullOrEmpty(evt.RecurringEventId);
