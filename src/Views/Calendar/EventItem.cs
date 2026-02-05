@@ -110,6 +110,8 @@ public partial class EventItem : TemplatedControl
 
     [AvaStyledProperty]
     private IRespondableEventViewModel? _eventViewModel;
+    
+    public event EventHandler<CalendarEvent?>? EventDoubleTapped;
 
 #pragma warning restore CS0169
 #pragma warning restore CS0414
@@ -237,7 +239,7 @@ public partial class EventItem : TemplatedControl
         border.DoubleTapped += (sender, args) =>
         {
             singleTapCtx?.Cancel();
-            Console.Out.WriteLine("Double-tapped");
+            EventDoubleTapped?.Invoke(this, CalendarEvent);
         };
     }
 

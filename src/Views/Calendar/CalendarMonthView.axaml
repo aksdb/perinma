@@ -80,9 +80,13 @@
                     →
                 </Button>
             </StackPanel>
-            
-            <!-- Spacer (Right) -->
-            <Border Grid.Column="2"/>
+
+            <!-- Create Event Button (Right) -->
+            <Button Grid.Column="2"
+                    Content="Create Event"
+                    Click="OnCreateNewEvent"
+                    Padding="8, 4"
+                    Margin="10, 0, 10, 0"/>
         </Grid>
         
         <!-- Weekday Headers -->

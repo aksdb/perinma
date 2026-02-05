@@ -145,3 +145,7 @@ mise set -E local GOOGLE_CLIENT_SECRET=your-client-secret
 - Avoid magic numbers; use named constants or readonly fields
 - Example: `TimeSpan.FromMinutes(2)` instead of `120` seconds
 - Define constants at class level for reuse
+
+### UI Style
+- Don't add margins to buttons
+- Don't use styles unless it's theme related or there is no better option

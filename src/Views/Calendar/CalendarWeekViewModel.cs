@@ -12,11 +12,14 @@ using perinma.Storage;
 
 namespace perinma.Views.Calendar;
 
-    public partial class CalendarWeekViewModel : ViewModelBase
+public partial class CalendarWeekViewModel : ViewModelBase
 {
     private readonly ICalendarSource _calendarSource;
     private readonly SqliteStorage? _storage;
     private readonly IReadOnlyDictionary<AccountType, ICalendarProvider>? _providers;
+
+    public SqliteStorage? Storage => _storage;
+    public IReadOnlyDictionary<AccountType, ICalendarProvider>? Providers => _providers;
 
     [ObservableProperty]
     private CalendarEvent? _selectedEvent;
@@ -58,7 +61,8 @@ namespace perinma.Views.Calendar;
     /// <summary>
     /// True for views that show a time grid (Week, FiveDays, Day). False for Month and List views.
     /// </summary>
-    public bool IsTimeGridView => ViewMode is CalendarViewMode.Week or CalendarViewMode.FiveDays or CalendarViewMode.Day;
+    public bool IsTimeGridView =>
+        ViewMode is CalendarViewMode.Week or CalendarViewMode.FiveDays or CalendarViewMode.Day;
 
     public string DateRangeDisplay
     {
@@ -355,7 +359,8 @@ namespace perinma.Views.Calendar;
                     var isFullDay = e.StartTime.TimeOfDay == TimeSpan.Zero && e.EndTime.TimeOfDay == TimeSpan.Zero;
 
                     // Determine if this event needs a response (not yet accepted, tentative, or declined)
-                    var needsResponse = e.ResponseStatus is EventResponseStatus.NeedsAction or EventResponseStatus.Tentative or EventResponseStatus.Declined;
+                    var needsResponse = e.ResponseStatus is EventResponseStatus.NeedsAction
+                        or EventResponseStatus.Tentative or EventResponseStatus.Declined;
 
                     // Determine if this event has been declined
                     var isDeclined = e.ResponseStatus == EventResponseStatus.Declined;
@@ -366,7 +371,9 @@ namespace perinma.Views.Calendar;
                         DaySlot = dayIndex,
                         StartSlot = startSlot,
                         EndSlot = endSlot,
-                        Color = string.IsNullOrEmpty(e.Calendar.Color) ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF) : Color.Parse(e.Calendar.Color),
+                        Color = string.IsNullOrEmpty(e.Calendar.Color)
+                            ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
+                            : Color.Parse(e.Calendar.Color),
                         TieBreaker = tieBreaker++,
                         ColumnSlot = 0,
                         TotalColumns = 1,
@@ -595,6 +602,7 @@ namespace perinma.Views.Calendar;
         {
             newHeaders.Add(new WeekDayHeaderViewModel { ReferenceDate = ViewStart, Offset = i });
         }
+
         WeekDayHeaders = newHeaders;
         Load();
     }
@@ -605,13 +613,19 @@ namespace perinma.Views.Calendar;
         if (_calendarSource == null)
             return;
 
-        _selectedEvent = existingEvent;
+        SelectedEvent = existingEvent;
     }
 
     [RelayCommand]
     private void CloseEventEditor()
     {
-        _selectedEvent = null;
+        SelectedEvent = null;
+    }
+
+    [RelayCommand]
+    private void CreateNewEvent()
+    {
+        SelectedEvent = null;
     }
 }
 
@@ -624,6 +638,6 @@ public partial class WeekDayHeaderViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EffectiveDate))]
     private int _offset;
-    
+
     public DateTime EffectiveDate => ReferenceDate.AddDays(Offset);
 }

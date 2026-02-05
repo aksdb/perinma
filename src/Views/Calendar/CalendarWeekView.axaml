@@ -191,7 +191,11 @@
             </StackPanel>
             
             <!-- Spacer (Right) -->
-            <Border Grid.Column="2"/>
+            <Button Grid.Column="2"
+                    Name="CreateEventButton"
+                    Content="Create Event"
+                    Padding="8, 4"
+                    Margin="10, 0, 10, 0"/>
         </Grid>
 
         <TextBlock Grid.Row="1" Grid.Column="0"

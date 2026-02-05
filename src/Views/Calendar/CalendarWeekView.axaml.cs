@@ -6,8 +6,10 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using perinma.Services;
+using perinma.Views.MessageBox;
 
 namespace perinma.Views.Calendar;
 
@@ -32,13 +34,12 @@ public partial class CalendarWeekView : UserControl
     {
         base.OnDataContextChanged(e);
         _viewModel = (CalendarWeekViewModel)DataContext!;
-        
-        
+
         var timeRowContainer = this.FindControl<ScrollViewer>("TimeRows")!;
         timeRowContainer.Content = _timeRowGrid;
         _timeRowGrid.ColumnDefinitions.Add(new ColumnDefinition(1.0,  GridUnitType.Star));
         _timeRowGrid.SetValue(Grid.IsSharedSizeScopeProperty, true);
-        
+
         RowDefinition NewRow()
         {
             return new RowDefinition(1.0, GridUnitType.Star)
@@ -46,13 +47,13 @@ public partial class CalendarWeekView : UserControl
                 SharedSizeGroup = "sizeGroup"
             };
         }
-        
+
         _timeRowGrid.RowDefinitions.Add(new RowDefinition(1.0, GridUnitType.Star));
         for (var i = 0; i < 24; i++)
         {
             var timeElement1 = new TimeLabel { Hour = i, Minute = 0 };
             var timeElement2 = new TimeLabel { Hour = i, Minute = 30 };
-            
+
             if (i > 0)
             {
                 _timeRowGrid.RowDefinitions.Add(NewRow());
@@ -61,26 +62,34 @@ public partial class CalendarWeekView : UserControl
                 timeElement1.SetValue(Grid.RowProperty, _timeRowGrid.RowDefinitions.Count - 1);
                 _timeRowGrid.RowDefinitions.Add(NewRow());
             }
-            
+
             _timeRowGrid.RowDefinitions.Add(NewRow());
             _timeRowGrid.Children.Add(timeElement2);
             timeElement2.SetValue(Grid.RowProperty, _timeRowGrid.RowDefinitions.Count - 1);
         }
         _timeRowGrid.RowDefinitions.Add(new RowDefinition(1.0, GridUnitType.Star));
-        
+
         _centerView = this.FindControl<ScrollViewer>("CenterView")!;
         _centerView.Content = _mainView;
 
         var topView = this.FindControl<ScrollViewer>("TopView")!;
         topView.Content = _topBarView;
-        // Show at most 3 full-day rows; scroll if there are more
         topView.MaxHeight = _topBarView.RowHeight * 3;
-
-        _mainView.SetEvents(_viewModel.Events); // timed events only
+        
+        _mainView.EventDoubleTapped += OnEventDoubleTapped;
         _mainView.SettingsService = _viewModel.SettingsService;
         _mainView.SettingsLoaded += OnSettingsLoaded;
-        _topBarView.SetEvents(_viewModel.FullDayEvents); // full-day events only
+        _topBarView.SetEvents(_viewModel.FullDayEvents);
+        _topBarView.EventDoubleTapped += OnEventDoubleTapped;
         
+        _mainView.SetEvents(_viewModel.Events);
+
+        var createEventButton = this.FindControl<Button>("CreateEventButton");
+        if (createEventButton != null)
+        {
+            createEventButton.Click += OnCreateNewEvent;
+        }
+
         _viewModel.PropertyChanged += (sender, args) =>
         {
             switch (args.PropertyName)
@@ -141,7 +150,7 @@ public partial class CalendarWeekView : UserControl
     {
         TryScrollToWorkingHours();
     }
-    
+
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
@@ -152,7 +161,73 @@ public partial class CalendarWeekView : UserControl
         _topBarView.RefreshContent();
         TryScrollToWorkingHours();
     }
-    
+
+    private void OnEventDoubleTapped(object? sender, Models.CalendarEvent? calendarEvent)
+    {
+        if (_viewModel == null) return;
+
+        var onCompleted = new Action<string>(async (errorMessage) =>
+        {
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                await MessageBoxWindow.ShowAsync(
+                    null,
+                    "Error",
+                    errorMessage,
+                    MessageBoxType.Error,
+                    MessageBoxButtons.Ok);
+            }
+            else
+            {
+                _viewModel.Load();
+            }
+        });
+
+        var editor = new EventEditView
+        {
+            DataContext = new EventEditViewModel(
+                calendarEvent,
+                null!,
+                _viewModel.Storage!,
+                _viewModel.Providers,
+                onCompleted)
+        };
+        editor.Show();
+    }
+
+    private void OnCreateNewEvent(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel == null) return;
+
+        var onCompleted = new Action<string>(async (errorMessage) =>
+        {
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                await MessageBoxWindow.ShowAsync(
+                    null,
+                    "Error",
+                    errorMessage,
+                    MessageBoxType.Error,
+                    MessageBoxButtons.Ok);
+            }
+            else
+            {
+                _viewModel.Load();
+            }
+        });
+
+        var editor = new EventEditView
+        {
+            DataContext = new EventEditViewModel(
+                null!,
+                null!,
+                _viewModel.Storage!,
+                _viewModel.Providers,
+                onCompleted)
+        };
+        editor.Show();
+    }
+
     private class MainView : ContentControl
     {
         public int DayColumns = 5;
@@ -165,6 +240,7 @@ public partial class CalendarWeekView : UserControl
         public int WorkingHoursStartSlot { get; private set; } = 9 * 4; // 09:00 = slot 36
         private int _workingHoursEndSlot = 17 * 4;  // 17:00 = slot 68
 
+        public event EventHandler<Models.CalendarEvent?>? EventDoubleTapped;
         public event EventHandler? SettingsLoaded;
 
         private readonly Canvas _canvas = new();
@@ -252,6 +328,8 @@ public partial class CalendarWeekView : UserControl
             foreach (var vm in _items)
             {
                 _canvas.Children.Add(vm);
+                vm.EventDoubleTapped -= EventDoubleTapped;
+                vm.EventDoubleTapped += EventDoubleTapped;
             }
             RefreshContent();
         }
@@ -434,6 +512,7 @@ public partial class CalendarWeekView : UserControl
         public double RowHeight = 24; // height for each full-day event row
 
         private readonly Canvas _canvas = new();
+        public event EventHandler<Models.CalendarEvent?>? EventDoubleTapped;
 
         public TopBarView()
         {
