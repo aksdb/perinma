@@ -101,13 +101,13 @@ public class DatabaseCalendarSourceTests
         Assert.That(events, Has.Count.EqualTo(1));
         var calendarEvent = events[0];
         Assert.That(calendarEvent.Title, Is.EqualTo("Team Meeting"));
-        Assert.That(calendarEvent.ExternalId, Is.EqualTo("event1"));
-        Assert.That(calendarEvent.Calendar.Id, Is.EqualTo(Guid.Parse(calendar.CalendarId)));
-        Assert.That(calendarEvent.Calendar.Name, Is.EqualTo("Work Calendar"));
-        Assert.That(calendarEvent.Calendar.Enabled, Is.True);
-        Assert.That(calendarEvent.Calendar.Account.Id, Is.EqualTo(Guid.Parse(accountId)));
-        Assert.That(calendarEvent.Calendar.Account.Name, Is.EqualTo("Test Account"));
-        Assert.That(calendarEvent.Calendar.Account.Type, Is.EqualTo(AccountType.Google));
+        Assert.That(calendarEvent.EventReference.ExternalId, Is.EqualTo("event1"));
+        Assert.That(calendarEvent.EventReference.Calendar.Id, Is.EqualTo(Guid.Parse(calendar.CalendarId)));
+        Assert.That(calendarEvent.EventReference.Calendar.Name, Is.EqualTo("Work Calendar"));
+        Assert.That(calendarEvent.EventReference.Calendar.Enabled, Is.True);
+        Assert.That(calendarEvent.EventReference.Calendar.Account.Id, Is.EqualTo(Guid.Parse(accountId)));
+        Assert.That(calendarEvent.EventReference.Calendar.Account.Name, Is.EqualTo("Test Account"));
+        Assert.That(calendarEvent.EventReference.Calendar.Account.Type, Is.EqualTo(AccountType.Google));
     }
 
     [Test]
@@ -417,7 +417,7 @@ public class DatabaseCalendarSourceTests
 
         // Assert
         Assert.That(events, Has.Count.EqualTo(1));
-        var calendarData = events[0].Calendar;
+        var calendarData = events[0].EventReference.Calendar;
         Assert.That(calendarData.Id, Is.EqualTo(Guid.Parse(calendar.CalendarId)));
         Assert.That(calendarData.ExternalId, Is.EqualTo(calendarExternalId));
         Assert.That(calendarData.Name, Is.EqualTo(calendarName));

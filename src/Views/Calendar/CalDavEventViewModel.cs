@@ -71,7 +71,7 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
     {
         try
         {
-            var rawData = await _storage.GetEventData(_calendarEvent.Id.ToString(), "rawData");
+            var rawData = await _storage.GetEventData(_calendarEvent.EventReference.Id.ToString(), "rawData");
             if (!string.IsNullOrEmpty(rawData))
             {
                 var calendar = ICalCalendar.Load(rawData);
@@ -289,9 +289,9 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
         {
             IsUpdating = true;
 
-            var accountId = _calendarEvent.Calendar.Account.Id.ToString();
-            var calendarId = _calendarEvent.Calendar.ExternalId;
-            var eventId = _calendarEvent.ExternalId;
+            var accountId = _calendarEvent.EventReference.Calendar.Account.Id.ToString();
+            var calendarId = _calendarEvent.EventReference.Calendar.ExternalId;
+            var eventId = _calendarEvent.EventReference.ExternalId;
 
             if (string.IsNullOrEmpty(calendarId) || string.IsNullOrEmpty(eventId))
             {
@@ -300,7 +300,7 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
             }
 
             // Get raw event data for the provider
-            var rawData = await _storage.GetEventData(_calendarEvent.Id.ToString(), "rawData");
+            var rawData = await _storage.GetEventData(_calendarEvent.EventReference.Id.ToString(), "rawData");
             if (string.IsNullOrEmpty(rawData))
             {
                 Console.WriteLine("Failed to get raw event data");

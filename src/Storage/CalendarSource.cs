@@ -169,8 +169,11 @@ public class DummyCalendarSource : ICalendarSource
     {
         return new CalendarEvent
         {
-            Calendar = cal,
-            Id = Guid.NewGuid(),
+            Reference = new EventReference
+            {
+                Calendar = cal,
+                Id = Guid.NewGuid(),
+            },
             StartTime = new ZonedDateTime(start, TimeZoneInfo.Local),
             EndTime = new ZonedDateTime(end, TimeZoneInfo.Local),
             Title = title,
@@ -255,6 +258,7 @@ public class DatabaseCalendarSource : ICalendarSource
                 {
                     result.AddRange(GetGoogleEventOccurrences(queryResult, queryStart, queryEnd));
                 }
+
                 continue;
             }
 
@@ -352,7 +356,8 @@ public class DatabaseCalendarSource : ICalendarSource
         return (startTime, endTime);
     }
 
-    private List<CalendarEvent> GetGoogleEventOccurrences(CalendarEventQueryResult e, DateTime queryStart, DateTime queryEnd)
+    private List<CalendarEvent> GetGoogleEventOccurrences(CalendarEventQueryResult e, DateTime queryStart,
+        DateTime queryEnd)
     {
         var googleEvent = TryParseGoogleEvent(e.RawData);
         if (googleEvent == null)
@@ -367,7 +372,8 @@ public class DatabaseCalendarSource : ICalendarSource
         return GetGoogleRecurringOccurrences(e, googleEvent, queryStart, queryEnd);
     }
 
-    private List<CalendarEvent> GetCalDavEventOccurrences(CalendarEventQueryResult e, DateTime queryStart, DateTime queryEnd)
+    private List<CalendarEvent> GetCalDavEventOccurrences(CalendarEventQueryResult e, DateTime queryStart,
+        DateTime queryEnd)
     {
         var calDavEvent = TryParseCalDavEvent(e.RawData);
         if (calDavEvent == null)
@@ -385,18 +391,22 @@ public class DatabaseCalendarSource : ICalendarSource
         return GetOccurrencesFromICalendarEvent(e, calDavEvent, baseStartTime, baseEndTime, queryStart, queryEnd);
     }
 
-    private List<CalendarEvent> CreateCalendarEvent(CalendarEventQueryResult e, DateTime eventStartTime, DateTime eventEndTime)
+    private List<CalendarEvent> CreateCalendarEvent(CalendarEventQueryResult e, DateTime eventStartTime,
+        DateTime eventEndTime)
     {
         var responseStatus = ExtractResponseStatus(e);
         var calendar = GetOrCreateCalendar(e);
-        
+
         return
         [
             new CalendarEvent
             {
-                Calendar = calendar,
-                Id = Guid.Parse(e.EventId),
-                ExternalId = e.ExternalId,
+                Reference = new EventReference
+                {
+                    Calendar = calendar,
+                    Id = Guid.Parse(e.EventId),
+                    ExternalId = e.ExternalId,
+                },
                 StartTime = eventStartTime,
                 EndTime = eventEndTime,
                 Title = e.Title,
@@ -412,7 +422,7 @@ public class DatabaseCalendarSource : ICalendarSource
     {
         var calendarId = Guid.Parse(e.CalendarId);
         var cachedCalendar = _storage.GetCachedCalendar(calendarId);
-        
+
         if (cachedCalendar != null)
         {
             return cachedCalendar;
@@ -420,7 +430,7 @@ public class DatabaseCalendarSource : ICalendarSource
 
         var accountId = Guid.Parse(e.AccountId);
         var cachedAccount = _storage.GetCachedAccount(accountId);
-        
+
         var account = cachedAccount ?? new Account
         {
             Id = accountId,
@@ -441,22 +451,22 @@ public class DatabaseCalendarSource : ICalendarSource
                 : null
         };
     }
-    
+
     private EventResponseStatus ExtractResponseStatus(CalendarEventQueryResult e)
     {
         if (e.AccountTypeEnum == AccountType.Google)
         {
             return ExtractGoogleResponseStatus(e.RawData);
         }
-        
+
         if (e.AccountTypeEnum == AccountType.CalDav)
         {
             return ExtractCalDavResponseStatus(e.RawData);
         }
-        
+
         return EventResponseStatus.None;
     }
-    
+
     private EventResponseStatus ExtractGoogleResponseStatus(string? rawData)
     {
         var googleEvent = TryParseGoogleEvent(rawData);
@@ -464,14 +474,14 @@ public class DatabaseCalendarSource : ICalendarSource
         {
             return EventResponseStatus.None;
         }
-        
+
         // Find the attendee with self=true (the current user)
         var selfAttendee = googleEvent.Attendees.FirstOrDefault(a => a.Self == true);
         if (selfAttendee == null)
         {
             return EventResponseStatus.None;
         }
-        
+
         return selfAttendee.ResponseStatus?.ToLowerInvariant() switch
         {
             "needsaction" => EventResponseStatus.NeedsAction,
@@ -481,7 +491,7 @@ public class DatabaseCalendarSource : ICalendarSource
             _ => EventResponseStatus.None
         };
     }
-    
+
     private EventResponseStatus ExtractCalDavResponseStatus(string? rawData)
     {
         var calDavEvent = TryParseCalDavEvent(rawData);
@@ -489,7 +499,7 @@ public class DatabaseCalendarSource : ICalendarSource
         {
             return EventResponseStatus.None;
         }
-        
+
         // Find the attendee with PartStat set (typically the user is marked with PARTSTAT)
         // In CalDav, the user's attendance is typically the first attendee or one without a specific role
         foreach (var attendee in calDavEvent.Attendees)
@@ -500,7 +510,7 @@ public class DatabaseCalendarSource : ICalendarSource
             {
                 continue;
             }
-            
+
             // Return the first meaningful participation status found
             // (In practice, should match on CUTYPE=INDIVIDUAL or the user's email)
             return partStat.ToUpperInvariant() switch
@@ -512,11 +522,12 @@ public class DatabaseCalendarSource : ICalendarSource
                 _ => EventResponseStatus.None
             };
         }
-        
+
         return EventResponseStatus.None;
     }
 
-    private List<CalendarEvent> GetGoogleRecurringOccurrences(CalendarEventQueryResult e, GoogleEvent googleEvent, DateTime queryStart, DateTime queryEnd)
+    private List<CalendarEvent> GetGoogleRecurringOccurrences(CalendarEventQueryResult e, GoogleEvent googleEvent,
+        DateTime queryStart, DateTime queryEnd)
     {
         try
         {
@@ -589,7 +600,8 @@ public class DatabaseCalendarSource : ICalendarSource
         return CreateCalendarEvent(e, fallbackStart, fallbackEnd);
     }
 
-    private List<CalendarEvent> GetOccurrencesFromICalendarEvent(CalendarEventQueryResult e, ICalCalendarEvent calDavEvent, DateTime eventStart, DateTime eventEnd, DateTime queryStart, DateTime queryEnd)
+    private List<CalendarEvent> GetOccurrencesFromICalendarEvent(CalendarEventQueryResult e,
+        ICalCalendarEvent calDavEvent, DateTime eventStart, DateTime eventEnd, DateTime queryStart, DateTime queryEnd)
     {
         try
         {

@@ -187,7 +187,7 @@ public partial class CalendarWeekView : UserControl
         {
             DataContext = new EventEditViewModel(
                 calendarEvent,
-                calendarEvent.Calendar,
+                calendarEvent.EventReference.Calendar,
                 _viewModel.Storage!,
                 _viewModel.Providers,
                 onCompleted)

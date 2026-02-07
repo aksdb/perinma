@@ -110,7 +110,7 @@ public partial class AgendaEventViewModel : ObservableObject
                 return new CalendarEventViewModel(CalendarEvent);
 
             ICalendarProvider? calendarProvider = null;
-            var accountType = CalendarEvent.Calendar.Account.Type;
+            var accountType = CalendarEvent.EventReference.Calendar.Account.Type;
 
             if (Providers != null && Providers.TryGetValue(accountType, out var provider))
             {

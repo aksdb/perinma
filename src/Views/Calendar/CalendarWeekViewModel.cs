@@ -371,9 +371,9 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         DaySlot = dayIndex,
                         StartSlot = startSlot,
                         EndSlot = endSlot,
-                        Color = string.IsNullOrEmpty(e.Calendar.Color)
+                        Color = string.IsNullOrEmpty(e.EventReference.Calendar.Color)
                             ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
-                            : Color.Parse(e.Calendar.Color),
+                            : Color.Parse(e.EventReference.Calendar.Color),
                         TieBreaker = tieBreaker++,
                         ColumnSlot = 0,
                         TotalColumns = 1,
@@ -454,9 +454,9 @@ public partial class CalendarWeekViewModel : ViewModelBase
                 dayVm.Events.Add(new MonthEventViewModel
                 {
                     Title = string.IsNullOrEmpty(evt.Title) ? "[no title]" : evt.Title,
-                    Color = string.IsNullOrEmpty(evt.Calendar.Color)
+                    Color = string.IsNullOrEmpty(evt.EventReference.Calendar.Color)
                         ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
-                        : Color.Parse(evt.Calendar.Color),
+                        : Color.Parse(evt.EventReference.Calendar.Color),
                     CalendarEvent = evt,
                     IsFullDay = isFullDay,
                     TimeText = isFullDay ? string.Empty : evt.StartTime.ToString("HH:mm"),
@@ -503,10 +503,10 @@ public partial class CalendarWeekViewModel : ViewModelBase
                     StartTime = evt.StartTime,
                     EndTime = evt.EndTime,
                     IsFullDay = isFullDay,
-                    Color = string.IsNullOrEmpty(evt.Calendar.Color)
+                    Color = string.IsNullOrEmpty(evt.EventReference.Calendar.Color)
                         ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
-                        : Color.Parse(evt.Calendar.Color),
-                    CalendarName = evt.Calendar.Name,
+                        : Color.Parse(evt.EventReference.Calendar.Color),
+                    CalendarName = evt.EventReference.Calendar.Name,
                     CalendarEvent = evt,
                     Storage = _storage,
                     Providers = _providers

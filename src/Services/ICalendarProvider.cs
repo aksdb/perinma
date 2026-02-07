@@ -13,9 +13,13 @@ namespace perinma.Services;
 public interface ICalendarProvider
 {
     /// <summary>
-    /// Gets the credential manager service used by this provider.
+    /// Parse all the given raw events into a list of CalendarEvents within the given TimeRange.
+    /// The TimeRange is relevant to restrict recurring events.
     /// </summary>
-    CredentialManagerService CredentialManager { get; }
+    /// <param name="rawData"></param>
+    /// <param name="timeRange"></param>
+    /// <returns></returns>
+    List<CalendarEvent> ParseCalendarEvents(List<String> rawData, TimeRange timeRange);
 
     /// <summary>
     /// Syncs calendars for an account, optionally using incremental sync.
