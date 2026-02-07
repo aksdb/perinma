@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Tmds.DBus.Protocol;
 
 namespace perinma.Models;
 
@@ -45,45 +44,33 @@ public record CalendarEvent
     /// The user's response status to this event invitation.
     /// </summary>
     public EventResponseStatus ResponseStatus { get; set; } = EventResponseStatus.None;
-    
+
     public ExtensionValues Extensions { get; init; } = new();
 }
 
-public class Extension<T> where T : ExtensionValue
+}
+
+public class Extension<T> where T : class
 {
-    internal Extension() {}
+    internal Extension()
+    {
+    }
 }
 
 public static class Extensions
 {
-    public static Extension<ExtensionValue.Text> Description = new();
-    public static Extension<ExtensionValue.Text> Location = new();
-    public static Extension<ExtensionValue.ValueList<ExtensionValue.Text>> Participants = new();
+    public static Extension<string> Description = new();
+    public static Extension<string> Location = new();
+    public static Extension<List<string>> Participants = new();
 }
 
 public class ExtensionValues
 {
-    private readonly Dict<Type, ExtensionValue> _valueByExtension = [];
-    
-    public ExtensionValue? this[Extension<ExtensionValue> extension]
-    {
-        get => _valueByExtension.TryGetValue(extension, out var value) ? value : null;
-        set
-        {
-            if (value is null)
-                _valueByExtension.Remove(extension);
-            else
-                _valueByExtension[extension] = value;
-        }
-    }
+    private readonly Dictionary<object, object> _valueByExtension = [];
 
-    public void Set<T>(Extension<T> extension, ExtensionValue value) where T: ExtensionValue => _valueByExtension[extension.GetType()] = value;
-    
-    public bool Get(Extension extension, out ExtensionValue value) => _valueByExtension.TryGetValue(extension, out value);
-}
+    public void Set<T>(Extension<T> extension, T value) where T : class =>
+        _valueByExtension[extension] = value;
 
-public abstract record ExtensionValue
-{
-    public record Text(string value) : ExtensionValue;
-    public record ValueList<T>(List<T> list) : ExtensionValue where T: ExtensionValue;
+    public T? Get<T>(Extension<T> extension) where T : class =>
+        _valueByExtension.GetValueOrDefault(extension) as T;
 }

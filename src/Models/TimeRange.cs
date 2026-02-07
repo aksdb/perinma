@@ -4,6 +4,10 @@ namespace perinma.Models;
 
 public struct TimeRange(ZonedDateTime start, ZonedDateTime end)
 {
+
+    public ZonedDateTime Start { get; } = start;
+    public ZonedDateTime End { get; } = end;
+    
     /// <summary>
     /// Construct an infinite time range, spanning as much as DateTime can offer.
     /// </summary>

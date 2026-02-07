@@ -62,12 +62,10 @@ public interface ICalendarProvider
     /// </summary>
     /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
     /// <param name="rawCalendarData">Optional raw calendar data for default reminders (JSON for Google)</param>
-    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of reminder minutes before event start</returns>
-    Task<IList<int>> GetReminderMinutesAsync(
+    IList<int> GetReminderMinutes(
         string rawEventData,
-        string? rawCalendarData = null,
-        CancellationToken cancellationToken = default);
+        string? rawCalendarData = null);
 
     /// <summary>
     /// Gets all reminder occurrences with their trigger times for an event.
@@ -76,25 +74,21 @@ public interface ICalendarProvider
     /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
     /// <param name="rawCalendarData">Optional raw calendar data for default reminders (JSON for Google)</param>
     /// <param name="referenceTime">Reference time for filtering (defaults to UTC now)</param>
-    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of tuples containing occurrence time and trigger time for each reminder</returns>
-    Task<IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
+    IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        ZonedDateTime referenceTime = default,
-        CancellationToken cancellationToken = default);
+        ZonedDateTime referenceTime = default);
 
     /// <summary>
-    /// Gets the event start time from raw event data, preserving timezone information.
+    /// Get the actual matching event start time to recover timezone information.
     /// </summary>
     /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
     /// <param name="occurrenceTime">Optional occurrence time for recurring events. If provided, returns the start time for this specific occurrence.</param>
-    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Event start time with timezone information, or null if parsing fails</returns>
-    Task<DateTimeOffset?> GetEventStartTimeAsync(
+    ZonedDateTime? GetEventStartTime(
         string rawEventData,
-        DateTime? occurrenceTime = null,
-        CancellationToken cancellationToken = default);
+        DateTime? occurrenceTime = null);
 
     /// <summary>
     /// Responds to an event invitation with the specified status.

@@ -37,8 +37,18 @@ public readonly struct ZonedDateTime(DateTime dateTime, TimeZoneInfo timeZone) :
     public static bool operator >(ZonedDateTime left, ZonedDateTime right) => left.DateTime > right.DateTime;
     public static bool operator <(ZonedDateTime left, ZonedDateTime right) => left.DateTime < right.DateTime;
 
+    public static bool operator <=(ZonedDateTime left, ZonedDateTime right) => left.DateTime <= right.DateTime;
+    public static bool operator >=(ZonedDateTime left, ZonedDateTime right) => left.DateTime >= right.DateTime;
+    
+    public static TimeSpan operator -(ZonedDateTime left, ZonedDateTime right) => right.DateTime - left.DateTime;
+    
     public ZonedDateTime Add(TimeSpan duration)
     {
         return new ZonedDateTime(DateTime.Add(duration), TimeZone);
+    }
+    
+    public ZonedDateTime AddMinutes(double value)
+    {
+        return new ZonedDateTime(DateTime.AddMinutes(value), TimeZone);
     }
 }
