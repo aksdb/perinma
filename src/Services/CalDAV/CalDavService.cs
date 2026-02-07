@@ -8,6 +8,7 @@ using System.Xml.Linq;
 using Ical.Net;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
+using Ical.Net.Serialization;
 using perinma.Storage.Models;
 
 namespace perinma.Services.CalDAV;
@@ -169,7 +170,7 @@ public class CalDavService : ICalDavService
         var client = CreateClient(credentials);
 
         // Parse the iCalendar data
-        var calendar = Ical.Net.Calendar.Load(rawICalendar);
+        var calendar = Calendar.Load(rawICalendar);
         var iCalEvent = calendar?.Events.FirstOrDefault();
 
         if (iCalEvent == null)
@@ -205,7 +206,7 @@ public class CalDavService : ICalDavService
         userAttendee.ParticipationStatus = responseStatus;
 
         // Serialize the updated calendar
-        var serializer = new Ical.Net.Serialization.CalendarSerializer();
+        var serializer = new CalendarSerializer();
         var updatedICalendar = serializer.SerializeToString(calendar)
             ?? throw new InvalidOperationException("Failed to serialize updated calendar");
 
@@ -227,23 +228,27 @@ public class CalDavService : ICalDavService
         CancellationToken cancellationToken = default)
     {
         var client = CreateClient(credentials);
-
+ 
         var calendar = new Calendar();
         var evt = new CalendarEvent
         {
             Summary = title,
             Description = description,
             Location = location,
-            Start = new Ical.Net.DataTypes.CalDateTime(startTime),
-            End = new Ical.Net.DataTypes.CalDateTime(endTime),
+            Start = ToCalDateTime(startTime),
+            End = ToCalDateTime(endTime),
             Uid = Guid.NewGuid().ToString()
         };
 
+        if (ShouldAddTimezone(startTime, endTime))
+            calendar.AddTimeZone(TimeZoneInfo.Local.Id);
+        
         calendar.Events.Add(evt);
 
-        var serializer = new Ical.Net.Serialization.CalendarSerializer();
+        var serializer = new CalendarSerializer();
         var iCalendarData = serializer.SerializeToString(calendar)
             ?? throw new InvalidOperationException("Failed to serialize calendar");
+
 
         var eventUid = evt.Uid ?? Guid.NewGuid().ToString();
         var eventUrl = $"{TrimTrailingSlash(calendarUrl)}{eventUid}.ics";
@@ -267,21 +272,27 @@ public class CalDavService : ICalDavService
     {
         var client = CreateClient(credentials);
 
-        var calendar = Ical.Net.Calendar.Load(rawICalendar);
+        var calendar = Calendar.Load(rawICalendar);
         var evt = calendar?.Events.FirstOrDefault();
 
         if (evt == null)
-        {
             throw new InvalidOperationException("Could not parse event from iCalendar data");
-        }
 
         evt.Summary = title;
         evt.Description = description;
         evt.Location = location;
-        evt.Start = new CalDateTime(startTime);
-        evt.End = new CalDateTime(endTime);
+        evt.Start = ToCalDateTime(startTime);
+        evt.End = ToCalDateTime(endTime);
 
-        var serializer = new Ical.Net.Serialization.CalendarSerializer();
+        if (ShouldAddTimezone(startTime, endTime))
+        {
+            if (!calendar.TimeZones.Select(vtz => vtz.TzId).Contains(TimeZoneInfo.Local.Id))
+            {
+                calendar.AddTimeZone(TimeZoneInfo.Local.Id);
+            }
+        }
+        
+        var serializer = new CalendarSerializer();
         var updatedICalendar = serializer.SerializeToString(calendar)
             ?? throw new InvalidOperationException("Failed to serialize updated calendar");
 
@@ -612,5 +623,20 @@ public class CalDavService : ICalDavService
                 Console.WriteLine($"Error fetching ACL for calendar {calendar.DisplayName} ({calendar.Url}): {ex.Message}");
             }
         }
+    }
+
+    private static CalDateTime ToCalDateTime(DateTime dateTime)
+    {
+        if (dateTime.Kind == DateTimeKind.Utc || dateTime.Kind == DateTimeKind.Unspecified)
+        {
+            return new CalDateTime(dateTime, true);
+        }
+
+        return new CalDateTime(dateTime.ToUniversalTime(), true);
+    }
+
+    private static bool ShouldAddTimezone(DateTime startTime, DateTime endTime)
+    {
+        return startTime.Kind == DateTimeKind.Local || endTime.Kind == DateTimeKind.Local;
     }
 }

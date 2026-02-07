@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using perinma.Services;
 using perinma.Services.CalDAV;
 using perinma.Storage.Models;
+using Ical.Net.CalendarComponents;
+using Ical.Net.DataTypes;
 
 namespace perinma.Tests.Fakes;
 
@@ -12,6 +14,7 @@ public class FakeCalDavService : ICalDavService
 {
     private readonly List<CalDavCalendar> _calendars = new();
     private readonly Dictionary<string, List<CalDavEvent>> _calendarEvents = new();
+    private readonly List<(string CalendarUrl, string Title, string? Description, string? Location, DateTime StartTime, DateTime EndTime)> _createdEvents = new();
 
     public void SetCalendars(params CalDavCalendar[] calendars)
     {
@@ -75,7 +78,6 @@ public class FakeCalDavService : ICalDavService
         string userEmail,
         CancellationToken cancellationToken = default)
     {
-        // For testing, just return the event URL
         return Task.FromResult(eventUrl);
     }
 
@@ -90,7 +92,34 @@ public class FakeCalDavService : ICalDavService
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var eventUid = Guid.NewGuid().ToString();
+        var eventUrl = $"{TrimTrailingSlash(calendarUrl)}{eventUid}.ics";
+
+        _createdEvents.Add((calendarUrl, title, description, location, startTime, endTime));
+
+        var calendar = new Ical.Net.Calendar();
+        var evt = new CalendarEvent
+        {
+            Summary = title,
+            Description = description,
+            Location = location,
+            Start = ToCalDateTime(startTime),
+            End = ToCalDateTime(endTime),
+            Uid = eventUid
+        };
+
+        calendar.Events.Add(evt);
+
+        var serializer = new Ical.Net.Serialization.CalendarSerializer();
+        var iCalendarData = serializer.SerializeToString(calendar)
+            ?? throw new InvalidOperationException("Failed to serialize calendar");
+
+        if (ShouldAddTimezone(startTime, endTime))
+        {
+            iCalendarData = AddVTimezoneComponent(iCalendarData, TimeZoneInfo.Local.Id);
+        }
+
+        return Task.FromResult(eventUrl);
     }
 
     public Task<string> UpdateEventAsync(
@@ -105,7 +134,30 @@ public class FakeCalDavService : ICalDavService
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var calendar = Ical.Net.Calendar.Load(rawICalendar);
+        var evt = calendar?.Events.FirstOrDefault();
+
+        if (evt == null)
+        {
+            throw new InvalidOperationException("Could not parse event from iCalendar data");
+        }
+
+        evt.Summary = title;
+        evt.Description = description;
+        evt.Location = location;
+        evt.Start = ToCalDateTime(startTime);
+        evt.End = ToCalDateTime(endTime);
+
+        var serializer = new Ical.Net.Serialization.CalendarSerializer();
+        var updatedICalendar = serializer.SerializeToString(calendar)
+            ?? throw new InvalidOperationException("Failed to serialize updated calendar");
+
+        if (ShouldAddTimezone(startTime, endTime))
+        {
+            updatedICalendar = AddVTimezoneComponent(updatedICalendar, TimeZoneInfo.Local.Id);
+        }
+
+        return Task.FromResult(updatedICalendar);
     }
 
     public Task<string> UpdateEventAsync(
@@ -119,7 +171,27 @@ public class FakeCalDavService : ICalDavService
         DateTime endTime,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return UpdateEventAsync(
+            credentials,
+            eventUrl,
+            rawICalendar,
+            title,
+            description,
+            location,
+            startTime,
+            endTime,
+            null,
+            cancellationToken);
+    }
+
+    public IReadOnlyList<(string CalendarUrl, string Title, string? Description, string? Location, DateTime StartTime, DateTime EndTime)> GetCreatedEvents()
+    {
+        return _createdEvents.AsReadOnly();
+    }
+
+    public void ClearCreatedEvents()
+    {
+        _createdEvents.Clear();
     }
 
     /// <summary>
@@ -152,7 +224,7 @@ END:VCALENDAR";
     }
 
     /// <summary>
-    /// Creates a recurring CalDAV event with RRULE in the raw iCalendar data.
+    /// Creates a recurring CalDAV event with RRULE in raw iCalendar data.
     /// </summary>
     public static CalDavEvent CreateRecurringEvent(
         string uid,
@@ -199,11 +271,8 @@ END:VCALENDAR";
         string tzid,
         string rrule)
     {
-        var rawICalendar = $@"BEGIN:VCALENDAR
-VERSION:2.0
-BEGIN:VTIMEZONE
+        var rawICalendar = $@"BEGIN:VTIMEZONE
 TZID:{tzid}
-END:VTIMEZONE
 BEGIN:VEVENT
 UID:{uid}
 DTSTART;TZID={tzid}:{FormatDateTimeLocal(start)}
@@ -227,6 +296,21 @@ END:VCALENDAR";
         };
     }
 
+    private static string TrimTrailingSlash(string url)
+    {
+        return url.EndsWith("/") ? url.TrimEnd('/') : url;
+    }
+
+    private static CalDateTime ToCalDateTime(DateTime dateTime)
+    {
+        return new CalDateTime(dateTime, true);
+    }
+
+    private static bool ShouldAddTimezone(DateTime startTime, DateTime endTime)
+    {
+        return startTime.Kind == DateTimeKind.Local || endTime.Kind == DateTimeKind.Local;
+    }
+
     private static string FormatDateTime(DateTime dt)
     {
         var utc = dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
@@ -236,5 +320,27 @@ END:VCALENDAR";
     private static string FormatDateTimeLocal(DateTime dt)
     {
         return dt.ToString("yyyyMMdd'T'HHmmss");
+    }
+
+    private static string AddVTimezoneComponent(string iCalendarData, string tzId)
+    {
+        var vtimezoneComponent = $"""
+            BEGIN:VTIMEZONE
+            TZID:{tzId}
+            BEGIN:STANDARD
+            DTSTART:19700101T000000
+            TZOFFSETFROM:+0000
+            RRULE:FREQ=YEARLY
+            END:STANDARD
+            END:VTIMEZONE
+            """;
+
+        var endIndex = iCalendarData.LastIndexOf("END:VEVENT");
+        if (endIndex == -1)
+        {
+            return iCalendarData;
+        }
+
+        return iCalendarData.Insert(endIndex + 1, vtimezoneComponent + "\r\n");
     }
 }

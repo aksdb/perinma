@@ -770,4 +770,89 @@ public class CalDavCalendarProviderTests
     }
 
     #endregion
+
+#region CreateEventAsync Tests
+
+[Test]
+public async Task CreateEventAsync_WithLocalTime_PreservesTimezone()
+{
+    // Arrange
+    var calendarUrl = "https://caldav.example.com/calendars/work";
+    var localStart = new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Local);
+    var localEnd = new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Local);
+
+    // Act
+    var result = await _provider.CreateEventAsync(
+        _accountId,
+        calendarUrl,
+        "Test Meeting",
+        "Test Description",
+        "Office",
+        localStart,
+        localEnd);
+
+    // Assert
+    var createdEvents = _fakeService.GetCreatedEvents();
+    Assert.That(createdEvents, Has.Count.EqualTo(1));
+    Assert.That(createdEvents[0].StartTime, Is.EqualTo(localStart));
+    Assert.That(createdEvents[0].EndTime, Is.EqualTo(localEnd));
+    Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Local));
+    Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Local));
+}
+
+[Test]
+public async Task CreateEventAsync_WithUtcTime_PreservesUtc()
+{
+    // Arrange
+    var calendarUrl = "https://caldav.example.com/calendars/work";
+    var utcStart = new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Utc);
+    var utcEnd = new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Utc);
+
+    // Act
+    var result = await _provider.CreateEventAsync(
+        _accountId,
+        calendarUrl,
+        "Test Meeting",
+        "Test Description",
+        "Office",
+        utcStart,
+        utcEnd);
+
+    // Assert
+    var createdEvents = _fakeService.GetCreatedEvents();
+    Assert.That(createdEvents, Has.Count.EqualTo(1));
+    Assert.That(createdEvents[0].StartTime, Is.EqualTo(utcStart));
+    Assert.That(createdEvents[0].EndTime, Is.EqualTo(utcEnd));
+    Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Utc));
+    Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Utc));
+}
+
+[Test]
+public async Task CreateEventAsync_WithUnspecifiedTime_TreatsAsLocal()
+{
+    // Arrange
+    var calendarUrl = "https://caldav.example.com/calendars/work";
+    var unspecifiedStart = new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Unspecified);
+    var unspecifiedEnd = new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Unspecified);
+
+    // Act
+    var result = await _provider.CreateEventAsync(
+        _accountId,
+        calendarUrl,
+        "Test Meeting",
+        "Test Description",
+        "Office",
+        unspecifiedStart,
+        unspecifiedEnd);
+
+    // Assert
+    var createdEvents = _fakeService.GetCreatedEvents();
+    Assert.That(createdEvents, Has.Count.EqualTo(1));
+    Assert.That(createdEvents[0].StartTime, Is.EqualTo(unspecifiedStart));
+    Assert.That(createdEvents[0].EndTime, Is.EqualTo(unspecifiedEnd));
+    Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Unspecified));
+    Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Unspecified));
+}
+
+#endregion
 }

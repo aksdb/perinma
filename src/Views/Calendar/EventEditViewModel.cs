@@ -211,6 +211,7 @@ public partial class EventEditViewModel : ViewModelBase
         catch (Exception ex)
         {
             ErrorMessage = $"Failed to save event: {ex.Message}";
+            Console.WriteLine(ex);
         }
         finally
         {
