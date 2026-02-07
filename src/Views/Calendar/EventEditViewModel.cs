@@ -20,107 +20,59 @@ public partial class EventEditViewModel : ViewModelBase
     private readonly CalendarModel? _calendar;
     private readonly string? _existingRawEventData;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEditMode))]
     private string _title = string.Empty;
+
+    [ObservableProperty]
     private string _description = string.Empty;
+
+    [ObservableProperty]
     private string _location = string.Empty;
+
+    [ObservableProperty]
     private DateTime _startTime;
+
+    [ObservableProperty]
     private DateTime _endTime;
+
+    [ObservableProperty]
     private bool _isSaving;
+
+    [ObservableProperty]
     private string _errorMessage = string.Empty;
+
+    [ObservableProperty]
     private CalendarModel? _selectedCalendar;
+
+    [ObservableProperty]
     private TimeSpan _duration;
 
-    public string Title
+    partial void OnStartTimeChanged(DateTime value)
     {
-        get => _title;
-        set
+        _endTime = value.Add(_duration);
+        OnPropertyChanged(nameof(EndTime));
+    }
+
+    partial void OnEndTimeChanged(DateTime value)
+    {
+        if (value < _startTime)
         {
-            if (SetProperty(ref _title, value))
-            {
-                OnPropertyChanged(nameof(IsEditMode));
-            }
-        }
-    }
-
-    public string Description
-    {
-        get => _description;
-        set => SetProperty(ref _description, value);
-    }
-
-    public string Location
-    {
-        get => _location;
-        set => SetProperty(ref _location, value);
-    }
-
-    public DateTime StartTime
-    {
-        get => _startTime;
-        set
-        {
-            if (SetProperty(ref _startTime, value))
-            {
-                // Update end time to maintain duration
-                EndTime = _startTime.Add(_duration);
-                OnPropertyChanged(nameof(EndTime));
-            }
-        }
-    }
-
-    public DateTime EndTime
-    {
-        get => _endTime;
-        set
-        {
-            if (value < _startTime)
-            {
-                _endTime = _startTime.Add(_duration);
-                OnPropertyChanged();
-            }
-            else
-            {
-                if (SetProperty(ref _endTime, value))
-                {
-                    // Update duration based on new end time
-                    Duration = _endTime - _startTime;
-                    OnPropertyChanged(nameof(Duration));
-                }
-            }
+            _endTime = _startTime.Add(_duration);
+            OnPropertyChanged(nameof(EndTime));
             OnPropertyChanged(nameof(StartTime));
         }
-    }
-
-    public bool IsSaving
-    {
-        get => _isSaving;
-        set => SetProperty(ref _isSaving, value);
-    }
-
-    public string ErrorMessage
-    {
-        get => _errorMessage;
-        set => SetProperty(ref _errorMessage, value);
-    }
-
-    public CalendarModel? SelectedCalendar
-    {
-        get => _selectedCalendar;
-        set => SetProperty(ref _selectedCalendar, value);
-    }
-
-    public TimeSpan Duration
-    {
-        get => _duration;
-        set
+        else
         {
-            if (SetProperty(ref _duration, value))
-            {
-                // Update end time to maintain duration
-                _endTime = _startTime.Add(_duration);
-                OnPropertyChanged(nameof(EndTime));
-            }
+            _duration = _endTime - _startTime;
+            OnPropertyChanged(nameof(Duration));
         }
+    }
+
+    partial void OnDurationChanged(TimeSpan value)
+    {
+        _endTime = _startTime.Add(_duration);
+        OnPropertyChanged(nameof(EndTime));
     }
 
     public bool IsEditMode => _existingEvent != null;
@@ -135,14 +87,12 @@ public partial class EventEditViewModel : ViewModelBase
         {
             if (_calendar != null)
             {
-                // Edit mode: show calendars from same account as event
                 return _storage.GetCachedCalendars(_calendar.Account)
                     .Where(c => c.Enabled)
                     .OrderBy(c => c.Name);
             }
             else
             {
-                // Create mode: show all calendars from all accounts
                 var allCalendars = new List<CalendarModel>();
                 var accounts = _storage.GetCachedAccounts();
 
@@ -172,7 +122,6 @@ public partial class EventEditViewModel : ViewModelBase
 
         if (existingEvent != null && calendar != null)
         {
-            // Edit mode
             Title = existingEvent.Title ?? string.Empty;
             Description = string.Empty;
             Location = string.Empty;
@@ -186,13 +135,12 @@ public partial class EventEditViewModel : ViewModelBase
         }
         else
         {
-            // Create mode
             var now = DateTime.Now;
             var rounded = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0, DateTimeKind.Local);
             _startTime = rounded;
             _duration = TimeSpan.FromMinutes(30);
             _endTime = _startTime.Add(_duration);
-            SelectedCalendar = calendar; // May be null, will select first available
+            SelectedCalendar = calendar;
         }
     }
 
@@ -213,7 +161,6 @@ public partial class EventEditViewModel : ViewModelBase
             IsSaving = true;
             ErrorMessage = string.Empty;
 
-            // Use selected calendar instead of fixed calendar
             var targetCalendar = SelectedCalendar ?? _calendar;
             if (targetCalendar == null)
             {

@@ -3,17 +3,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:cal="using:perinma.Views.Calendar"
-        xmlns:converters="using:Avalonia.Data.Converters"
         mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="550"
         x:Class="perinma.Views.Calendar.EventEditView"
         x:DataType="cal:EventEditViewModel"
         Title="{Binding WindowTitle}"
         Width="500" Height="550"
         WindowStartupLocation="CenterOwner">
-
-    <Design.DataContext>
-        <cal:EventEditViewModel/>
-    </Design.DataContext>
 
     <Window.Resources>
         <cal:DateTimeToTimeSpanConverter x:Key="DateTimeToTimeSpanConverter"/>
@@ -48,70 +43,39 @@
             </StackPanel>
 
             <!-- Date/Time Section -->
-            <Border BorderBrush="{DynamicResource SystemChromeLowColor}" 
-                    BorderThickness="1" 
-                    CornerRadius="4" 
-                    Padding="12">
-                <StackPanel Spacing="8">
-                    <!-- Start Date/Time -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Start" FontWeight="SemiBold" FontSize="12"/>
-                        <Grid ColumnDefinitions="*,8,*">
-                            <CalendarDatePicker Name="StartDatePicker"
-                                            SelectedDate="{Binding StartTime}"
-                                            HorizontalAlignment="Stretch"
-                                            IsTodayHighlighted="True"/>
-                            <TimePicker Name="StartTimePicker"
-                                       Grid.Column="2"
-                                       ClockIdentifier="24HourClock"
-                                       SelectedTime="{Binding StartTime, Converter={StaticResource DateTimeToTimeSpanConverter}}"
-                                       HorizontalAlignment="Stretch"/>
-                        </Grid>
-                    </StackPanel>
-
-                    <!-- Duration -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Duration" FontWeight="SemiBold" FontSize="12"/>
-                        <Grid ColumnDefinitions="*,8,*,8,*">
-                            <NumericUpDown Value="{Binding Duration.TotalHours}"
-                                          Increment="1"
-                                          Minimum="0"
-                                          Maximum="24"
-                                          FormatString="F0"
-                                          HorizontalAlignment="Stretch"/>
-                            <TextBlock Text="hours"
-                                       Grid.Column="2"
-                                       VerticalAlignment="Center"/>
-                            <NumericUpDown Value="{Binding Duration.Minutes}"
-                                          Grid.Column="4"
-                                          Increment="15"
-                                          Minimum="0"
-                                          Maximum="45"
-                                          FormatString="D2"
-                                          HorizontalAlignment="Stretch"/>
-                            <TextBlock Text="min"
-                                       Grid.Column="6"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-                    </StackPanel>
-
-                    <!-- End Date/Time -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="End" FontWeight="SemiBold" FontSize="12"/>
-                        <Grid ColumnDefinitions="*,8,*">
-                            <CalendarDatePicker Name="EndDatePicker"
-                                            SelectedDate="{Binding EndTime}"
-                                            HorizontalAlignment="Stretch"
-                                            IsTodayHighlighted="True"/>
-                            <TimePicker Name="EndTimePicker"
-                                       Grid.Column="2"
-                                       ClockIdentifier="24HourClock"
-                                       SelectedTime="{Binding EndTime, Converter={StaticResource DateTimeToTimeSpanConverter}}"
-                                       HorizontalAlignment="Stretch"/>
-                        </Grid>
-                    </StackPanel>
+            <StackPanel Spacing="8">
+                <!-- Start Date/Time -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Start" FontWeight="SemiBold" FontSize="12"/>
+                    <Grid ColumnDefinitions="*,8,*">
+                        <CalendarDatePicker Name="StartDatePicker"
+                                        SelectedDate="{Binding StartTime}"
+                                        HorizontalAlignment="Stretch"
+                                        IsTodayHighlighted="True"/>
+                        <TimePicker Name="StartTimePicker"
+                                   Grid.Column="2"
+                                   ClockIdentifier="24HourClock"
+                                   SelectedTime="{Binding StartTime, Converter={StaticResource DateTimeToTimeSpanConverter}}"
+                                   HorizontalAlignment="Stretch"/>
+                    </Grid>
                 </StackPanel>
-            </Border>
+
+                <!-- End Date/Time -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="End" FontWeight="SemiBold" FontSize="12"/>
+                    <Grid ColumnDefinitions="*,8,*">
+                        <CalendarDatePicker Name="EndDatePicker"
+                                        SelectedDate="{Binding EndTime}"
+                                        HorizontalAlignment="Stretch"
+                                        IsTodayHighlighted="True"/>
+                        <TimePicker Name="EndTimePicker"
+                                   Grid.Column="2"
+                                   ClockIdentifier="24HourClock"
+                                   SelectedTime="{Binding EndTime, Converter={StaticResource DateTimeToTimeSpanConverter}}"
+                                   HorizontalAlignment="Stretch"/>
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
 
             <!-- Description -->
             <StackPanel Spacing="4">
