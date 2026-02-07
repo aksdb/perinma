@@ -307,32 +307,32 @@ public partial class CalendarWeekViewModel : ViewModelBase
             {
                 var viewModels = new List<EventItem>();
 
-                var effectiveStart = e.StartTime.Date >= start ? e.StartTime : start;
-                var startDate = effectiveStart.Date;
-                var effectiveEnd = e.EndTime.Date <= end ? e.EndTime : end;
-                var endDate = effectiveEnd.Date;
+                var effectiveStart = e.StartTime.Date >= start ? e.StartTime : new ZonedDateTime(start, TimeZoneInfo.Local);
+                var startDate = effectiveStart.DateTime;
+                var effectiveEnd = e.EndTime.Date <= end ? e.EndTime : new ZonedDateTime(end, TimeZoneInfo.Local);
+                var endDate = effectiveEnd.DateTime;
 
                 // Split event into multiple items if it spans multiple days.
                 var dayIndex = -1;
-                var currentDate = start.Date.AddDays(-1);
+                var currentDate = new ZonedDateTime(start.Date.AddDays(-1), TimeZoneInfo.Local);
                 while (true)
                 {
                     dayIndex++;
-                    currentDate = currentDate.AddDays(1);
+                    currentDate = currentDate.AddMinutes(24 * 60);
 
-                    if (currentDate < startDate)
+                    if (currentDate.DateTime < startDate)
                     {
                         // This event is not of interest to us, yet.
                         continue;
                     }
 
-                    if (currentDate > endDate)
+                    if (currentDate.DateTime > endDate)
                     {
                         // Remaining events will not be of interest to us.
                         break;
                     }
 
-                    if (currentDate == effectiveEnd)
+                    if (currentDate.DateTime == effectiveEnd.DateTime)
                     {
                         // The end of the event is exactly the start of the new day. So it effectively
                         // ends at the last day.
@@ -341,12 +341,12 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
                     var startSlot = 0;
                     var endSlot = 0;
-                    if (currentDate == startDate)
+                    if (currentDate.DateTime == startDate)
                     {
                         startSlot = effectiveStart.Hour * 4 + ((effectiveStart.Minute + 7) / 15);
                     }
 
-                    if (currentDate == endDate)
+                    if (currentDate.DateTime == endDate)
                     {
                         endSlot = effectiveEnd.Hour * 4 + ((effectiveEnd.Minute + 7) / 15) - 1;
                     }
@@ -371,9 +371,9 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         DaySlot = dayIndex,
                         StartSlot = startSlot,
                         EndSlot = endSlot,
-                        Color = string.IsNullOrEmpty(e.EventReference.Calendar.Color)
+                        Color = string.IsNullOrEmpty(e.Reference.Calendar.Color)
                             ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
-                            : Color.Parse(e.EventReference.Calendar.Color),
+                            : Color.Parse(e.Reference.Calendar.Color),
                         TieBreaker = tieBreaker++,
                         ColumnSlot = 0,
                         TotalColumns = 1,
@@ -454,9 +454,9 @@ public partial class CalendarWeekViewModel : ViewModelBase
                 dayVm.Events.Add(new MonthEventViewModel
                 {
                     Title = string.IsNullOrEmpty(evt.Title) ? "[no title]" : evt.Title,
-                    Color = string.IsNullOrEmpty(evt.EventReference.Calendar.Color)
+                    Color = string.IsNullOrEmpty(evt.Reference.Calendar.Color)
                         ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
-                        : Color.Parse(evt.EventReference.Calendar.Color),
+                        : Color.Parse(evt.Reference.Calendar.Color),
                     CalendarEvent = evt,
                     IsFullDay = isFullDay,
                     TimeText = isFullDay ? string.Empty : evt.StartTime.ToString("HH:mm"),
@@ -503,10 +503,10 @@ public partial class CalendarWeekViewModel : ViewModelBase
                     StartTime = evt.StartTime,
                     EndTime = evt.EndTime,
                     IsFullDay = isFullDay,
-                    Color = string.IsNullOrEmpty(evt.EventReference.Calendar.Color)
+                    Color = string.IsNullOrEmpty(evt.Reference.Calendar.Color)
                         ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
-                        : Color.Parse(evt.EventReference.Calendar.Color),
-                    CalendarName = evt.EventReference.Calendar.Name,
+                        : Color.Parse(evt.Reference.Calendar.Color),
+                    CalendarName = evt.Reference.Calendar.Name,
                     CalendarEvent = evt,
                     Storage = _storage,
                     Providers = _providers

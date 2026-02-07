@@ -51,4 +51,11 @@ public readonly struct ZonedDateTime(DateTime dateTime, TimeZoneInfo timeZone) :
     {
         return new ZonedDateTime(DateTime.AddMinutes(value), TimeZone);
     }
+
+    public DateTime Date => DateTime.Date;
+    public TimeSpan TimeOfDay => DateTime.TimeOfDay;
+    public int Hour => DateTime.Hour;
+    public int Minute => DateTime.Minute;
+
+    public string ToString(string format) => DateTime.ToString(format);
 }

@@ -85,7 +85,7 @@ public partial class MonthEventViewModel : ObservableObject
                 return new CalendarEventViewModel(CalendarEvent);
 
             ICalendarProvider? calendarProvider = null;
-            var accountType = CalendarEvent.EventReference.Calendar.Account.Type;
+            var accountType = CalendarEvent.Reference.Calendar.Account.Type;
 
             if (Providers != null && Providers.TryGetValue(accountType, out var provider))
             {

@@ -33,7 +33,7 @@ public partial class ReminderViewModel : ViewModelBase
     private string _calendarColor = string.Empty;
 
     [ObservableProperty]
-    private DateTime _startTime;
+    private ZonedDateTime? _startTime;
 
     [ObservableProperty]
     private TimeSpan _timeUntilEvent;
@@ -66,18 +66,18 @@ public partial class ReminderViewModel : ViewModelBase
             return;
         }
 
-        var occurrenceTime = DateTimeOffset.FromUnixTimeSeconds(_targetTime).LocalDateTime;
+        var occurrenceTime = new ZonedDateTime(DateTimeOffset.FromUnixTimeSeconds(_targetTime).LocalDateTime, TimeZoneInfo.Local);
         var startTime = await _reminderService.GetEventStartTimeAsync(_eventId, occurrenceTime, _accountType, cancellationToken);
         if (startTime.HasValue)
         {
             StartTime = startTime.Value;
-            TimeUntilEvent = StartTime - DateTime.Now;
+            TimeUntilEvent = startTime.Value.DateTime - DateTime.Now;
         }
         else
         {
             // Fallback to the stored occurrence time (already local time)
             StartTime = occurrenceTime;
-            TimeUntilEvent = StartTime - DateTime.Now;
+            TimeUntilEvent = occurrenceTime.DateTime - DateTime.Now;
         }
 
         _startTimeInitialized = true;

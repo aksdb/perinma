@@ -44,9 +44,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
         // Get reminder occurrences from the provider
         var reminderOccurrences =
-            await provider.GetNextReminderOccurrencesAsync(rawData, rawCalendarData,
-                refTime,
-                cancellationToken);
+            provider.GetNextReminderOccurrences(rawData, rawCalendarData, refTime);
 
         if (reminderOccurrences.Count == 0)
         {
@@ -63,7 +61,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
         await storage.DeleteRemindersAsync(remindersToDelete);
 
-        foreach (var (occurrence, triggerTime) in reminderOccurrences)
+        foreach ((ZonedDateTime occurrence, ZonedDateTime triggerTime) in reminderOccurrences)
         {
             if (existingReminders.All(r => r.TriggerTime != triggerTime.ToDateTimeOffset().ToUnixTimeSeconds()))
             {
@@ -202,10 +200,10 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
             return null;
         }
 
-        var startTimeOffset = await provider.GetEventStartTimeAsync(rawData, occurrenceTime.DateTime, cancellationToken);
+        var startTimeOffset = provider.GetEventStartTime(rawData, occurrenceTime.DateTime);
         if (startTimeOffset.HasValue)
         {
-            return new ZonedDateTime(startTimeOffset.Value.LocalDateTime, occurrenceTime.TimeZone);
+            return new ZonedDateTime(startTimeOffset.Value.DateTime, occurrenceTime.TimeZone);
         }
 
         return null;

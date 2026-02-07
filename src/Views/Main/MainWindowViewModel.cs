@@ -89,7 +89,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _themeService = new ThemeService();
 
         var storage = new SqliteStorage(databaseService, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage);
+        var calendarSource = new DatabaseCalendarSource(storage, syncService.Providers);
         //var calendarSource = new DummyCalendarSource(DateTime.Now);
         _googleCalendarService = new GoogleCalendarService();
         _googleOAuthService = new GoogleOAuthService(_googleCalendarService);

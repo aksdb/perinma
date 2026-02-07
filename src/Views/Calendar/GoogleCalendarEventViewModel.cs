@@ -109,7 +109,7 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
     {
         try
         {
-            var rawData = await _storage.GetEventData(_calendarEvent.EventReference.Id.ToString(), "rawData");
+            var rawData = await _storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
             if (!string.IsNullOrEmpty(rawData))
             {
                 var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(rawData);
@@ -338,9 +338,9 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
         {
             IsUpdating = true;
 
-            var accountId = _calendarEvent.EventReference.Calendar.Account.Id.ToString();
-            var calendarId = _calendarEvent.EventReference.Calendar.ExternalId;
-            var eventId = _calendarEvent.EventReference.ExternalId;
+            var accountId = _calendarEvent.Reference.Calendar.Account.Id.ToString();
+            var calendarId = _calendarEvent.Reference.Calendar.ExternalId;
+            var eventId = _calendarEvent.Reference.ExternalId;
 
             if (string.IsNullOrEmpty(calendarId) || string.IsNullOrEmpty(eventId))
             {
@@ -349,7 +349,7 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
             }
 
             // Get raw event data for the provider
-            var rawData = await _storage.GetEventData(_calendarEvent.EventReference.Id.ToString(), "rawData");
+            var rawData = await _storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
             if (string.IsNullOrEmpty(rawData))
             {
                 Console.WriteLine("Failed to get raw event data");
@@ -369,7 +369,7 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
             };
 
             // Update the attendee list to reflect the change
-            var selfAttendee = Attendees.FirstOrDefault(a => a.DisplayName == _calendarEvent.EventReference.Calendar.Account.Name);
+            var selfAttendee = Attendees.FirstOrDefault(a => a.DisplayName == _calendarEvent.Reference.Calendar.Account.Name);
             if (selfAttendee != null)
             {
                 selfAttendee.ResponseStatus = CurrentResponseStatus;

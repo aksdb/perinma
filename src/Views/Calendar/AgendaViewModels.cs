@@ -33,10 +33,10 @@ public partial class AgendaEventViewModel : ObservableObject
     private string _title = string.Empty;
 
     [ObservableProperty]
-    private DateTime _startTime;
+    private ZonedDateTime _startTime;
 
     [ObservableProperty]
-    private DateTime _endTime;
+    private ZonedDateTime _endTime;
 
     [ObservableProperty]
     private bool _isFullDay;
@@ -110,7 +110,7 @@ public partial class AgendaEventViewModel : ObservableObject
                 return new CalendarEventViewModel(CalendarEvent);
 
             ICalendarProvider? calendarProvider = null;
-            var accountType = CalendarEvent.EventReference.Calendar.Account.Type;
+            var accountType = CalendarEvent.Reference.Calendar.Account.Type;
 
             if (Providers != null && Providers.TryGetValue(accountType, out var provider))
             {

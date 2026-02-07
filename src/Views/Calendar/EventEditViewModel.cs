@@ -130,7 +130,7 @@ public partial class EventEditViewModel : ViewModelBase
             _duration = _endTime - _startTime;
             SelectedCalendar = calendar;
 
-            var rawDataTask = _storage.GetEventData(existingEvent.EventReference.Id.ToString(), "rawData");
+            var rawDataTask = _storage.GetEventData(existingEvent.Reference.Id.ToString(), "rawData");
             _existingRawEventData = rawDataTask.GetAwaiter().GetResult();
         }
         else
@@ -181,7 +181,7 @@ public partial class EventEditViewModel : ViewModelBase
                 await provider.UpdateEventAsync(
                     accountId,
                     calendarExternalId,
-                    _existingEvent.EventReference.ExternalId ?? string.Empty,
+                    _existingEvent.Reference.ExternalId ?? string.Empty,
                     Title,
                     string.IsNullOrWhiteSpace(Description) ? null : Description,
                     string.IsNullOrWhiteSpace(Location) ? null : Location,
@@ -189,7 +189,7 @@ public partial class EventEditViewModel : ViewModelBase
                     endTimeZoned,
                     _existingRawEventData);
 
-                _onCompleted(_existingEvent.EventReference.ExternalId ?? string.Empty);
+                _onCompleted(_existingEvent.Reference.ExternalId ?? string.Empty);
                 RequestClose?.Invoke(this, EventArgs.Empty);
             }
             else if (provider != null)

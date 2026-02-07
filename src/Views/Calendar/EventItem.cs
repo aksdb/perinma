@@ -270,14 +270,14 @@ public partial class EventItem : TemplatedControl
         }
 
         ICalendarProvider? calendarProvider = null;
-        var accountType = CalendarEvent.EventReference.Calendar.Account.Type;
+        var accountType = CalendarEvent.Reference.Calendar.Account.Type;
 
         if (Providers != null && Providers.TryGetValue(accountType, out var provider))
         {
             calendarProvider = provider;
         }
 
-        if (CalendarEvent.EventReference.Calendar.Account.Type == AccountType.Google)
+        if (CalendarEvent.Reference.Calendar.Account.Type == AccountType.Google)
         {
             return new GoogleCalendarEventViewModel(
                 CalendarEvent,
@@ -285,7 +285,7 @@ public partial class EventItem : TemplatedControl
                 calendarProvider);
         }
 
-        if (CalendarEvent.EventReference.Calendar.Account.Type == AccountType.CalDav)
+        if (CalendarEvent.Reference.Calendar.Account.Type == AccountType.CalDav)
         {
             return new CalDavEventViewModel(
                 CalendarEvent,
