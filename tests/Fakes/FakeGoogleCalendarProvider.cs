@@ -21,6 +21,7 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
     private bool _shouldThrowInvalidSyncToken;
     private bool _shouldThrowInvalidEventSyncToken;
     private readonly CredentialManagerService _credentialManager;
+    private readonly List<(string AccountId, string CalendarId, string Title, string? Description, string? Location, DateTime StartTime, DateTime EndTime)> _createdEvents = [];
 
     public FakeGoogleCalendarProvider(CredentialManagerService credentialManager)
     {
@@ -180,7 +181,9 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var eventId = Guid.NewGuid().ToString();
+        _createdEvents.Add((accountId, calendarId, title, description, location, startTime, endTime));
+        return Task.FromResult(eventId);
     }
 
     public Task UpdateEventAsync(
@@ -195,7 +198,18 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        _createdEvents.Add((accountId, calendarId, title, description, location, startTime, endTime));
+        return Task.CompletedTask;
+    }
+
+    public IReadOnlyList<(string AccountId, string CalendarId, string Title, string? Description, string? Location, DateTime StartTime, DateTime EndTime)> GetCreatedEvents()
+    {
+        return _createdEvents.AsReadOnly();
+    }
+
+    public void ClearCreatedEvents()
+    {
+        _createdEvents.Clear();
     }
 
     private static ProviderEvent? ConvertGoogleEvent(Event evt)
