@@ -3,81 +3,66 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Calendar = Ical.Net.Calendar;
 using Ical.Net.DataTypes;
 using perinma.Models;
-using perinma.Storage.Models;
 using perinma.Utils;
+using Calendar = Ical.Net.Calendar;
+using ICalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
 namespace perinma.Services.CalDAV;
 
 /// <summary>
 /// CalDAV implementation of ICalendarProvider.
 /// </summary>
-public class CalDavCalendarProvider : ICalendarProvider
+public class CalDavCalendarProvider(
+    ICalDavService calDavService,
+    CredentialManagerService credentialManager)
+    : ICalendarProvider
 {
-    private readonly ICalDavService _calDavService;
-    private readonly CredentialManagerService _credentialManager;
-
-    public CalDavCalendarProvider(
-        ICalDavService calDavService,
-        CredentialManagerService credentialManager)
-    {
-        _calDavService = calDavService;
-        _credentialManager = credentialManager;
-    }
-
-    public List<CalendarEvent> ParseCalendarEvents(List<string> rawData, TimeRange timeRange) =>
-        rawData
-            .Select(Calendar.Load)
-            .Where(calendar => calendar is { Events.Count: > 0 })
-            .SelectMany(calendar => calendar.Events)
-            .SelectMany(evt =>
+    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange) =>
+        rawEvents
+            .Select(t => (t.Reference, Calendar: Calendar.Load(t.RawData)))
+            .Where(t => t.Calendar is { Events.Count: > 0 })
+            .SelectMany(t => t.Calendar.Events.Select(evt => (t.Reference, evt)))
+            .SelectMany(t =>
             {
-                if (evt.RecurrenceRules.Count > 0)
+                if (t.evt.RecurrenceRules.Count > 0)
                 {
-                    return evt.GetOccurrences(new CalDateTime(timeRange.Start.DateTime, timeRange.Start.TimeZone.Id))
+                    return t.evt.GetOccurrences(new CalDateTime(timeRange.Start.DateTime, timeRange.Start.TimeZone.Id))
                         .Select(occurrence =>
                         {
                             var startTime = BuildZonedDateTime(occurrence.Period.StartTime);
-                            var duration = evt.Duration;
+                            var duration = t.evt.Duration;
                             var endTime = duration != null
                                 ? startTime.Add(duration.Value.ToTimeSpanUnspecified())
                                 : startTime;
 
-                            return (evt, startTime, endTime);
+                            return (t.Reference, t.evt, startTime, endTime);
                         });
                 }
 
-                if (evt.Start != null && evt.End != null)
+                if (t.evt.Start != null && t.evt.End != null)
                 {
-                    var startTime = BuildZonedDateTime(evt.Start);
-                    var endTime = BuildZonedDateTime(evt.End);
-                    return [(evt, startTime, endTime)];
+                    var startTime = BuildZonedDateTime(t.evt.Start);
+                    var endTime = BuildZonedDateTime(t.evt.End);
+                    return [(t.Reference, t.evt, startTime, endTime)];
                 }
 
-                return Enumerable
-                    .Empty<(Ical.Net.CalendarComponents.CalendarEvent evt, ZonedDateTime startTime, ZonedDateTime
-                        endTime)>();
+                return [];
             })
-            .Where(item => item.startTime <= timeRange.End && item.endTime >= timeRange.Start)
-            .Select(item => MapToCalendarEvent(item.evt, item.startTime, item.endTime))
+            .Where(t => t.startTime <= timeRange.End && t.endTime >= timeRange.Start)
+            .Select(t => MapToCalendarEvent(t.Reference, t.evt, t.startTime, t.endTime))
             .ToList();
 
     private static ZonedDateTime BuildZonedDateTime(CalDateTime calDateTime) =>
         new(calDateTime.Value, TimeZoneInfo.FindSystemTimeZoneById(calDateTime.TzId ?? "UTC"));
 
-    private static CalendarEvent MapToCalendarEvent(Ical.Net.CalendarComponents.CalendarEvent evt,
+    private static CalendarEvent MapToCalendarEvent(EventReference reference, ICalEvent evt,
         ZonedDateTime startTime, ZonedDateTime endTime)
     {
         return new CalendarEvent
         {
-            Reference = new EventReference
-            {
-                Calendar = null!,
-                Id = Guid.NewGuid(),
-                ExternalId = evt.Uid
-            },
+            Reference = reference,
             Title = evt.Summary,
             StartTime = startTime,
             EndTime = endTime,
@@ -102,14 +87,14 @@ public class CalDavCalendarProvider : ICalendarProvider
         string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        var calDavCredentials = _credentialManager.GetCalDavCredentials(accountId);
+        var calDavCredentials = credentialManager.GetCalDavCredentials(accountId);
         if (calDavCredentials == null)
         {
             throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
         }
 
         // Fetch calendars from CalDAV server
-        var result = await _calDavService.GetCalendarsAsync(calDavCredentials, syncToken, cancellationToken);
+        var result = await calDavService.GetCalendarsAsync(calDavCredentials, syncToken, cancellationToken);
 
         // Convert to provider-agnostic format
         var calendars = result.Calendars.Select(c =>
@@ -152,7 +137,7 @@ public class CalDavCalendarProvider : ICalendarProvider
         string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        var calDavCredentials = _credentialManager.GetCalDavCredentials(accountId);
+        var calDavCredentials = credentialManager.GetCalDavCredentials(accountId);
         if (calDavCredentials == null)
         {
             throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
@@ -160,7 +145,7 @@ public class CalDavCalendarProvider : ICalendarProvider
 
         // Fetch events from CalDAV server
         var result =
-            await _calDavService.GetEventsAsync(calDavCredentials, calendarExternalId, syncToken, cancellationToken);
+            await calDavService.GetEventsAsync(calDavCredentials, calendarExternalId, syncToken, cancellationToken);
 
         // Convert to provider-agnostic format
         var events = new List<ProviderEvent>();
@@ -186,13 +171,13 @@ public class CalDavCalendarProvider : ICalendarProvider
         string accountId,
         CancellationToken cancellationToken = default)
     {
-        var calDavCredentials = _credentialManager.GetCalDavCredentials(accountId);
+        var calDavCredentials = credentialManager.GetCalDavCredentials(accountId);
         if (calDavCredentials == null)
         {
             return Task.FromResult(false);
         }
 
-        return _calDavService.TestConnectionAsync(calDavCredentials, cancellationToken);
+        return calDavService.TestConnectionAsync(calDavCredentials, cancellationToken);
     }
 
     private static ProviderEvent? ConvertCalDavEvent(CalDavEvent evt)
@@ -252,7 +237,7 @@ public class CalDavCalendarProvider : ICalendarProvider
     {
         try
         {
-            var calendar = Ical.Net.Calendar.Load(rawICalendar);
+            var calendar = Calendar.Load(rawICalendar);
             var calendarEvent = calendar?.Events.FirstOrDefault();
 
             if (calendarEvent != null)
@@ -273,7 +258,7 @@ public class CalDavCalendarProvider : ICalendarProvider
         string rawEventData,
         string? rawCalendarData = null)
     {
-        var calendar = Ical.Net.Calendar.Load(rawEventData);
+        var calendar = Calendar.Load(rawEventData);
         var evt = calendar?.Events.FirstOrDefault();
         if (evt == null)
             return [];
@@ -311,7 +296,7 @@ public class CalDavCalendarProvider : ICalendarProvider
         string rawEventData,
         DateTime? occurrenceTime = null)
     {
-        var calendar = Ical.Net.Calendar.Load(rawEventData);
+        var calendar = Calendar.Load(rawEventData);
         var evt = calendar?.Events.FirstOrDefault();
         if (evt == null)
             return null;
@@ -353,7 +338,7 @@ public class CalDavCalendarProvider : ICalendarProvider
         string? rawCalendarData = null,
         ZonedDateTime referenceTime = default)
     {
-        var calendar = Ical.Net.Calendar.Load(rawEventData);
+        var calendar = Calendar.Load(rawEventData);
         var evt = calendar?.Events.FirstOrDefault();
         if (evt == null)
         {
@@ -428,7 +413,7 @@ public class CalDavCalendarProvider : ICalendarProvider
         string responseStatus,
         CancellationToken cancellationToken = default)
     {
-        var calDavCredentials = _credentialManager.GetCalDavCredentials(accountId);
+        var calDavCredentials = credentialManager.GetCalDavCredentials(accountId);
         if (calDavCredentials == null)
         {
             throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
@@ -438,7 +423,7 @@ public class CalDavCalendarProvider : ICalendarProvider
         var userEmail = calDavCredentials.Username;
 
         // Respond to event using the service
-        await _calDavService.RespondToEventAsync(
+        await calDavService.RespondToEventAsync(
             calDavCredentials,
             eventId, // eventId is the event URL for CalDAV
             rawEventData,
@@ -459,13 +444,13 @@ public class CalDavCalendarProvider : ICalendarProvider
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
-        var calDavCredentials = _credentialManager.GetCalDavCredentials(accountId);
+        var calDavCredentials = credentialManager.GetCalDavCredentials(accountId);
         if (calDavCredentials == null)
         {
             throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
         }
 
-        return await _calDavService.CreateEventAsync(
+        return await calDavService.CreateEventAsync(
             calDavCredentials,
             calendarId,
             title,
@@ -490,14 +475,14 @@ public class CalDavCalendarProvider : ICalendarProvider
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
-        var calDavCredentials = _credentialManager.GetCalDavCredentials(accountId);
+        var calDavCredentials = credentialManager.GetCalDavCredentials(accountId);
         if (calDavCredentials == null)
         {
             throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
         }
 
         // For CalDAV, eventId is event URL and rawEventData contains current iCalendar data
-        await _calDavService.UpdateEventAsync(
+        await calDavService.UpdateEventAsync(
             calDavCredentials,
             eventId,
             rawEventData ?? string.Empty,

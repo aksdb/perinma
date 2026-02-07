@@ -21,40 +21,41 @@ public class GoogleCalendarProvider(
     CredentialManagerService credentialManager)
     : ICalendarProvider
 {
-    public List<CalendarEvent> ParseCalendarEvents(List<string> rawData, TimeRange timeRange)
+    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange)
     {
-        var googleEvents = rawData
-            .Select(raw => NewtonsoftJsonSerializer.Instance.Deserialize<Event>(raw))
-            .Where(e => e != null)
+        var googleEvents = rawEvents
+            .Select(e => (e.Reference, Event: NewtonsoftJsonSerializer.Instance.Deserialize<Event>(e.RawData)))
+            .Where(t => t.Event != null)
             .ToList();
 
         var overrides = googleEvents
-            .Where(e => !string.IsNullOrEmpty(e.RecurringEventId))
+            .Where(t => !string.IsNullOrEmpty(t.Event.RecurringEventId))
             .ToList();
 
         return googleEvents
-            .Where(e => string.IsNullOrEmpty(e.RecurringEventId)) // Main events (regular or master recurring)
-            .SelectMany(e =>
+            .Where(t => string.IsNullOrEmpty(t.Event.RecurringEventId)) // Main events (regular or master recurring)
+            .SelectMany(t =>
             {
-                if (e.Recurrence is { Count: > 0 })
+                if (t.Event.Recurrence is { Count: > 0 })
                 {
                     // Generate occurrences for recurring events
-                    return DetermineOccurrences(e.Recurrence, timeRange)
+                    return DetermineOccurrences(t.Event.Recurrence, timeRange)
                         .Where(occurrenceStart => !overrides.Any(ov =>
-                            ov.RecurringEventId == e.Id &&
-                            ParseGoogleDateTime(ov.OriginalStartTime) == occurrenceStart))
-                        .Select(occurrenceStart => MapToCalendarEvent(e, occurrenceStart));
+                            ov.Event.RecurringEventId == t.Event.Id &&
+                            ParseGoogleDateTime(ov.Event.OriginalStartTime) == occurrenceStart))
+                        .Select(occurrenceStart => MapToCalendarEvent(t.Reference, t.Event, occurrenceStart));
                 }
 
                 // Regular non-recurring event
-                return [MapToCalendarEvent(e, null)];
+                return [MapToCalendarEvent(t.Reference, t.Event, null)];
             })
-            .Concat(overrides.Select(ov => MapToCalendarEvent(ov, null))) // Include the overrides themselves
+            .Concat(overrides.Select(ov => MapToCalendarEvent(ov.Reference, ov.Event, null))) // Include the overrides themselves
             .Where(ce => ce.StartTime <= timeRange.End && ce.EndTime >= timeRange.Start)
             .ToList();
     }
 
-    private CalendarEvent MapToCalendarEvent(Event googleEvent, ZonedDateTime? occurrenceStart)
+    private CalendarEvent MapToCalendarEvent(EventReference reference, Event googleEvent,
+        ZonedDateTime? occurrenceStart)
     {
         var start = occurrenceStart ?? ParseGoogleDateTime(googleEvent.Start) ?? default;
 
@@ -71,13 +72,7 @@ public class GoogleCalendarProvider(
 
         return new CalendarEvent
         {
-            // TODO pass that in
-            Reference = new EventReference
-            {
-                Calendar = null!, // Calendar context should be handled by the caller or passed in
-                Id = Guid.NewGuid(),
-                ExternalId = googleEvent.Id
-            },
+            Reference = reference,
             Title = googleEvent.Summary,
             StartTime = start,
             EndTime = end,

@@ -16,10 +16,10 @@ public interface ICalendarProvider
     /// Parse all the given raw events into a list of CalendarEvents within the given TimeRange.
     /// The TimeRange is relevant to restrict recurring events.
     /// </summary>
-    /// <param name="rawData"></param>
+    /// <param name="rawEvents"></param>
     /// <param name="timeRange"></param>
     /// <returns></returns>
-    List<CalendarEvent> ParseCalendarEvents(List<String> rawData, TimeRange timeRange);
+    List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange);
 
     /// <summary>
     /// Syncs calendars for an account, optionally using incremental sync.

@@ -48,6 +48,12 @@ public record CalendarEvent
     public ExtensionValues Extensions { get; init; } = new();
 }
 
+public record RawEvent
+{
+    public required EventReference Reference { get; init; }
+    public required string RawData { get; init; }
+}
+
 public class Extension<T> where T : class
 {
     internal Extension()
