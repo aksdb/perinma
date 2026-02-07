@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using perinma.Models;
 
 namespace perinma.Services;
 
@@ -73,10 +74,10 @@ public interface ICalendarProvider
     /// <param name="referenceTime">Reference time for filtering (defaults to UTC now)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of tuples containing occurrence time and trigger time for each reminder</returns>
-    Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
+    Task<IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
         string rawEventData,
         string? rawCalendarData = null,
-        DateTime referenceTime = default,
+        ZonedDateTime referenceTime = default,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -116,8 +117,8 @@ public interface ICalendarProvider
     /// <param name="title">Event title</param>
     /// <param name="description">Event description (optional)</param>
     /// <param name="location">Event location (optional)</param>
-    /// <param name="startTime">Event start time</param>
-    /// <param name="endTime">Event end time</param>
+    /// <param name="startTime">Event start time with timezone</param>
+    /// <param name="endTime">Event end time with timezone</param>
     /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The external ID of the created event</returns>
@@ -127,8 +128,8 @@ public interface ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default);
 
@@ -141,8 +142,8 @@ public interface ICalendarProvider
     /// <param name="title">Event title</param>
     /// <param name="description">Event description (optional)</param>
     /// <param name="location">Event location (optional)</param>
-    /// <param name="startTime">Event start time</param>
-    /// <param name="endTime">Event end time</param>
+    /// <param name="startTime">Event start time with timezone</param>
+    /// <param name="endTime">Event end time with timezone</param>
     /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task UpdateEventAsync(
@@ -152,8 +153,8 @@ public interface ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default);
 }
@@ -252,12 +253,12 @@ public class ProviderEvent
     /// <summary>
     /// Start time of the event (or first occurrence for recurring events).
     /// </summary>
-    public DateTime? StartTime { get; init; }
+    public ZonedDateTime? StartTime { get; init; }
 
     /// <summary>
     /// End time of the event. For recurring events, this is the end of the recurrence span.
     /// </summary>
-    public DateTime? EndTime { get; init; }
+    public ZonedDateTime? EndTime { get; init; }
 
     /// <summary>
     /// Event status (e.g., "confirmed", "cancelled", "tentative").
@@ -277,7 +278,7 @@ public class ProviderEvent
     /// <summary>
     /// For override events: the original start time of the occurrence being modified.
     /// </summary>
-    public DateTime? OriginalStartTime { get; init; }
+    public ZonedDateTime? OriginalStartTime { get; init; }
 
     /// <summary>
     /// Raw provider data serialized as string for later use (JSON or iCalendar).

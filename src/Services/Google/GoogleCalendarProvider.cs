@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
 using Ical.Net.DataTypes;
+using perinma.Models;
 using perinma.Utils;
 using Calendar = Ical.Net.Calendar;
 
@@ -158,7 +159,7 @@ public class GoogleCalendarProvider : ICalendarProvider
         // Handle override events
         if (isOverride)
         {
-            // Parse OriginalStartTime (when the override replaces)
+            // Parse OriginalStartTime (when override replaces)
             originalStartTime = ParseGoogleDateTime(evt.OriginalStartTime);
 
             if (evt.Status == "cancelled")
@@ -213,16 +214,26 @@ public class GoogleCalendarProvider : ICalendarProvider
             }
         }
 
+        ZonedDateTime? startTimeZoned = startTime.HasValue 
+            ? new ZonedDateTime(startTime.Value, TimeZoneInfo.Utc) 
+            : null;
+        ZonedDateTime? endTimeZoned = endTime.HasValue 
+            ? new ZonedDateTime(endTime.Value, TimeZoneInfo.Utc) 
+            : null;
+        ZonedDateTime? originalStartTimeZoned = originalStartTime.HasValue 
+            ? new ZonedDateTime(originalStartTime.Value, TimeZoneInfo.Utc) 
+            : null;
+
         return new ProviderEvent
         {
             ExternalId = evt.Id,
             Title = evt.Summary ?? "Untitled Event",
-            StartTime = startTime,
-            EndTime = endTime,
+            StartTime = startTimeZoned,
+            EndTime = endTimeZoned,
             Status = evt.Status,
             Deleted = false,
             RecurringEventId = evt.RecurringEventId,
-            OriginalStartTime = originalStartTime,
+            OriginalStartTime = originalStartTimeZoned,
             RawData = NewtonsoftJsonSerializer.Instance.Serialize(evt)
         };
     }
@@ -363,10 +374,10 @@ public class GoogleCalendarProvider : ICalendarProvider
     }
 
     /// <inheritdoc/>
-    public async Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
+    public async Task<IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
         string rawEventData,
         string? rawCalendarData = null,
-        DateTime referenceTime = default,
+        ZonedDateTime referenceTime = default,
         CancellationToken cancellationToken = default)
     {
         try
@@ -390,8 +401,11 @@ public class GoogleCalendarProvider : ICalendarProvider
             }
 
             var isRecurring = googleEvent.Recurrence is { Count: > 0 };
-            var startTime = referenceTime == default ? DateTime.UtcNow : referenceTime;
-            var result = new List<(DateTime Occurrence, DateTime TriggerTime)>();
+            var refTime = referenceTime == default 
+                ? new ZonedDateTime(DateTime.UtcNow, TimeZoneInfo.Utc) 
+                : referenceTime;
+            var startTime = refTime.DateTime;
+            var result = new List<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)>();
 
             if (isRecurring)
             {
@@ -414,13 +428,15 @@ public class GoogleCalendarProvider : ICalendarProvider
                     }
 
                     var occurrenceTime = nextOccurrence.Period.StartTime.AsUtc;
+                    var occurrenceZoned = new ZonedDateTime(occurrenceTime, TimeZoneInfo.Utc);
 
                     foreach (var minutes in reminderMinutes)
                     {
                         var triggerTime = occurrenceTime.AddMinutes(-minutes);
                         if (triggerTime > startTime)
                         {
-                            result.Add((occurrenceTime, triggerTime));
+                            var triggerZoned = new ZonedDateTime(triggerTime, TimeZoneInfo.Utc);
+                            result.Add((occurrenceZoned, triggerZoned));
                             break;
                         }
                     }
@@ -428,12 +444,14 @@ public class GoogleCalendarProvider : ICalendarProvider
             }
             else
             {
+                var eventZoned = new ZonedDateTime(eventStartTime.Value, TimeZoneInfo.Utc);
                 foreach (var minutes in reminderMinutes)
                 {
                     var triggerTime = eventStartTime.Value.AddMinutes(-minutes);
                     if (triggerTime > startTime)
                     {
-                        result.Add((eventStartTime.Value, triggerTime));
+                        var triggerZoned = new ZonedDateTime(triggerTime, TimeZoneInfo.Utc);
+                        result.Add((eventZoned, triggerZoned));
                     }
                 }
             }
@@ -517,8 +535,8 @@ public class GoogleCalendarProvider : ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
@@ -529,7 +547,7 @@ public class GoogleCalendarProvider : ICalendarProvider
         }
 
         var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
-        return await _googleCalendarService.CreateEventAsync(service, calendarId, title, description, location, startTime, endTime, rawEventData, cancellationToken);
+        return await _googleCalendarService.CreateEventAsync(service, calendarId, title, description, location, startTime.DateTime, endTime.DateTime, rawEventData, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -540,8 +558,8 @@ public class GoogleCalendarProvider : ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
@@ -552,6 +570,6 @@ public class GoogleCalendarProvider : ICalendarProvider
         }
 
         var service = await _googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
-        await _googleCalendarService.UpdateEventAsync(service, calendarId, eventId, title, description, location, startTime, endTime, rawEventData, cancellationToken);
+        await _googleCalendarService.UpdateEventAsync(service, calendarId, eventId, title, description, location, startTime.DateTime, endTime.DateTime, rawEventData, cancellationToken);
     }
 }

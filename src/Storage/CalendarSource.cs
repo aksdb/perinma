@@ -71,7 +71,7 @@ public class DummyCalendarSource : ICalendarSource
         _allEvents = BuildEvents(weekStart);
     }
 
-    public List<CalendarEvent> GetCalendarEvents(DateTime startTime, DateTime endTime)
+    public List<CalendarEvent> GetCalendarEvents(ZonedDateTime startTime, ZonedDateTime endTime)
     {
         return (from ev in _allEvents
             let startInside = ev.StartTime > startTime && ev.StartTime < endTime
@@ -171,8 +171,8 @@ public class DummyCalendarSource : ICalendarSource
         {
             Calendar = cal,
             Id = Guid.NewGuid(),
-            StartTime = start,
-            EndTime = end,
+            StartTime = new ZonedDateTime(start, TimeZoneInfo.Local),
+            EndTime = new ZonedDateTime(end, TimeZoneInfo.Local),
             Title = title,
             ChangedAt = DateTime.Now
         };
@@ -212,7 +212,7 @@ public class DatabaseCalendarSource : ICalendarSource
             var occurrences = e.AccountTypeEnum switch
             {
                 AccountType.CalDav => GetCalDavEventOccurrences(e, startTime, endTime),
-                _ => GetFallbackOccurrences(e, startTime, endTime)
+                _ => throw new InvalidOperationException("unknown account type")
             };
 
             calendarEvents.AddRange(occurrences);
@@ -309,20 +309,18 @@ public class DatabaseCalendarSource : ICalendarSource
         var result = allOccurrences
             .Where(occ =>
             {
-                return shadowedOccurrencesUtc.All(shadow => shadow != occ.StartTime.ToUniversalTime());
+                return shadowedOccurrencesUtc.All(shadow => shadow != occ.StartTime.DateTime.ToUniversalTime());
             })
             .ToList();
 
         return result;
     }
 
-    private (DateTime startTime, DateTime endTime) ExtractGoogleEventTimes(CalendarEventQueryResult result)
+    private (ZonedDateTime startTime, ZonedDateTime endTime) ExtractGoogleEventTimes(CalendarEventQueryResult result)
     {
         var googleEvent = TryParseGoogleEvent(result.RawData);
         if (googleEvent == null)
-        {
-            return GetFallbackTimes(result);
-        }
+            throw new InvalidOperationException("cannot parse  google event");
 
         var startTime = googleEvent.Start != null
             ? ParseGoogleEventDateTime(googleEvent.Start) ?? GetFallbackStartTime(result)
@@ -358,9 +356,7 @@ public class DatabaseCalendarSource : ICalendarSource
     {
         var googleEvent = TryParseGoogleEvent(e.RawData);
         if (googleEvent == null)
-        {
-            return GetFallbackOccurrences(e, queryStart, queryEnd);
-        }
+            return [];
 
         if (googleEvent.Recurrence == null || googleEvent.Recurrence.Count == 0)
         {
@@ -375,9 +371,7 @@ public class DatabaseCalendarSource : ICalendarSource
     {
         var calDavEvent = TryParseCalDavEvent(e.RawData);
         if (calDavEvent == null)
-        {
-            return GetFallbackOccurrences(e, queryStart, queryEnd);
-        }
+            return [];
 
         if (calDavEvent.RecurrenceRules.Count == 0)
         {
@@ -389,12 +383,6 @@ public class DatabaseCalendarSource : ICalendarSource
         var baseEndTime = ParseCalDavDateTime(calDavEvent.End) ?? GetFallbackEndTime(e);
 
         return GetOccurrencesFromICalendarEvent(e, calDavEvent, baseStartTime, baseEndTime, queryStart, queryEnd);
-    }
-
-    private List<CalendarEvent> GetFallbackOccurrences(CalendarEventQueryResult e, DateTime queryStart, DateTime queryEnd)
-    {
-        var (baseStartTime, baseEndTime) = GetFallbackTimes(e);
-        return CreateCalendarEvent(e, baseStartTime, baseEndTime);
     }
 
     private List<CalendarEvent> CreateCalendarEvent(CalendarEventQueryResult e, DateTime eventStartTime, DateTime eventEndTime)
@@ -620,7 +608,12 @@ public class DatabaseCalendarSource : ICalendarSource
 
             foreach (var occurrence in filteredOccurrences)
             {
-                var occStart = occurrence.Period.StartTime.Value;
+                TimeZoneInfo timeZone;
+                if (occurrence.Period.StartTime.TzId != null)
+                    timeZone = TimeZoneInfo.FindSystemTimeZoneById(occurrence.Period.StartTime.TzId);
+                else
+                    timeZone = TimeZoneInfo.Local;
+                var occStart = new ZonedDateTime(occurrence.Period.StartTime.Value, timeZone);
                 var occEnd = occStart.Add(duration);
 
                 var calendar = GetOrCreateCalendar(e);

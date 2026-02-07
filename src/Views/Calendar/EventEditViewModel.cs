@@ -125,8 +125,8 @@ public partial class EventEditViewModel : ViewModelBase
             Title = existingEvent.Title ?? string.Empty;
             Description = string.Empty;
             Location = string.Empty;
-            _startTime = existingEvent.StartTime;
-            _endTime = existingEvent.EndTime;
+            _startTime = existingEvent.StartTime.DateTime;
+            _endTime = existingEvent.EndTime.DateTime;
             _duration = _endTime - _startTime;
             SelectedCalendar = calendar;
 
@@ -172,6 +172,10 @@ public partial class EventEditViewModel : ViewModelBase
             var calendarExternalId = targetCalendar.ExternalId ?? string.Empty;
             var provider = _providers.GetValueOrDefault(targetCalendar.Account.Type);
 
+            var timeZone = TimeZoneInfo.Local;
+            var startTimeZoned = new ZonedDateTime(StartTime, timeZone);
+            var endTimeZoned = new ZonedDateTime(EndTime, timeZone);
+
             if (IsEditMode && _existingEvent != null && provider != null)
             {
                 await provider.UpdateEventAsync(
@@ -181,8 +185,8 @@ public partial class EventEditViewModel : ViewModelBase
                     Title,
                     string.IsNullOrWhiteSpace(Description) ? null : Description,
                     string.IsNullOrWhiteSpace(Location) ? null : Location,
-                    StartTime,
-                    EndTime,
+                    startTimeZoned,
+                    endTimeZoned,
                     _existingRawEventData);
 
                 _onCompleted(_existingEvent.ExternalId ?? string.Empty);
@@ -196,8 +200,8 @@ public partial class EventEditViewModel : ViewModelBase
                     Title,
                     string.IsNullOrWhiteSpace(Description) ? null : Description,
                     string.IsNullOrWhiteSpace(Location) ? null : Location,
-                    StartTime,
-                    EndTime,
+                    startTimeZoned,
+                    endTimeZoned,
                     null);
 
                 _onCompleted(newEventId);

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Ical.Net.DataTypes;
+using perinma.Models;
 using perinma.Storage.Models;
 using perinma.Utils;
 
@@ -154,12 +155,19 @@ public class CalDavCalendarProvider : ICalendarProvider
             }
         }
 
+        ZonedDateTime? startTimeZoned = evt.StartTime.HasValue 
+            ? new ZonedDateTime(evt.StartTime.Value, TimeZoneInfo.Utc) 
+            : null;
+        ZonedDateTime? endTimeZoned = endTime.HasValue 
+            ? new ZonedDateTime(endTime.Value, TimeZoneInfo.Utc) 
+            : null;
+
         return new ProviderEvent
         {
             ExternalId = evt.Uid,
             Title = evt.Summary ?? "Untitled Event",
-            StartTime = evt.StartTime,
-            EndTime = endTime,
+            StartTime = startTimeZoned,
+            EndTime = endTimeZoned,
             Status = evt.Status,
             Deleted = false,
             RecurringEventId = null, // CalDAV handles recurrence differently
@@ -294,11 +302,11 @@ public class CalDavCalendarProvider : ICalendarProvider
          }
      }
 
-     /// <inheritdoc/>
-    public async Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
+    /// <inheritdoc/>
+     public async Task<IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
         string rawEventData,
         string? rawCalendarData = null,
-        DateTime referenceTime = default,
+        ZonedDateTime referenceTime = default,
         CancellationToken cancellationToken = default)
     {
         try
@@ -323,8 +331,11 @@ public class CalDavCalendarProvider : ICalendarProvider
             }
 
             var isRecurring = evt.RecurrenceRules.Count > 0;
-            var startTime = referenceTime == default ? DateTime.UtcNow : referenceTime;
-            var result = new List<(DateTime Occurrence, DateTime TriggerTime)>();
+            var refTime = referenceTime == default 
+                ? new ZonedDateTime(DateTime.UtcNow, TimeZoneInfo.Utc) 
+                : referenceTime;
+            var startTime = refTime.DateTime;
+            var result = new List<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)>();
 
             if (isRecurring)
             {
@@ -337,24 +348,28 @@ public class CalDavCalendarProvider : ICalendarProvider
                 }
 
                 var occurrenceTime = nextOccurrence.Period.StartTime.AsUtc;
+                var occurrenceZoned = new ZonedDateTime(occurrenceTime, TimeZoneInfo.Utc);
                 foreach (var minutes in reminderMinutes)
                 {
                     var triggerTime = occurrenceTime.AddMinutes(-minutes);
                     if (triggerTime > startTime)
                     {
-                        result.Add((occurrenceTime, triggerTime));
+                        var triggerZoned = new ZonedDateTime(triggerTime, TimeZoneInfo.Utc);
+                        result.Add((occurrenceZoned, triggerZoned));
                         break;
                     }
                 }
             }
             else
             {
+                var eventZoned = new ZonedDateTime(eventStartTime.Value, TimeZoneInfo.Utc);
                 foreach (var minutes in reminderMinutes)
                 {
                     var triggerTime = eventStartTime.Value.AddMinutes(-minutes);
                     if (triggerTime > startTime)
                     {
-                        result.Add((eventStartTime.Value, triggerTime));
+                        var triggerZoned = new ZonedDateTime(triggerTime, TimeZoneInfo.Utc);
+                        result.Add((eventZoned, triggerZoned));
                     }
                 }
             }
@@ -402,8 +417,8 @@ public class CalDavCalendarProvider : ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
@@ -419,8 +434,8 @@ public class CalDavCalendarProvider : ICalendarProvider
             title,
             description,
             location,
-            startTime,
-            endTime,
+            startTime.DateTime,
+            endTime.DateTime,
             rawEventData,
             cancellationToken);
     }
@@ -433,8 +448,8 @@ public class CalDavCalendarProvider : ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
@@ -444,7 +459,7 @@ public class CalDavCalendarProvider : ICalendarProvider
             throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
         }
 
-        // For CalDAV, eventId is the event URL and rawEventData contains the current iCalendar data
+        // For CalDAV, eventId is event URL and rawEventData contains current iCalendar data
         await _calDavService.UpdateEventAsync(
             calDavCredentials,
             eventId,
@@ -452,8 +467,8 @@ public class CalDavCalendarProvider : ICalendarProvider
             title,
             description,
             location,
-            startTime,
-            endTime,
+            startTime.DateTime,
+            endTime.DateTime,
             rawEventData,
             cancellationToken);
     }

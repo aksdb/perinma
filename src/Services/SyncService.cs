@@ -359,8 +359,8 @@ public class SyncService
                 CalendarId = calendar.CalendarId,
                 EventId = string.Empty, // Will be set by CreateOrUpdateEventAsync
                 ExternalId = evt.ExternalId,
-                StartTime = evt.StartTime.HasValue ? new DateTimeOffset(evt.StartTime.Value).ToUnixTimeSeconds() : null,
-                EndTime = evt.EndTime.HasValue ? new DateTimeOffset(evt.EndTime.Value).ToUnixTimeSeconds() : null,
+                StartTime = evt.StartTime?.ToDateTimeOffset().ToUnixTimeSeconds(),
+                EndTime = evt.EndTime?.ToDateTimeOffset().ToUnixTimeSeconds(),
                 Title = evt.Title ?? "Untitled Event",
                 ChangedAt = currentSyncTime,
             };
