@@ -71,6 +71,7 @@ public class GoogleCalendarProvider(
 
         return new CalendarEvent
         {
+            // TODO pass that in
             Reference = new EventReference
             {
                 Calendar = null!, // Calendar context should be handled by the caller or passed in

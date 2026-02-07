@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Calendar = Ical.Net.Calendar;
 using Ical.Net.DataTypes;
 using perinma.Models;
 using perinma.Storage.Models;
@@ -26,11 +27,74 @@ public class CalDavCalendarProvider : ICalendarProvider
         _credentialManager = credentialManager;
     }
 
-    public List<CalendarEvent> ParseCalendarEvents(List<string> rawData, TimeRange timeRange)
+    public List<CalendarEvent> ParseCalendarEvents(List<string> rawData, TimeRange timeRange) =>
+        rawData
+            .Select(Calendar.Load)
+            .Where(calendar => calendar is { Events.Count: > 0 })
+            .SelectMany(calendar => calendar.Events)
+            .SelectMany(evt =>
+            {
+                if (evt.RecurrenceRules.Count > 0)
+                {
+                    return evt.GetOccurrences(new CalDateTime(timeRange.Start.DateTime, timeRange.Start.TimeZone.Id))
+                        .Select(occurrence =>
+                        {
+                            var startTime = BuildZonedDateTime(occurrence.Period.StartTime);
+                            var duration = evt.Duration;
+                            var endTime = duration != null
+                                ? startTime.Add(duration.Value.ToTimeSpanUnspecified())
+                                : startTime;
+
+                            return (evt, startTime, endTime);
+                        });
+                }
+
+                if (evt.Start != null && evt.End != null)
+                {
+                    var startTime = BuildZonedDateTime(evt.Start);
+                    var endTime = BuildZonedDateTime(evt.End);
+                    return [(evt, startTime, endTime)];
+                }
+
+                return Enumerable
+                    .Empty<(Ical.Net.CalendarComponents.CalendarEvent evt, ZonedDateTime startTime, ZonedDateTime
+                        endTime)>();
+            })
+            .Where(item => item.startTime <= timeRange.End && item.endTime >= timeRange.Start)
+            .Select(item => MapToCalendarEvent(item.evt, item.startTime, item.endTime))
+            .ToList();
+
+    private static ZonedDateTime BuildZonedDateTime(CalDateTime calDateTime) =>
+        new(calDateTime.Value, TimeZoneInfo.FindSystemTimeZoneById(calDateTime.TzId ?? "UTC"));
+
+    private static CalendarEvent MapToCalendarEvent(Ical.Net.CalendarComponents.CalendarEvent evt,
+        ZonedDateTime startTime, ZonedDateTime endTime)
     {
-        // TODO
-        throw new NotImplementedException();
+        return new CalendarEvent
+        {
+            Reference = new EventReference
+            {
+                Calendar = null!,
+                Id = Guid.NewGuid(),
+                ExternalId = evt.Uid
+            },
+            Title = evt.Summary,
+            StartTime = startTime,
+            EndTime = endTime,
+            ChangedAt = evt.DtStamp?.AsUtc,
+            ResponseStatus = MapResponseStatus(evt.Status),
+            Extensions = new ExtensionValues()
+        };
     }
+
+    private static EventResponseStatus MapResponseStatus(string? status) => status switch
+    {
+        "CONFIRMED" => EventResponseStatus.Accepted,
+        "TENTATIVE" => EventResponseStatus.Tentative,
+        "CANCELLED" => EventResponseStatus.Declined,
+        "NEEDS-ACTION" => EventResponseStatus.NeedsAction,
+        _ => EventResponseStatus.None
+    };
 
     /// <inheritdoc/>
     public async Task<CalendarSyncResult> GetCalendarsAsync(
