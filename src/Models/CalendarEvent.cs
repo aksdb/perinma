@@ -48,8 +48,6 @@ public record CalendarEvent
     public ExtensionValues Extensions { get; init; } = new();
 }
 
-}
-
 public class Extension<T> where T : class
 {
     internal Extension()

@@ -26,8 +26,11 @@ public class CalDavCalendarProvider : ICalendarProvider
         _credentialManager = credentialManager;
     }
 
-    /// <inheritdoc/>
-    public CredentialManagerService CredentialManager => _credentialManager;
+    public List<CalendarEvent> ParseCalendarEvents(List<string> rawData, TimeRange timeRange)
+    {
+        // TODO
+        throw new NotImplementedException();
+    }
 
     /// <inheritdoc/>
     public async Task<CalendarSyncResult> GetCalendarsAsync(
@@ -50,12 +53,12 @@ public class CalDavCalendarProvider : ICalendarProvider
             var data = new Dictionary<string, DataAttribute>();
 
             data["rawData"] = new DataAttribute.Text(c.PropfindXml);
-            
+
             if (c.Owner != null)
                 data["owner"] = new DataAttribute.Text(c.Owner);
 
             if (c.AclXml != null)
-                data["rawACL"] =  new DataAttribute.Text(c.AclXml);
+                data["rawACL"] = new DataAttribute.Text(c.AclXml);
 
             if (c.CurrentUserPrivilegeSetXml != null)
                 data["currentUserPrivilegeSet"] = new DataAttribute.Text(c.CurrentUserPrivilegeSetXml);
@@ -92,7 +95,8 @@ public class CalDavCalendarProvider : ICalendarProvider
         }
 
         // Fetch events from CalDAV server
-        var result = await _calDavService.GetEventsAsync(calDavCredentials, calendarExternalId, syncToken, cancellationToken);
+        var result =
+            await _calDavService.GetEventsAsync(calDavCredentials, calendarExternalId, syncToken, cancellationToken);
 
         // Convert to provider-agnostic format
         var events = new List<ProviderEvent>();
@@ -123,6 +127,7 @@ public class CalDavCalendarProvider : ICalendarProvider
         {
             return Task.FromResult(false);
         }
+
         return _calDavService.TestConnectionAsync(calDavCredentials, cancellationToken);
     }
 
@@ -155,11 +160,11 @@ public class CalDavCalendarProvider : ICalendarProvider
             }
         }
 
-        ZonedDateTime? startTimeZoned = evt.StartTime.HasValue 
-            ? new ZonedDateTime(evt.StartTime.Value, TimeZoneInfo.Utc) 
+        ZonedDateTime? startTimeZoned = evt.StartTime.HasValue
+            ? new ZonedDateTime(evt.StartTime.Value, TimeZoneInfo.Utc)
             : null;
-        ZonedDateTime? endTimeZoned = endTime.HasValue 
-            ? new ZonedDateTime(endTime.Value, TimeZoneInfo.Utc) 
+        ZonedDateTime? endTimeZoned = endTime.HasValue
+            ? new ZonedDateTime(endTime.Value, TimeZoneInfo.Utc)
             : null;
 
         return new ProviderEvent
@@ -200,186 +205,154 @@ public class CalDavCalendarProvider : ICalendarProvider
     }
 
     /// <inheritdoc/>
-    public Task<IList<int>> GetReminderMinutesAsync(
+    public IList<int> GetReminderMinutes(
         string rawEventData,
-        string? rawCalendarData = null,
-        CancellationToken cancellationToken = default)
+        string? rawCalendarData = null)
     {
-        try
+        var calendar = Ical.Net.Calendar.Load(rawEventData);
+        var evt = calendar?.Events.FirstOrDefault();
+        if (evt == null)
+            return [];
+
+        var alarms = evt.Alarms;
+        if (alarms == null || alarms.Count == 0)
+            return [];
+
+        List<int> reminderMinutes = [];
+
+        foreach (var alarm in alarms)
         {
-            var calendar = Ical.Net.Calendar.Load(rawEventData);
-            var evt = calendar?.Events.FirstOrDefault();
-            if (evt == null)
+            if (alarm.Trigger?.IsRelative != true || !alarm.Trigger.Duration.HasValue)
             {
-                return Task.FromResult<IList<int>>([]);
+                continue;
             }
 
-            var alarms = evt.Alarms;
-            if (alarms == null || alarms.Count == 0)
+            var duration = alarm.Trigger.Duration.Value;
+            // Use ToTimeSpanUnspecified() to convert Duration to TimeSpan
+            // Negative values mean "before the event"
+            var totalMinutes = (int)duration.ToTimeSpanUnspecified().TotalMinutes;
+
+            // For reminders, we want positive "minutes before" values
+            if (totalMinutes < 0)
             {
-                return Task.FromResult<IList<int>>([]);
+                reminderMinutes.Add(-totalMinutes);
             }
-
-            List<int> reminderMinutes = [];
-
-            foreach (var alarm in alarms)
-            {
-                if (alarm.Trigger?.IsRelative != true || !alarm.Trigger.Duration.HasValue)
-                {
-                    continue;
-                }
-
-                var duration = alarm.Trigger.Duration.Value;
-                // Use ToTimeSpanUnspecified() to convert Duration to TimeSpan
-                // Negative values mean "before the event"
-                var totalMinutes = (int)duration.ToTimeSpanUnspecified().TotalMinutes;
-
-                // For reminders, we want positive "minutes before" values
-                if (totalMinutes < 0)
-                {
-                    reminderMinutes.Add(-totalMinutes);
-                }
-            }
-
-            return Task.FromResult<IList<int>>(reminderMinutes);
         }
-        catch (Exception)
-        {
-            return Task.FromResult<IList<int>>([]);
-        }
+
+        return reminderMinutes;
     }
 
     /// <inheritdoc/>
-    public Task<DateTimeOffset?> GetEventStartTimeAsync(
+    public ZonedDateTime? GetEventStartTime(
         string rawEventData,
-        DateTime? occurrenceTime = null,
-        CancellationToken cancellationToken = default)
+        DateTime? occurrenceTime = null)
     {
-        try
+        var calendar = Ical.Net.Calendar.Load(rawEventData);
+        var evt = calendar?.Events.FirstOrDefault();
+        if (evt == null)
+            return null;
+
+        var isRecurring = evt.RecurrenceRules.Count > 0;
+
+        // For non-recurring events or when no occurrence time is specified, return base event start time
+        if (!isRecurring || !occurrenceTime.HasValue)
         {
-            var calendar = Ical.Net.Calendar.Load(rawEventData);
-            var evt = calendar?.Events.FirstOrDefault();
-            if (evt == null)
-            {
-                return Task.FromResult<DateTimeOffset?>(null);
-            }
+            var baseEventStartTime = evt.Start?.AsUtc;
+            if (!baseEventStartTime.HasValue)
+                return null;
 
-            var isRecurring = evt.RecurrenceRules.Count > 0;
-
-            // For non-recurring events or when no occurrence time is specified, return base event start time
-            if (!isRecurring || !occurrenceTime.HasValue)
-            {
-                var baseEventStartTime = evt.Start?.AsUtc;
-                if (!baseEventStartTime.HasValue)
-                {
-                    return Task.FromResult<DateTimeOffset?>(null);
-                }
-
-                return Task.FromResult<DateTimeOffset?>(new DateTimeOffset(baseEventStartTime.Value));
-            }
-
-            var occurrences = evt.GetOccurrences(startTime: new CalDateTime(occurrenceTime.Value.ToUniversalTime()));
-
-            var firstOccurrence = occurrences.FirstOrDefault();
-            if (firstOccurrence != null)
-            {
-                var firstOccurrenceTime = firstOccurrence.Period.StartTime.AsUtc;
-                return Task.FromResult<DateTimeOffset?>(new DateTimeOffset(firstOccurrenceTime));
-            }
-
-            // Fallback to base event start time
-            var fallbackStartTime = evt.Start?.AsUtc;
-            if (!fallbackStartTime.HasValue)
-            {
-                return Task.FromResult<DateTimeOffset?>(null);
-            }
-
-            return Task.FromResult<DateTimeOffset?>(new DateTimeOffset(fallbackStartTime.Value));
+            return new ZonedDateTime(baseEventStartTime.Value, TimeZoneInfo.Utc);
         }
-        catch (Exception)
+
+        var occurrences = evt.GetOccurrences(startTime: new CalDateTime(occurrenceTime.Value.ToUniversalTime()));
+
+        var firstOccurrence = occurrences.FirstOrDefault();
+        if (firstOccurrence != null)
         {
-            return Task.FromResult<DateTimeOffset?>(null);
-         }
-     }
+            var firstOccurrenceTime = firstOccurrence.Period.StartTime.AsUtc;
+            return new ZonedDateTime(firstOccurrenceTime, TimeZoneInfo.Utc);
+        }
+
+        // Fallback to base event start time
+        var fallbackStartTime = evt.Start?.AsUtc;
+        if (!fallbackStartTime.HasValue)
+        {
+            return null;
+        }
+
+        return new ZonedDateTime(fallbackStartTime.Value, TimeZoneInfo.Utc);
+    }
 
     /// <inheritdoc/>
-     public async Task<IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
+    public IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        ZonedDateTime referenceTime = default,
-        CancellationToken cancellationToken = default)
+        ZonedDateTime referenceTime = default)
     {
-        try
-        {
-            var calendar = Ical.Net.Calendar.Load(rawEventData);
-            var evt = calendar?.Events.FirstOrDefault();
-            if (evt == null)
-            {
-                return [];
-            }
-
-            var reminderMinutes = await GetReminderMinutesAsync(rawEventData, rawCalendarData, cancellationToken);
-            if (reminderMinutes.Count == 0)
-            {
-                return [];
-            }
-
-            var eventStartTime = evt.Start?.AsUtc;
-            if (!eventStartTime.HasValue)
-            {
-                return [];
-            }
-
-            var isRecurring = evt.RecurrenceRules.Count > 0;
-            var refTime = referenceTime == default 
-                ? new ZonedDateTime(DateTime.UtcNow, TimeZoneInfo.Utc) 
-                : referenceTime;
-            var startTime = refTime.DateTime;
-            var result = new List<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)>();
-
-            if (isRecurring)
-            {
-                // Get all occurrences
-                var occurrences = evt.GetOccurrences(startTime: new CalDateTime(startTime));
-                var nextOccurrence = occurrences.FirstOrDefault();
-                if (nextOccurrence == null)
-                {
-                    return [];
-                }
-
-                var occurrenceTime = nextOccurrence.Period.StartTime.AsUtc;
-                var occurrenceZoned = new ZonedDateTime(occurrenceTime, TimeZoneInfo.Utc);
-                foreach (var minutes in reminderMinutes)
-                {
-                    var triggerTime = occurrenceTime.AddMinutes(-minutes);
-                    if (triggerTime > startTime)
-                    {
-                        var triggerZoned = new ZonedDateTime(triggerTime, TimeZoneInfo.Utc);
-                        result.Add((occurrenceZoned, triggerZoned));
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                var eventZoned = new ZonedDateTime(eventStartTime.Value, TimeZoneInfo.Utc);
-                foreach (var minutes in reminderMinutes)
-                {
-                    var triggerTime = eventStartTime.Value.AddMinutes(-minutes);
-                    if (triggerTime > startTime)
-                    {
-                        var triggerZoned = new ZonedDateTime(triggerTime, TimeZoneInfo.Utc);
-                        result.Add((eventZoned, triggerZoned));
-                    }
-                }
-            }
-
-            return result;
-        }
-        catch (Exception)
+        var calendar = Ical.Net.Calendar.Load(rawEventData);
+        var evt = calendar?.Events.FirstOrDefault();
+        if (evt == null)
         {
             return [];
         }
+
+        var reminderMinutes = GetReminderMinutes(rawEventData, rawCalendarData);
+        if (reminderMinutes.Count == 0)
+        {
+            return [];
+        }
+
+        var eventStartTime = evt.Start?.AsUtc;
+        if (!eventStartTime.HasValue)
+        {
+            return [];
+        }
+
+        var isRecurring = evt.RecurrenceRules.Count > 0;
+        var refTime = referenceTime == default
+            ? new ZonedDateTime(DateTime.UtcNow, TimeZoneInfo.Utc)
+            : referenceTime;
+        var startTime = refTime.DateTime;
+        var result = new List<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)>();
+
+        if (isRecurring)
+        {
+            // Get all occurrences
+            var occurrences = evt.GetOccurrences(startTime: new CalDateTime(startTime));
+            var nextOccurrence = occurrences.FirstOrDefault();
+            if (nextOccurrence == null)
+            {
+                return [];
+            }
+
+            var occurrenceTime = nextOccurrence.Period.StartTime.AsUtc;
+            var occurrenceZoned = new ZonedDateTime(occurrenceTime, TimeZoneInfo.Utc);
+            foreach (var minutes in reminderMinutes)
+            {
+                var triggerTime = occurrenceTime.AddMinutes(-minutes);
+                if (triggerTime > startTime)
+                {
+                    var triggerZoned = new ZonedDateTime(triggerTime, TimeZoneInfo.Utc);
+                    result.Add((occurrenceZoned, triggerZoned));
+                    break;
+                }
+            }
+        }
+        else
+        {
+            var eventZoned = new ZonedDateTime(eventStartTime.Value, TimeZoneInfo.Utc);
+            foreach (var minutes in reminderMinutes)
+            {
+                var triggerTime = eventStartTime.Value.AddMinutes(-minutes);
+                if (triggerTime > startTime)
+                {
+                    var triggerZoned = new ZonedDateTime(triggerTime, TimeZoneInfo.Utc);
+                    result.Add((eventZoned, triggerZoned));
+                }
+            }
+        }
+
+        return result;
     }
 
     /// <inheritdoc/>
