@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -297,15 +298,15 @@ public class GoogleCalendarProvider(
         if (eventDateTime == null)
             return null;
 
-        if (eventDateTime.DateTimeRaw != null && DateTime.TryParse(eventDateTime.DateTimeRaw, out var dateTime))
+        if (eventDateTime.DateTimeRaw != null && DateTimeOffset.TryParse(eventDateTime.DateTimeRaw, out var dateTime))
         {
-            return new ZonedDateTime(dateTime, TimeZoneInfo.FindSystemTimeZoneById(eventDateTime.TimeZone));
+            return new ZonedDateTime(dateTime.DateTime, TimeZoneInfo.FindSystemTimeZoneById(eventDateTime.TimeZone));
         }
 
-        if (eventDateTime.Date != null && DateTime.TryParse(eventDateTime.Date, out var date))
+        if (eventDateTime.Date != null && DateTimeOffset.TryParse(eventDateTime.Date, out var date))
         {
             // Since it should still be the full day in our display, we have to consider it to be in our timezone.
-            return new ZonedDateTime(date, TimeZoneInfo.Local);
+            return new ZonedDateTime(date.Date, TimeZoneInfo.Local);
         }
 
         return null;

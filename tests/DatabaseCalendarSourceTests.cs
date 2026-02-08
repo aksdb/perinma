@@ -44,8 +44,29 @@ public class DatabaseCalendarSourceTests
             Enabled = 1
         };
         await storage.CreateOrUpdateCalendarAsync(calendar);
-
         return calendar.CalendarId;
+    }
+
+    private static async Task<string> CreateTestEventAsync(SqliteStorage storage, string calendarId, string externalId, DateTime startTime, DateTime endTime, string title, string? rawData = null)
+    {
+        var eventDbo = new CalendarEventDbo
+        {
+            CalendarId = calendarId,
+            EventId = Guid.NewGuid().ToString(),
+            ExternalId = externalId,
+            StartTime = new DateTimeOffset(startTime).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(endTime).ToUnixTimeSeconds(),
+            Title = title,
+            ChangedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+        await storage.CreateOrUpdateEventAsync(eventDbo);
+
+        if (rawData != null)
+        {
+            await storage.SetEventDataJson(eventDbo.EventId, "rawData", rawData);
+        }
+
+        return eventDbo.EventId;
     }
 
     private static GoogleEventDateTime CreateGoogleEventDateTime(DateTime dateTime, TimeZoneInfo? timeZone = null)
@@ -55,6 +76,42 @@ public class DatabaseCalendarSourceTests
             DateTimeRaw = dateTime.ToString("o"),
             TimeZone = timeZone?.Id ?? TimeZoneInfo.Local.Id
         };
+    }
+
+    private static string BuildGoogleEventJson(string eventId, DateTime startTime, DateTime endTime, string title, string status = "confirmed")
+    {
+        var googleEvent = new GoogleEvent
+        {
+            Id = eventId,
+            Summary = title,
+            Status = status,
+            Start = CreateGoogleEventDateTime(startTime),
+            End = CreateGoogleEventDateTime(endTime)
+        };
+        return NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
+    }
+
+    private static string BuildCalDavICalendar(string uid, DateTime startTime, DateTime endTime, string title)
+    {
+        return $@"BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Test//Test//EN
+BEGIN:VEVENT
+UID:{uid}
+DTSTART:{FormatCalDavDateTime(startTime)}
+DTEND:{FormatCalDavDateTime(endTime)}
+SUMMARY:{title}
+STATUS:CONFIRMED
+DTSTAMP:{FormatCalDavDateTime(DateTime.UtcNow)}
+END:VEVENT
+END:VCALENDAR";
+    }
+
+    private static string FormatCalDavDateTime(DateTime dateTime)
+    {
+        return dateTime.Kind == DateTimeKind.Utc
+            ? dateTime.ToString("yyyyMMdd'T'HHmmss'Z'")
+            : dateTime.ToString("yyyyMMdd'T'HHmmss");
     }
     
     [Test]
@@ -89,23 +146,41 @@ public class DatabaseCalendarSourceTests
         };
         await storage.CreateOrUpdateCalendarAsync(calendar);
 
-        // Create test event - use the calendar_id returned from CreateOrUpdateCalendarAsync
+        // Create test event
         var eventStart = weekStart.AddHours(10);
         var eventEnd = weekStart.AddHours(11);
-        var eventDbo = new CalendarEventDbo
+        var googleEvent = new GoogleEvent
         {
-            CalendarId = calendar.CalendarId,
-            EventId = Guid.NewGuid().ToString(),
-            ExternalId = "event1",
-            StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
-            EndTime = new DateTimeOffset(eventEnd).ToUnixTimeSeconds(),
-            Title = "Team Meeting",
-            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+            Id = "event1",
+            Summary = "Team Meeting",
+            Status = "confirmed",
+            Start = CreateGoogleEventDateTime(eventStart),
+            End = CreateGoogleEventDateTime(eventEnd)
         };
-        await storage.CreateOrUpdateEventAsync(eventDbo);
+        var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
+        Console.WriteLine($"RawEventJson length: {rawEventJson.Length}");
+        Console.WriteLine($"RawEventJson: {rawEventJson}");
+        await CreateTestEventAsync(storage, calendar.CalendarId, "event1", eventStart, eventEnd, "Team Meeting", rawEventJson);
+
+        // Debug: Check if events are in database
+        var dbEvents = await storage.GetEventsByCalendarAsync(calendar.CalendarId);
+        Console.WriteLine($"Database has {dbEvents.Count()} events in calendar {calendar.CalendarId}");
+        if (dbEvents.Any())
+        {
+            var dbEvent = dbEvents.First();
+            Console.WriteLine($"Event: start={dbEvent.StartTime}, end={dbEvent.EndTime}");
+            var rawData = await storage.GetEventData(dbEvent.EventId, "rawData");
+            Console.WriteLine($"RawData from GetEventData: {rawData?.Length ?? 0} chars");
+            if (rawData != null && rawData.Length < 500)
+            {
+                Console.WriteLine($"RawData: {rawData}");
+            }
+        }
 
         // Act
+        Console.WriteLine($"Getting events from {weekStart} to {weekEnd}");
         var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        Console.WriteLine($"Got {events.Count} events");
 
         // Assert
         Assert.That(events, Has.Count.EqualTo(1));
@@ -266,6 +341,8 @@ public class DatabaseCalendarSourceTests
         var startTime = weekStart.AddHours(10).AddMinutes(30);
         var endTime = weekStart.AddHours(11).AddMinutes(30);
         var changedAt = weekStart.AddDays(-1).AddHours(12);
+        var eventId = Guid.NewGuid().ToString();
+        var externalId = "event1";
 
         await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "Google" });
         await storage.CreateOrUpdateCalendarAsync(calendar);
@@ -273,13 +350,16 @@ public class DatabaseCalendarSourceTests
         await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
         {
             CalendarId = calendar.CalendarId,
-            EventId = Guid.NewGuid().ToString(),
-            ExternalId = "event1",
+            EventId = eventId,
+            ExternalId = externalId,
             StartTime = new DateTimeOffset(startTime).ToUnixTimeSeconds(),
             EndTime = new DateTimeOffset(endTime).ToUnixTimeSeconds(),
             Title = "Test Event",
             ChangedAt = new DateTimeOffset(changedAt).ToUnixTimeSeconds()
         });
+
+        var rawEventJson = BuildGoogleEventJson(externalId, startTime, endTime, "Test Event");
+        await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
 
         // Act
         var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);

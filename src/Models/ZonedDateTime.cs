@@ -26,7 +26,7 @@ public readonly struct ZonedDateTime(DateTime dateTime, TimeZoneInfo timeZone) :
 
     public override bool Equals(object? obj) => obj is ZonedDateTime other && Equals(other);
 
-    public bool Equals(ZonedDateTime other) => DateTime.Equals(other.DateTime) && TimeZone.Equals(other.TimeZone);
+    public bool Equals(ZonedDateTime other) => DateTime.Equals(other.DateTime) && (TimeZone == null || TimeZone.Equals(other.TimeZone));
 
     public override int GetHashCode() => HashCode.Combine(DateTime, TimeZone);
 

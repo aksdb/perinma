@@ -266,7 +266,16 @@ public class CalDavCalendarProvider(
         string rawEventData,
         string? rawCalendarData = null)
     {
-        var calendar = Calendar.Load(rawEventData);
+        Calendar? calendar;
+        try
+        {
+            calendar = Calendar.Load(rawEventData);
+        }
+        catch
+        {
+            return [];
+        }
+
         var evt = calendar?.Events.FirstOrDefault();
         if (evt == null)
             return [];

@@ -1,12 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Calendar.v3.Data;
+using Google.Apis.Json;
+using Ical.Net.DataTypes;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage.Models;
+using Calendar = Ical.Net.Calendar;
+using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
 
 namespace perinma.Tests.Fakes;
 
@@ -199,7 +204,106 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
 
     public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange)
     {
-        return [];
+        var googleEvents = rawEvents
+            .Select(e => (e.Reference, Event: NewtonsoftJsonSerializer.Instance.Deserialize<Event>(e.RawData)))
+            .Where(t => t.Event != null)
+            .ToList();
+
+        var overrides = googleEvents
+            .Where(t => !string.IsNullOrEmpty(t.Event.RecurringEventId))
+            .ToList();
+
+        return googleEvents
+            .Where(t => string.IsNullOrEmpty(t.Event.RecurringEventId)) // Main events (regular or master recurring)
+            .SelectMany(t =>
+            {
+                if (t.Event.Recurrence is { Count: > 0 })
+                {
+                    var foo = DetermineOccurrences(t.Event, timeRange);
+                    // Generate occurrences for recurring events
+                    return foo
+                        .Where(occurrenceStart => !overrides.Any(ov =>
+                            ov.Event.RecurringEventId == t.Event.Id &&
+                            ParseGoogleDateTime(ov.Event.OriginalStartTime) == occurrenceStart))
+                        .Select(occurrenceStart => MapToCalendarEvent(t.Reference, t.Event, occurrenceStart));
+                }
+
+                // Regular non-recurring event
+                return [MapToCalendarEvent(t.Reference, t.Event, null)];
+            })
+            .Concat(overrides.Select(ov => MapToCalendarEvent(ov.Reference, ov.Event, null))) // Include the overrides themselves
+            .Where(ce => ce.StartTime.ToUtc().DateTime <= timeRange.End.ToUtc().DateTime && ce.EndTime.ToUtc().DateTime >= timeRange.Start.ToUtc().DateTime)
+            .ToList();
+    }
+
+    private static CalendarEvent MapToCalendarEvent(EventReference reference, Event googleEvent,
+        ZonedDateTime? occurrenceStart)
+    {
+        var start = occurrenceStart ?? ParseGoogleDateTime(googleEvent.Start) ?? default;
+
+        // Calculate duration if it's an occurrence
+        var duration = TimeSpan.Zero;
+        if (googleEvent is { Start: not null, End: not null })
+            duration = googleEvent.End.DateTimeDateTimeOffset - googleEvent.Start.DateTimeDateTimeOffset ?? TimeSpan.Zero;
+        var end = start.Add(duration);
+
+        var relevantStatus = googleEvent.Attendees
+            ?.FirstOrDefault(a => a.Self == true)
+            ?.ResponseStatus;
+
+        return new CalendarEvent
+        {
+            Reference = reference,
+            Title = googleEvent.Summary,
+            StartTime = start,
+            EndTime = end,
+            ChangedAt = googleEvent.UpdatedDateTimeOffset?.DateTime,
+            ResponseStatus = MapResponseStatus(relevantStatus),
+            Extensions = new ExtensionValues()
+        };
+    }
+
+    private static EventResponseStatus MapResponseStatus(string? status) => status?.ToLower() switch
+    {
+        "needsaction" => EventResponseStatus.NeedsAction,
+        "declined" => EventResponseStatus.Declined,
+        "tentative" => EventResponseStatus.Tentative,
+        "accepted" => EventResponseStatus.Accepted,
+        _ => EventResponseStatus.None
+    };
+
+    private static List<ZonedDateTime> DetermineOccurrences(GoogleEvent evt, TimeRange timeRange,
+        int max = Int32.MaxValue)
+    {
+        if (evt.Recurrence == null || evt.Recurrence.Count == 0)
+            return [];
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("BEGIN:VCALENDAR");
+        sb.AppendLine("BEGIN:VEVENT");
+        sb.AppendLine($"DTSTART;TZID={evt.Start.TimeZone}:{evt.Start.DateTimeDateTimeOffset:yyyyMMdd'T'HHmmss}");
+
+        foreach (var r in evt.Recurrence)
+            sb.AppendLine(r);
+
+        sb.AppendLine("END:VEVENT");
+        sb.Append("END:VCALENDAR");
+
+        var calendar = Calendar.Load(sb.ToString());
+        var icalEvent = calendar?.Events.FirstOrDefault();
+
+        if (icalEvent == null)
+            throw new InvalidOperationException("failed to parse recurrence");
+
+        var occurrences = icalEvent.GetOccurrences(
+            new CalDateTime(timeRange.Start.DateTime, timeRange.Start.TimeZone.Id));
+
+        return occurrences
+            .Select(o =>
+                new ZonedDateTime(o.Period.StartTime.AsUtc, TimeZoneInfo.Utc).ConvertTo(timeRange.Start.TimeZone))
+            .TakeWhile(z => z.DateTime <= timeRange.End.DateTime)
+            .Take(max)
+            .ToList();
     }
 
     public IReadOnlyList<(string AccountId, string CalendarId, string Title, string? Description, string? Location, DateTime StartTime, DateTime EndTime)> GetCreatedEvents()
@@ -281,7 +385,17 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
 
         if (eventDateTime.DateTimeRaw != null && DateTime.TryParse(eventDateTime.DateTimeRaw, out var dateTime))
         {
-            return new ZonedDateTime(dateTime, TimeZoneInfo.FindSystemTimeZoneById(eventDateTime.TimeZone));
+            var timeZoneId = eventDateTime.TimeZone ?? TimeZoneInfo.Local.Id;
+            TimeZoneInfo timeZone;
+            try
+            {
+                timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            }
+            catch
+            {
+                timeZone = TimeZoneInfo.Local;
+            }
+            return new ZonedDateTime(dateTime, timeZone);
         }
 
         if (eventDateTime.Date != null && DateTime.TryParse(eventDateTime.Date, out var date))

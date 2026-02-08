@@ -303,7 +303,10 @@ END:VCALENDAR";
 
     private static CalDateTime ToCalDateTime(DateTime dateTime)
     {
-        return new CalDateTime(dateTime, true);
+        var adjustedDateTime = dateTime.Kind == DateTimeKind.Local
+            ? dateTime.ToUniversalTime()
+            : (dateTime.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(dateTime, DateTimeKind.Local) : dateTime);
+        return new CalDateTime(adjustedDateTime, true);
     }
 
     private static bool ShouldAddTimezone(DateTime startTime, DateTime endTime)

@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Ical.Net.DataTypes;
 using perinma.Models;
 using perinma.Services;
 using perinma.Services.CalDAV;
 using perinma.Storage.Models;
+using Calendar = Ical.Net.Calendar;
+using ICalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
 namespace perinma.Tests.Fakes;
 
@@ -190,10 +193,74 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
         };
     }
 
-    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange)
+    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange) =>
+        rawEvents
+            .Select(t => (t.Reference, Calendar: Ical.Net.Calendar.Load(t.RawData)))
+            .Where(t => t.Calendar is { Events.Count: > 0 })
+            .SelectMany(t => t.Calendar!.Events.Select(evt => (t.Reference, evt)))
+            .SelectMany(t =>
+            {
+                if (t.evt.RecurrenceRules.Count > 0)
+                {
+                    return t.evt.GetOccurrences(new CalDateTime(timeRange.Start.DateTime, timeRange.Start.TimeZone.Id))
+                        .TakeWhile(o => o.Period.StartTime.Value <= timeRange.End.DateTime)
+                        .Select(occurrence =>
+                        {
+                            var startTime = BuildZonedDateTime(occurrence.Period.StartTime);
+
+                            ZonedDateTime endTime;
+                            if (occurrence.Period.EndTime is {} occurrenceEndTime)
+                                endTime = BuildZonedDateTime(occurrenceEndTime);
+                            else if (t.evt.Duration is {} eventDuration)
+                                endTime = startTime.Add(eventDuration.ToTimeSpan(occurrence.Period.StartTime!));
+                            else if (t.evt is { Start: {} eventStart, End: {} eventEnd })
+                                endTime = startTime.Add(eventEnd.Value - eventStart.Value);
+                            else
+                                endTime = startTime;
+
+                            return (t.Reference, t.evt, startTime, endTime);
+                        });
+                }
+
+                if (t.evt.Start != null && t.evt.End != null)
+                {
+                    var startTime = BuildZonedDateTime(t.evt.Start);
+                    var endTime = BuildZonedDateTime(t.evt.End);
+                    return [(t.Reference, t.evt, startTime, endTime)];
+                }
+
+                return [];
+            })
+            .Where(t => t.startTime.ToUtc().DateTime <= timeRange.End.ToUtc().DateTime && t.endTime.ToUtc().DateTime >= timeRange.Start.ToUtc().DateTime)
+            .Select(t => MapToCalendarEvent(t.Reference, t.evt, t.startTime, t.endTime))
+            .ToList();
+
+    private static ZonedDateTime BuildZonedDateTime(CalDateTime calDateTime) =>
+        new(calDateTime.Value, TimeZoneInfo.FindSystemTimeZoneById(calDateTime.TzId ?? "UTC"));
+
+    private static CalendarEvent MapToCalendarEvent(EventReference reference, ICalEvent evt,
+        ZonedDateTime startTime, ZonedDateTime endTime)
     {
-        return [];
+        return new CalendarEvent
+        {
+            Reference = reference,
+            Title = evt.Summary,
+            StartTime = startTime,
+            EndTime = endTime,
+            ChangedAt = evt.DtStamp?.AsUtc,
+            ResponseStatus = MapResponseStatus(evt.Status),
+            Extensions = new ExtensionValues()
+        };
     }
+
+    private static EventResponseStatus MapResponseStatus(string? status) => status switch
+    {
+        "CONFIRMED" => EventResponseStatus.Accepted,
+        "TENTATIVE" => EventResponseStatus.Tentative,
+        "CANCELLED" => EventResponseStatus.Declined,
+        "NEEDS-ACTION" => EventResponseStatus.NeedsAction,
+        _ => EventResponseStatus.None
+    };
 
     // Helper methods to create test data
     public static CalDavCalendar CreateCalendar(string url, string displayName, string? color = null)
