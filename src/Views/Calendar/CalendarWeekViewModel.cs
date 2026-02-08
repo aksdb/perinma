@@ -500,8 +500,8 @@ public partial class CalendarWeekViewModel : ViewModelBase
                 dayVm.Events.Add(new AgendaEventViewModel
                 {
                     Title = string.IsNullOrEmpty(evt.Title) ? "[no title]" : evt.Title,
-                    StartTime = evt.StartTime,
-                    EndTime = evt.EndTime,
+                    StartTime = evt.StartTime.DateTime,
+                    EndTime = evt.EndTime.DateTime,
                     IsFullDay = isFullDay,
                     Color = string.IsNullOrEmpty(evt.Reference.Calendar.Color)
                         ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)

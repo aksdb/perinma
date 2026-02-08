@@ -33,10 +33,10 @@ public partial class AgendaEventViewModel : ObservableObject
     private string _title = string.Empty;
 
     [ObservableProperty]
-    private ZonedDateTime _startTime;
+    private DateTime _startTime;
 
     [ObservableProperty]
-    private ZonedDateTime _endTime;
+    private DateTime _endTime;
 
     [ObservableProperty]
     private bool _isFullDay;

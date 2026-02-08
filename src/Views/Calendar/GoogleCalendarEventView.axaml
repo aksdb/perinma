@@ -19,11 +19,11 @@
 
             <StackPanel Orientation="Horizontal" Spacing="4">
                 <TextBlock Text="Start: " FontWeight="SemiBold" FontSize="12" />
-                <TextBlock Text="{Binding CalendarEvent.StartTime}" />
+                <TextBlock Text="{Binding CalendarEvent.StartTime.DateTime}" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="4">
                 <TextBlock Text="End: " FontWeight="SemiBold" FontSize="12" />
-                <TextBlock Text="{Binding CalendarEvent.EndTime}" />
+                <TextBlock Text="{Binding CalendarEvent.EndTime.DateTime}" />
             </StackPanel>
 
             <StackPanel Spacing="4" IsVisible="{Binding GoogleMeetLink, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
