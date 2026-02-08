@@ -66,8 +66,12 @@ public class GoogleCalendarProvider(
         var duration = TimeSpan.Zero;
         if (googleEvent is { Start: not null, End: not null })
             duration = googleEvent.End.DateTimeDateTimeOffset - googleEvent.Start.DateTimeDateTimeOffset ?? TimeSpan.Zero;
-        var end = start.Add(duration); 
+        var end = start.Add(duration);
 
+        var relevantStatus = googleEvent.Attendees
+            ?.FirstOrDefault(a => a.Self == true)
+            ?.ResponseStatus;
+        
         return new CalendarEvent
         {
             Reference = reference,
@@ -75,16 +79,17 @@ public class GoogleCalendarProvider(
             StartTime = start,
             EndTime = end,
             ChangedAt = googleEvent.UpdatedDateTimeOffset?.DateTime,
-            ResponseStatus = MapResponseStatus(googleEvent.Status),
+            ResponseStatus = MapResponseStatus(relevantStatus),
             Extensions = new ExtensionValues()
         };
     }
 
-    private static EventResponseStatus MapResponseStatus(string? status) => status switch
+    private static EventResponseStatus MapResponseStatus(string? status) => status?.ToLower() switch
     {
-        "confirmed" => EventResponseStatus.Accepted,
+        "needsaction" => EventResponseStatus.NeedsAction,
+        "declined" => EventResponseStatus.Declined,
         "tentative" => EventResponseStatus.Tentative,
-        "cancelled" => EventResponseStatus.Declined,
+        "accepted" => EventResponseStatus.Accepted,
         _ => EventResponseStatus.None
     };
 
