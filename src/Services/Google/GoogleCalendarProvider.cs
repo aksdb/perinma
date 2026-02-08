@@ -10,6 +10,7 @@ using Ical.Net.DataTypes;
 using perinma.Models;
 using perinma.Utils;
 using Calendar = Ical.Net.Calendar;
+using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
 
 namespace perinma.Services.Google;
 
@@ -39,8 +40,9 @@ public class GoogleCalendarProvider(
             {
                 if (t.Event.Recurrence is { Count: > 0 })
                 {
+                    var foo = DetermineOccurrences(t.Event, timeRange);
                     // Generate occurrences for recurring events
-                    return DetermineOccurrences(t.Event.Recurrence, timeRange)
+                    return foo
                         .Where(occurrenceStart => !overrides.Any(ov =>
                             ov.Event.RecurringEventId == t.Event.Id &&
                             ParseGoogleDateTime(ov.Event.OriginalStartTime) == occurrenceStart))
@@ -55,21 +57,16 @@ public class GoogleCalendarProvider(
             .ToList();
     }
 
-    private CalendarEvent MapToCalendarEvent(EventReference reference, Event googleEvent,
+    private static CalendarEvent MapToCalendarEvent(EventReference reference, Event googleEvent,
         ZonedDateTime? occurrenceStart)
     {
         var start = occurrenceStart ?? ParseGoogleDateTime(googleEvent.Start) ?? default;
 
         // Calculate duration if it's an occurrence
         var duration = TimeSpan.Zero;
-        if (googleEvent.Start != null && googleEvent.End != null)
-        {
-            var s = ParseGoogleDateTime(googleEvent.Start);
-            var e = ParseGoogleDateTime(googleEvent.End);
-            if (s.HasValue && e.HasValue) duration = e.Value - s.Value;
-        }
-
-        var end = ParseGoogleDateTime(googleEvent.End) ?? occurrenceStart?.Add(duration) ?? default;
+        if (googleEvent is { Start: not null, End: not null })
+            duration = googleEvent.End.DateTimeDateTimeOffset - googleEvent.Start.DateTimeDateTimeOffset ?? TimeSpan.Zero;
+        var end = start.Add(duration); 
 
         return new CalendarEvent
         {
@@ -325,7 +322,7 @@ public class GoogleCalendarProvider(
             return ParseGoogleDateTime(googleEvent.Start);
 
         var occurrence = DetermineOccurrences(
-                googleEvent.Recurrence,
+                googleEvent,
                 TimeRange.From(new ZonedDateTime(occurrenceTime.Value.ToUniversalTime(), TimeZoneInfo.Utc)),
                 max: 1)
             .FirstOrDefault();
@@ -409,7 +406,7 @@ public class GoogleCalendarProvider(
 
             if (isRecurring)
             {
-                var nextOccurrence = DetermineOccurrences(googleEvent.Recurrence, TimeRange.From(refTime), max: 1)
+                var nextOccurrence = DetermineOccurrences(googleEvent, TimeRange.From(refTime), max: 1)
                     .FirstOrDefault();
                 if (nextOccurrence == default)
                     return [];
@@ -442,23 +439,18 @@ public class GoogleCalendarProvider(
         }
     }
 
-    private static List<ZonedDateTime> DetermineOccurrences(IList<string>? recurrence, TimeRange timeRange,
+    private static List<ZonedDateTime> DetermineOccurrences(GoogleEvent evt, TimeRange timeRange,
         int max = Int32.MaxValue)
     {
-        if (recurrence == null || recurrence.Count == 0)
-        {
+        if (evt.Recurrence == null || evt.Recurrence.Count == 0)
             return [];
-        }
 
         var sb = new StringBuilder();
         sb.AppendLine("BEGIN:VCALENDAR");
         sb.AppendLine("BEGIN:VEVENT");
+        sb.AppendLine($"DTSTART;TZID={evt.Start.TimeZone}:{evt.Start.DateTimeDateTimeOffset:yyyyMMdd'T'HHmmss}");
 
-        // Add DTSTART with timezone information
-        if (timeRange.Start.DateTime > DateTime.MinValue)
-            sb.AppendLine($"DTSTART;TZID={timeRange.Start.TimeZone}:{timeRange.Start.DateTime:yyyyMMdd'T'HHmmss}");
-
-        foreach (var r in recurrence)
+        foreach (var r in evt.Recurrence)
             sb.AppendLine(r);
 
         sb.AppendLine("END:VEVENT");
