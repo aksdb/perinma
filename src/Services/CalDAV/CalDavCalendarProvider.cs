@@ -34,10 +34,16 @@ public class CalDavCalendarProvider(
                         .Select(occurrence =>
                         {
                             var startTime = BuildZonedDateTime(occurrence.Period.StartTime);
-                            var duration = t.evt.Duration;
-                            var endTime = duration != null
-                                ? startTime.Add(duration.Value.ToTimeSpanUnspecified())
-                                : startTime;
+                            
+                            ZonedDateTime endTime;
+                            if (occurrence.Period.EndTime != null)
+                                endTime = BuildZonedDateTime(occurrence.Period.EndTime);
+                            else if (t.evt.Duration != null)
+                                endTime = startTime.Add(t.evt.Duration.Value.ToTimeSpan(occurrence.Period.StartTime!));
+                            else if (t.evt.Start != null && t.evt.End != null)
+                                endTime = startTime.Add(t.evt.End.Value - t.evt.Start.Value);
+                            else
+                                endTime = startTime;
 
                             return (t.Reference, t.evt, startTime, endTime);
                         });
