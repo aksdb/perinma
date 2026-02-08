@@ -21,6 +21,7 @@ public class GoogleCalendarProvider(
     CredentialManagerService credentialManager)
     : ICalendarProvider
 {
+    /// <inheritdoc/>
     public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange)
     {
         var googleEvents = rawEvents

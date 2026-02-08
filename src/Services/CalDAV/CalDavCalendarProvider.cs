@@ -19,16 +19,18 @@ public class CalDavCalendarProvider(
     CredentialManagerService credentialManager)
     : ICalendarProvider
 {
+    /// <inheritdoc/>
     public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange) =>
         rawEvents
             .Select(t => (t.Reference, Calendar: Calendar.Load(t.RawData)))
             .Where(t => t.Calendar is { Events.Count: > 0 })
-            .SelectMany(t => t.Calendar.Events.Select(evt => (t.Reference, evt)))
+            .SelectMany(t => t.Calendar!.Events.Select(evt => (t.Reference, evt)))
             .SelectMany(t =>
             {
                 if (t.evt.RecurrenceRules.Count > 0)
                 {
                     return t.evt.GetOccurrences(new CalDateTime(timeRange.Start.DateTime, timeRange.Start.TimeZone.Id))
+                        .TakeWhile(o => o.Period.StartTime.Value <= timeRange.End.DateTime)
                         .Select(occurrence =>
                         {
                             var startTime = BuildZonedDateTime(occurrence.Period.StartTime);

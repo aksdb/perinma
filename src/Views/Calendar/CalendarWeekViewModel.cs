@@ -307,32 +307,32 @@ public partial class CalendarWeekViewModel : ViewModelBase
             {
                 var viewModels = new List<EventItem>();
 
-                var effectiveStart = e.StartTime.Date >= start ? e.StartTime : new ZonedDateTime(start, TimeZoneInfo.Local);
-                var startDate = effectiveStart.DateTime;
-                var effectiveEnd = e.EndTime.Date <= end ? e.EndTime : new ZonedDateTime(end, TimeZoneInfo.Local);
-                var endDate = effectiveEnd.DateTime;
+                var effectiveStart = e.StartTime.Date >= start ? e.StartTime.DateTime : start;
+                var startDate = effectiveStart.Date;
+                var effectiveEnd = e.EndTime.Date <= end ? e.EndTime.DateTime : end;
+                var endDate = effectiveEnd.Date;
 
                 // Split event into multiple items if it spans multiple days.
                 var dayIndex = -1;
-                var currentDate = new ZonedDateTime(start.Date.AddDays(-1), TimeZoneInfo.Local);
+                var currentDate = start.Date.AddDays(-1);
                 while (true)
                 {
                     dayIndex++;
                     currentDate = currentDate.AddMinutes(24 * 60);
 
-                    if (currentDate.DateTime < startDate)
+                    if (currentDate < startDate)
                     {
                         // This event is not of interest to us, yet.
                         continue;
                     }
 
-                    if (currentDate.DateTime > endDate)
+                    if (currentDate > endDate)
                     {
                         // Remaining events will not be of interest to us.
                         break;
                     }
 
-                    if (currentDate.DateTime == effectiveEnd.DateTime)
+                    if (currentDate == effectiveEnd)
                     {
                         // The end of the event is exactly the start of the new day. So it effectively
                         // ends at the last day.
@@ -341,12 +341,12 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
                     var startSlot = 0;
                     var endSlot = 0;
-                    if (currentDate.DateTime == startDate)
+                    if (currentDate == startDate)
                     {
                         startSlot = effectiveStart.Hour * 4 + ((effectiveStart.Minute + 7) / 15);
                     }
 
-                    if (currentDate.DateTime == endDate)
+                    if (currentDate == endDate)
                     {
                         endSlot = effectiveEnd.Hour * 4 + ((effectiveEnd.Minute + 7) / 15) - 1;
                     }

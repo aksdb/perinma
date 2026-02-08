@@ -178,23 +178,15 @@ public class DummyCalendarSource : ICalendarSource
     }
 }
 
-public class DatabaseCalendarSource : ICalendarSource
+public class DatabaseCalendarSource(
+    SqliteStorage storage,
+    IReadOnlyDictionary<AccountType, ICalendarProvider> providers)
+    : ICalendarSource
 {
-    private readonly SqliteStorage _storage;
-    private readonly IReadOnlyDictionary<AccountType, ICalendarProvider> _providers;
-
-    public DatabaseCalendarSource(
-        SqliteStorage storage,
-        IReadOnlyDictionary<AccountType, ICalendarProvider> providers)
-    {
-        _storage = storage;
-        _providers = providers;
-    }
-
     public List<CalendarEvent> GetCalendarEvents(DateTime startTime, DateTime endTime)
     {
         var events =
-            _storage.GetEventsByTimeRangeAsync(startTime, endTime)
+            storage.GetEventsByTimeRangeAsync(startTime, endTime)
                 .GetAwaiter()
                 .GetResult()
                 .ToList();
@@ -210,7 +202,7 @@ public class DatabaseCalendarSource : ICalendarSource
 
         foreach (var group in groupedEvents)
         {
-            if (!_providers.TryGetValue(group.Key, out var provider))
+            if (!providers.TryGetValue(group.Key, out var provider))
             {
                 Console.WriteLine($"No provider found for account type: {group.Key}");
                 continue;
@@ -221,7 +213,8 @@ public class DatabaseCalendarSource : ICalendarSource
                 {
                     Reference = new EventReference
                     {
-                        Calendar = GetOrCreateCalendar(e),
+                        Calendar = storage.GetCachedCalendar(new Guid(e.CalendarId)) 
+                                   ?? throw new InvalidOperationException("calendar inconsistency"),
                         Id = Guid.Parse(e.EventId),
                         ExternalId = e.ExternalId,
                     },
@@ -236,45 +229,11 @@ public class DatabaseCalendarSource : ICalendarSource
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error parsing events for {group.Key}: {ex.Message}");
+                Console.WriteLine($"Error parsing events for {group.Key}: {ex}");
             }
         }
 
         return calendarEvents;
-    }
-
-    private Calendar GetOrCreateCalendar(CalendarEventQueryResult e)
-    {
-        var calendarId = Guid.Parse(e.CalendarId);
-        var cachedCalendar = _storage.GetCachedCalendar(calendarId);
-
-        if (cachedCalendar != null)
-        {
-            return cachedCalendar;
-        }
-
-        var accountId = Guid.Parse(e.AccountId);
-        var cachedAccount = _storage.GetCachedAccount(accountId);
-
-        var account = cachedAccount ?? new Account
-        {
-            Id = accountId,
-            Name = e.AccountName,
-            Type = e.AccountTypeEnum
-        };
-
-        return new Calendar
-        {
-            Account = account,
-            Id = calendarId,
-            ExternalId = e.CalendarExternalId,
-            Name = e.CalendarName,
-            Color = e.CalendarColor,
-            Enabled = e.CalendarEnabled == 1,
-            LastSync = e.CalendarLastSync.HasValue
-                ? DateTimeOffset.FromUnixTimeSeconds(e.CalendarLastSync.Value).DateTime
-                : null
-        };
     }
 
 }
