@@ -4,6 +4,7 @@ using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Storage.Models;
+using perinma.Tests.Fakes;
 
 using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
 using GoogleEventDateTime =  Google.Apis.Calendar.v3.Data.EventDateTime;
@@ -17,7 +18,16 @@ public class DatabaseCalendarSourceTests
         var database = new DatabaseService(inMemory: true);
         var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
         storage = new SqliteStorage(database, credentialManager);
-        calendarSource = new DatabaseCalendarSource(storage);
+
+        var googleProvider = new FakeGoogleCalendarProvider(credentialManager);
+        var calDavProvider = new FakeCalDavCalendarProvider(credentialManager);
+        var providers = new Dictionary<AccountType, ICalendarProvider>
+        {
+            { AccountType.Google, googleProvider },
+            { AccountType.CalDav, calDavProvider }
+        };
+
+        calendarSource = new DatabaseCalendarSource(storage, providers);
         return database;
     }
 
@@ -101,13 +111,13 @@ public class DatabaseCalendarSourceTests
         Assert.That(events, Has.Count.EqualTo(1));
         var calendarEvent = events[0];
         Assert.That(calendarEvent.Title, Is.EqualTo("Team Meeting"));
-        Assert.That(calendarEvent.EventReference.ExternalId, Is.EqualTo("event1"));
-        Assert.That(calendarEvent.EventReference.Calendar.Id, Is.EqualTo(Guid.Parse(calendar.CalendarId)));
-        Assert.That(calendarEvent.EventReference.Calendar.Name, Is.EqualTo("Work Calendar"));
-        Assert.That(calendarEvent.EventReference.Calendar.Enabled, Is.True);
-        Assert.That(calendarEvent.EventReference.Calendar.Account.Id, Is.EqualTo(Guid.Parse(accountId)));
-        Assert.That(calendarEvent.EventReference.Calendar.Account.Name, Is.EqualTo("Test Account"));
-        Assert.That(calendarEvent.EventReference.Calendar.Account.Type, Is.EqualTo(AccountType.Google));
+        Assert.That(calendarEvent.Reference.ExternalId, Is.EqualTo("event1"));
+        Assert.That(calendarEvent.Reference.Calendar.Id, Is.EqualTo(Guid.Parse(calendar.CalendarId)));
+        Assert.That(calendarEvent.Reference.Calendar.Name, Is.EqualTo("Work Calendar"));
+        Assert.That(calendarEvent.Reference.Calendar.Enabled, Is.True);
+        Assert.That(calendarEvent.Reference.Calendar.Account.Id, Is.EqualTo(Guid.Parse(accountId)));
+        Assert.That(calendarEvent.Reference.Calendar.Account.Name, Is.EqualTo("Test Account"));
+        Assert.That(calendarEvent.Reference.Calendar.Account.Type, Is.EqualTo(AccountType.Google));
     }
 
     [Test]
@@ -277,8 +287,8 @@ public class DatabaseCalendarSourceTests
         // Assert
         Assert.That(events, Has.Count.EqualTo(1));
         var calendarEvent = events[0];
-        Assert.That(calendarEvent.StartTime, Is.EqualTo(startTime));
-        Assert.That(calendarEvent.EndTime, Is.EqualTo(endTime));
+        Assert.That(calendarEvent.StartTime.DateTime, Is.EqualTo(startTime));
+        Assert.That(calendarEvent.EndTime.DateTime, Is.EqualTo(endTime));
         Assert.That(calendarEvent.ChangedAt, Is.EqualTo(changedAt));
     }
 
@@ -417,7 +427,7 @@ public class DatabaseCalendarSourceTests
 
         // Assert
         Assert.That(events, Has.Count.EqualTo(1));
-        var calendarData = events[0].EventReference.Calendar;
+        var calendarData = events[0].Reference.Calendar;
         Assert.That(calendarData.Id, Is.EqualTo(Guid.Parse(calendar.CalendarId)));
         Assert.That(calendarData.ExternalId, Is.EqualTo(calendarExternalId));
         Assert.That(calendarData.Name, Is.EqualTo(calendarName));
@@ -520,8 +530,8 @@ public class DatabaseCalendarSourceTests
 
         Assert.That(events, Has.Count.EqualTo(1));
         Assert.That(events[0].Title, Is.EqualTo("One-time Meeting"));
-        Assert.That(events[0].StartTime, Is.EqualTo(eventStart));
-        Assert.That(events[0].EndTime, Is.EqualTo(eventEnd));
+        Assert.That(events[0].StartTime.DateTime, Is.EqualTo(eventStart));
+        Assert.That(events[0].EndTime.DateTime, Is.EqualTo(eventEnd));
     }
 
     [Test]
@@ -638,8 +648,8 @@ END:VCALENDAR";
 
         Assert.That(events, Has.Count.EqualTo(1));
         Assert.That(events[0].Title, Is.EqualTo("One-time Event"));
-        Assert.That(events[0].StartTime, Is.EqualTo(eventStart));
-        Assert.That(events[0].EndTime, Is.EqualTo(eventEnd));
+        Assert.That(events[0].StartTime.DateTime, Is.EqualTo(eventStart));
+        Assert.That(events[0].EndTime.DateTime, Is.EqualTo(eventEnd));
     }
 
     [Test]
@@ -854,11 +864,11 @@ END:VCALENDAR";
         var event2 = events[1];
         Assert.Multiple(() =>
         {
-            Assert.That(event1.StartTime, Is.EqualTo(new DateTime(2022, 11, 15, 0, 0, 0)));
-            Assert.That(event1.EndTime, Is.EqualTo(new DateTime(2022, 11, 16, 0, 0, 0)));
+            Assert.That(event1.StartTime.DateTime, Is.EqualTo(new DateTime(2022, 11, 15, 0, 0, 0)));
+            Assert.That(event1.EndTime.DateTime, Is.EqualTo(new DateTime(2022, 11, 16, 0, 0, 0)));
 
-            Assert.That(event2.StartTime, Is.EqualTo(new DateTime(2022, 11, 29, 0, 0, 0)));
-            Assert.That(event2.EndTime, Is.EqualTo(new DateTime(2022, 11, 30, 0, 0, 0)));
+            Assert.That(event2.StartTime.DateTime, Is.EqualTo(new DateTime(2022, 11, 29, 0, 0, 0)));
+            Assert.That(event2.EndTime.DateTime, Is.EqualTo(new DateTime(2022, 11, 30, 0, 0, 0)));
         });
     }
 
@@ -1021,7 +1031,7 @@ END:VCALENDAR";
         // Note: The returned time is in local timezone, so we compare in UTC
         var wednesdayEvents = events.Where(e => e.StartTime.Date == weekStart.AddDays(2).Date).ToList();
         Assert.That(wednesdayEvents.Count, Is.EqualTo(1));
-        Assert.That(wednesdayEvents[0].StartTime.ToUniversalTime().Hour, Is.EqualTo(14)); // 2pm UTC
+        Assert.That(wednesdayEvents[0].StartTime.ToUtc().Hour, Is.EqualTo(14)); // 2pm UTC
         Assert.That(wednesdayEvents[0].Title, Is.EqualTo("Daily Standup (Rescheduled)"));
     }
 
@@ -1117,7 +1127,7 @@ END:VCALENDAR";
         Assert.That(events.Count, Is.EqualTo(1));
         Assert.That(events[0].Title, Is.EqualTo("Daily Standup (Rescheduled)"));
         // Note: The returned time is in local timezone, so we compare in UTC
-        Assert.That(events[0].StartTime.ToUniversalTime().Hour, Is.EqualTo(14)); // 2pm UTC
+        Assert.That(events[0].StartTime.ToUtc().Hour, Is.EqualTo(14)); // 2pm UTC
     }
 
     #endregion

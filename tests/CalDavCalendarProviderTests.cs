@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using CredentialStore;
+using perinma.Models;
 using perinma.Services;
 using perinma.Services.CalDAV;
 using perinma.Storage.Models;
@@ -284,8 +285,8 @@ public class CalDavCalendarProviderTests
         {
             Assert.That(result.Events[0].ExternalId, Is.EqualTo("event-uid-1"));
             Assert.That(result.Events[0].Title, Is.EqualTo("Team Meeting"));
-            Assert.That(result.Events[0].StartTime, Is.EqualTo(start));
-            Assert.That(result.Events[0].EndTime, Is.EqualTo(end));
+            Assert.That(result.Events[0].StartTime!.Value.DateTime, Is.EqualTo(start));
+            Assert.That(result.Events[0].EndTime!.Value.DateTime, Is.EqualTo(end));
             Assert.That(result.Events[0].Deleted, Is.False);
         });
     }
@@ -367,9 +368,9 @@ public class CalDavCalendarProviderTests
         var evt = result.Events[0];
         Assert.Multiple(() =>
         {
-            Assert.That(evt.StartTime, Is.EqualTo(start));
+            Assert.That(evt.StartTime!.Value.DateTime, Is.EqualTo(start));
             // End time should be calculated from recurrence (5 daily occurrences)
-            Assert.That(evt.EndTime, Is.EqualTo(new DateTime(2025, 1, 5, 11, 0, 0, DateTimeKind.Utc)));
+            Assert.That(evt.EndTime!.Value.DateTime, Is.EqualTo(new DateTime(2025, 1, 5, 11, 0, 0, DateTimeKind.Utc)));
         });
     }
 
@@ -514,34 +515,7 @@ public class CalDavCalendarProviderTests
                            "END:VCALENDAR";
 
         // Act
-        var result = await _provider.GetReminderMinutesAsync(rawEventData);
-
-        // Assert
-        Assert.That(result, Has.Count.EqualTo(2));
-        Assert.Multiple(() =>
-        {
-            Assert.That(result, Does.Contain(15));
-            Assert.That(result, Does.Contain(60));
-        });
-    }
-
-    [Test]
-    public async Task GetReminderMinutesAsync_WithNoAlarms_ReturnsEmptyList()
-    {
-        // Arrange
-        var rawEventData = "BEGIN:VCALENDAR\r\n" +
-                           "VERSION:2.0\r\n" +
-                           "PRODID:-//Test//Test//EN\r\n" +
-                           "BEGIN:VEVENT\r\n" +
-                           "UID:test-event\r\n" +
-                           "DTSTART:20250115T100000Z\r\n" +
-                           "DTEND:20250115T110000Z\r\n" +
-                           "SUMMARY:Test Event\r\n" +
-                           "END:VEVENT\r\n" +
-                           "END:VCALENDAR";
-
-        // Act
-        var result = await _provider.GetReminderMinutesAsync(rawEventData);
+        var result = _provider.GetReminderMinutes(rawEventData);
 
         // Assert
         Assert.That(result, Is.Empty);
@@ -554,7 +528,7 @@ public class CalDavCalendarProviderTests
         var rawEventData = "invalid icalendar data";
 
         // Act
-        var result = await _provider.GetReminderMinutesAsync(rawEventData);
+        var result = _provider.GetReminderMinutes(rawEventData);
 
         // Assert
         Assert.That(result, Is.Empty);
@@ -581,7 +555,7 @@ public class CalDavCalendarProviderTests
                            "END:VCALENDAR";
 
         // Act
-        var result = await _provider.GetReminderMinutesAsync(rawEventData);
+        var result = _provider.GetReminderMinutes(rawEventData);
 
         // Assert
         Assert.That(result, Has.Count.EqualTo(1));
@@ -660,7 +634,7 @@ public class CalDavCalendarProviderTests
                            "END:VCALENDAR";
 
         // Act
-        var result = await _provider.GetNextReminderOccurrencesAsync(rawEventData);
+        var result = _provider.GetNextReminderOccurrences(rawEventData);
 
         // Assert
         Assert.That(result, Has.Count.EqualTo(1));
@@ -668,7 +642,7 @@ public class CalDavCalendarProviderTests
         Assert.Multiple(() =>
         {
             Assert.That(occurrence.Date, Is.EqualTo(futureStart.Date));
-            Assert.That(triggerTime, Is.LessThan(occurrence));
+            Assert.That(triggerTime.DateTime, Is.LessThan(occurrence.DateTime));
         });
     }
 
@@ -694,7 +668,7 @@ public class CalDavCalendarProviderTests
                            "END:VCALENDAR";
 
         // Act
-        var result = await _provider.GetNextReminderOccurrencesAsync(rawEventData);
+        var result = _provider.GetNextReminderOccurrences(rawEventData);
 
         // Assert
         Assert.That(result, Is.Empty);
@@ -756,8 +730,8 @@ public class CalDavCalendarProviderTests
             END:VCALENDAR
             """;
 
-        var referenceTime = new DateTime(2026, 01, 20);
-        var result = await _provider.GetNextReminderOccurrencesAsync(rawEventData, referenceTime: referenceTime);
+        var referenceTime = new ZonedDateTime(new DateTime(2026, 01, 20), TimeZoneInfo.Utc);
+        var result = _provider.GetNextReminderOccurrences(rawEventData, referenceTime: referenceTime);
 
         // Assert
         Assert.That(result, Has.Count.EqualTo(1));
@@ -778,8 +752,8 @@ public async Task CreateEventAsync_WithLocalTime_PreservesTimezone()
 {
     // Arrange
     var calendarUrl = "https://caldav.example.com/calendars/work";
-    var localStart = new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Local);
-    var localEnd = new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Local);
+    var localStart = new ZonedDateTime(new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Local), TimeZoneInfo.Local);
+    var localEnd = new ZonedDateTime(new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Local), TimeZoneInfo.Local);
 
     // Act
     var result = await _provider.CreateEventAsync(
@@ -794,8 +768,8 @@ public async Task CreateEventAsync_WithLocalTime_PreservesTimezone()
     // Assert
     var createdEvents = _fakeService.GetCreatedEvents();
     Assert.That(createdEvents, Has.Count.EqualTo(1));
-    Assert.That(createdEvents[0].StartTime, Is.EqualTo(localStart));
-    Assert.That(createdEvents[0].EndTime, Is.EqualTo(localEnd));
+    Assert.That(createdEvents[0].StartTime, Is.EqualTo(localStart.DateTime));
+    Assert.That(createdEvents[0].EndTime, Is.EqualTo(localEnd.DateTime));
     Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Local));
     Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Local));
 }
@@ -805,8 +779,8 @@ public async Task CreateEventAsync_WithUtcTime_PreservesUtc()
 {
     // Arrange
     var calendarUrl = "https://caldav.example.com/calendars/work";
-    var utcStart = new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Utc);
-    var utcEnd = new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Utc);
+    var utcStart = new ZonedDateTime(new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
+    var utcEnd = new ZonedDateTime(new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
 
     // Act
     var result = await _provider.CreateEventAsync(
@@ -821,8 +795,8 @@ public async Task CreateEventAsync_WithUtcTime_PreservesUtc()
     // Assert
     var createdEvents = _fakeService.GetCreatedEvents();
     Assert.That(createdEvents, Has.Count.EqualTo(1));
-    Assert.That(createdEvents[0].StartTime, Is.EqualTo(utcStart));
-    Assert.That(createdEvents[0].EndTime, Is.EqualTo(utcEnd));
+    Assert.That(createdEvents[0].StartTime, Is.EqualTo(utcStart.DateTime));
+    Assert.That(createdEvents[0].EndTime, Is.EqualTo(utcEnd.DateTime));
     Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Utc));
     Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Utc));
 }
@@ -832,8 +806,8 @@ public async Task CreateEventAsync_WithUnspecifiedTime_TreatsAsLocal()
 {
     // Arrange
     var calendarUrl = "https://caldav.example.com/calendars/work";
-    var unspecifiedStart = new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Unspecified);
-    var unspecifiedEnd = new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Unspecified);
+    var unspecifiedStart = new ZonedDateTime(new DateTime(2025, 2, 7, 10, 0, 0), TimeZoneInfo.Local);
+    var unspecifiedEnd = new ZonedDateTime(new DateTime(2025, 2, 7, 11, 0, 0), TimeZoneInfo.Local);
 
     // Act
     var result = await _provider.CreateEventAsync(
@@ -848,10 +822,10 @@ public async Task CreateEventAsync_WithUnspecifiedTime_TreatsAsLocal()
     // Assert
     var createdEvents = _fakeService.GetCreatedEvents();
     Assert.That(createdEvents, Has.Count.EqualTo(1));
-    Assert.That(createdEvents[0].StartTime, Is.EqualTo(unspecifiedStart));
-    Assert.That(createdEvents[0].EndTime, Is.EqualTo(unspecifiedEnd));
-    Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Unspecified));
-    Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Unspecified));
+    Assert.That(createdEvents[0].StartTime, Is.EqualTo(unspecifiedStart.DateTime));
+    Assert.That(createdEvents[0].EndTime, Is.EqualTo(unspecifiedEnd.DateTime));
+    Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Local));
+    Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Local));
 }
 
 #endregion

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Calendar.v3.Data;
+using perinma.Models;
 using perinma.Services;
 using perinma.Storage.Models;
 
@@ -130,32 +131,26 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
         return Task.FromResult(true);
     }
 
-    public Task<IList<int>> GetReminderMinutesAsync(
+    public IList<int> GetReminderMinutes(
         string rawEventData,
-        string? rawCalendarData = null,
-        CancellationToken cancellationToken = default)
+        string? rawCalendarData = null)
     {
-        // Return empty list by default - tests can override if needed
-        return Task.FromResult<IList<int>>([]);
+        return [];
     }
 
-    public Task<DateTimeOffset?> GetEventStartTimeAsync(
+    public ZonedDateTime? GetEventStartTime(
         string rawEventData,
-        DateTime? occurrenceTime = null,
-        CancellationToken cancellationToken = default)
+        DateTime? occurrenceTime = null)
     {
-        // Return null by default - tests can override if needed
-        return Task.FromResult<DateTimeOffset?>(null);
+        return null;
     }
 
-    public Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
+    public IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        DateTime referenceTime = default,
-        CancellationToken cancellationToken = default)
+        ZonedDateTime referenceTime = default)
     {
-        // Return empty list by default - tests can override if needed
-        return Task.FromResult<IList<(DateTime Occurrence, DateTime TriggerTime)>>([]);
+        return [];
     }
 
     public Task RespondToEventAsync(
@@ -176,13 +171,13 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
         var eventId = Guid.NewGuid().ToString();
-        _createdEvents.Add((accountId, calendarId, title, description, location, startTime, endTime));
+        _createdEvents.Add((accountId, calendarId, title, description, location, startTime.DateTime, endTime.DateTime));
         return Task.FromResult(eventId);
     }
 
@@ -193,13 +188,18 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
-        _createdEvents.Add((accountId, calendarId, title, description, location, startTime, endTime));
+        _createdEvents.Add((accountId, calendarId, title, description, location, startTime.DateTime, endTime.DateTime));
         return Task.CompletedTask;
+    }
+
+    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange)
+    {
+        return [];
     }
 
     public IReadOnlyList<(string AccountId, string CalendarId, string Title, string? Description, string? Location, DateTime StartTime, DateTime EndTime)> GetCreatedEvents()
@@ -229,9 +229,9 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
             };
         }
 
-        DateTime? startTime = null;
-        DateTime? endTime = null;
-        DateTime? originalStartTime = null;
+        ZonedDateTime? startTime = null;
+        ZonedDateTime? endTime = null;
+        ZonedDateTime? originalStartTime = null;
 
         // Handle override events
         if (isOverride)
@@ -274,19 +274,19 @@ public class FakeGoogleCalendarProvider : ICalendarProvider
         };
     }
 
-    private static DateTime? ParseGoogleDateTime(EventDateTime? eventDateTime)
+    private static ZonedDateTime? ParseGoogleDateTime(EventDateTime? eventDateTime)
     {
         if (eventDateTime == null)
             return null;
 
         if (eventDateTime.DateTimeRaw != null && DateTime.TryParse(eventDateTime.DateTimeRaw, out var dateTime))
         {
-            return dateTime;
+            return new ZonedDateTime(dateTime, TimeZoneInfo.FindSystemTimeZoneById(eventDateTime.TimeZone));
         }
 
         if (eventDateTime.Date != null && DateTime.TryParse(eventDateTime.Date, out var date))
         {
-            return date;
+            return new ZonedDateTime(date, TimeZoneInfo.Local);
         }
 
         return null;

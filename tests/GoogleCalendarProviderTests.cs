@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using CredentialStore;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
+using perinma.Models;
 using perinma.Services;
 using perinma.Services.Google;
 using perinma.Storage.Models;
@@ -157,8 +158,8 @@ public class GoogleCalendarProviderTests
             Assert.That(result.Events[0].ExternalId, Is.EqualTo("event1"));
             Assert.That(result.Events[0].Title, Is.EqualTo("Team Meeting"));
             // Compare UTC times (parsing may convert to local time)
-            Assert.That(result.Events[0].StartTime!.Value.ToUniversalTime(), Is.EqualTo(start));
-            Assert.That(result.Events[0].EndTime!.Value.ToUniversalTime(), Is.EqualTo(end));
+            Assert.That(result.Events[0].StartTime!.Value.ToUtc().DateTime, Is.EqualTo(start));
+            Assert.That(result.Events[0].EndTime!.Value.ToUtc().DateTime, Is.EqualTo(end));
             Assert.That(result.Events[0].Deleted, Is.False);
         });
     }
@@ -203,9 +204,9 @@ public class GoogleCalendarProviderTests
         var evt = result.Events[0];
         Assert.Multiple(() =>
         {
-            Assert.That(evt.StartTime!.Value.ToUniversalTime(), Is.EqualTo(start));
+            Assert.That(evt.StartTime!.Value.ToUtc().DateTime, Is.EqualTo(start));
             // End time should be calculated from recurrence (5 daily occurrences)
-            Assert.That(evt.EndTime!.Value.ToUniversalTime(), Is.EqualTo(new DateTime(2025, 1, 5, 11, 0, 0, DateTimeKind.Utc)));
+            Assert.That(evt.EndTime!.Value.ToUtc().DateTime, Is.EqualTo(new DateTime(2025, 1, 5, 11, 0, 0, DateTimeKind.Utc)));
         });
     }
 
@@ -237,8 +238,8 @@ public class GoogleCalendarProviderTests
         Assert.Multiple(() =>
         {
             Assert.That(evt.RecurringEventId, Is.EqualTo("recurring1"));
-            Assert.That(evt.OriginalStartTime!.Value.ToUniversalTime(), Is.EqualTo(originalStart));
-            Assert.That(evt.StartTime!.Value.ToUniversalTime(), Is.EqualTo(newStart)); // Earlier start preserved
+            Assert.That(evt.OriginalStartTime!.Value.ToUtc().DateTime, Is.EqualTo(originalStart));
+            Assert.That(evt.StartTime!.Value.ToUtc().DateTime, Is.EqualTo(newStart)); // Earlier start preserved
         });
     }
 
@@ -264,8 +265,8 @@ public class GoogleCalendarProviderTests
         var evt = result.Events[0];
         Assert.Multiple(() =>
         {
-            Assert.That(evt.StartTime!.Value.ToUniversalTime(), Is.EqualTo(originalStart));
-            Assert.That(evt.EndTime!.Value.ToUniversalTime(), Is.EqualTo(originalStart));
+            Assert.That(evt.StartTime!.Value.ToUtc().DateTime, Is.EqualTo(originalStart));
+            Assert.That(evt.EndTime!.Value.ToUtc().DateTime, Is.EqualTo(originalStart));
             Assert.That(evt.RecurringEventId, Is.EqualTo("recurring1"));
         });
     }
@@ -363,7 +364,7 @@ public class GoogleCalendarProviderTests
         }";
 
         // Act
-        var result = await _provider.GetReminderMinutesAsync(rawEventData);
+        var result = _provider.GetReminderMinutes(rawEventData);
 
         // Assert - Only popup reminders should be returned
         Assert.That(result, Has.Count.EqualTo(2));
@@ -396,7 +397,7 @@ public class GoogleCalendarProviderTests
         }";
 
         // Act
-        var result = await _provider.GetReminderMinutesAsync(rawEventData, rawCalendarData);
+        var result = _provider.GetReminderMinutes(rawEventData, rawCalendarData);
 
         // Assert
         Assert.That(result, Has.Count.EqualTo(2));
@@ -418,7 +419,7 @@ public class GoogleCalendarProviderTests
         }";
 
         // Act
-        var result = await _provider.GetReminderMinutesAsync(rawEventData);
+        var result = _provider.GetReminderMinutes(rawEventData);
 
         // Assert
         Assert.That(result, Is.Empty);
@@ -523,7 +524,7 @@ public class GoogleCalendarProviderTests
         // (vs winter at 10:00 CET = 09:00 UTC)
 
         var winterStart = new DateTime(2025, 1, 13, 10, 0, 0); // Monday 10:00 in CET (winter)
-        var summerReference = new DateTime(2025, 7, 15, 0, 0, 0, DateTimeKind.Utc); // July
+        var summerReference = new ZonedDateTime(new DateTime(2025, 7, 15, 0, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc); // July
 
         var googleEvent = new Event
         {
@@ -553,7 +554,7 @@ public class GoogleCalendarProviderTests
         var rawEventData = serializer.Serialize(googleEvent);
 
         // Act - Query during summer time
-        var result = await _provider.GetNextReminderOccurrencesAsync(
+        var result = _provider.GetNextReminderOccurrences(
             rawEventData,
             null,
             referenceTime: summerReference
@@ -571,9 +572,9 @@ public class GoogleCalendarProviderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(occurrence, Is.EqualTo(expectedOccurrenceUtc).Within(TimeSpan.FromSeconds(1)),
+            Assert.That(occurrence.ToUtc().DateTime, Is.EqualTo(expectedOccurrenceUtc).Within(TimeSpan.FromSeconds(1)),
                 $"Expected occurrence at {expectedOccurrenceUtc:O}, got {occurrence:O}");
-            Assert.That(triggerTime, Is.EqualTo(expectedTriggerUtc).Within(TimeSpan.FromSeconds(1)),
+            Assert.That(triggerTime.ToUtc().DateTime, Is.EqualTo(expectedTriggerUtc).Within(TimeSpan.FromSeconds(1)),
                 $"Expected trigger at {expectedTriggerUtc:O}, got {triggerTime:O}");
         });
     }

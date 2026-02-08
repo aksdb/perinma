@@ -205,8 +205,8 @@ public class FakeGoogleCalendarService : IGoogleCalendarService
             Id = id,
             Summary = summary,
             Status = "confirmed",
-            Start = new EventDateTime { DateTimeRaw = start.ToString("o") },
-            End = new EventDateTime { DateTimeRaw = end.ToString("o") }
+            Start = new EventDateTime { DateTimeRaw = start.ToString("o"), TimeZone = TimeZoneInfo.Utc.Id },
+            End = new EventDateTime { DateTimeRaw = end.ToString("o"), TimeZone = TimeZoneInfo.Utc.Id }
         };
     }
 
@@ -235,8 +235,8 @@ public class FakeGoogleCalendarService : IGoogleCalendarService
             Id = id,
             Summary = summary,
             Status = "confirmed",
-            Start = new EventDateTime { DateTimeRaw = start.ToString("o") },
-            End = new EventDateTime { DateTimeRaw = end.ToString("o") },
+            Start = new EventDateTime { DateTimeRaw = start.ToString("o"), TimeZone = TimeZoneInfo.Utc.Id },
+            End = new EventDateTime { DateTimeRaw = end.ToString("o"), TimeZone = TimeZoneInfo.Utc.Id },
             Recurrence = recurrence.Length > 0 ? new List<string>(recurrence) : null
         };
     }
@@ -288,9 +288,9 @@ public class FakeGoogleCalendarService : IGoogleCalendarService
             RecurringEventId = recurringEventId,
             Summary = summary,
             Status = "confirmed",
-            OriginalStartTime = new EventDateTime { DateTimeRaw = originalStartTime.ToString("o") },
-            Start = new EventDateTime { DateTimeRaw = newStart.ToString("o") },
-            End = new EventDateTime { DateTimeRaw = newEnd.ToString("o") }
+            OriginalStartTime = new EventDateTime { DateTimeRaw = originalStartTime.ToString("o"), TimeZone = TimeZoneInfo.Utc.Id },
+            Start = new EventDateTime { DateTimeRaw = newStart.ToString("o"), TimeZone = TimeZoneInfo.Utc.Id },
+            End = new EventDateTime { DateTimeRaw = newEnd.ToString("o"), TimeZone = TimeZoneInfo.Utc.Id }
         };
     }
 
@@ -308,7 +308,7 @@ public class FakeGoogleCalendarService : IGoogleCalendarService
             RecurringEventId = recurringEventId,
             Summary = "Cancelled Event",
             Status = "cancelled",
-            OriginalStartTime = new EventDateTime { DateTimeRaw = originalStartTime.ToString("o") }
+            OriginalStartTime = new EventDateTime { DateTimeRaw = originalStartTime.ToString("o"), TimeZone = TimeZoneInfo.Utc.Id }
         };
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using perinma.Models;
 using perinma.Services;
 using perinma.Services.CalDAV;
 using perinma.Storage.Models;
@@ -96,32 +97,26 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
         return Task.FromResult(true);
     }
 
-    public Task<IList<int>> GetReminderMinutesAsync(
+    public IList<int> GetReminderMinutes(
         string rawEventData,
-        string? rawCalendarData = null,
-        CancellationToken cancellationToken = default)
+        string? rawCalendarData = null)
     {
-        // Return empty list by default - tests can override if needed
-        return Task.FromResult<IList<int>>([]);
+        return [];
     }
 
-    public Task<DateTimeOffset?> GetEventStartTimeAsync(
+    public ZonedDateTime? GetEventStartTime(
         string rawEventData,
-        DateTime? occurrenceTime = null,
-        CancellationToken cancellationToken = default)
+        DateTime? occurrenceTime = null)
     {
-        // Return null by default - tests can override if needed
-        return Task.FromResult<DateTimeOffset?>(null);
+        return null;
     }
 
-    public Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
+    public IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        DateTime referenceTime = default,
-        CancellationToken cancellationToken = default)
+        ZonedDateTime referenceTime = default)
     {
-        // Return empty list by default - tests can override if needed
-        return Task.FromResult<IList<(DateTime Occurrence, DateTime TriggerTime)>>([]);
+        return [];
     }
 
     public Task RespondToEventAsync(
@@ -142,8 +137,8 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
@@ -157,8 +152,8 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
@@ -185,14 +180,19 @@ public class FakeCalDavCalendarProvider : ICalendarProvider
         {
             ExternalId = evt.Uid,
             Title = evt.Summary ?? "Untitled Event",
-            StartTime = evt.StartTime,
-            EndTime = evt.EndTime,
+            StartTime = evt.StartTime.HasValue ? new ZonedDateTime(evt.StartTime.Value, TimeZoneInfo.Utc) : null,
+            EndTime = evt.EndTime.HasValue ? new ZonedDateTime(evt.EndTime.Value, TimeZoneInfo.Utc) : null,
             Status = evt.Status,
             Deleted = false,
             RecurringEventId = null,
             OriginalStartTime = null,
             RawData = evt.RawICalendar
         };
+    }
+
+    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange)
+    {
+        return [];
     }
 
     // Helper methods to create test data

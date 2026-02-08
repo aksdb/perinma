@@ -96,7 +96,7 @@ public class ReminderServiceTests
     public async Task PopulateRemindersForEventAsync_CreatesNewReminders()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = occurrenceTime.AddMinutes(-30);
         _provider.SetReminderOccurrences([(occurrenceTime, triggerTime)]);
         _provider.SetEventStartTime(occurrenceTime);
@@ -109,14 +109,14 @@ public class ReminderServiceTests
         Assert.That(reminders.Count, Is.EqualTo(1));
         Assert.That(reminders[0].TargetId, Is.EqualTo(_eventId));
         var actualTriggerTime = DateTimeOffset.FromUnixTimeSeconds(reminders[0].TriggerTime).DateTime;
-        Assert.That(actualTriggerTime, Is.EqualTo(triggerTime).Within(TimeSpan.FromSeconds(1)));
+        Assert.That(actualTriggerTime, Is.EqualTo(triggerTime.DateTime).Within(TimeSpan.FromSeconds(1)));
     }
 
     [Test]
     public async Task PopulateRemindersForEventAsync_MultipleReminders_CreatesAll()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime1 = occurrenceTime.AddMinutes(-30);
         var triggerTime2 = occurrenceTime.AddMinutes(-5);
         _provider.SetReminderOccurrences([(occurrenceTime, triggerTime1), (occurrenceTime, triggerTime2)]);
@@ -134,13 +134,13 @@ public class ReminderServiceTests
     public async Task PopulateRemindersForEventAsync_ExistingReminders_SkipsDuplicates()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = occurrenceTime.AddMinutes(-30);
         _provider.SetReminderOccurrences([(occurrenceTime, triggerTime)]);
         _provider.SetEventStartTime(occurrenceTime);
 
         // Create initial reminder
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime.DateTime);
         var initialReminders = await _storage.GetRemindersByEventAsync(_eventId);
 
         // Act
@@ -156,12 +156,12 @@ public class ReminderServiceTests
     public async Task PopulateRemindersForEventAsync_DeletesStaleReminders()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var oldTriggerTime = occurrenceTime.AddMinutes(-60);
         var newTriggerTime = occurrenceTime.AddMinutes(-5);
 
         // Create old reminder
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, oldTriggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, oldTriggerTime.DateTime);
 
         // Provider returns only new reminder
         _provider.SetReminderOccurrences([(occurrenceTime, newTriggerTime)]);
@@ -174,7 +174,7 @@ public class ReminderServiceTests
         var reminders = await _storage.GetRemindersByEventAsync(_eventId);
         Assert.That(reminders.Count, Is.EqualTo(1));
         var actualTriggerTime = DateTimeOffset.FromUnixTimeSeconds(reminders[0].TriggerTime).DateTime;
-        Assert.That(actualTriggerTime, Is.EqualTo(newTriggerTime).Within(TimeSpan.FromSeconds(1)));
+        Assert.That(actualTriggerTime, Is.EqualTo(newTriggerTime.DateTime).Within(TimeSpan.FromSeconds(1)));
     }
 
     [Test]
@@ -199,12 +199,12 @@ public class ReminderServiceTests
     public async Task DismissReminderAsync_WithAnotherNotificationConfigured_CreatesNewReminder()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var firstTriggerTime = occurrenceTime.AddMinutes(-30);
         var secondTriggerTime = occurrenceTime.AddMinutes(-5);
 
         // Create reminder that was fired
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, firstTriggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, firstTriggerTime.DateTime);
         var reminders = await _storage.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
@@ -220,7 +220,7 @@ public class ReminderServiceTests
         Assert.That(updatedReminders.Count, Is.EqualTo(1));
         Assert.That(updatedReminders[0].ReminderId, Is.Not.EqualTo(reminderId));
         var actualTriggerTime = DateTimeOffset.FromUnixTimeSeconds(updatedReminders[0].TriggerTime).DateTime;
-        Assert.That(actualTriggerTime, Is.EqualTo(secondTriggerTime).Within(TimeSpan.FromSeconds(1)));
+        Assert.That(actualTriggerTime, Is.EqualTo(secondTriggerTime.DateTime).Within(TimeSpan.FromSeconds(1)));
     }
 
     [Test]
@@ -238,7 +238,7 @@ public class ReminderServiceTests
 
         // Provider returns no more occurrences (no recurrence)
         _provider.SetReminderOccurrences([]);
-        _provider.SetEventStartTime(meetingStartTime);
+        _provider.SetEventStartTime(new ZonedDateTime(meetingStartTime, TimeZoneInfo.Utc));
 
         // Act
         await _reminderService.DismissReminderAsync(reminderId);
@@ -264,8 +264,8 @@ public class ReminderServiceTests
         // Provider returns next occurrence (recurrence)
         var nextOccurrence = meetingStartTime.AddDays(7);
         var nextTrigger = nextOccurrence.AddMinutes(-30);
-        _provider.SetReminderOccurrences([(nextOccurrence, nextTrigger)]);
-        _provider.SetEventStartTime(nextOccurrence);
+        _provider.SetReminderOccurrences([(new ZonedDateTime(nextOccurrence, TimeZoneInfo.Utc), new ZonedDateTime(nextTrigger, TimeZoneInfo.Utc))]);
+        _provider.SetEventStartTime(new ZonedDateTime(nextOccurrence, TimeZoneInfo.Utc));
 
         // Act
         await _reminderService.DismissReminderAsync(reminderId);
@@ -293,7 +293,7 @@ public class ReminderServiceTests
 
         // Provider returns no more occurrences (no recurrence)
         _provider.SetReminderOccurrences([]);
-        _provider.SetEventStartTime(meetingStartTime);
+        _provider.SetEventStartTime(new ZonedDateTime(meetingStartTime, TimeZoneInfo.Utc));
 
         // Act
         await _reminderService.DismissReminderAsync(reminderId);
@@ -319,8 +319,8 @@ public class ReminderServiceTests
         // Provider returns next occurrence (recurrence)
         var nextOccurrence = meetingStartTime.AddDays(7);
         var nextTrigger = nextOccurrence.AddMinutes(-30);
-        _provider.SetReminderOccurrences([(nextOccurrence, nextTrigger)]);
-        _provider.SetEventStartTime(nextOccurrence);
+        _provider.SetReminderOccurrences([(new ZonedDateTime(nextOccurrence, TimeZoneInfo.Utc), new ZonedDateTime(nextTrigger, TimeZoneInfo.Utc))]);
+        _provider.SetEventStartTime(new ZonedDateTime(nextOccurrence, TimeZoneInfo.Utc));
 
         // Act
         await _reminderService.DismissReminderAsync(reminderId);
@@ -351,9 +351,9 @@ public class ReminderServiceTests
     public async Task SnoozeReminderAsync_OneMinute_CreatesReminderOneMinuteFromNow()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = DateTime.UtcNow.AddMinutes(-10);
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime);
         var reminders = await _storage.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
@@ -375,9 +375,9 @@ public class ReminderServiceTests
     public async Task SnoozeReminderAsync_FiveMinutes_CreatesReminderFiveMinutesFromNow()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = DateTime.UtcNow.AddMinutes(-10);
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime);
         var reminders = await _storage.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
@@ -398,9 +398,9 @@ public class ReminderServiceTests
     public async Task SnoozeReminderAsync_TenMinutes_CreatesReminderTenMinutesFromNow()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = DateTime.UtcNow.AddMinutes(-10);
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime);
         var reminders = await _storage.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
@@ -421,9 +421,9 @@ public class ReminderServiceTests
     public async Task SnoozeReminderAsync_FifteenMinutes_CreatesReminderFifteenMinutesFromNow()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = DateTime.UtcNow.AddMinutes(-10);
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime);
         var reminders = await _storage.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
@@ -444,9 +444,9 @@ public class ReminderServiceTests
     public async Task SnoozeReminderAsync_ThirtyMinutes_CreatesReminderThirtyMinutesFromNow()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = DateTime.UtcNow.AddMinutes(-10);
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime);
         var reminders = await _storage.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
@@ -467,9 +467,9 @@ public class ReminderServiceTests
     public async Task SnoozeReminderAsync_OneHour_CreatesReminderOneHourFromNow()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = DateTime.UtcNow.AddMinutes(-10);
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime);
         var reminders = await _storage.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
@@ -490,9 +490,9 @@ public class ReminderServiceTests
     public async Task SnoozeReminderAsync_TwoHours_CreatesReminderTwoHoursFromNow()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = DateTime.UtcNow.AddMinutes(-10);
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime);
         var reminders = await _storage.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
@@ -513,9 +513,9 @@ public class ReminderServiceTests
     public async Task SnoozeReminderAsync_Tomorrow_CreatesReminderTomorrowMidnight()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = DateTime.UtcNow.AddMinutes(-10);
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime);
         var reminders = await _storage.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
@@ -544,7 +544,7 @@ public class ReminderServiceTests
         var expectedTriggerTime = meetingStartTime.AddMinutes(-1);
 
         // Provider needs to return event start time for this snooze interval
-        _provider.SetEventStartTime(meetingStartTime);
+        _provider.SetEventStartTime(new ZonedDateTime(meetingStartTime, TimeZoneInfo.Utc));
 
         // Act
         await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.OneMinuteBeforeStart);
@@ -570,7 +570,7 @@ public class ReminderServiceTests
         var expectedTriggerTime = meetingStartTime;
 
         // Provider needs to return event start time for this snooze interval
-        _provider.SetEventStartTime(meetingStartTime);
+        _provider.SetEventStartTime(new ZonedDateTime(meetingStartTime, TimeZoneInfo.Utc));
 
         // Act
         await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.WhenItStarts);
@@ -600,9 +600,9 @@ public class ReminderServiceTests
     public async Task GetDueRemindersAsync_ReturnsDueReminders()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = DateTime.UtcNow.AddMinutes(-10);
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime);
 
         // Act
         var dueReminders = await _reminderService.GetDueRemindersAsync();
@@ -616,9 +616,9 @@ public class ReminderServiceTests
     public async Task GetDueRemindersAsync_MarksRemindersAsFired()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = DateTime.UtcNow.AddMinutes(-10);
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime);
 
         // Act
         var dueReminders1 = await _reminderService.GetDueRemindersAsync();
@@ -633,9 +633,9 @@ public class ReminderServiceTests
     public async Task GetDueRemindersAsync_NoDueReminders_ReturnsEmpty()
     {
         // Arrange - create reminder in the future
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = DateTime.UtcNow.AddHours(1);
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime);
 
         // Act
         var dueReminders = await _reminderService.GetDueRemindersAsync();
@@ -652,9 +652,9 @@ public class ReminderServiceTests
     public async Task ClearFiredReminders_ResetsFiredRemindersSet()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         var triggerTime = DateTime.UtcNow.AddMinutes(-10);
-        await _storage.CreateReminderAsync(_eventId, occurrenceTime, triggerTime);
+        await _storage.CreateReminderAsync(_eventId, occurrenceTime.DateTime, triggerTime);
 
         // Get reminders to mark them as fired
         await _reminderService.GetDueRemindersAsync();
@@ -675,8 +675,7 @@ public class ReminderServiceTests
     public async Task GetEventStartTimeAsync_WithValidData_ReturnsStartTime()
     {
         // Arrange
-        var occurrenceTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
-        var expectedStartTime = new DateTimeOffset(occurrenceTime);
+        var occurrenceTime = new ZonedDateTime(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc);
         _provider.SetEventStartTime(occurrenceTime);
 
         // Store raw data
@@ -687,9 +686,8 @@ public class ReminderServiceTests
 
         // Assert
         Assert.That(startTime, Is.Not.Null);
-        Assert.That(startTime.Value.Kind, Is.EqualTo(DateTimeKind.Local));
-        var expectedLocalTime = expectedStartTime.LocalDateTime;
-        Assert.That(startTime, Is.EqualTo(expectedLocalTime).Within(TimeSpan.FromSeconds(1)));
+        Assert.That(startTime.Value.TimeZone, Is.EqualTo(occurrenceTime.TimeZone));
+        Assert.That(startTime.Value.DateTime, Is.EqualTo(occurrenceTime.DateTime).Within(TimeSpan.FromSeconds(1)));
     }
 
     [Test]
@@ -698,7 +696,7 @@ public class ReminderServiceTests
         // Arrange - no raw data stored
 
         // Act
-        var startTime = await _reminderService.GetEventStartTimeAsync(_eventId, DateTime.UtcNow, AccountType.Google);
+        var startTime = await _reminderService.GetEventStartTimeAsync(_eventId, new ZonedDateTime(DateTime.UtcNow, TimeZoneInfo.Utc), AccountType.Google);
 
         // Assert
         Assert.That(startTime, Is.Null);
@@ -711,7 +709,7 @@ public class ReminderServiceTests
         await _storage.SetEventData(_eventId, "rawData", "test-raw-data");
 
         // Act
-        var startTime = await _reminderService.GetEventStartTimeAsync(_eventId, DateTime.UtcNow, AccountType.CalDav);
+        var startTime = await _reminderService.GetEventStartTimeAsync(_eventId, new ZonedDateTime(DateTime.UtcNow, TimeZoneInfo.Utc), AccountType.CalDav);
 
         // Assert
         Assert.That(startTime, Is.Null);
@@ -728,8 +726,8 @@ public class ReminderServiceTests
 public class FakeReminderProvider : ICalendarProvider
 {
     private readonly CredentialManagerService _credentialManager;
-    private List<(DateTime Occurrence, DateTime TriggerTime)> _reminderOccurrences = [];
-    private DateTime? _eventStartTime;
+    private List<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)> _reminderOccurrences = [];
+    private ZonedDateTime? _eventStartTime;
 
     public FakeReminderProvider()
     {
@@ -738,12 +736,12 @@ public class FakeReminderProvider : ICalendarProvider
 
     public CredentialManagerService CredentialManager => _credentialManager;
 
-    public void SetReminderOccurrences(List<(DateTime Occurrence, DateTime TriggerTime)> occurrences)
+    public void SetReminderOccurrences(List<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)> occurrences)
     {
-        _reminderOccurrences = new List<(DateTime Occurrence, DateTime TriggerTime)>(occurrences);
+        _reminderOccurrences = new List<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)>(occurrences);
     }
 
-    public void SetEventStartTime(DateTime startTime)
+    public void SetEventStartTime(ZonedDateTime startTime)
     {
         _eventStartTime = startTime;
     }
@@ -772,30 +770,26 @@ public class FakeReminderProvider : ICalendarProvider
         throw new NotImplementedException();
     }
 
-    public Task<IList<int>> GetReminderMinutesAsync(
+    public IList<int> GetReminderMinutes(
         string rawEventData,
-        string? rawCalendarData = null,
-        CancellationToken cancellationToken = default)
+        string? rawCalendarData = null)
     {
-        return Task.FromResult<IList<int>>([]);
+        return [];
     }
 
-    public Task<DateTimeOffset?> GetEventStartTimeAsync(
+    public ZonedDateTime? GetEventStartTime(
         string rawEventData,
-        DateTime? occurrenceTime = null,
-        CancellationToken cancellationToken = default)
+        DateTime? occurrenceTime = null)
     {
-        DateTimeOffset? result = _eventStartTime.HasValue ? new DateTimeOffset(_eventStartTime.Value) : null;
-        return Task.FromResult(result);
+        return _eventStartTime;
     }
 
-    public Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
+    public IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        DateTime referenceTime = default,
-        CancellationToken cancellationToken = default)
+        ZonedDateTime referenceTime = default)
     {
-        return Task.FromResult<IList<(DateTime Occurrence, DateTime TriggerTime)>>(_reminderOccurrences);
+        return _reminderOccurrences;
     }
 
     public Task RespondToEventAsync(
@@ -815,8 +809,8 @@ public class FakeReminderProvider : ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
@@ -830,12 +824,17 @@ public class FakeReminderProvider : ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
+    }
+
+    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange)
+    {
+        return [];
     }
 }
 
