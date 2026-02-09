@@ -10,7 +10,6 @@ using perinma.Utils;
 using Calendar = Ical.Net.Calendar;
 using Duration = NodaTime.Duration;
 using ICalEvent = Ical.Net.CalendarComponents.CalendarEvent;
-using ZonedDateTime = perinma.Models.ZonedDateTime;
 
 namespace perinma.Services.CalDAV;
 
@@ -66,9 +65,6 @@ public class CalDavCalendarProvider(
             .Where(t => t.startTime <= timeRange.End && t.endTime >= timeRange.Start)
             .Select(t => MapToCalendarEvent(t.Reference, t.evt, t.startTime, t.endTime, t.timeZone))
             .ToList();
-
-    private static ZonedDateTime BuildZonedDateTime(CalDateTime calDateTime) =>
-        new(calDateTime.Value, TimeZoneInfo.FindSystemTimeZoneById(calDateTime.TzId ?? "UTC"));
 
     private static CalendarEvent MapToCalendarEvent(EventReference reference, ICalEvent evt,
         Instant startTime, Instant endTime, string? timeZone)
@@ -448,8 +444,8 @@ public class CalDavCalendarProvider(
         string title,
         string? description,
         string? location,
-        ZonedDateTime startTime,
-        ZonedDateTime endTime,
+        Instant startTime,
+        Instant endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
@@ -465,8 +461,8 @@ public class CalDavCalendarProvider(
             title,
             description,
             location,
-            startTime.DateTime,
-            endTime.DateTime,
+            startTime.ToDateTimeUtc(),
+            endTime.ToDateTimeUtc(),
             rawEventData,
             cancellationToken);
     }
@@ -479,8 +475,8 @@ public class CalDavCalendarProvider(
         string title,
         string? description,
         string? location,
-        ZonedDateTime startTime,
-        ZonedDateTime endTime,
+        Instant startTime,
+        Instant endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
@@ -498,8 +494,8 @@ public class CalDavCalendarProvider(
             title,
             description,
             location,
-            startTime.DateTime,
-            endTime.DateTime,
+            startTime.ToDateTimeUtc(),
+            endTime.ToDateTimeUtc(),
             rawEventData,
             cancellationToken);
     }

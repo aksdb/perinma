@@ -16,7 +16,6 @@ using perinma.Utils;
 using Calendar = Ical.Net.Calendar;
 using Duration = NodaTime.Duration;
 using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
-using ZonedDateTime = perinma.Models.ZonedDateTime;
 
 namespace perinma.Services.Google;
 
@@ -521,8 +520,8 @@ public class GoogleCalendarProvider(
         string title,
         string? description,
         string? location,
-        ZonedDateTime startTime,
-        ZonedDateTime endTime,
+        Instant startTime,
+        Instant endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
@@ -534,7 +533,7 @@ public class GoogleCalendarProvider(
 
         var service = await googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
         return await googleCalendarService.CreateEventAsync(service, calendarId, title, description, location,
-            startTime.DateTime, endTime.DateTime, rawEventData, cancellationToken);
+            startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc(), rawEventData, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -545,8 +544,8 @@ public class GoogleCalendarProvider(
         string title,
         string? description,
         string? location,
-        ZonedDateTime startTime,
-        ZonedDateTime endTime,
+        Instant startTime,
+        Instant endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
@@ -558,6 +557,6 @@ public class GoogleCalendarProvider(
 
         var service = await googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
         await googleCalendarService.UpdateEventAsync(service, calendarId, eventId, title, description, location,
-            startTime.DateTime, endTime.DateTime, rawEventData, cancellationToken);
+            startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc(), rawEventData, cancellationToken);
     }
 }

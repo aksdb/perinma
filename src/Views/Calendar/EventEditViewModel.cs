@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NodaTime;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
@@ -125,8 +126,8 @@ public partial class EventEditViewModel : ViewModelBase
             Title = existingEvent.Title ?? string.Empty;
             Description = string.Empty;
             Location = string.Empty;
-            _startTime = existingEvent.StartTime.DateTime;
-            _endTime = existingEvent.EndTime.DateTime;
+            _startTime = existingEvent.StartTime.ToDateTimeUtc();
+            _endTime = existingEvent.EndTime.ToDateTimeUtc();
             _duration = _endTime - _startTime;
             SelectedCalendar = calendar;
 
@@ -172,9 +173,8 @@ public partial class EventEditViewModel : ViewModelBase
             var calendarExternalId = targetCalendar.ExternalId ?? string.Empty;
             var provider = _providers.GetValueOrDefault(targetCalendar.Account.Type);
 
-            var timeZone = TimeZoneInfo.Local;
-            var startTimeZoned = new ZonedDateTime(StartTime, timeZone);
-            var endTimeZoned = new ZonedDateTime(EndTime, timeZone);
+            var startInstant = LocalDateTime.FromDateTime(StartTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
+            var endInstant = LocalDateTime.FromDateTime(EndTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
 
             if (IsEditMode && _existingEvent != null && provider != null)
             {
@@ -185,8 +185,8 @@ public partial class EventEditViewModel : ViewModelBase
                     Title,
                     string.IsNullOrWhiteSpace(Description) ? null : Description,
                     string.IsNullOrWhiteSpace(Location) ? null : Location,
-                    startTimeZoned,
-                    endTimeZoned,
+                    startInstant,
+                    endInstant,
                     _existingRawEventData);
 
                 _onCompleted(_existingEvent.Reference.ExternalId ?? string.Empty);
@@ -200,8 +200,8 @@ public partial class EventEditViewModel : ViewModelBase
                     Title,
                     string.IsNullOrWhiteSpace(Description) ? null : Description,
                     string.IsNullOrWhiteSpace(Location) ? null : Location,
-                    startTimeZoned,
-                    endTimeZoned,
+                    startInstant,
+                    endInstant,
                     null);
 
                 _onCompleted(newEventId);

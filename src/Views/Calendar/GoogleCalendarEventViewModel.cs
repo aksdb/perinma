@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
+using NodaTime;
 using perinma.Models;
 using perinma.Services;
 using perinma.Services.Google;
@@ -92,6 +93,16 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
     public ObservableCollection<EventAttachment> Attachments { get; } = [];
 
     public ObservableCollection<AttendeeViewModel> Attendees { get; } = [];
+
+    private static readonly DateTimeZone SystemZone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+
+    public DateTime StartTimeDisplay => _calendarEvent.StartTime
+        .InZone(SystemZone)
+        .ToDateTimeUnspecified();
+
+    public DateTime EndTimeDisplay => _calendarEvent.EndTime
+        .InZone(SystemZone)
+        .ToDateTimeUnspecified();
 
     public GoogleCalendarEventViewModel(
         CalendarEvent calendarEvent,

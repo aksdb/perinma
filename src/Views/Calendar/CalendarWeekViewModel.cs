@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NodaTime;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
@@ -298,6 +299,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
     {
         var start = ViewStart;
         var end = start.AddDays(DayColumns);
+        var systemZone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
 
         var tieBreaker = 0;
 
@@ -307,18 +309,22 @@ public partial class CalendarWeekViewModel : ViewModelBase
             {
                 var viewModels = new List<EventItem>();
 
-                var effectiveStart = e.StartTime.Date >= start ? e.StartTime.DateTime : start;
+                var startLocal = e.StartTime.InZone(systemZone).LocalDateTime;
+                var endLocal = e.EndTime.InZone(systemZone).LocalDateTime;
+                var startLocalDate = LocalDate.FromDateTime(start);
+                var endLocalDate = LocalDate.FromDateTime(end);
+                var effectiveStart = startLocal.Date >= startLocalDate ? startLocal : LocalDateTime.FromDateTime(start);
                 var startDate = effectiveStart.Date;
-                var effectiveEnd = e.EndTime.Date <= end ? e.EndTime.DateTime : end;
+                var effectiveEnd = endLocal.Date <= endLocalDate ? endLocal : LocalDateTime.FromDateTime(end);
                 var endDate = effectiveEnd.Date;
 
                 // Split event into multiple items if it spans multiple days.
                 var dayIndex = -1;
-                var currentDate = start.Date.AddDays(-1);
+                var currentDate = LocalDate.FromDateTime(start.Date).PlusDays(-1);
                 while (true)
                 {
                     dayIndex++;
-                    currentDate = currentDate.AddMinutes(24 * 60);
+                    currentDate = currentDate.PlusDays(1);
 
                     if (currentDate < startDate)
                     {
@@ -332,7 +338,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         break;
                     }
 
-                    if (currentDate == effectiveEnd)
+                    if (currentDate == effectiveEnd.Date)
                     {
                         // The end of the event is exactly the start of the new day. So it effectively
                         // ends at the last day.
@@ -356,7 +362,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                     }
 
                     // Detect all-day events: modeled as midnight-to-midnight spans
-                    var isFullDay = e.StartTime.TimeOfDay == TimeSpan.Zero && e.EndTime.TimeOfDay == TimeSpan.Zero;
+                    var isFullDay = startLocal.TimeOfDay == LocalTime.Midnight && endLocal.TimeOfDay == LocalTime.Midnight;
 
                     // Determine if this event needs a response (not yet accepted, tentative, or declined)
                     var needsResponse = e.ResponseStatus is EventResponseStatus.NeedsAction
@@ -378,8 +384,8 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         ColumnSlot = 0,
                         TotalColumns = 1,
                         IsFullDay = isFullDay,
-                        StartTimeText = e.StartTime.ToString("HH:mm"),
-                        EndTimeText = e.EndTime.ToString("HH:mm"),
+                        StartTimeText = startLocal.ToString("HH:mm", null),
+                        EndTimeText = endLocal.ToString("HH:mm", null),
                         ShowInlineTimes = true,
                         CalendarEvent = e,
                         Storage = _storage,
@@ -420,6 +426,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
     {
         var firstOfMonth = new DateTime(ViewStart.Year, ViewStart.Month, 1);
         var lastOfMonth = firstOfMonth.AddMonths(1).AddDays(-1);
+        var systemZone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
 
         // Find the Monday before or on the first of the month
         var startOffset = ((int)firstOfMonth.DayOfWeek + 6) % 7;
@@ -445,12 +452,14 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
             // Add events for this day
             var dayEvents = events
-                .Where(e => e.StartTime.Date <= date && e.EndTime.Date >= date)
+                .Where(e => e.StartTime.InZone(systemZone).Date <= LocalDate.FromDateTime(date) && e.EndTime.InZone(systemZone).Date >= LocalDate.FromDateTime(date))
                 .OrderBy(e => e.StartTime);
 
             foreach (var evt in dayEvents)
             {
-                var isFullDay = evt.StartTime.TimeOfDay == TimeSpan.Zero && evt.EndTime.TimeOfDay == TimeSpan.Zero;
+                var startLocal = evt.StartTime.InZone(systemZone).LocalDateTime;
+                var endLocal = evt.EndTime.InZone(systemZone).LocalDateTime;
+                var isFullDay = startLocal.TimeOfDay == LocalTime.Midnight && endLocal.TimeOfDay == LocalTime.Midnight;
                 dayVm.Events.Add(new MonthEventViewModel
                 {
                     Title = string.IsNullOrEmpty(evt.Title) ? "[no title]" : evt.Title,
@@ -459,7 +468,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         : Color.Parse(evt.Reference.Calendar.Color),
                     CalendarEvent = evt,
                     IsFullDay = isFullDay,
-                    TimeText = isFullDay ? string.Empty : evt.StartTime.ToString("HH:mm"),
+                    TimeText = isFullDay ? string.Empty : startLocal.ToString("HH:mm", null),
                     Storage = _storage,
                     Providers = _providers
                 });
@@ -475,6 +484,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
         const int agendaDays = 14;
         var start = ViewStart;
         var end = start.AddDays(agendaDays);
+        var systemZone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
 
         var events = _calendarSource.GetCalendarEvents(start, end)
             .OrderBy(e => e.StartTime)
@@ -490,18 +500,21 @@ public partial class CalendarWeekViewModel : ViewModelBase
                 IsToday = date.Date == DateTime.Today
             };
 
+            var dateLocal = LocalDate.FromDateTime(date);
             var dayEvents = events
-                .Where(e => e.StartTime.Date == date || (e.StartTime.Date < date && e.EndTime.Date >= date))
-                .OrderBy(e => e.StartTime.TimeOfDay == TimeSpan.Zero ? TimeSpan.MinValue : e.StartTime.TimeOfDay);
+                .Where(e => e.StartTime.InZone(systemZone).Date == dateLocal || (e.StartTime.InZone(systemZone).Date < dateLocal && e.EndTime.InZone(systemZone).Date >= dateLocal))
+                .OrderBy(e => e.StartTime.InZone(systemZone).LocalDateTime.TimeOfDay == LocalTime.Midnight ? TimeSpan.MinValue : new TimeSpan(e.StartTime.InZone(systemZone).LocalDateTime.TimeOfDay.Hour, e.StartTime.InZone(systemZone).LocalDateTime.TimeOfDay.Minute, e.StartTime.InZone(systemZone).LocalDateTime.TimeOfDay.Second));
 
             foreach (var evt in dayEvents)
             {
-                var isFullDay = evt.StartTime.TimeOfDay == TimeSpan.Zero && evt.EndTime.TimeOfDay == TimeSpan.Zero;
+                var startLocal = evt.StartTime.InZone(systemZone).LocalDateTime;
+                var endLocal = evt.EndTime.InZone(systemZone).LocalDateTime;
+                var isFullDay = startLocal.TimeOfDay == LocalTime.Midnight && endLocal.TimeOfDay == LocalTime.Midnight;
                 dayVm.Events.Add(new AgendaEventViewModel
                 {
                     Title = string.IsNullOrEmpty(evt.Title) ? "[no title]" : evt.Title,
-                    StartTime = evt.StartTime.DateTime,
-                    EndTime = evt.EndTime.DateTime,
+                    StartTime = startLocal.ToDateTimeUnspecified(),
+                    EndTime = endLocal.ToDateTimeUnspecified(),
                     IsFullDay = isFullDay,
                     Color = string.IsNullOrEmpty(evt.Reference.Calendar.Color)
                         ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)

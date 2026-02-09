@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NodaTime;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
@@ -54,6 +55,16 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
     private EventResponseStatus _currentResponseStatus = EventResponseStatus.None;
 
     public ObservableCollection<AttendeeViewModel> Attendees { get; } = [];
+
+    private static readonly DateTimeZone SystemZone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+
+    public DateTime StartTimeDisplay => _calendarEvent.StartTime
+        .InZone(SystemZone)
+        .ToDateTimeUnspecified();
+
+    public DateTime EndTimeDisplay => _calendarEvent.EndTime
+        .InZone(SystemZone)
+        .ToDateTimeUnspecified();
 
     public CalDavEventViewModel(
         CalendarEvent calendarEvent,

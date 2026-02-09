@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NodaTime;
 using perinma.Models;
 using perinma.Storage;
 using perinma.Storage.Models;
@@ -15,7 +16,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
     public async Task PopulateRemindersForEventAsync(string eventId, string calendarId, AccountType accountType,
         CancellationToken cancellationToken = default,
-        ZonedDateTime referenceTime = default)
+        Instant referenceTime = default)
     {
         var rawData = await storage.GetEventData(eventId, "rawData");
 
@@ -39,7 +40,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         }
 
         var refTime = referenceTime == default 
-            ? new ZonedDateTime(DateTime.UtcNow, TimeZoneInfo.Utc) 
+            ? SystemClock.Instance.GetCurrentInstant() 
             : referenceTime;
 
         // Get reminder occurrences from the provider
@@ -55,17 +56,17 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
         var remindersToDelete = existingReminders
             .Where(r => reminderOccurrences.All(o =>
-                o.TriggerTime.ToDateTimeOffset().ToUnixTimeSeconds() != r.TriggerTime))
+                o.TriggerTime.ToUnixTimeSeconds() != r.TriggerTime))
             .Select(r => r.ReminderId)
             .ToList();
 
         await storage.DeleteRemindersAsync(remindersToDelete);
 
-        foreach ((ZonedDateTime occurrence, ZonedDateTime triggerTime) in reminderOccurrences)
+        foreach ((Instant occurrence, Instant triggerTime) in reminderOccurrences)
         {
-            if (existingReminders.All(r => r.TriggerTime != triggerTime.ToDateTimeOffset().ToUnixTimeSeconds()))
+            if (existingReminders.All(r => r.TriggerTime != triggerTime.ToUnixTimeSeconds()))
             {
-                await storage.CreateReminderAsync(eventId, occurrence.DateTime, triggerTime.DateTime);
+                await storage.CreateReminderAsync(eventId, occurrence.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
             }
         }
     }
@@ -109,9 +110,9 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
             if (calendar != null)
             {
                 var previousTargetTime = DateTimeOffset.FromUnixTimeSeconds(reminder.TargetTime).DateTime;
-                var previousTargetTimeZoned = new ZonedDateTime(previousTargetTime, TimeZoneInfo.Local);
+                var previousTargetInstant = Instant.FromDateTimeUtc(previousTargetTime);
                 await PopulateRemindersForEventAsync(reminder.TargetId, calendarId, calendar.Account.Type,
-                    cancellationToken, previousTargetTimeZoned);
+                    cancellationToken, previousTargetInstant);
             }
         }
 
@@ -130,9 +131,9 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         await storage.DeleteReminderAsync(reminderId);
 
         var targetTime = DateTimeOffset.FromUnixTimeMilliseconds(reminder.TargetTime).DateTime;
-        var targetTimeZoned = new ZonedDateTime(targetTime, TimeZoneInfo.Local);
+        var targetInstant = Instant.FromDateTimeUtc(targetTime);
 
-        ZonedDateTime newTriggerTimeZoned;
+        Instant newTriggerInstant;
         if (interval == SnoozeInterval.WhenItStarts || interval == SnoozeInterval.OneMinuteBeforeStart)
         {
             if (reminder.TargetType != 1)
@@ -147,36 +148,36 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
             var calendar = storage.GetCachedCalendar(new Guid(calendarId));
             if (calendar == null) return;
 
-            var occurrenceStartTimeZoned = await GetEventStartTimeAsync(reminder.TargetId,
-                targetTimeZoned,
+            var occurrenceStartTimeInstant = await GetEventStartTimeAsync(reminder.TargetId,
+                targetInstant,
                 calendar.Account.Type, cancellationToken);
-            if (occurrenceStartTimeZoned == null) return;
+            if (occurrenceStartTimeInstant == null) return;
 
-            newTriggerTimeZoned = CalculateSnoozeTime(occurrenceStartTimeZoned.Value, interval);
+            newTriggerInstant = CalculateSnoozeTime(occurrenceStartTimeInstant.Value, interval);
         }
         else
         {
-            newTriggerTimeZoned = CalculateSnoozeTime(targetTimeZoned, interval);
+            newTriggerInstant = CalculateSnoozeTime(targetInstant, interval);
         }
 
-        await storage.CreateReminderAsync(reminder.TargetId, targetTimeZoned.DateTime, newTriggerTimeZoned.DateTime);
+        await storage.CreateReminderAsync(reminder.TargetId, targetInstant.ToDateTimeUtc(), newTriggerInstant.ToDateTimeUtc());
     }
 
-    private ZonedDateTime CalculateSnoozeTime(ZonedDateTime targetTime, SnoozeInterval interval)
+    private Instant CalculateSnoozeTime(Instant targetTime, SnoozeInterval interval)
     {
         return interval switch
         {
-            SnoozeInterval.OneMinute => new ZonedDateTime(DateTime.UtcNow.AddMinutes(1), TimeZoneInfo.Utc),
-            SnoozeInterval.FiveMinutes => new ZonedDateTime(DateTime.UtcNow.AddMinutes(5), TimeZoneInfo.Utc),
-            SnoozeInterval.TenMinutes => new ZonedDateTime(DateTime.UtcNow.AddMinutes(10), TimeZoneInfo.Utc),
-            SnoozeInterval.FifteenMinutes => new ZonedDateTime(DateTime.UtcNow.AddMinutes(15), TimeZoneInfo.Utc),
-            SnoozeInterval.ThirtyMinutes => new ZonedDateTime(DateTime.UtcNow.AddMinutes(30), TimeZoneInfo.Utc),
-            SnoozeInterval.OneHour => new ZonedDateTime(DateTime.UtcNow.AddHours(1), TimeZoneInfo.Utc),
-            SnoozeInterval.TwoHours => new ZonedDateTime(DateTime.UtcNow.AddHours(2), TimeZoneInfo.Utc),
-            SnoozeInterval.Tomorrow => new ZonedDateTime(DateTime.UtcNow.AddDays(1).Date, TimeZoneInfo.Utc),
-            SnoozeInterval.OneMinuteBeforeStart => new ZonedDateTime(targetTime.DateTime.AddMinutes(-1), targetTime.TimeZone),
+            SnoozeInterval.OneMinute => SystemClock.Instance.GetCurrentInstant() + Duration.FromMinutes(1),
+            SnoozeInterval.FiveMinutes => SystemClock.Instance.GetCurrentInstant() + Duration.FromMinutes(5),
+            SnoozeInterval.TenMinutes => SystemClock.Instance.GetCurrentInstant() + Duration.FromMinutes(10),
+            SnoozeInterval.FifteenMinutes => SystemClock.Instance.GetCurrentInstant() + Duration.FromMinutes(15),
+            SnoozeInterval.ThirtyMinutes => SystemClock.Instance.GetCurrentInstant() + Duration.FromMinutes(30),
+            SnoozeInterval.OneHour => SystemClock.Instance.GetCurrentInstant() + Duration.FromHours(1),
+            SnoozeInterval.TwoHours => SystemClock.Instance.GetCurrentInstant() + Duration.FromHours(2),
+            SnoozeInterval.Tomorrow => SystemClock.Instance.GetCurrentInstant().InUtc().Date.PlusDays(1).AtStartOfDayInZone(DateTimeZone.Utc).ToInstant(),
+            SnoozeInterval.OneMinuteBeforeStart => targetTime - Duration.FromMinutes(1),
             SnoozeInterval.WhenItStarts => targetTime,
-            _ => new ZonedDateTime(DateTime.UtcNow.AddMinutes(5), TimeZoneInfo.Utc)
+            _ => SystemClock.Instance.GetCurrentInstant() + Duration.FromMinutes(5)
         };
     }
 
@@ -185,7 +186,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         _firedReminders.Clear();
     }
 
-    public async Task<ZonedDateTime?> GetEventStartTimeAsync(string eventId, ZonedDateTime occurrenceTime,
+    public async Task<Instant?> GetEventStartTimeAsync(string eventId, Instant occurrenceTime,
         AccountType accountType, CancellationToken cancellationToken = default)
     {
         var rawData = await storage.GetEventData(eventId, "rawData");
@@ -200,13 +201,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
             return null;
         }
 
-        var startTimeOffset = provider.GetEventStartTime(rawData, occurrenceTime.DateTime);
-        if (startTimeOffset.HasValue)
-        {
-            return new ZonedDateTime(startTimeOffset.Value.DateTime, occurrenceTime.TimeZone);
-        }
-
-        return null;
+        return provider.GetEventStartTime(rawData, occurrenceTime);
     }
 
     public async Task<RemindersRebuildResult> RebuildAllRemindersAsync(CancellationToken cancellationToken = default)

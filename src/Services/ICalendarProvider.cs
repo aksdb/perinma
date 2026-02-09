@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using NodaTime;
 using perinma.Models;
-using ZonedDateTime = perinma.Models.ZonedDateTime;
 
 namespace perinma.Services;
 
@@ -117,8 +116,8 @@ public interface ICalendarProvider
     /// <param name="title">Event title</param>
     /// <param name="description">Event description (optional)</param>
     /// <param name="location">Event location (optional)</param>
-    /// <param name="startTime">Event start time with timezone</param>
-    /// <param name="endTime">Event end time with timezone</param>
+    /// <param name="startTime">Event start time as UTC Instant</param>
+    /// <param name="endTime">Event end time as UTC Instant</param>
     /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The external ID of the created event</returns>
@@ -128,8 +127,8 @@ public interface ICalendarProvider
         string title,
         string? description,
         string? location,
-        ZonedDateTime startTime,
-        ZonedDateTime endTime,
+        Instant startTime,
+        Instant endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default);
 
@@ -142,8 +141,8 @@ public interface ICalendarProvider
     /// <param name="title">Event title</param>
     /// <param name="description">Event description (optional)</param>
     /// <param name="location">Event location (optional)</param>
-    /// <param name="startTime">Event start time with timezone</param>
-    /// <param name="endTime">Event end time with timezone</param>
+    /// <param name="startTime">Event start time as UTC Instant</param>
+    /// <param name="endTime">Event end time as UTC Instant</param>
     /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task UpdateEventAsync(
@@ -153,8 +152,8 @@ public interface ICalendarProvider
         string title,
         string? description,
         string? location,
-        ZonedDateTime startTime,
-        ZonedDateTime endTime,
+        Instant startTime,
+        Instant endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default);
 }
