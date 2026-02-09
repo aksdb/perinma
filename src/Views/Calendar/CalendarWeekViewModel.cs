@@ -11,6 +11,7 @@ using NodaTime.Extensions;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
+using perinma.Utils;
 
 namespace perinma.Views.Calendar;
 
@@ -298,28 +299,27 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
     private void LoadTimeGridView()
     {
-        var start = ViewStart;
-        var end = start.AddDays(DayColumns);
-        var interval = new Interval(start.ToUniversalTime().ToInstant(), end.ToUniversalTime().ToInstant());
+        var start = ViewStart.ToLocalDateTime();
+        var end = start.PlusDays(DayColumns);
+        var interval = new Interval(start.ToInstant(), end.ToInstant());
         
         var tieBreaker = 0;
 
         // Build items
-        var allItems = _calendarSource.GetCalendarEvents(interval)
+        var foo = _calendarSource.GetCalendarEvents(interval);
+        var allItems = foo
             .SelectMany<CalendarEvent, EventItem>(e =>
             {
                 var viewModels = new List<EventItem>();
 
-                var startLocalDate = LocalDate.FromDateTime(start);
-                var endLocalDate = LocalDate.FromDateTime(end);
-                var effectiveStart = e.StartTime.Date >= startLocalDate ? e.StartTime : LocalDateTime.FromDateTime(start);
+                var effectiveStart = e.StartTime >= start ? e.StartTime : start;
                 var startDate = effectiveStart.Date;
-                var effectiveEnd = e.EndTime.Date <= endLocalDate ? e.EndTime : LocalDateTime.FromDateTime(end);
+                var effectiveEnd = e.EndTime <= end ? e.EndTime : end;
                 var endDate = effectiveEnd.Date;
 
                 // Split event into multiple items if it spans multiple days.
                 var dayIndex = -1;
-                var currentDate = LocalDate.FromDateTime(start.Date).PlusDays(-1);
+                var currentDate = start.Date.PlusDays(-1);
                 while (true)
                 {
                     dayIndex++;

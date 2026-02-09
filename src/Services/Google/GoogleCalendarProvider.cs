@@ -319,7 +319,7 @@ public class GoogleCalendarProvider(
             return OffsetDateTimePattern.Rfc3339.Parse(eventDateTime.DateTimeRaw).GetValueOrThrow().ToInstant();
 
         if (!string.IsNullOrEmpty(eventDateTime.Date))
-            return LocalDatePattern.Iso.Parse(eventDateTime.Date).GetValueOrThrow().AtMidnight().InUtc().ToInstant();
+            return LocalDatePattern.Iso.Parse(eventDateTime.Date).GetValueOrThrow().AtMidnight().ToInstant();
 
         return null;
     }
