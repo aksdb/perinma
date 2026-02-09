@@ -94,16 +94,6 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
 
     public ObservableCollection<AttendeeViewModel> Attendees { get; } = [];
 
-    private static readonly DateTimeZone SystemZone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
-
-    public DateTime StartTimeDisplay => _calendarEvent.StartTime
-        .InZone(SystemZone)
-        .ToDateTimeUnspecified();
-
-    public DateTime EndTimeDisplay => _calendarEvent.EndTime
-        .InZone(SystemZone)
-        .ToDateTimeUnspecified();
-
     public GoogleCalendarEventViewModel(
         CalendarEvent calendarEvent,
         SqliteStorage storage,

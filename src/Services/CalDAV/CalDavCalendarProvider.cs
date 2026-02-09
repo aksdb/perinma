@@ -77,8 +77,8 @@ public class CalDavCalendarProvider(
         {
             Reference = reference,
             Title = evt.Summary,
-            StartTime = startTime,
-            EndTime = endTime,
+            StartTime = startTime.ToLocalDateTime(),
+            EndTime = endTime.ToLocalDateTime(),
             ChangedAt = evt.DtStamp?.AsUtc,
             ResponseStatus = MapResponseStatus(evt.Status),
             Extensions = extensions,

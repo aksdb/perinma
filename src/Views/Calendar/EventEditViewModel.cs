@@ -126,8 +126,8 @@ public partial class EventEditViewModel : ViewModelBase
             Title = existingEvent.Title ?? string.Empty;
             Description = string.Empty;
             Location = string.Empty;
-            _startTime = existingEvent.StartTime.ToDateTimeUtc();
-            _endTime = existingEvent.EndTime.ToDateTimeUtc();
+            _startTime = existingEvent.StartTime.ToDateTimeUnspecified();
+            _endTime = existingEvent.EndTime.ToDateTimeUnspecified();
             _duration = _endTime - _startTime;
             SelectedCalendar = calendar;
 

@@ -61,7 +61,7 @@ public class GoogleCalendarProvider(
                 return [MapToCalendarEvent(t.Reference, t.Event, null)];
             })
             .Concat(overrides.Select(ov => MapToCalendarEvent(ov.Reference, ov.Event, null))) // Include the overrides themselves
-            .Where(ce => ce.StartTime <= timeRange.End && ce.EndTime >= timeRange.Start)
+            .Where(ce => ce.StartTime.ToInstant() <= timeRange.End && ce.EndTime.ToInstant() >= timeRange.Start)
             .ToList();
     }
 
@@ -96,8 +96,8 @@ public class GoogleCalendarProvider(
         {
             Reference = reference,
             Title = googleEvent.Summary,
-            StartTime = start,
-            EndTime = end,
+            StartTime = start.ToLocalDateTime(),
+            EndTime = end.ToLocalDateTime(),
             ChangedAt = googleEvent.UpdatedDateTimeOffset?.DateTime,
             ResponseStatus = MapResponseStatus(relevantStatus),
             Extensions = extensions,

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Data.Sqlite;
+using NodaTime;
 using perinma.Services;
 using perinma.Storage.Models;
 using perinma.Models;
@@ -655,11 +656,10 @@ public class SqliteStorage : IDisposable
 
     #endregion
 
-    public async Task<IEnumerable<CalendarEventQueryResult>> GetEventsByTimeRangeAsync(DateTime startTime,
-        DateTime endTime)
+    public async Task<IEnumerable<CalendarEventQueryResult>> GetEventsByTimeRangeAsync(Interval interval)
     {
-        var startTimestamp = new DateTimeOffset(startTime).ToUnixTimeSeconds();
-        var endTimestamp = new DateTimeOffset(endTime).ToUnixTimeSeconds();
+        var startTimestamp = interval.Start.ToUnixTimeSeconds();
+        var endTimestamp = interval.End.ToUnixTimeSeconds();
 
         var query = @"
             SELECT

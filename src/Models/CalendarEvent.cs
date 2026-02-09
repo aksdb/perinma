@@ -36,8 +36,8 @@ public record CalendarEvent
 {
     public required EventReference Reference { get; set; }
 
-    public Instant StartTime { get; set; }
-    public Instant EndTime { get; set; }
+    public LocalDateTime StartTime { get; set; }
+    public LocalDateTime EndTime { get; set; }
     public string? Title { get; set; }
     public DateTime? ChangedAt { get; set; }
 

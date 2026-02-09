@@ -5,12 +5,13 @@ using NodaTime;
 using perinma.Models;
 using perinma.Storage.Models;
 using perinma.Services;
+using perinma.Utils;
 
 namespace perinma.Storage;
 
 public interface ICalendarSource
 {
-    List<CalendarEvent> GetCalendarEvents(DateTime startTime, DateTime endTime);
+    List<CalendarEvent> GetCalendarEvents(Interval interval);
 }
 
 public class DummyCalendarSource : ICalendarSource
@@ -66,13 +67,13 @@ public class DummyCalendarSource : ICalendarSource
         _allEvents = BuildEvents(weekStart);
     }
 
-    public List<CalendarEvent> GetCalendarEvents(DateTime startTime, DateTime endTime)
+    public List<CalendarEvent> GetCalendarEvents(Interval interval)
     {
-        var startInstant = LocalDateTime.FromDateTime(startTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
-        var endInstant = LocalDateTime.FromDateTime(endTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
+        var localStart = interval.Start.ToLocalDateTime();
+        var localEnd = interval.End.ToLocalDateTime();
         return (from ev in _allEvents
-            let startInside = ev.StartTime > startInstant && ev.StartTime < endInstant
-            let endInside = ev.EndTime > startInstant && ev.EndTime < endInstant
+            let startInside = ev.StartTime > localStart && ev.StartTime < localEnd
+            let endInside = ev.EndTime > localStart && ev.EndTime < localEnd
             where startInside || endInside
             select ev).ToList();
     }
@@ -171,8 +172,8 @@ public class DummyCalendarSource : ICalendarSource
                 Calendar = cal,
                 Id = Guid.NewGuid(),
             },
-            StartTime = LocalDateTime.FromDateTime(start).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant(),
-            EndTime = LocalDateTime.FromDateTime(end).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant(),
+            StartTime = LocalDateTime.FromDateTime(start), 
+            EndTime = LocalDateTime.FromDateTime(end),
             Title = title,
             ChangedAt = DateTime.Now
         };
@@ -184,17 +185,13 @@ public class DatabaseCalendarSource(
     IReadOnlyDictionary<AccountType, ICalendarProvider> providers)
     : ICalendarSource
 {
-    public List<CalendarEvent> GetCalendarEvents(DateTime startTime, DateTime endTime)
+    public List<CalendarEvent> GetCalendarEvents(Interval interval)
     {
         var events =
-            storage.GetEventsByTimeRangeAsync(startTime, endTime)
+            storage.GetEventsByTimeRangeAsync(interval)
                 .GetAwaiter()
                 .GetResult()
                 .ToList();
-
-        var startInstant = LocalDateTime.FromDateTime(startTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
-        var endInstant = LocalDateTime.FromDateTime(endTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
-        var interval = new Interval(startInstant, endInstant);
 
         var calendarEvents = new List<CalendarEvent>();
 
