@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using NodaTime;
 using perinma.Models;
+using ZonedDateTime = perinma.Models.ZonedDateTime;
 
 namespace perinma.Services;
 
@@ -19,7 +21,7 @@ public interface ICalendarProvider
     /// <param name="rawEvents"></param>
     /// <param name="timeRange"></param>
     /// <returns></returns>
-    List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange);
+    List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange);
 
     /// <summary>
     /// Syncs calendars for an account, optionally using incremental sync.
@@ -75,10 +77,10 @@ public interface ICalendarProvider
     /// <param name="rawCalendarData">Optional raw calendar data for default reminders (JSON for Google)</param>
     /// <param name="referenceTime">Reference time for filtering (defaults to UTC now)</param>
     /// <returns>List of tuples containing occurrence time and trigger time for each reminder</returns>
-    IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)> GetNextReminderOccurrences(
+    IList<(Instant Occurrence, Instant TriggerTime)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        ZonedDateTime referenceTime = default);
+        Instant referenceTime = default);
 
     /// <summary>
     /// Get the actual matching event start time to recover timezone information.
@@ -86,9 +88,9 @@ public interface ICalendarProvider
     /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
     /// <param name="occurrenceTime">Optional occurrence time for recurring events. If provided, returns the start time for this specific occurrence.</param>
     /// <returns>Event start time with timezone information, or null if parsing fails</returns>
-    ZonedDateTime? GetEventStartTime(
+    Instant? GetEventStartTime(
         string rawEventData,
-        DateTime? occurrenceTime = null);
+        Instant? occurrenceTime = null);
 
     /// <summary>
     /// Responds to an event invitation with the specified status.
@@ -251,12 +253,12 @@ public class ProviderEvent
     /// <summary>
     /// Start time of the event (or first occurrence for recurring events).
     /// </summary>
-    public ZonedDateTime? StartTime { get; init; }
+    public Instant? StartTime { get; init; }
 
     /// <summary>
     /// End time of the event. For recurring events, this is the end of the recurrence span.
     /// </summary>
-    public ZonedDateTime? EndTime { get; init; }
+    public Instant? EndTime { get; init; }
 
     /// <summary>
     /// Event status (e.g., "confirmed", "cancelled", "tentative").
@@ -276,7 +278,7 @@ public class ProviderEvent
     /// <summary>
     /// For override events: the original start time of the occurrence being modified.
     /// </summary>
-    public ZonedDateTime? OriginalStartTime { get; init; }
+    public Instant? OriginalStartTime { get; init; }
 
     /// <summary>
     /// Raw provider data serialized as string for later use (JSON or iCalendar).

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using NodaTime;
 
 namespace perinma.Models;
 
@@ -35,8 +36,8 @@ public record CalendarEvent
 {
     public required EventReference Reference { get; set; }
 
-    public ZonedDateTime StartTime { get; set; }
-    public ZonedDateTime EndTime { get; set; }
+    public Instant StartTime { get; set; }
+    public Instant EndTime { get; set; }
     public string? Title { get; set; }
     public DateTime? ChangedAt { get; set; }
 
@@ -54,7 +55,7 @@ public record RawEvent
     public required string RawData { get; init; }
 }
 
-public class Extension<T> where T : class
+public class Extension<T>
 {
     internal Extension()
     {
@@ -66,15 +67,17 @@ public static class Extensions
     public static Extension<string> Description = new();
     public static Extension<string> Location = new();
     public static Extension<List<string>> Participants = new();
+    public static Extension<bool> FullDay = new();
+    public static Extension<string> TimeZone = new();
 }
 
 public class ExtensionValues
 {
     private readonly Dictionary<object, object> _valueByExtension = [];
 
-    public void Set<T>(Extension<T> extension, T value) where T : class =>
-        _valueByExtension[extension] = value;
+    public void Set<T>(Extension<T> extension, T value) =>
+        _valueByExtension[extension] = value!;
 
-    public T? Get<T>(Extension<T> extension) where T : class =>
-        _valueByExtension.GetValueOrDefault(extension) as T;
+    public T? Get<T>(Extension<T> extension) =>
+        _valueByExtension.TryGetValue(extension, out var v) ? (T)v : default;
 }

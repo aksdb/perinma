@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -8,10 +9,14 @@ using System.Threading.Tasks;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
 using Ical.Net.DataTypes;
+using NodaTime;
+using NodaTime.Text;
 using perinma.Models;
 using perinma.Utils;
 using Calendar = Ical.Net.Calendar;
+using Duration = NodaTime.Duration;
 using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
+using ZonedDateTime = perinma.Models.ZonedDateTime;
 
 namespace perinma.Services.Google;
 
@@ -23,8 +28,11 @@ public class GoogleCalendarProvider(
     CredentialManagerService credentialManager)
     : ICalendarProvider
 {
+
+    private static Extension<GoogleEvent> GoogleEventExtension = new();
+    
     /// <inheritdoc/>
-    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange)
+    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange)
     {
         var googleEvents = rawEvents
             .Select(e => (e.Reference, Event: NewtonsoftJsonSerializer.Instance.Deserialize<Event>(e.RawData)))
@@ -59,19 +67,31 @@ public class GoogleCalendarProvider(
     }
 
     private static CalendarEvent MapToCalendarEvent(EventReference reference, Event googleEvent,
-        ZonedDateTime? occurrenceStart)
+        Instant? occurrenceStart)
     {
         var start = occurrenceStart ?? ParseGoogleDateTime(googleEvent.Start) ?? default;
+        string? timeZone = null;
+        if (!string.IsNullOrEmpty(googleEvent.Start.TimeZone))
+            timeZone = googleEvent.Start.TimeZone;
+        // If the start is represented as a date instead of a datetime, it's apparently full-day.
+        bool fullDay = !string.IsNullOrEmpty(googleEvent.Start.Date);
 
         // Calculate duration if it's an occurrence
         var duration = TimeSpan.Zero;
         if (googleEvent is { Start: not null, End: not null })
             duration = googleEvent.End.DateTimeDateTimeOffset - googleEvent.Start.DateTimeDateTimeOffset ?? TimeSpan.Zero;
-        var end = start.Add(duration);
+        var end = start.Plus(Duration.FromTimeSpan(duration));
 
         var relevantStatus = googleEvent.Attendees
             ?.FirstOrDefault(a => a.Self == true)
             ?.ResponseStatus;
+
+        var extensions = new ExtensionValues();
+        extensions.Set(GoogleEventExtension, googleEvent);
+        if (fullDay)
+            extensions.Set(Extensions.FullDay, true);
+        if (timeZone is not null)
+            extensions.Set(Extensions.TimeZone, timeZone);
         
         return new CalendarEvent
         {
@@ -81,7 +101,7 @@ public class GoogleCalendarProvider(
             EndTime = end,
             ChangedAt = googleEvent.UpdatedDateTimeOffset?.DateTime,
             ResponseStatus = MapResponseStatus(relevantStatus),
-            Extensions = new ExtensionValues()
+            Extensions = extensions,
         };
     }
 
@@ -215,9 +235,9 @@ public class GoogleCalendarProvider(
             };
         }
 
-        ZonedDateTime? startTime = null;
-        ZonedDateTime? endTime = null;
-        ZonedDateTime? originalStartTime = null;
+        Instant? startTime = null;
+        Instant? endTime = null;
+        Instant? originalStartTime = null;
 
         // Handle override events
         if (isOverride)
@@ -255,9 +275,7 @@ public class GoogleCalendarProvider(
         {
             // Regular events
             if (evt.Start == null || evt.End == null)
-            {
                 return null;
-            }
 
             startTime = ParseGoogleDateTime(evt.Start);
             endTime = ParseGoogleDateTime(evt.End);
@@ -267,14 +285,14 @@ public class GoogleCalendarProvider(
             {
                 var recurrenceEndTime = RecurrenceParser.GetRecurrenceEndTime(
                     evt.Recurrence,
-                    startTime.Value.DateTime,
-                    endTime.Value.DateTime);
+                    startTime.Value.ToDateTimeUtc(),
+                    endTime.Value.ToDateTimeUtc());
 
                 if (recurrenceEndTime.HasValue)
                 {
                     // TODO merge local recurrence calculations into the RecurrenceParser and
                     //   make it ZonedDateTime aware
-                    endTime = new ZonedDateTime(recurrenceEndTime.Value, endTime.Value.TimeZone);
+                    endTime = Instant.FromDateTimeUtc(recurrenceEndTime.Value.ToUniversalTime());
                 }
             }
         }
@@ -293,29 +311,24 @@ public class GoogleCalendarProvider(
         };
     }
 
-    private static ZonedDateTime? ParseGoogleDateTime(EventDateTime? eventDateTime)
+    private static Instant? ParseGoogleDateTime(EventDateTime? eventDateTime)
     {
         if (eventDateTime == null)
             return null;
 
-        if (eventDateTime.DateTimeRaw != null && DateTimeOffset.TryParse(eventDateTime.DateTimeRaw, out var dateTime))
-        {
-            return new ZonedDateTime(dateTime.DateTime, TimeZoneInfo.FindSystemTimeZoneById(eventDateTime.TimeZone));
-        }
+        if (!string.IsNullOrEmpty(eventDateTime.DateTimeRaw))
+            return OffsetDateTimePattern.Rfc3339.Parse(eventDateTime.DateTimeRaw).GetValueOrThrow().ToInstant();
 
-        if (eventDateTime.Date != null && DateTimeOffset.TryParse(eventDateTime.Date, out var date))
-        {
-            // Since it should still be the full day in our display, we have to consider it to be in our timezone.
-            return new ZonedDateTime(date.Date, TimeZoneInfo.Local);
-        }
+        if (!string.IsNullOrEmpty(eventDateTime.Date))
+            return LocalDatePattern.Iso.Parse(eventDateTime.Date).GetValueOrThrow().AtMidnight().InUtc().ToInstant();
 
         return null;
     }
 
     /// <inheritdoc/>
-    public ZonedDateTime? GetEventStartTime(
+    public Instant? GetEventStartTime(
         string rawEventData,
-        DateTime? occurrenceTime = null)
+        Instant? occurrenceTime = null)
     {
         var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(rawEventData);
         if (googleEvent == null)
@@ -329,7 +342,7 @@ public class GoogleCalendarProvider(
 
         var occurrence = DetermineOccurrences(
                 googleEvent,
-                TimeRange.From(new ZonedDateTime(occurrenceTime.Value.ToUniversalTime(), TimeZoneInfo.Utc)),
+                new Interval(occurrenceTime, null),
                 max: 1)
             .FirstOrDefault();
 
@@ -385,10 +398,10 @@ public class GoogleCalendarProvider(
     }
 
     /// <inheritdoc/>
-    public IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)> GetNextReminderOccurrences(
+    public IList<(Instant Occurrence, Instant TriggerTime)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        ZonedDateTime referenceTime = default)
+        Instant referenceTime = default)
     {
         try
         {
@@ -406,20 +419,20 @@ public class GoogleCalendarProvider(
 
             var isRecurring = googleEvent.Recurrence is { Count: > 0 };
             var refTime = referenceTime == default
-                ? new ZonedDateTime(DateTime.Now, TimeZoneInfo.Local)
+                ? SystemClock.Instance.GetCurrentInstant()
                 : referenceTime;
-            var result = new List<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)>();
+            var result = new List<(Instant Occurrence, Instant TriggerTime)>();
 
             if (isRecurring)
             {
-                var nextOccurrence = DetermineOccurrences(googleEvent, TimeRange.From(refTime), max: 1)
+                var nextOccurrence = DetermineOccurrences(googleEvent, new Interval(refTime, null), max: 1)
                     .FirstOrDefault();
                 if (nextOccurrence == default)
                     return [];
 
                 foreach (var minutes in reminderMinutes)
                 {
-                    var triggerTime = nextOccurrence.AddMinutes(-minutes);
+                    var triggerTime = nextOccurrence.Plus(Duration.FromMinutes(-minutes));
                     if (triggerTime > refTime)
                     {
                         result.Add((nextOccurrence, triggerTime));
@@ -431,7 +444,7 @@ public class GoogleCalendarProvider(
             {
                 foreach (var minutes in reminderMinutes)
                 {
-                    var triggerTime = eventStartTime.Value.AddMinutes(-minutes);
+                    var triggerTime = eventStartTime.Value.Plus(Duration.FromMinutes(-minutes));
                     if (triggerTime > refTime)
                         result.Add((eventStartTime.Value, triggerTime));
                 }
@@ -445,7 +458,7 @@ public class GoogleCalendarProvider(
         }
     }
 
-    private static List<ZonedDateTime> DetermineOccurrences(GoogleEvent evt, TimeRange timeRange,
+    private static List<Instant> DetermineOccurrences(GoogleEvent evt, Interval timeRange,
         int max = Int32.MaxValue)
     {
         if (evt.Recurrence == null || evt.Recurrence.Count == 0)
@@ -469,12 +482,11 @@ public class GoogleCalendarProvider(
             throw new InvalidOperationException("failed to parse recurrence");
 
         var occurrences = icalEvent.GetOccurrences(
-            new CalDateTime(timeRange.Start.DateTime, timeRange.Start.TimeZone.Id));
+            new CalDateTime(timeRange.Start.ToDateTimeUtc()));
 
         return occurrences
-            .Select(o =>
-                new ZonedDateTime(o.Period.StartTime.AsUtc, TimeZoneInfo.Utc).ConvertTo(timeRange.Start.TimeZone))
-            .TakeWhile(z => z.DateTime <= timeRange.End.DateTime)
+            .Select(o => Instant.FromDateTimeOffset(o.Period.StartTime.AsUtc))
+            .TakeWhile(t => t <= timeRange.End)
             .Take(max)
             .ToList();
     }

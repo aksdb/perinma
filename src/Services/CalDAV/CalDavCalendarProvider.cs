@@ -4,10 +4,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Ical.Net.DataTypes;
+using NodaTime;
 using perinma.Models;
 using perinma.Utils;
 using Calendar = Ical.Net.Calendar;
+using Duration = NodaTime.Duration;
 using ICalEvent = Ical.Net.CalendarComponents.CalendarEvent;
+using ZonedDateTime = perinma.Models.ZonedDateTime;
 
 namespace perinma.Services.CalDAV;
 
@@ -20,7 +23,7 @@ public class CalDavCalendarProvider(
     : ICalendarProvider
 {
     /// <inheritdoc/>
-    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, TimeRange timeRange) =>
+    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange) =>
         rawEvents
             .Select(t => (t.Reference, Calendar: Calendar.Load(t.RawData)))
             .Where(t => t.Calendar is { Events.Count: > 0 })
@@ -29,45 +32,51 @@ public class CalDavCalendarProvider(
             {
                 if (t.evt.RecurrenceRules.Count > 0)
                 {
-                    return t.evt.GetOccurrences(new CalDateTime(timeRange.Start.DateTime, timeRange.Start.TimeZone.Id))
-                        .TakeWhile(o => o.Period.StartTime.Value <= timeRange.End.DateTime)
+                    return t.evt.GetOccurrences(new CalDateTime(timeRange.Start.ToDateTimeUtc()))
+                        .TakeWhile(o => o.Period.StartTime.Value <= timeRange.End.ToDateTimeUtc())
                         .Select(occurrence =>
                         {
-                            var startTime = BuildZonedDateTime(occurrence.Period.StartTime);
+                            var startTime = Instant.FromDateTimeOffset(occurrence.Period.StartTime.AsUtc);
+                            string? timeZone = occurrence.Period.StartTime.TzId ??
+                                               t.evt.Start?.TzId;
                             
-                            ZonedDateTime endTime;
+                            Instant endTime;
                             if (occurrence.Period.EndTime is {} occurrenceEndTime)
-                                endTime = BuildZonedDateTime(occurrenceEndTime);
+                                endTime = Instant.FromDateTimeOffset(occurrenceEndTime.AsUtc);
                             else if (t.evt.Duration is {} eventDuration)
-                                endTime = startTime.Add(eventDuration.ToTimeSpan(occurrence.Period.StartTime!));
+                                endTime = startTime.Plus(Duration.FromTimeSpan(eventDuration.ToTimeSpan(occurrence.Period.StartTime!)));
                             else if (t.evt is { Start: {} eventStart, End: {} eventEnd })
-                                endTime = startTime.Add(eventEnd.Value - eventStart.Value);
+                                endTime = startTime.Plus(Duration.FromTimeSpan(eventEnd.Value - eventStart.Value));
                             else
                                 endTime = startTime;
 
-                            return (t.Reference, t.evt, startTime, endTime);
+                            return (t.Reference, t.evt, startTime, endTime, timeZone);
                         });
                 }
 
                 if (t.evt.Start != null && t.evt.End != null)
                 {
-                    var startTime = BuildZonedDateTime(t.evt.Start);
-                    var endTime = BuildZonedDateTime(t.evt.End);
-                    return [(t.Reference, t.evt, startTime, endTime)];
+                    var startTime = Instant.FromDateTimeOffset(t.evt.Start.AsUtc);
+                    var endTime = Instant.FromDateTimeOffset(t.evt.End.AsUtc);
+                    return [(t.Reference, t.evt, startTime, endTime, t.evt.Start.TzId)];
                 }
 
                 return [];
             })
             .Where(t => t.startTime <= timeRange.End && t.endTime >= timeRange.Start)
-            .Select(t => MapToCalendarEvent(t.Reference, t.evt, t.startTime, t.endTime))
+            .Select(t => MapToCalendarEvent(t.Reference, t.evt, t.startTime, t.endTime, t.timeZone))
             .ToList();
 
     private static ZonedDateTime BuildZonedDateTime(CalDateTime calDateTime) =>
         new(calDateTime.Value, TimeZoneInfo.FindSystemTimeZoneById(calDateTime.TzId ?? "UTC"));
 
     private static CalendarEvent MapToCalendarEvent(EventReference reference, ICalEvent evt,
-        ZonedDateTime startTime, ZonedDateTime endTime)
+        Instant startTime, Instant endTime, string? timeZone)
     {
+        var extensions = new ExtensionValues();
+        if (timeZone != null)
+            extensions.Set(Extensions.TimeZone, timeZone);
+        
         return new CalendarEvent
         {
             Reference = reference,
@@ -76,7 +85,7 @@ public class CalDavCalendarProvider(
             EndTime = endTime,
             ChangedAt = evt.DtStamp?.AsUtc,
             ResponseStatus = MapResponseStatus(evt.Status),
-            Extensions = new ExtensionValues()
+            Extensions = extensions,
         };
     }
 
@@ -205,31 +214,24 @@ public class CalDavCalendarProvider(
             };
         }
 
-        DateTime? endTime = evt.EndTime;
+        var endTime = evt.EndTime?.Let(Instant.FromDateTimeUtc);
 
         // Parse recurrence end time from raw iCalendar data if present
         if (!string.IsNullOrEmpty(evt.RawICalendar))
         {
             var recurrenceEndTime = ParseCalDavRecurrenceEndTime(evt.RawICalendar);
             if (recurrenceEndTime.HasValue)
-            {
-                endTime = recurrenceEndTime.Value;
-            }
+                endTime = Instant.FromDateTimeUtc(recurrenceEndTime.Value);
         }
 
-        ZonedDateTime? startTimeZoned = evt.StartTime.HasValue
-            ? new ZonedDateTime(evt.StartTime.Value, TimeZoneInfo.Utc)
-            : null;
-        ZonedDateTime? endTimeZoned = endTime.HasValue
-            ? new ZonedDateTime(endTime.Value, TimeZoneInfo.Utc)
-            : null;
+        var startTime = evt.StartTime?.Let(Instant.FromDateTimeUtc);
 
         return new ProviderEvent
         {
             ExternalId = evt.Uid,
             Title = evt.Summary ?? "Untitled Event",
-            StartTime = startTimeZoned,
-            EndTime = endTimeZoned,
+            StartTime = startTime,
+            EndTime = endTime,
             Status = evt.Status,
             Deleted = false,
             RecurringEventId = null, // CalDAV handles recurrence differently
@@ -309,9 +311,9 @@ public class CalDavCalendarProvider(
     }
 
     /// <inheritdoc/>
-    public ZonedDateTime? GetEventStartTime(
+    public Instant? GetEventStartTime(
         string rawEventData,
-        DateTime? occurrenceTime = null)
+        Instant? occurrenceTime = null)
     {
         var calendar = Calendar.Load(rawEventData);
         var evt = calendar?.Events.FirstOrDefault();
@@ -327,16 +329,16 @@ public class CalDavCalendarProvider(
             if (!baseEventStartTime.HasValue)
                 return null;
 
-            return new ZonedDateTime(baseEventStartTime.Value, TimeZoneInfo.Utc);
+            return Instant.FromDateTimeUtc(baseEventStartTime.Value);
         }
 
-        var occurrences = evt.GetOccurrences(startTime: new CalDateTime(occurrenceTime.Value.ToUniversalTime()));
+        var occurrences = evt.GetOccurrences(startTime: new CalDateTime(occurrenceTime.Value.ToDateTimeUtc()));
 
         var firstOccurrence = occurrences.FirstOrDefault();
         if (firstOccurrence != null)
         {
             var firstOccurrenceTime = firstOccurrence.Period.StartTime.AsUtc;
-            return new ZonedDateTime(firstOccurrenceTime, TimeZoneInfo.Utc);
+            return Instant.FromDateTimeUtc(firstOccurrenceTime);
         }
 
         // Fallback to base event start time
@@ -346,74 +348,64 @@ public class CalDavCalendarProvider(
             return null;
         }
 
-        return new ZonedDateTime(fallbackStartTime.Value, TimeZoneInfo.Utc);
+        return Instant.FromDateTimeUtc(fallbackStartTime.Value);
     }
 
     /// <inheritdoc/>
-    public IList<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)> GetNextReminderOccurrences(
+    public IList<(Instant Occurrence, Instant TriggerTime)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        ZonedDateTime referenceTime = default)
+        Instant referenceTime = default)
     {
         var calendar = Calendar.Load(rawEventData);
         var evt = calendar?.Events.FirstOrDefault();
         if (evt == null)
-        {
             return [];
-        }
 
         var reminderMinutes = GetReminderMinutes(rawEventData, rawCalendarData);
         if (reminderMinutes.Count == 0)
-        {
             return [];
-        }
 
-        var eventStartTime = evt.Start?.AsUtc;
+        var eventStartTime = evt.Start?.AsUtc.Let(Instant.FromDateTimeUtc);
         if (!eventStartTime.HasValue)
-        {
             return [];
-        }
 
         var isRecurring = evt.RecurrenceRules.Count > 0;
         var refTime = referenceTime == default
-            ? new ZonedDateTime(DateTime.UtcNow, TimeZoneInfo.Utc)
+            ? SystemClock.Instance.GetCurrentInstant()
             : referenceTime;
-        var startTime = refTime.DateTime;
-        var result = new List<(ZonedDateTime Occurrence, ZonedDateTime TriggerTime)>();
+        var startTime = refTime;
+        var result = new List<(Instant Occurrence, Instant TriggerTime)>();
 
         if (isRecurring)
         {
             // Get all occurrences
-            var occurrences = evt.GetOccurrences(startTime: new CalDateTime(startTime));
+            var occurrences = evt.GetOccurrences(startTime: new CalDateTime(startTime.ToDateTimeUtc()));
             var nextOccurrence = occurrences.FirstOrDefault();
             if (nextOccurrence == null)
             {
                 return [];
             }
 
-            var occurrenceTime = nextOccurrence.Period.StartTime.AsUtc;
-            var occurrenceZoned = new ZonedDateTime(occurrenceTime, TimeZoneInfo.Utc);
+            var occurrenceTime = Instant.FromDateTimeUtc(nextOccurrence.Period.StartTime.AsUtc);
             foreach (var minutes in reminderMinutes)
             {
-                var triggerTime = occurrenceTime.AddMinutes(-minutes);
+                var triggerTime = occurrenceTime.Plus(Duration.FromMinutes(-minutes));
                 if (triggerTime > startTime)
                 {
-                    var triggerZoned = new ZonedDateTime(triggerTime, TimeZoneInfo.Utc);
-                    result.Add((occurrenceZoned, triggerZoned));
+                    result.Add((occurrenceTime, triggerTime));
                     break;
                 }
             }
         }
         else
         {
-            var eventZoned = new ZonedDateTime(eventStartTime.Value, TimeZoneInfo.Utc);
             foreach (var minutes in reminderMinutes)
             {
-                var triggerTime = eventStartTime.Value.AddMinutes(-minutes);
+                var triggerTime = eventStartTime.Value.Plus(Duration.FromMinutes(-minutes));
                 if (triggerTime > startTime)
                 {
-                    var triggerZoned = new ZonedDateTime(triggerTime, TimeZoneInfo.Utc);
-                    result.Add((eventZoned, triggerZoned));
+                    result.Add((eventStartTime.Value, triggerTime));
                 }
             }
         }

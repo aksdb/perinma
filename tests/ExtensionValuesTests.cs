@@ -51,4 +51,16 @@ public class ExtensionValuesTests
         
         Assert.That(values.Get(Extensions.Description), Is.Null);
     }
+    
+    [Test]
+    public void SetAndGet_Bool()
+    {
+        var values = new ExtensionValues();
+        
+        Assert.That(values.Get(Extensions.FullDay), Is.False);
+        
+        values.Set(Extensions.FullDay, true);
+        
+        Assert.That(values.Get(Extensions.FullDay), Is.EqualTo(true));
+    }
 }
