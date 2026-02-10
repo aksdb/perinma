@@ -306,8 +306,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
         var tieBreaker = 0;
 
         // Build items
-        var foo = _calendarSource.GetCalendarEvents(interval);
-        var allItems = foo
+        var allItems = _calendarSource.GetCalendarEvents(interval)
             .SelectMany<CalendarEvent, EventItem>(e =>
             {
                 var viewModels = new List<EventItem>();
@@ -337,7 +336,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         break;
                     }
 
-                    if (currentDate == effectiveEnd.Date)
+                    if (currentDate.AtMidnight() == effectiveEnd)
                     {
                         // The end of the event is exactly the start of the new day. So it effectively
                         // ends at the last day.
@@ -361,8 +360,8 @@ public partial class CalendarWeekViewModel : ViewModelBase
                     }
 
                     // Detect all-day events: modeled as midnight-to-midnight spans
-                    var isFullDay = e.StartTime.TimeOfDay == LocalTime.Midnight && e.StartTime.TimeOfDay == LocalTime.Midnight;
-
+                    var isFullDay = e.Extensions.Get(Extensions.FullDay);
+                    
                     // Determine if this event needs a response (not yet accepted, tentative, or declined)
                     var needsResponse = e.ResponseStatus is EventResponseStatus.NeedsAction
                         or EventResponseStatus.Tentative or EventResponseStatus.Declined;

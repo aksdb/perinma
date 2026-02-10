@@ -182,7 +182,7 @@ public class SyncService
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error syncing events for calendar {calendar.Name}: {ex.Message}");
+                    Console.WriteLine($"Error syncing events for calendar {calendar.Name}: {ex}");
                     // Continue with other calendars
                 }
             }
@@ -190,7 +190,7 @@ public class SyncService
         catch (ReAuthenticationRequiredException ex)
         {
             // Account requires re-authentication - send message and continue with next account
-            Console.WriteLine($"Account {account.Name} requires re-authentication: {ex.Message}");
+            Console.WriteLine($"Account {account.Name} requires re-authentication: {ex}");
             WeakReferenceMessenger.Default.Send(new ReAuthenticationRequiredMessage(ex.AccountId, ex.ProviderType));
         }
     }

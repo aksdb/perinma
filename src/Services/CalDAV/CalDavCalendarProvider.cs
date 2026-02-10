@@ -69,16 +69,28 @@ public class CalDavCalendarProvider(
     private static CalendarEvent MapToCalendarEvent(EventReference reference, ICalEvent evt,
         Instant startTime, Instant endTime, string? timeZone)
     {
+        var localStartTime = startTime.ToLocalDateTime();
+        var localEndTime = endTime.ToLocalDateTime();
+        
         var extensions = new ExtensionValues();
+        if (evt.Start?.HasTime == false)
+        {
+            extensions.Set(Extensions.FullDay, true);
+            localStartTime = localStartTime.Date.AtMidnight();
+            localEndTime = localEndTime.Date.AtMidnight();
+        }
+
         if (timeZone != null)
             extensions.Set(Extensions.TimeZone, timeZone);
+        
+        
         
         return new CalendarEvent
         {
             Reference = reference,
             Title = evt.Summary,
-            StartTime = startTime.ToLocalDateTime(),
-            EndTime = endTime.ToLocalDateTime(),
+            StartTime = localStartTime,
+            EndTime = localEndTime,
             ChangedAt = evt.DtStamp?.AsUtc,
             ResponseStatus = MapResponseStatus(evt.Status),
             Extensions = extensions,
@@ -217,7 +229,7 @@ public class CalDavCalendarProvider(
         {
             var recurrenceEndTime = ParseCalDavRecurrenceEndTime(evt.RawICalendar);
             if (recurrenceEndTime.HasValue)
-                endTime = Instant.FromDateTimeUtc(recurrenceEndTime.Value);
+                endTime = Instant.FromDateTimeUtc(recurrenceEndTime.Value.ToUniversalTime());
         }
 
         var startTime = evt.StartTime?.Let(Instant.FromDateTimeUtc);

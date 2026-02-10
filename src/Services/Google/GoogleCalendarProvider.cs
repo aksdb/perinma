@@ -81,6 +81,14 @@ public class GoogleCalendarProvider(
             duration = googleEvent.End.DateTimeDateTimeOffset - googleEvent.Start.DateTimeDateTimeOffset ?? TimeSpan.Zero;
         var end = start.Plus(Duration.FromTimeSpan(duration));
 
+        if (fullDay)
+        {
+            // If we convert a date to a time, we end up at midnight. That would mean the start of
+            // the day, which for full-day events would mean they are 24h too short. We correct
+            // that here.
+            end = end.Plus(Duration.FromDays(1));
+        }
+
         var relevantStatus = googleEvent.Attendees
             ?.FirstOrDefault(a => a.Self == true)
             ?.ResponseStatus;
@@ -92,12 +100,22 @@ public class GoogleCalendarProvider(
         if (timeZone is not null)
             extensions.Set(Extensions.TimeZone, timeZone);
         
+        var localStartTime = start.ToLocalDateTime();
+        var localEndTime = end.ToLocalDateTime();
+
+        if (fullDay)
+        {
+            // We need to "round" the duration to midnight in our zone.
+            localStartTime = localStartTime.Date.AtMidnight();
+            localEndTime = localEndTime.Date.AtMidnight();
+        }
+        
         return new CalendarEvent
         {
             Reference = reference,
             Title = googleEvent.Summary,
-            StartTime = start.ToLocalDateTime(),
-            EndTime = end.ToLocalDateTime(),
+            StartTime = localStartTime,
+            EndTime = localEndTime,
             ChangedAt = googleEvent.UpdatedDateTimeOffset?.DateTime,
             ResponseStatus = MapResponseStatus(relevantStatus),
             Extensions = extensions,
