@@ -8,7 +8,7 @@ using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Storage.Models;
 using tests.Fakes;
-
+using tests.Helpers;
 using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
 using GoogleEventDateTime =  Google.Apis.Calendar.v3.Data.EventDateTime;
 

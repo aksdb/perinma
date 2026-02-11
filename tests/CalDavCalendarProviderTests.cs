@@ -544,7 +544,7 @@ public class CalDavCalendarProviderTests
     }
 
     [Test]
-    public async Task GetReminderMinutesAsync_WithInvalidICalendar_ReturnsEmptyList()
+    public void GetReminderMinutesAsync_WithInvalidICalendar_ReturnsEmptyList()
     {
         // Arrange
         var rawEventData = "invalid icalendar data";
@@ -553,12 +553,7 @@ public class CalDavCalendarProviderTests
         var result = _provider.GetReminderMinutes(rawEventData);
 
         // Assert
-        Assert.That(result, Has.Count.EqualTo(2));
-        Assert.Multiple(() =>
-        {
-            Assert.That(result, Does.Contain(15));
-            Assert.That(result, Does.Contain(60));
-        });
+        Assert.That(result, Is.Empty);
     }
 
     [Test]
@@ -762,6 +757,7 @@ public class CalDavCalendarProviderTests
 
         // Assert
         Assert.That(result, Has.Count.EqualTo(1));
+        // TODO
         /*var (occurrence, triggerTime) = result[0];
         Assert.Multiple(() =>
         {

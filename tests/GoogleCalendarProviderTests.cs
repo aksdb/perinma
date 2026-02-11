@@ -4,6 +4,7 @@ using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
 using NodaTime;
+using NodaTime.Text;
 using perinma.Models;
 using perinma.Services;
 using perinma.Services.Google;
@@ -519,7 +520,7 @@ public class GoogleCalendarProviderTests
     #region Timezone Tests
 
     [Test]
-    public async Task GetNextReminderOccurrencesAsync_RecurringEventAcrossDSTBoundary_PreservesCorrectTime()
+    public void GetNextReminderOccurrencesAsync_RecurringEventAcrossDSTBoundary_PreservesCorrectTime()
     {
         // Arrange - Create a recurring weekly event in Europe/Berlin timezone
         // Event starts in January 2025 (winter, CET +0100) at 10:00 local time
@@ -527,9 +528,10 @@ public class GoogleCalendarProviderTests
         // The summer occurrence should be at 10:00 CEST, which is 08:00 UTC
         // (vs winter at 10:00 CET = 09:00 UTC)
 
-        var winterStart = new DateTime(2025, 1, 13, 10, 0, 0); // Monday 10:00 in CET (winter)
-        var summerReference = Instant.FromDateTimeUtc(new DateTime(2025, 7, 15, 0, 0, 0, DateTimeKind.Utc)); // July
-
+        var timeZone = DateTimeZoneProviders.Tzdb["Europe/Berlin"];
+        var eventStart = new LocalDateTime(2025, 1, 13, 10, 0, 0).InZoneLeniently(timeZone);
+        var summerReference = new LocalDate(2025, 7, 15).AtStartOfDayInZone(timeZone);
+        
         var googleEvent = new Event
         {
             Id = "event1",
@@ -538,19 +540,19 @@ public class GoogleCalendarProviderTests
             // Weekly recurring event starting January 13, 2025 at 10:00 Europe/Berlin (a Monday)
             Start = new EventDateTime
             {
-                DateTimeRaw = "2025-01-13T10:00:00+01:00", // CET winter time
-                TimeZone = "Europe/Berlin"
+                DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(eventStart.ToOffsetDateTime()), // CET winter time
+                TimeZone = timeZone.Id,
             },
             End = new EventDateTime
             {
-                DateTimeRaw = "2025-01-13T11:00:00+01:00",
-                TimeZone = "Europe/Berlin"
+                DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(eventStart.ToOffsetDateTime().PlusHours(1)),
+                TimeZone = timeZone.Id,
             },
-            Recurrence = new[] { "RRULE:FREQ=WEEKLY;BYDAY=MO" }, // Every Monday
+            Recurrence = ["RRULE:FREQ=WEEKLY;BYDAY=MO"], // Every Monday
             Reminders = new Event.RemindersData
             {
                 UseDefault = false,
-                Overrides = new[] { new EventReminder { Minutes = 30, Method = "popup" } }
+                Overrides = [new EventReminder { Minutes = 30, Method = "popup" }]
             }
         };
 
@@ -561,7 +563,7 @@ public class GoogleCalendarProviderTests
         var result = _provider.GetNextReminderOccurrences(
             rawEventData,
             null,
-            referenceTime: summerReference
+            referenceTime: summerReference.ToInstant()
         );
 
         // Assert
@@ -571,16 +573,16 @@ public class GoogleCalendarProviderTests
 
         // Find the first Monday on or after July 15, 2025 (which is a Tuesday)
         // First Monday is July 21, 2025
-        var expectedOccurrenceUtc = new DateTime(2025, 7, 21, 8, 0, 0, DateTimeKind.Utc); // 10:00 CEST = 08:00 UTC
-        var expectedTriggerUtc = new DateTime(2025, 7, 21, 7, 30, 0, DateTimeKind.Utc); // 30 minutes before
+        var expectedOccurrence = new LocalDateTime(2025, 7, 21, 10, 0, 0).InZoneLeniently(timeZone);
+        var expectedTrigger = expectedOccurrence.PlusMinutes(-30);
 
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
-            Assert.That(occurrence.ToDateTimeUtc(), Is.EqualTo(expectedOccurrenceUtc).Within(TimeSpan.FromSeconds(1)),
-                $"Expected occurrence at {expectedOccurrenceUtc:O}, got {occurrence:O}");
-            Assert.That(triggerTime.ToDateTimeUtc(), Is.EqualTo(expectedTriggerUtc).Within(TimeSpan.FromSeconds(1)),
-                $"Expected trigger at {expectedTriggerUtc:O}, got {triggerTime:O}");
-        });
+            Assert.That(occurrence.InZone(timeZone), Is.EqualTo(expectedOccurrence),
+                $"Expected occurrence at {expectedOccurrence:O}, got {occurrence:O}");
+            Assert.That(triggerTime.InZone(timeZone), Is.EqualTo(expectedTrigger),
+                $"Expected trigger at {expectedTrigger:O}, got {triggerTime:O}");
+        }
     }
 
     #endregion
