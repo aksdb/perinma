@@ -114,29 +114,6 @@ public class DatabaseCalendarSourceTests
 
         return json;
     }
-
-    private static string BuildCalDavICalendar(string uid, DateTime startTime, DateTime endTime, string title)
-    {
-        return $@"BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Test//Test//EN
-BEGIN:VEVENT
-UID:{uid}
-DTSTART:{FormatCalDavDateTime(startTime)}
-DTEND:{FormatCalDavDateTime(endTime)}
-SUMMARY:{title}
-STATUS:CONFIRMED
-DTSTAMP:{FormatCalDavDateTime(DateTime.UtcNow)}
-END:VEVENT
-END:VCALENDAR";
-    }
-
-    private static string FormatCalDavDateTime(DateTime dateTime)
-    {
-        return dateTime.Kind == DateTimeKind.Utc
-            ? dateTime.ToString("yyyyMMdd'T'HHmmss'Z'")
-            : dateTime.ToString("yyyyMMdd'T'HHmmss");
-    }
     
     [Test]
     public async Task GetCalendarEvents_ReturnsEventsFromEnabledCalendars()
@@ -727,17 +704,7 @@ END:VCALENDAR";
         };
         var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
 
-        var rawICalendar = $@"BEGIN:VCALENDAR
-VERSION:2.0
-BEGIN:VEVENT
-UID:uid_123
-DTSTART:{eventStart:yyyyMMdd'T'HHmmss'Z'}
-DTEND:{eventEnd:yyyyMMdd'T'HHmmss'Z'}
-SUMMARY:Daily Standup
-STATUS:CONFIRMED
-RRULE:FREQ=DAILY;INTERVAL=1
-END:VEVENT
-END:VCALENDAR";
+        var rawICalendar = TestDataHelpers.CreateRecurringCalDavEventRaw("uid_123", "Daily Standup", eventStart, eventEnd, "RRULE:FREQ=DAILY;INTERVAL=1");
 
         await storage.SetEventData(eventId, "rawData", rawICalendar);
 
@@ -787,16 +754,7 @@ END:VCALENDAR";
         };
         var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
 
-        var rawICalendar = $@"BEGIN:VCALENDAR
-VERSION:2.0
-BEGIN:VEVENT
-UID:uid_456
-DTSTART:{eventStart:yyyyMMdd'T'HHmmss'Z'}
-DTEND:{eventEnd:yyyyMMdd'T'HHmmss'Z'}
-SUMMARY:One-time Event
-STATUS:CONFIRMED
-END:VEVENT
-END:VCALENDAR";
+        var rawICalendar = TestDataHelpers.CreateCalDavEventRaw("uid_456", "One-time Event", eventStart, eventEnd);
 
         await storage.SetEventData(eventId, "rawData", rawICalendar);
 
