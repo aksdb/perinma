@@ -38,7 +38,7 @@ public class CalDavCalendarProvider(
                             var startTime = Instant.FromDateTimeOffset(occurrence.Period.StartTime.AsUtc);
                             string? timeZone = occurrence.Period.StartTime.TzId ??
                                                t.evt.Start?.TzId;
-
+                            
                             Instant endTime;
                             if (occurrence.Period.EndTime is {} occurrenceEndTime)
                                 endTime = Instant.FromDateTimeOffset(occurrenceEndTime.AsUtc);
@@ -69,9 +69,9 @@ public class CalDavCalendarProvider(
     private static CalendarEvent MapToCalendarEvent(EventReference reference, ICalEvent evt,
         Instant startTime, Instant endTime, string? timeZone)
     {
-        var localStartTime = startTime.InUtc().LocalDateTime;
-        var localEndTime = endTime.InUtc().LocalDateTime;
-
+        var localStartTime = startTime.ToLocalDateTime();
+        var localEndTime = endTime.ToLocalDateTime();
+        
         var extensions = new ExtensionValues();
         if (evt.Start?.HasTime == false)
         {
@@ -82,9 +82,9 @@ public class CalDavCalendarProvider(
 
         if (timeZone != null)
             extensions.Set(Extensions.TimeZone, timeZone);
-
-
-
+        
+        
+        
         return new CalendarEvent
         {
             Reference = reference,
@@ -387,21 +387,23 @@ public class CalDavCalendarProvider(
 
         if (isRecurring)
         {
-            // Use refTime + 1ms to ensure we get the next occurrence, not the current one
-            var startTimePlus = refTime.Plus(Duration.FromMilliseconds(1));
-            var occurrences = evt.GetOccurrences(startTime: new CalDateTime(startTimePlus.ToDateTimeUtc())).Take(1).ToList();
-            if (occurrences.Count == 0)
+            // Get all occurrences
+            var occurrences = evt.GetOccurrences(startTime: new CalDateTime(startTime.ToDateTimeUtc()));
+            var nextOccurrence = occurrences.FirstOrDefault();
+            if (nextOccurrence == null)
             {
                 return [];
             }
 
-            var occurrence = occurrences[0];
-            var nextOccurrenceTime = Instant.FromDateTimeUtc(occurrence.Period.StartTime.AsUtc);
-
+            var occurrenceTime = Instant.FromDateTimeUtc(nextOccurrence.Period.StartTime.AsUtc);
             foreach (var minutes in reminderMinutes)
             {
-                var triggerTime = nextOccurrenceTime.Plus(Duration.FromMinutes(-minutes));
-                result.Add((nextOccurrenceTime, triggerTime));
+                var triggerTime = occurrenceTime.Plus(Duration.FromMinutes(-minutes));
+                if (triggerTime > startTime)
+                {
+                    result.Add((occurrenceTime, triggerTime));
+                    break;
+                }
             }
         }
         else

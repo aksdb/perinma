@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Google.Apis.Calendar.v3.Data;
-using Google.Apis.Json;
 using NodaTime;
 using perinma.Models;
 using perinma.Storage;
 using perinma.Storage.Models;
+using perinma.Utils;
 
 namespace perinma.Services;
 
@@ -41,8 +40,8 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
             rawCalendarData = await storage.GetCalendarDataAsync(calendar.CalendarId, "rawData");
         }
 
-        var refTime = referenceTime == default
-            ? SystemClock.Instance.GetCurrentInstant()
+        var refTime = referenceTime == default 
+            ? SystemClock.Instance.GetCurrentInstant() 
             : referenceTime;
 
         // Get reminder occurrences from the provider
@@ -104,44 +103,14 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         if (reminder == null)
             return;
 
-        // Prepare follow-up reminder
+        // Prepare follow-up reminder using trigger time as reference to get next recurrence
         var calendarId = await storage.GetEventCalendarIdAsync(reminder.TargetId);
-        if (!string.IsNullOrEmpty(calendarId))
+        var calendar = calendarId?.Let(id =>storage.GetCachedCalendar(new Guid(calendarId)));
+        if (calendar != null)
         {
-            var calendar = storage.GetCachedCalendar(new Guid(calendarId));
-
-            if (calendar != null)
-            {
-                // Check if event is recurring
-                var eventData = await storage.GetEventData(reminder.TargetId, "rawData");
-                var isRecurring = false;
-                if (!string.IsNullOrEmpty(eventData))
-                {
-                    if (calendar.Account.Type == AccountType.Google)
-                    {
-                        try
-                        {
-                            var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(eventData);
-                            isRecurring = googleEvent?.Recurrence is { Count: > 0 };
-                        }
-                        catch { }
-                    }
-                    else if (calendar.Account.Type == AccountType.CalDav)
-                    {
-                        // iCal events have RRULE in the data for recurring events
-                        isRecurring = eventData.Contains("RRULE:");
-                    }
-                }
-
-                // For recurring events, use target time to get next occurrence
-                // For non-recurring events, use trigger time to get other reminders
-                var referenceInstant = isRecurring
-                    ? Instant.FromUnixTimeSeconds(reminder.TargetTime)
-                    : Instant.FromUnixTimeSeconds(reminder.TriggerTime);
-
-                await PopulateRemindersForEventAsync(reminder.TargetId, calendarId, calendar.Account.Type,
-                    cancellationToken, referenceInstant);
-            }
+            var previousTargetTime = Instant.FromUnixTimeSeconds(reminder.TargetTime);
+            await PopulateRemindersForEventAsync(reminder.TargetId, calendarId!, calendar.Account.Type,
+                cancellationToken, previousTargetTime.Plus(Duration.FromSeconds(1)));
         }
 
         await storage.DeleteReminderAsync(reminderId);
@@ -158,10 +127,10 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
         await storage.DeleteReminderAsync(reminderId);
 
-        var targetInstant = Instant.FromUnixTimeMilliseconds(reminder.TargetTime);
+        var targetInstant = Instant.FromUnixTimeSeconds(reminder.TargetTime);
 
         Instant newTriggerInstant;
-        if (interval == SnoozeInterval.WhenItStarts || interval == SnoozeInterval.OneMinuteBeforeStart)
+        if (interval is SnoozeInterval.WhenItStarts or SnoozeInterval.OneMinuteBeforeStart)
         {
             if (reminder.TargetType != 1)
             {
@@ -228,14 +197,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
             return null;
         }
 
-        try
-        {
-            return provider.GetEventStartTime(rawData, occurrenceTime);
-        }
-        catch
-        {
-            return null;
-        }
+        return provider.GetEventStartTime(rawData, occurrenceTime);
     }
 
     public async Task<RemindersRebuildResult> RebuildAllRemindersAsync(CancellationToken cancellationToken = default)
