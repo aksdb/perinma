@@ -4,7 +4,9 @@ using Ical.Net;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
+using NodaTime;
 using perinma.Services.CalDAV;
+using Duration = NodaTime.Duration;
 using ICalCalendar = Ical.Net.Calendar;
 using ICalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
@@ -245,6 +247,13 @@ public static class TestDataHelpers
         return serializer.SerializeToString(calendar);
     }
 
+    private static CalDateTime ToCalDateTime(ZonedDateTime zonedDateTime)
+    {
+        var dateTime = zonedDateTime.ToDateTimeUnspecified();
+        var tzid = zonedDateTime.Zone.Id;
+        return new CalDateTime(dateTime, tzid);
+    }
+
     private static CalDateTime ToCalDateTime(DateTime dateTime)
     {
         if (dateTime.Kind == DateTimeKind.Utc || dateTime.Kind == DateTimeKind.Unspecified)
@@ -312,8 +321,8 @@ public static class TestDataHelpers
     public static string CreateCalDavEventRaw(
         string uid,
         string summary,
-        DateTime start,
-        DateTime end,
+        ZonedDateTime start,
+        ZonedDateTime end,
         string status = "CONFIRMED")
     {
         var calendar = new ICalCalendar
@@ -343,8 +352,8 @@ public static class TestDataHelpers
     public static string CreateRecurringCalDavEventRaw(
         string uid,
         string summary,
-        DateTime start,
-        DateTime end,
+        ZonedDateTime start,
+        ZonedDateTime end,
         string rrule)
     {
         var calendar = new ICalCalendar
@@ -380,9 +389,8 @@ public static class TestDataHelpers
     public static string CreateRecurringCalDavEventRawWithTimezone(
         string uid,
         string summary,
-        DateTime start,
-        DateTime end,
-        string tzid,
+        ZonedDateTime start,
+        ZonedDateTime end,
         string rrule)
     {
         var calendar = new ICalCalendar
@@ -392,13 +400,14 @@ public static class TestDataHelpers
             ProductId = "-//Test//Test//EN"
         };
 
+        var tzid = start.Zone.Id;
         calendar.AddTimeZone(tzid);
 
         var evt = new ICalEvent
         {
             Uid = uid,
-            DtStart = new CalDateTime(start, tzid),
-            DtEnd = new CalDateTime(end, tzid),
+            DtStart = ToCalDateTime(start),
+            DtEnd = ToCalDateTime(end),
             Summary = summary,
             Status = "CONFIRMED"
         };
@@ -420,8 +429,8 @@ public static class TestDataHelpers
     public static string CreateCalDavEventWithAlarm(
         string uid,
         string summary,
-        DateTime start,
-        DateTime end,
+        ZonedDateTime start,
+        ZonedDateTime end,
         params int[] minutesBefore)
     {
         var calendar = new ICalCalendar
@@ -448,7 +457,7 @@ public static class TestDataHelpers
                 Trigger = new Trigger(),
                 Summary = "Reminder"
             };
-            alarm.Trigger.DateTime = ToCalDateTime(start.AddMinutes(-minutes));
+            alarm.Trigger.DateTime = ToCalDateTime(start.Plus(Duration.FromMinutes(-minutes)));
             evt.Alarms.Add(alarm);
         }
 
@@ -463,8 +472,8 @@ public static class TestDataHelpers
     public static string CreateCalDavEventWithDayAlarm(
         string uid,
         string summary,
-        DateTime start,
-        DateTime end,
+        ZonedDateTime start,
+        ZonedDateTime end,
         int daysBefore)
     {
         var calendar = new ICalCalendar
@@ -489,7 +498,7 @@ public static class TestDataHelpers
             Trigger = new Trigger(),
             Summary = "Reminder"
         };
-        alarm.Trigger.DateTime = ToCalDateTime(start.AddDays(-daysBefore));
+        alarm.Trigger.DateTime = ToCalDateTime(start.Plus(Duration.FromDays(-daysBefore)));
         evt.Alarms.Add(alarm);
 
         calendar.Events.Add(evt);
@@ -504,14 +513,18 @@ public static class TestDataHelpers
         string uid,
         string url,
         string? summary,
-        DateTime? startTime,
-        DateTime? endTime,
+        ZonedDateTime? startTime,
+        ZonedDateTime? endTime,
         string status = "CONFIRMED")
     {
         string? rawICal = null;
+        DateTime? startTimeDateTime = null;
+        DateTime? endTimeDateTime = null;
         if (startTime.HasValue && endTime.HasValue)
         {
             rawICal = CreateCalDavEventRaw(uid, summary ?? "Untitled", startTime.Value, endTime.Value, status);
+            startTimeDateTime = startTime.Value.ToDateTimeUtc();
+            endTimeDateTime = endTime.Value.ToDateTimeUtc();
         }
 
         return new CalDavEvent
@@ -519,8 +532,8 @@ public static class TestDataHelpers
             Uid = uid,
             Url = url,
             Summary = summary,
-            StartTime = startTime,
-            EndTime = endTime,
+            StartTime = startTimeDateTime,
+            EndTime = endTimeDateTime,
             Status = status,
             RawICalendar = rawICal,
             Deleted = false
@@ -534,8 +547,8 @@ public static class TestDataHelpers
         string uid,
         string url,
         string? summary,
-        DateTime startTime,
-        DateTime endTime,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string rrule)
     {
         var rawICal = CreateRecurringCalDavEventRaw(uid, summary ?? "Untitled", startTime, endTime, rrule);
@@ -545,8 +558,8 @@ public static class TestDataHelpers
             Uid = uid,
             Url = url,
             Summary = summary,
-            StartTime = startTime,
-            EndTime = endTime,
+            StartTime = startTime.ToDateTimeUtc(),
+            EndTime = endTime.ToDateTimeUtc(),
             Status = "CONFIRMED",
             RawICalendar = rawICal,
             Deleted = false
@@ -560,20 +573,19 @@ public static class TestDataHelpers
         string uid,
         string url,
         string? summary,
-        DateTime startTime,
-        DateTime endTime,
-        string tzid,
+        ZonedDateTime startTime,
+        ZonedDateTime endTime,
         string rrule)
     {
-        var rawICal = CreateRecurringCalDavEventRawWithTimezone(uid, summary ?? "Untitled", startTime, endTime, tzid, rrule);
+        var rawICal = CreateRecurringCalDavEventRawWithTimezone(uid, summary ?? "Untitled", startTime, endTime, rrule);
 
         return new CalDavEvent
         {
             Uid = uid,
             Url = url,
             Summary = summary,
-            StartTime = startTime,
-            EndTime = endTime,
+            StartTime = startTime.ToDateTimeUtc(),
+            EndTime = endTime.ToDateTimeUtc(),
             Status = "CONFIRMED",
             RawICalendar = rawICal,
             Deleted = false

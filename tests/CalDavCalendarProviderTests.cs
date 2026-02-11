@@ -265,8 +265,8 @@ public class CalDavCalendarProviderTests
     public async Task GetEventsAsync_WithValidEvents_ReturnsEvents()
     {
         // Arrange
-        var start = new DateTime(2025, 1, 15, 10, 0, 0, DateTimeKind.Utc);
-        var end = new DateTime(2025, 1, 15, 11, 0, 0, DateTimeKind.Utc);
+        var start = new ZonedDateTime(Instant.FromUtc(2025, 1, 15, 10, 0), DateTimeZone.Utc);
+        var end = new ZonedDateTime(Instant.FromUtc(2025, 1, 15, 11, 0), DateTimeZone.Utc);
         var rawICal = TestDataHelpers.CreateCalDavEventRaw("event-uid-1", "Team Meeting", start, end);
         _serviceStub.SetEvents(
             "https://caldav.example.com/calendars/work",
@@ -275,8 +275,8 @@ public class CalDavCalendarProviderTests
                 Uid = "event-uid-1",
                 Url = "https://caldav.example.com/calendars/work/event1.ics",
                 Summary = "Team Meeting",
-                StartTime = start,
-                EndTime = end,
+                StartTime = start.ToDateTimeUtc(),
+                EndTime = end.ToDateTimeUtc(),
                 RawICalendar = rawICal,
                 Deleted = false
             }
@@ -291,8 +291,8 @@ public class CalDavCalendarProviderTests
         {
             Assert.That(result.Events[0].ExternalId, Is.EqualTo("event-uid-1"));
             Assert.That(result.Events[0].Title, Is.EqualTo("Team Meeting"));
-            Assert.That(result.Events[0].StartTime!.Value.ToDateTimeUtc(), Is.EqualTo(start));
-            Assert.That(result.Events[0].EndTime!.Value.ToDateTimeUtc(), Is.EqualTo(end));
+            Assert.That(result.Events[0].StartTime!.Value.ToDateTimeUtc(), Is.EqualTo(start.ToDateTimeUtc()));
+            Assert.That(result.Events[0].EndTime!.Value.ToDateTimeUtc(), Is.EqualTo(end.ToDateTimeUtc()));
             Assert.That(result.Events[0].Deleted, Is.False);
         });
     }
@@ -352,8 +352,8 @@ public class CalDavCalendarProviderTests
     public async Task GetEventsAsync_WithRecurringEvent_CalculatesRecurrenceEndTime()
     {
         // Arrange
-        var start = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
-        var end = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc);
+        var start = new ZonedDateTime(Instant.FromUtc(2025, 1, 1, 10, 0), DateTimeZone.Utc);
+        var end = new ZonedDateTime(Instant.FromUtc(2025, 1, 1, 11, 0), DateTimeZone.Utc);
         var rawICal = TestDataHelpers.CreateRecurringCalDavEventRaw("recurring-uid-1", "Daily Standup", start, end, "RRULE:FREQ=DAILY;COUNT=5");
         _serviceStub.SetEvents(
             "https://caldav.example.com/calendars/work",
@@ -362,8 +362,8 @@ public class CalDavCalendarProviderTests
                 Uid = "recurring-uid-1",
                 Url = "https://caldav.example.com/calendars/work/recurring1.ics",
                 Summary = "Daily Standup",
-                StartTime = start,
-                EndTime = end,
+                StartTime = start.ToDateTimeUtc(),
+                EndTime = end.ToDateTimeUtc(),
                 RawICalendar = rawICal,
                 Deleted = false
             }
@@ -377,9 +377,9 @@ public class CalDavCalendarProviderTests
         var evt = result.Events[0];
         Assert.Multiple(() =>
         {
-            Assert.That(evt.StartTime!.Value.ToDateTimeUtc(), Is.EqualTo(start));
+            Assert.That(evt.StartTime!.Value, Is.EqualTo(start.ToInstant()));
             // End time should be calculated from recurrence (5 daily occurrences)
-            Assert.That(evt.EndTime!.Value.ToDateTimeUtc(), Is.EqualTo(new DateTime(2025, 1, 5, 11, 0, 0, DateTimeKind.Utc)));
+            Assert.That(evt.EndTime!.Value, Is.EqualTo(Instant.FromUtc(2025, 1, 5, 11, 0, 0)));
         });
     }
 
@@ -414,8 +414,8 @@ public class CalDavCalendarProviderTests
     public async Task GetEventsAsync_StoresRawICalendarData()
     {
         // Arrange
-        var start = new DateTime(2025, 1, 15, 10, 0, 0, DateTimeKind.Utc);
-        var end = new DateTime(2025, 1, 15, 11, 0, 0, DateTimeKind.Utc);
+        var start = new ZonedDateTime(Instant.FromUtc(2025, 1, 15, 10, 0), DateTimeZone.Utc);
+        var end = new ZonedDateTime(Instant.FromUtc(2025, 1, 15, 11, 0), DateTimeZone.Utc);
         var rawICal = TestDataHelpers.CreateCalDavEventRaw("event-uid-1", "Team Meeting", start, end);
         _serviceStub.SetEvents(
             "https://caldav.example.com/calendars/work",
@@ -424,8 +424,8 @@ public class CalDavCalendarProviderTests
                 Uid = "event-uid-1",
                 Url = "https://caldav.example.com/calendars/work/event1.ics",
                 Summary = "Team Meeting",
-                StartTime = start,
-                EndTime = end,
+                StartTime = start.ToDateTimeUtc(),
+                EndTime = end.ToDateTimeUtc(),
                 RawICalendar = rawICal,
                 Deleted = false
             }
@@ -447,8 +447,8 @@ public class CalDavCalendarProviderTests
     public async Task GetEventsAsync_CalDavDoesNotUseRecurringEventId()
     {
         // Arrange - CalDAV handles recurrence differently than Google
-        var start = new DateTime(2025, 1, 15, 10, 0, 0, DateTimeKind.Utc);
-        var end = new DateTime(2025, 1, 15, 11, 0, 0, DateTimeKind.Utc);
+        var start = new ZonedDateTime(Instant.FromUtc(2025, 1, 15, 10, 0), DateTimeZone.Utc);
+        var end = new ZonedDateTime(Instant.FromUtc(2025, 1, 15, 11, 0), DateTimeZone.Utc);
         var rawICal = TestDataHelpers.CreateCalDavEventRaw("event-uid-1", "Team Meeting", start, end);
         _serviceStub.SetEvents(
             "https://caldav.example.com/calendars/work",
@@ -457,8 +457,8 @@ public class CalDavCalendarProviderTests
                 Uid = "event-uid-1",
                 Url = "https://caldav.example.com/calendars/work/event1.ics",
                 Summary = "Team Meeting",
-                StartTime = start,
-                EndTime = end,
+                StartTime = start.ToDateTimeUtc(),
+                EndTime = end.ToDateTimeUtc(),
                 RawICalendar = rawICal,
                 Deleted = false
             }

@@ -1,4 +1,5 @@
 using Dapper;
+using NodaTime;
 using perinma.Services;
 using perinma.Services.CalDAV;
 using perinma.Storage.Models;
@@ -461,8 +462,8 @@ public class SyncServiceTests : SyncTestBase
         });
 
         // Create a recurring event with UNTIL clause via raw iCalendar
-        var eventStart = new DateTime(2025, 3, 1, 9, 0, 0, DateTimeKind.Utc);
-        var eventEnd = new DateTime(2025, 3, 1, 10, 30, 0, DateTimeKind.Utc);
+        var eventStart = new ZonedDateTime(Instant.FromUtc(2025, 3, 1, 9, 0), DateTimeZone.Utc);
+        var eventEnd = new ZonedDateTime(Instant.FromUtc(2025, 3, 1, 10, 30), DateTimeZone.Utc);
         CalDavServiceStub.SetEvents(
             "https://caldav.example.com/calendars/work",
             TestDataHelpers.CreateCalDavEventWithRecurrence(
@@ -510,8 +511,8 @@ public class SyncServiceTests : SyncTestBase
 
         // Create a recurring event with COUNT clause
         // Daily for 10 occurrences, starting May 1, 2025
-        var eventStart = new DateTime(2025, 5, 1, 8, 0, 0, DateTimeKind.Utc);
-        var eventEnd = new DateTime(2025, 5, 1, 8, 30, 0, DateTimeKind.Utc);
+        var eventStart = new ZonedDateTime(Instant.FromUtc(2025, 5, 1, 8, 0), DateTimeZone.Utc);
+        var eventEnd = new ZonedDateTime(Instant.FromUtc(2025, 5, 1, 8, 30), DateTimeZone.Utc);
         CalDavServiceStub.SetEvents(
             "https://caldav.example.com/calendars/personal",
             TestDataHelpers.CreateCalDavEventWithRecurrence(
@@ -564,8 +565,9 @@ public class SyncServiceTests : SyncTestBase
 
         // Create a recurring event with Europe/Berlin timezone
         // Weekly for 4 occurrences, starting June 1, 2025 at 15:00 local time
-        var eventStart = new DateTime(2025, 6, 1, 15, 0, 0, DateTimeKind.Utc);
-        var eventEnd = new DateTime(2025, 6, 1, 16, 0, 0, DateTimeKind.Utc);
+        var berlinZone = DateTimeZoneProviders.Tzdb["Europe/Berlin"];
+        var eventStart = new ZonedDateTime(Instant.FromUtc(2025, 6, 1, 13, 0), berlinZone);
+        var eventEnd = new ZonedDateTime(Instant.FromUtc(2025, 6, 1, 14, 0), berlinZone);
         CalDavServiceStub.SetEvents(
             "https://caldav.example.com/calendars/europe",
             TestDataHelpers.CreateCalDavEventWithRecurrenceAndTimezone(
@@ -574,7 +576,6 @@ public class SyncServiceTests : SyncTestBase
                 "European Team Call",
                 eventStart,
                 eventEnd,
-                "Europe/Berlin",
                 "RRULE:FREQ=WEEKLY;COUNT=4"
             )
         );

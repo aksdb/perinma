@@ -7,6 +7,7 @@ using perinma.Services.CalDAV;
 using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Storage.Models;
+using perinma.Utils;
 using tests.Fakes;
 using tests.Helpers;
 using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
@@ -673,9 +674,9 @@ public class DatabaseCalendarSourceTests
     {
         using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
-        var now = DateTime.UtcNow;
-        var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
-        var weekEnd = weekStart.AddDays(7);
+        var now = SystemClock.Instance.GetCurrentInstant();
+        var weekStart = now.ToLocalDateTime().Date.AtMidnight(); 
+        var weekEnd = weekStart.PlusDays(7);
 
         var accountId = Guid.NewGuid().ToString();
         await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "CalDAV" });
@@ -689,18 +690,19 @@ public class DatabaseCalendarSourceTests
         };
         await storage.CreateOrUpdateCalendarAsync(calendar);
 
-        var eventStart = weekStart.AddHours(10);
-        var eventEnd = weekStart.AddHours(11);
+        var localZone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var eventStart = weekStart.PlusHours(10).InZoneLeniently(localZone);
+        var eventEnd = weekStart.PlusHours(11).InZoneLeniently(localZone);
 
         var eventDbo = new CalendarEventDbo
         {
             CalendarId = calendar.CalendarId,
             EventId = Guid.NewGuid().ToString(),
             ExternalId = "uid_123",
-            StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
-            EndTime = new DateTimeOffset(weekEnd.AddDays(30)).ToUnixTimeSeconds(),
+            StartTime = eventStart.ToInstant().ToUnixTimeSeconds(),
+            EndTime = weekEnd.PlusDays(30).ToInstant().ToUnixTimeSeconds(),
             Title = "Daily Standup",
-            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+            ChangedAt = weekStart.ToInstant().ToUnixTimeSeconds()
         };
         var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
 
@@ -708,7 +710,7 @@ public class DatabaseCalendarSourceTests
 
         await storage.SetEventData(eventId, "rawData", rawICalendar);
 
-        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var interval = new Interval(weekStart.ToInstant(), weekEnd.ToInstant());
         var events = calendarSource.GetCalendarEvents(interval);
 
         Assert.That(events.Count, Is.GreaterThan(0));
@@ -723,9 +725,9 @@ public class DatabaseCalendarSourceTests
     {
         using var disposable = CreateTestSetup(out var calendarSource, out var storage);
 
-        var now = DateTime.UtcNow;
-        var weekStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
-        var weekEnd = weekStart.AddDays(7);
+        var now = SystemClock.Instance.GetCurrentInstant();
+        var weekStart = now.ToLocalDateTime().Date.AtMidnight(); 
+        var weekEnd = weekStart.PlusDays(7);
 
         var accountId = Guid.NewGuid().ToString();
         await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "CalDAV" });
@@ -739,18 +741,19 @@ public class DatabaseCalendarSourceTests
         };
         await storage.CreateOrUpdateCalendarAsync(calendar);
 
-        var eventStart = weekStart.AddHours(10);
-        var eventEnd = weekStart.AddHours(11);
+        var localZone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var eventStart = weekStart.PlusHours(10).InZoneLeniently(localZone);
+        var eventEnd = weekStart.PlusHours(11).InZoneLeniently(localZone);
 
         var eventDbo = new CalendarEventDbo
         {
             CalendarId = calendar.CalendarId,
             EventId = Guid.NewGuid().ToString(),
             ExternalId = "uid_456",
-            StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
-            EndTime = new DateTimeOffset(eventEnd).ToUnixTimeSeconds(),
+            StartTime = eventStart.ToInstant().ToUnixTimeSeconds(),
+            EndTime = eventEnd.ToInstant().ToUnixTimeSeconds(),
             Title = "One-time Event",
-            ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
+            ChangedAt = weekStart.ToInstant().ToUnixTimeSeconds(),
         };
         var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
 
@@ -758,13 +761,16 @@ public class DatabaseCalendarSourceTests
 
         await storage.SetEventData(eventId, "rawData", rawICalendar);
 
-        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var interval = new Interval(weekStart.ToInstant(), weekEnd.ToInstant());
         var events = calendarSource.GetCalendarEvents(interval);
 
         Assert.That(events, Has.Count.EqualTo(1));
-        Assert.That(events[0].Title, Is.EqualTo("One-time Event"));
-        Assert.That(events[0].StartTime, Is.EqualTo(LocalDateTime.FromDateTime(eventStart)));
-        Assert.That(events[0].EndTime, Is.EqualTo(LocalDateTime.FromDateTime(eventEnd)));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(events[0].Title, Is.EqualTo("One-time Event"));
+            Assert.That(events[0].StartTime, Is.EqualTo(eventStart.LocalDateTime));
+            Assert.That(events[0].EndTime, Is.EqualTo(eventEnd.LocalDateTime));
+        }
     }
 
     [Test]
