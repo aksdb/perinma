@@ -15,4 +15,7 @@ public static class ExtensionFunctions
 
     public static Instant ToInstant(this LocalDateTime localDateTime) =>
         localDateTime.InUtc().ToInstant();
+    
+    public static ZonedDateTime ToZonedDateTime(this LocalDateTime localDateTime) =>
+        localDateTime.InZoneLeniently(LocalTimeZone);
 }
