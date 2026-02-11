@@ -1,9 +1,12 @@
-using System;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
+using Ical.Net;
 using Ical.Net.CalendarComponents;
+using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
 using perinma.Services.CalDAV;
+using ICalCalendar = Ical.Net.Calendar;
+using ICalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
 namespace tests.Helpers;
 
@@ -236,21 +239,71 @@ public static class TestDataHelpers
 
     #region CalDAV/iCalendar Helpers
 
-    /// <summary>
-    /// Formats a DateTime for iCalendar (UTC format).
-    /// </summary>
-    private static string FormatICalDateTime(DateTime dt)
+    private static string SerializeCalendar(ICalCalendar calendar)
     {
-        var utc = dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
-        return utc.ToString("yyyyMMdd'T'HHmmss'Z'");
+        var serializer = new CalendarSerializer();
+        return serializer.SerializeToString(calendar);
     }
 
-    /// <summary>
-    /// Formats a DateTime for iCalendar (local format, without timezone).
-    /// </summary>
-    private static string FormatICalDateTimeLocal(DateTime dt)
+    private static CalDateTime ToCalDateTime(DateTime dateTime)
     {
-        return dt.ToString("yyyyMMdd'T'HHmmss");
+        if (dateTime.Kind == DateTimeKind.Utc || dateTime.Kind == DateTimeKind.Unspecified)
+        {
+            return new CalDateTime(dateTime, true);
+        }
+
+        return new CalDateTime(dateTime.ToUniversalTime(), true);
+    }
+
+    private static RecurrencePattern? ParseRrule(string rrule)
+    {
+        if (string.IsNullOrEmpty(rrule) || !rrule.StartsWith("RRULE:", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var rruleValue = rrule[6..];
+        var pattern = new RecurrencePattern();
+        var parts = rruleValue.Split(';');
+
+        foreach (var part in parts)
+        {
+            var keyValue = part.Split('=');
+            if (keyValue.Length != 2) continue;
+
+            var key = keyValue[0].ToUpperInvariant();
+            var value = keyValue[1];
+
+            switch (key)
+            {
+                case "FREQ":
+                    pattern.Frequency = Enum.Parse<FrequencyType>(value, true);
+                    break;
+                case "INTERVAL":
+                    pattern.Interval = int.Parse(value);
+                    break;
+                case "COUNT":
+                    pattern.Count = int.Parse(value);
+                    break;
+                case "UNTIL":
+                    pattern.Until = new CalDateTime(DateTime.ParseExact(value, "yyyyMMdd'T'HHmmss'Z'", null), true);
+                    break;
+                case "BYDAY":
+                    pattern.ByDay = value.Split(',').Select(d => new WeekDay(d)).ToList();
+                    break;
+                case "BYMONTH":
+                    pattern.ByMonth = value.Split(',').Select(int.Parse).ToList();
+                    break;
+                case "BYMONTHDAY":
+                    pattern.ByMonthDay = value.Split(',').Select(int.Parse).ToList();
+                    break;
+                case "WKST":
+                    pattern.FirstDayOfWeek = Enum.Parse<DayOfWeek>(value, true);
+                    break;
+            }
+        }
+
+        return pattern;
     }
 
     /// <summary>
@@ -263,17 +316,25 @@ public static class TestDataHelpers
         DateTime end,
         string status = "CONFIRMED")
     {
-        return $"BEGIN:VCALENDAR\r\n" +
-               $"VERSION:2.0\r\n" +
-               $"PRODID:-//Test//Test//EN\r\n" +
-               $"BEGIN:VEVENT\r\n" +
-               $"UID:{uid}\r\n" +
-               $"DTSTART:{FormatICalDateTime(start)}\r\n" +
-               $"DTEND:{FormatICalDateTime(end)}\r\n" +
-               $"SUMMARY:{summary}\r\n" +
-               $"STATUS:{status}\r\n" +
-               $"END:VEVENT\r\n" +
-               $"END:VCALENDAR";
+        var calendar = new ICalCalendar
+        {
+            Method = "PUBLISH",
+            Version = "2.0",
+            ProductId = "-//Test//Test//EN"
+        };
+
+        var evt = new ICalEvent
+        {
+            Uid = uid,
+            DtStart = ToCalDateTime(start),
+            DtEnd = ToCalDateTime(end),
+            Summary = summary,
+            Status = status
+        };
+
+        calendar.Events.Add(evt);
+
+        return SerializeCalendar(calendar);
     }
 
     /// <summary>
@@ -286,18 +347,31 @@ public static class TestDataHelpers
         DateTime end,
         string rrule)
     {
-        return $"BEGIN:VCALENDAR\r\n" +
-               $"VERSION:2.0\r\n" +
-               $"PRODID:-//Test//Test//EN\r\n" +
-               $"BEGIN:VEVENT\r\n" +
-               $"UID:{uid}\r\n" +
-               $"DTSTART:{FormatICalDateTime(start)}\r\n" +
-               $"DTEND:{FormatICalDateTime(end)}\r\n" +
-               $"SUMMARY:{summary}\r\n" +
-               $"STATUS:CONFIRMED\r\n" +
-               $"{rrule}\r\n" +
-               $"END:VEVENT\r\n" +
-               $"END:VCALENDAR";
+        var calendar = new ICalCalendar
+        {
+            Method = "PUBLISH",
+            Version = "2.0",
+            ProductId = "-//Test//Test//EN"
+        };
+
+        var evt = new ICalEvent
+        {
+            Uid = uid,
+            DtStart = ToCalDateTime(start),
+            DtEnd = ToCalDateTime(end),
+            Summary = summary,
+            Status = "CONFIRMED"
+        };
+
+        var pattern = ParseRrule(rrule);
+        if (pattern != null)
+        {
+            evt.RecurrenceRules.Add(pattern);
+        }
+
+        calendar.Events.Add(evt);
+
+        return SerializeCalendar(calendar);
     }
 
     /// <summary>
@@ -311,21 +385,33 @@ public static class TestDataHelpers
         string tzid,
         string rrule)
     {
-        var vtimezone = CreateVTimezoneComponent(tzid);
+        var calendar = new ICalCalendar
+        {
+            Method = "PUBLISH",
+            Version = "2.0",
+            ProductId = "-//Test//Test//EN"
+        };
 
-        return $"BEGIN:VCALENDAR\r\n" +
-               $"VERSION:2.0\r\n" +
-               $"PRODID:-//Test//Test//EN\r\n" +
-               $"{vtimezone}\r\n" +
-               $"BEGIN:VEVENT\r\n" +
-               $"UID:{uid}\r\n" +
-               $"DTSTART;TZID={tzid}:{FormatICalDateTimeLocal(start)}\r\n" +
-               $"DTEND;TZID={tzid}:{FormatICalDateTimeLocal(end)}\r\n" +
-               $"SUMMARY:{summary}\r\n" +
-               $"STATUS:CONFIRMED\r\n" +
-               $"{rrule}\r\n" +
-               $"END:VEVENT\r\n" +
-               $"END:VCALENDAR";
+        calendar.AddTimeZone(tzid);
+
+        var evt = new ICalEvent
+        {
+            Uid = uid,
+            DtStart = new CalDateTime(start, tzid),
+            DtEnd = new CalDateTime(end, tzid),
+            Summary = summary,
+            Status = "CONFIRMED"
+        };
+
+        var pattern = ParseRrule(rrule);
+        if (pattern != null)
+        {
+            evt.RecurrenceRules.Add(pattern);
+        }
+
+        calendar.Events.Add(evt);
+
+        return SerializeCalendar(calendar);
     }
 
     /// <summary>
@@ -338,25 +424,37 @@ public static class TestDataHelpers
         DateTime end,
         params int[] minutesBefore)
     {
-        var alarms = string.Join("\r\n", minutesBefore.Select(m =>
-            $"BEGIN:VALARM\r\n" +
-            $"ACTION:DISPLAY\r\n" +
-            $"TRIGGER:-PT{m}M\r\n" +
-            $"DESCRIPTION:Reminder\r\n" +
-            $"END:VALARM"));
+        var calendar = new ICalCalendar
+        {
+            Method = "PUBLISH",
+            Version = "2.0",
+            ProductId = "-//Test//Test//EN"
+        };
 
-        return $"BEGIN:VCALENDAR\r\n" +
-               $"VERSION:2.0\r\n" +
-               $"PRODID:-//Test//Test//EN\r\n" +
-               $"BEGIN:VEVENT\r\n" +
-               $"UID:{uid}\r\n" +
-               $"DTSTART:{FormatICalDateTime(start)}\r\n" +
-               $"DTEND:{FormatICalDateTime(end)}\r\n" +
-               $"SUMMARY:{summary}\r\n" +
-               $"STATUS:CONFIRMED\r\n" +
-               $"{alarms}\r\n" +
-               $"END:VEVENT\r\n" +
-               $"END:VCALENDAR";
+        var evt = new ICalEvent
+        {
+            Uid = uid,
+            DtStart = ToCalDateTime(start),
+            DtEnd = ToCalDateTime(end),
+            Summary = summary,
+            Status = "CONFIRMED"
+        };
+
+        foreach (var minutes in minutesBefore)
+        {
+            var alarm = new Alarm
+            {
+                Action = AlarmAction.Display,
+                Trigger = new Trigger(),
+                Summary = "Reminder"
+            };
+            alarm.Trigger.DateTime = ToCalDateTime(start.AddMinutes(-minutes));
+            evt.Alarms.Add(alarm);
+        }
+
+        calendar.Events.Add(evt);
+
+        return SerializeCalendar(calendar);
     }
 
     /// <summary>
@@ -369,39 +467,34 @@ public static class TestDataHelpers
         DateTime end,
         int daysBefore)
     {
-        var alarm = $"BEGIN:VALARM\r\n" +
-                    $"ACTION:DISPLAY\r\n" +
-                    $"TRIGGER:-P{daysBefore}D\r\n" +
-                    $"DESCRIPTION:Reminder\r\n" +
-                    $"END:VALARM";
+        var calendar = new ICalCalendar
+        {
+            Method = "PUBLISH",
+            Version = "2.0",
+            ProductId = "-//Test//Test//EN"
+        };
 
-        return $"BEGIN:VCALENDAR\r\n" +
-               $"VERSION:2.0\r\n" +
-               $"PRODID:-//Test//Test//EN\r\n" +
-               $"BEGIN:VEVENT\r\n" +
-               $"UID:{uid}\r\n" +
-               $"DTSTART:{FormatICalDateTime(start)}\r\n" +
-               $"DTEND:{FormatICalDateTime(end)}\r\n" +
-               $"SUMMARY:{summary}\r\n" +
-               $"STATUS:CONFIRMED\r\n" +
-               $"{alarm}\r\n" +
-               $"END:VEVENT\r\n" +
-               $"END:VCALENDAR";
-    }
+        var evt = new ICalEvent
+        {
+            Uid = uid,
+            DtStart = ToCalDateTime(start),
+            DtEnd = ToCalDateTime(end),
+            Summary = summary,
+            Status = "CONFIRMED"
+        };
 
-    /// <summary>
-    /// Creates a basic VTIMEZONE component.
-    /// </summary>
-    private static string CreateVTimezoneComponent(string tzId)
-    {
-        return $"BEGIN:VTIMEZONE\r\n" +
-               $"TZID:{tzId}\r\n" +
-               $"BEGIN:STANDARD\r\n" +
-               $"DTSTART:19700101T000000\r\n" +
-               $"TZOFFSETFROM:+0000\r\n" +
-               $"RRULE:FREQ=YEARLY\r\n" +
-               $"END:STANDARD\r\n" +
-               $"END:VTIMEZONE";
+        var alarm = new Alarm
+        {
+            Action = AlarmAction.Display,
+            Trigger = new Trigger(),
+            Summary = "Reminder"
+        };
+        alarm.Trigger.DateTime = ToCalDateTime(start.AddDays(-daysBefore));
+        evt.Alarms.Add(alarm);
+
+        calendar.Events.Add(evt);
+
+        return SerializeCalendar(calendar);
     }
 
     /// <summary>
@@ -492,25 +585,54 @@ public static class TestDataHelpers
     /// </summary>
     public static string CreateEuropeBerlinVTimezone()
     {
-        return "BEGIN:VTIMEZONE\r\n" +
-               "TZID:Europe/Berlin\r\n" +
-               "LAST-MODIFIED:20250324T091428Z\r\n" +
-               "X-LIC-LOCATION:Europe/Berlin\r\n" +
-               "BEGIN:DAYLIGHT\r\n" +
-               "TZNAME:CEST\r\n" +
-               "TZOFFSETFROM:+0100\r\n" +
-               "TZOFFSETTO:+0200\r\n" +
-               "DTSTART:19700329T020000\r\n" +
-               "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU\r\n" +
-               "END:DAYLIGHT\r\n" +
-               "BEGIN:STANDARD\r\n" +
-               "TZNAME:CET\r\n" +
-               "TZOFFSETFROM:+0200\r\n" +
-               "TZOFFSETTO:+0100\r\n" +
-               "DTSTART:19701025T030000\r\n" +
-               "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU\r\n" +
-               "END:STANDARD\r\n" +
-               "END:VTIMEZONE";
+        var calendar = new ICalCalendar
+        {
+            Version = "2.0",
+            ProductId = "-//Test//Test//EN"
+        };
+
+        var tz = new VTimeZone("Europe/Berlin")
+        {
+            TzId = "Europe/Berlin"
+        };
+
+        var dst = new VTimeZoneInfo
+        {
+            Name = "CEST",
+            OffsetFrom = new UtcOffset("+0100"),
+            OffsetTo = new UtcOffset("+0200"),
+            Start = new CalDateTime(1970, 3, 29, 2, 0, 0, "Europe/Berlin"),
+            RecurrenceRules = new List<RecurrencePattern>
+            {
+                new(FrequencyType.Yearly)
+                {
+                    ByMonth = [3],
+                    ByDay = [new WeekDay(DayOfWeek.Sunday, -1)]
+                }
+            }
+        };
+        tz.TimeZoneInfos.Add(dst);
+
+        var standard = new VTimeZoneInfo
+        {
+            Name = "CET",
+            OffsetFrom = new UtcOffset("+0200"),
+            OffsetTo = new UtcOffset("+0100"),
+            Start = new CalDateTime(1970, 10, 25, 3, 0, 0, "Europe/Berlin"),
+            RecurrenceRules = new List<RecurrencePattern>
+            {
+                new(FrequencyType.Yearly)
+                {
+                    ByMonth = [10],
+                    ByDay = [new WeekDay(DayOfWeek.Sunday, -1)]
+                }
+            }
+        };
+        tz.TimeZoneInfos.Add(standard);
+
+        calendar.TimeZones.Add(tz);
+
+        return SerializeCalendar(calendar);
     }
 
     #endregion
