@@ -1,14 +1,15 @@
-using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using CredentialStore;
+using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
+using NodaTime;
 using perinma.Models;
 using perinma.Services;
 using perinma.Services.Google;
 using perinma.Storage.Models;
-using perinma.Tests.Fakes;
+using tests.Fakes;
+using tests.Helpers;
 
 namespace tests;
 
@@ -16,7 +17,7 @@ namespace tests;
 public class GoogleCalendarProviderTests
 {
     private CredentialManagerService _credentialManager = null!;
-    private FakeGoogleCalendarService _fakeService = null!;
+    private GoogleCalendarServiceStub _serviceStub = null!;
     private GoogleCalendarProvider _provider = null!;
     private string _accountId = null!;
 
@@ -24,8 +25,8 @@ public class GoogleCalendarProviderTests
     public void SetUp()
     {
         _credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
-        _fakeService = new FakeGoogleCalendarService();
-        _provider = new GoogleCalendarProvider(_fakeService, _credentialManager);
+        _serviceStub = new GoogleCalendarServiceStub();
+        _provider = new GoogleCalendarProvider(_serviceStub, _credentialManager);
         _accountId = Guid.NewGuid().ToString();
 
         // Store default credentials
@@ -47,10 +48,11 @@ public class GoogleCalendarProviderTests
     public async Task GetCalendarsAsync_WithValidCredentials_ReturnsCalendars()
     {
         // Arrange
-        _fakeService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true, color: "#ff0000"),
-            FakeGoogleCalendarService.CreateCalendar("cal2", "Personal Calendar", selected: false, color: "#00ff00")
-        );
+        var cal1Data = TestDataHelpers.CreateGoogleCalendar("cal1", "Work Calendar", selected: true, color: "#ff0000");
+        var cal2Data = TestDataHelpers.CreateGoogleCalendar("cal2", "Personal Calendar", selected: false, color: "#00ff00");
+        var cal1Json = new Google.Apis.Json.NewtonsoftJsonSerializer().Serialize(cal1Data);
+        var cal2Json = new Google.Apis.Json.NewtonsoftJsonSerializer().Serialize(cal2Data);
+        _serviceStub.SetRawCalendars(cal1Json, cal2Json);
 
         // Act
         var result = await _provider.GetCalendarsAsync(_accountId);
@@ -72,10 +74,11 @@ public class GoogleCalendarProviderTests
     public async Task GetCalendarsAsync_WithDeletedCalendar_MarksAsDeleted()
     {
         // Arrange
-        _fakeService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Active Calendar"),
-            FakeGoogleCalendarService.CreateDeletedCalendar("cal2")
-        );
+        var cal1Data = TestDataHelpers.CreateGoogleCalendar("cal1", "Active Calendar");
+        var cal2Data = TestDataHelpers.CreateGoogleCalendar("cal2", "Deleted Calendar", deleted: true);
+        var cal1Json = new Google.Apis.Json.NewtonsoftJsonSerializer().Serialize(cal1Data);
+        var cal2Json = new Google.Apis.Json.NewtonsoftJsonSerializer().Serialize(cal2Data);
+        _serviceStub.SetRawCalendars(cal1Json, cal2Json);
 
         // Act
         var result = await _provider.GetCalendarsAsync(_accountId);
@@ -93,9 +96,9 @@ public class GoogleCalendarProviderTests
     public async Task GetCalendarsAsync_WithSyncToken_PassesSyncToken()
     {
         // Arrange
-        _fakeService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Calendar 1")
-        );
+        var cal1Data = TestDataHelpers.CreateGoogleCalendar("cal1", "Calendar 1");
+        var cal1Json = new Google.Apis.Json.NewtonsoftJsonSerializer().Serialize(cal1Data);
+        _serviceStub.SetRawCalendars(cal1Json);
 
         // Act
         var result = await _provider.GetCalendarsAsync(_accountId, syncToken: "test-sync-token");
@@ -120,12 +123,14 @@ public class GoogleCalendarProviderTests
     public async Task GetCalendarsAsync_WithUnnamedCalendar_UsesDefaultName()
     {
         // Arrange
-        _fakeService.SetCalendars(new CalendarListEntry
+        var cal1Data = new Google.Apis.Calendar.v3.Data.CalendarListEntry
         {
             Id = "cal1",
             Summary = null, // No name
             Selected = true
-        });
+        };
+        var cal1Json = new Google.Apis.Json.NewtonsoftJsonSerializer().Serialize(cal1Data);
+        _serviceStub.SetRawCalendars(cal1Json);
 
         // Act
         var result = await _provider.GetCalendarsAsync(_accountId);
@@ -144,9 +149,8 @@ public class GoogleCalendarProviderTests
         // Arrange
         var start = new DateTime(2025, 1, 15, 10, 0, 0, DateTimeKind.Utc);
         var end = new DateTime(2025, 1, 15, 11, 0, 0, DateTimeKind.Utc);
-        _fakeService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateEvent("event1", "Team Meeting", start, end)
-        );
+        var eventData = TestDataHelpers.CreateGoogleEventRaw("event1", "Team Meeting", start, end);
+        _serviceStub.SetRawEvents("cal1", eventData);
 
         // Act
         var result = await _provider.GetEventsAsync(_accountId, "cal1");
@@ -158,8 +162,8 @@ public class GoogleCalendarProviderTests
             Assert.That(result.Events[0].ExternalId, Is.EqualTo("event1"));
             Assert.That(result.Events[0].Title, Is.EqualTo("Team Meeting"));
             // Compare UTC times (parsing may convert to local time)
-            Assert.That(result.Events[0].StartTime!.Value.ToUtc().DateTime, Is.EqualTo(start));
-            Assert.That(result.Events[0].EndTime!.Value.ToUtc().DateTime, Is.EqualTo(end));
+            Assert.That(result.Events[0].StartTime!.Value.ToDateTimeUtc(), Is.EqualTo(start));
+            Assert.That(result.Events[0].EndTime!.Value.ToDateTimeUtc(), Is.EqualTo(end));
             Assert.That(result.Events[0].Deleted, Is.False);
         });
     }
@@ -168,9 +172,8 @@ public class GoogleCalendarProviderTests
     public async Task GetEventsAsync_WithCancelledEvent_MarksAsDeleted()
     {
         // Arrange
-        _fakeService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateCancelledEvent("event1")
-        );
+        var eventData = TestDataHelpers.CreateCancelledGoogleEvent("event1");
+        _serviceStub.SetRawEvents("cal1", eventData);
 
         // Act
         var result = await _provider.GetEventsAsync(_accountId, "cal1");
@@ -186,15 +189,14 @@ public class GoogleCalendarProviderTests
         // Arrange
         var start = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
         var end = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc);
-        _fakeService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateRecurringEvent(
-                "recurring1",
-                "Weekly Meeting",
-                start,
-                end,
-                "RRULE:FREQ=DAILY;COUNT=5"
-            )
+        var eventData = TestDataHelpers.CreateRecurringGoogleEvent(
+            "recurring1",
+            "Weekly Meeting",
+            start,
+            end,
+            "RRULE:FREQ=DAILY;COUNT=5"
         );
+        _serviceStub.SetRawEvents("cal1", eventData);
 
         // Act
         var result = await _provider.GetEventsAsync(_accountId, "cal1");
@@ -204,9 +206,9 @@ public class GoogleCalendarProviderTests
         var evt = result.Events[0];
         Assert.Multiple(() =>
         {
-            Assert.That(evt.StartTime!.Value.ToUtc().DateTime, Is.EqualTo(start));
+            Assert.That(evt.StartTime!.Value.ToDateTimeUtc(), Is.EqualTo(start));
             // End time should be calculated from recurrence (5 daily occurrences)
-            Assert.That(evt.EndTime!.Value.ToUtc().DateTime, Is.EqualTo(new DateTime(2025, 1, 5, 11, 0, 0, DateTimeKind.Utc)));
+            Assert.That(evt.EndTime!.Value.ToDateTimeUtc(), Is.EqualTo(new DateTime(2025, 1, 5, 11, 0, 0, DateTimeKind.Utc)));
         });
     }
 
@@ -218,16 +220,15 @@ public class GoogleCalendarProviderTests
         var newStart = new DateTime(2025, 1, 8, 9, 0, 0, DateTimeKind.Utc); // Earlier
         var newEnd = new DateTime(2025, 1, 8, 10, 30, 0, DateTimeKind.Utc);
 
-        _fakeService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateModifiedOverride(
-                "override1",
-                "recurring1",
-                "Rescheduled Meeting",
-                originalStart,
-                newStart,
-                newEnd
-            )
+        var eventData = TestDataHelpers.CreateModifiedGoogleEventOverride(
+            "override1",
+            "recurring1",
+            "Rescheduled Meeting",
+            originalStart,
+            newStart,
+            newEnd
         );
+        _serviceStub.SetRawEvents("cal1", eventData);
 
         // Act
         var result = await _provider.GetEventsAsync(_accountId, "cal1");
@@ -238,8 +239,8 @@ public class GoogleCalendarProviderTests
         Assert.Multiple(() =>
         {
             Assert.That(evt.RecurringEventId, Is.EqualTo("recurring1"));
-            Assert.That(evt.OriginalStartTime!.Value.ToUtc().DateTime, Is.EqualTo(originalStart));
-            Assert.That(evt.StartTime!.Value.ToUtc().DateTime, Is.EqualTo(newStart)); // Earlier start preserved
+            Assert.That(evt.OriginalStartTime!.Value.ToDateTimeUtc(), Is.EqualTo(originalStart));
+            Assert.That(evt.StartTime!.Value.ToDateTimeUtc(), Is.EqualTo(newStart)); // Earlier start preserved
         });
     }
 
@@ -249,13 +250,12 @@ public class GoogleCalendarProviderTests
         // Arrange
         var originalStart = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
 
-        _fakeService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateCancelledOverride(
-                "override1",
-                "recurring1",
-                originalStart
-            )
+        var eventData = TestDataHelpers.CreateCancelledGoogleEventOverride(
+            "override1",
+            "recurring1",
+            originalStart
         );
+        _serviceStub.SetRawEvents("cal1", eventData);
 
         // Act
         var result = await _provider.GetEventsAsync(_accountId, "cal1");
@@ -265,8 +265,8 @@ public class GoogleCalendarProviderTests
         var evt = result.Events[0];
         Assert.Multiple(() =>
         {
-            Assert.That(evt.StartTime!.Value.ToUtc().DateTime, Is.EqualTo(originalStart));
-            Assert.That(evt.EndTime!.Value.ToUtc().DateTime, Is.EqualTo(originalStart));
+            Assert.That(evt.StartTime!.Value.ToDateTimeUtc(), Is.EqualTo(originalStart));
+            Assert.That(evt.EndTime!.Value.ToDateTimeUtc(), Is.EqualTo(originalStart));
             Assert.That(evt.RecurringEventId, Is.EqualTo("recurring1"));
         });
     }
@@ -275,9 +275,14 @@ public class GoogleCalendarProviderTests
     public async Task GetEventsAsync_WithEventMissingStartEnd_SkipsEvent()
     {
         // Arrange
-        _fakeService.SetEvents("cal1",
-            new Event { Id = "event1", Summary = "No Times", Status = "confirmed" }
-        );
+        var evt = new Google.Apis.Calendar.v3.Data.Event
+        {
+            Id = "event1",
+            Summary = "No Times",
+            Status = "confirmed"
+        };
+        var eventData = new Google.Apis.Json.NewtonsoftJsonSerializer().Serialize(evt);
+        _serviceStub.SetRawEvents("cal1", eventData);
 
         // Act
         var result = await _provider.GetEventsAsync(_accountId, "cal1");
@@ -292,16 +297,16 @@ public class GoogleCalendarProviderTests
         // Arrange
         var start = new DateTime(2025, 1, 15, 10, 0, 0, DateTimeKind.Utc);
         var end = new DateTime(2025, 1, 15, 11, 0, 0, DateTimeKind.Utc);
-        _fakeService.SetEvents("cal1",
-            new Event
-            {
-                Id = "event1",
-                Summary = null, // No title
-                Status = "confirmed",
-                Start = new EventDateTime { DateTimeRaw = start.ToString("o") },
-                End = new EventDateTime { DateTimeRaw = end.ToString("o") }
-            }
-        );
+        var evt = new Google.Apis.Calendar.v3.Data.Event
+        {
+            Id = "event1",
+            Summary = null, // No title
+            Status = "confirmed",
+            Start = new EventDateTime { DateTimeRaw = start.ToString("o") },
+            End = new EventDateTime { DateTimeRaw = end.ToString("o") }
+        };
+        var eventData = new Google.Apis.Json.NewtonsoftJsonSerializer().Serialize(evt);
+        _serviceStub.SetRawEvents("cal1", eventData);
 
         // Act
         var result = await _provider.GetEventsAsync(_accountId, "cal1");
@@ -318,9 +323,9 @@ public class GoogleCalendarProviderTests
     public async Task TestConnectionAsync_WithValidCredentials_ReturnsTrue()
     {
         // Arrange
-        _fakeService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Test Calendar")
-        );
+        var cal1Data = TestDataHelpers.CreateGoogleCalendar("cal1", "Test Calendar");
+        var cal1Json = new Google.Apis.Json.NewtonsoftJsonSerializer().Serialize(cal1Data);
+        _serviceStub.SetRawCalendars(cal1Json);
 
         // Act
         var result = await _provider.TestConnectionAsync(_accountId);
@@ -470,9 +475,9 @@ public class GoogleCalendarProviderTests
     public async Task GetCalendarsAsync_StoresRawDataAsJson()
     {
         // Arrange
-        _fakeService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true, color: "#ff0000")
-        );
+        var cal1Data = TestDataHelpers.CreateGoogleCalendar("cal1", "Work Calendar", selected: true, color: "#ff0000");
+        var cal1Json = new Google.Apis.Json.NewtonsoftJsonSerializer().Serialize(cal1Data);
+        _serviceStub.SetRawCalendars(cal1Json);
 
         // Act
         var result = await _provider.GetCalendarsAsync(_accountId);
@@ -494,9 +499,8 @@ public class GoogleCalendarProviderTests
         // Arrange
         var start = new DateTime(2025, 1, 15, 10, 0, 0, DateTimeKind.Utc);
         var end = new DateTime(2025, 1, 15, 11, 0, 0, DateTimeKind.Utc);
-        _fakeService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateEvent("event1", "Team Meeting", start, end)
-        );
+        var eventData = TestDataHelpers.CreateGoogleEventRaw("event1", "Team Meeting", start, end);
+        _serviceStub.SetRawEvents("cal1", eventData);
 
         // Act
         var result = await _provider.GetEventsAsync(_accountId, "cal1");
@@ -524,7 +528,7 @@ public class GoogleCalendarProviderTests
         // (vs winter at 10:00 CET = 09:00 UTC)
 
         var winterStart = new DateTime(2025, 1, 13, 10, 0, 0); // Monday 10:00 in CET (winter)
-        var summerReference = new ZonedDateTime(new DateTime(2025, 7, 15, 0, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Utc); // July
+        var summerReference = Instant.FromDateTimeUtc(new DateTime(2025, 7, 15, 0, 0, 0, DateTimeKind.Utc)); // July
 
         var googleEvent = new Event
         {
@@ -572,9 +576,9 @@ public class GoogleCalendarProviderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(occurrence.ToUtc().DateTime, Is.EqualTo(expectedOccurrenceUtc).Within(TimeSpan.FromSeconds(1)),
+            Assert.That(occurrence.ToDateTimeUtc(), Is.EqualTo(expectedOccurrenceUtc).Within(TimeSpan.FromSeconds(1)),
                 $"Expected occurrence at {expectedOccurrenceUtc:O}, got {occurrence:O}");
-            Assert.That(triggerTime.ToUtc().DateTime, Is.EqualTo(expectedTriggerUtc).Within(TimeSpan.FromSeconds(1)),
+            Assert.That(triggerTime.ToDateTimeUtc(), Is.EqualTo(expectedTriggerUtc).Within(TimeSpan.FromSeconds(1)),
                 $"Expected trigger at {expectedTriggerUtc:O}, got {triggerTime:O}");
         });
     }

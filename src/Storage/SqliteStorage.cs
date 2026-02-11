@@ -529,9 +529,14 @@ public class SqliteStorage : IDisposable
                 SET data = jsonb_set(coalesce(data, jsonb_object()), @key, jsonb(@jsonValue))
                 WHERE event_id = @eventId
             """,
-            param: new { key = $"$.{key}", jsonValue, eventId },
+            param: new { key = $"$.{key}", jsonValue, @eventId },
             commandTimeout: 30
         );
+
+        if (rowsAffected == 0)
+        {
+            Console.WriteLine($"DEBUG SetEventDataJson: WARNING - no rows updated for eventId={eventId}");
+        }
 
         return rowsAffected > 0;
     }
@@ -544,7 +549,7 @@ public class SqliteStorage : IDisposable
             FROM calendar_event
             WHERE event_id = @eventId
             """,
-            param: new { key = $"$.{key}", eventId });
+            param: new { key = $"$.{key}", @eventId });
     }
 
     public async Task<string?> GetEventIdByExternalIdAsync(string calendarId, string externalId)
@@ -669,7 +674,6 @@ public class SqliteStorage : IDisposable
                 ce.end_time AS EndTime,
                 ce.title AS Title,
                 ce.changed_at AS ChangedAt,
-                json_extract(ce.data, '$.rawData') AS RawData,
                 c.calendar_id AS CalendarId,
                 c.external_id AS CalendarExternalId,
                 c.name AS CalendarName,
@@ -689,11 +693,18 @@ public class SqliteStorage : IDisposable
               )
             ORDER BY ce.start_time";
 
-        return await _connection.QueryAsync<CalendarEventQueryResult>(
+        var results = (await _connection.QueryAsync<CalendarEventQueryResult>(
             query,
             new { StartTimestamp = startTimestamp, EndTimestamp = endTimestamp },
             commandTimeout: 30
-        );
+        )).ToList();
+
+        foreach (var result in results)
+        {
+            result.RawData = await GetEventData(result.EventId, "rawData");
+        }
+
+        return results;
     }
 
     #region Reminders
@@ -896,7 +907,7 @@ public class SqliteStorage : IDisposable
         {
             if (!Enum.TryParse<AccountType>(accountDbo.Type, ignoreCase: true, out var accountType))
             {
-                continue;
+                accountType = AccountType.Google;
             }
 
             var account = new Account

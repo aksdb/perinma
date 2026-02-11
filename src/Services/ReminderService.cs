@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Apis.Calendar.v3.Data;
+using Google.Apis.Json;
 using NodaTime;
 using perinma.Models;
 using perinma.Storage;
@@ -39,8 +41,8 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
             rawCalendarData = await storage.GetCalendarDataAsync(calendar.CalendarId, "rawData");
         }
 
-        var refTime = referenceTime == default 
-            ? SystemClock.Instance.GetCurrentInstant() 
+        var refTime = referenceTime == default
+            ? SystemClock.Instance.GetCurrentInstant()
             : referenceTime;
 
         // Get reminder occurrences from the provider
@@ -102,17 +104,43 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         if (reminder == null)
             return;
 
-        // Prepare follow-up reminder using trigger time as reference to get next recurrence
+        // Prepare follow-up reminder
         var calendarId = await storage.GetEventCalendarIdAsync(reminder.TargetId);
         if (!string.IsNullOrEmpty(calendarId))
         {
             var calendar = storage.GetCachedCalendar(new Guid(calendarId));
+
             if (calendar != null)
             {
-                var previousTargetTime = DateTimeOffset.FromUnixTimeSeconds(reminder.TargetTime).DateTime;
-                var previousTargetInstant = Instant.FromDateTimeUtc(previousTargetTime);
+                // Check if event is recurring
+                var eventData = await storage.GetEventData(reminder.TargetId, "rawData");
+                var isRecurring = false;
+                if (!string.IsNullOrEmpty(eventData))
+                {
+                    if (calendar.Account.Type == AccountType.Google)
+                    {
+                        try
+                        {
+                            var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(eventData);
+                            isRecurring = googleEvent?.Recurrence is { Count: > 0 };
+                        }
+                        catch { }
+                    }
+                    else if (calendar.Account.Type == AccountType.CalDav)
+                    {
+                        // iCal events have RRULE in the data for recurring events
+                        isRecurring = eventData.Contains("RRULE:");
+                    }
+                }
+
+                // For recurring events, use target time to get next occurrence
+                // For non-recurring events, use trigger time to get other reminders
+                var referenceInstant = isRecurring
+                    ? Instant.FromUnixTimeSeconds(reminder.TargetTime)
+                    : Instant.FromUnixTimeSeconds(reminder.TriggerTime);
+
                 await PopulateRemindersForEventAsync(reminder.TargetId, calendarId, calendar.Account.Type,
-                    cancellationToken, previousTargetInstant);
+                    cancellationToken, referenceInstant);
             }
         }
 
@@ -130,8 +158,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
         await storage.DeleteReminderAsync(reminderId);
 
-        var targetTime = DateTimeOffset.FromUnixTimeMilliseconds(reminder.TargetTime).DateTime;
-        var targetInstant = Instant.FromDateTimeUtc(targetTime);
+        var targetInstant = Instant.FromUnixTimeMilliseconds(reminder.TargetTime);
 
         Instant newTriggerInstant;
         if (interval == SnoozeInterval.WhenItStarts || interval == SnoozeInterval.OneMinuteBeforeStart)
@@ -201,7 +228,14 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
             return null;
         }
 
-        return provider.GetEventStartTime(rawData, occurrenceTime);
+        try
+        {
+            return provider.GetEventStartTime(rawData, occurrenceTime);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async Task<RemindersRebuildResult> RebuildAllRemindersAsync(CancellationToken cancellationToken = default)

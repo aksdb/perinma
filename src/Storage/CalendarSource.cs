@@ -202,7 +202,6 @@ public class DatabaseCalendarSource(
         {
             if (!providers.TryGetValue(group.Key, out var provider))
             {
-                Console.WriteLine($"No provider found for account type: {group.Key}");
                 continue;
             }
 
@@ -211,7 +210,7 @@ public class DatabaseCalendarSource(
                 {
                     Reference = new EventReference
                     {
-                        Calendar = storage.GetCachedCalendar(new Guid(e.CalendarId)) 
+                        Calendar = storage.GetCachedCalendar(new Guid(e.CalendarId))
                                    ?? throw new InvalidOperationException("calendar inconsistency"),
                         Id = Guid.Parse(e.EventId),
                         ExternalId = e.ExternalId,
@@ -223,7 +222,31 @@ public class DatabaseCalendarSource(
             try
             {
                 var parsedEvents = provider.ParseCalendarEvents(rawEvents, interval);
+
+                // Add fallback events for any that weren't parsed (e.g., unknown account types, missing raw data)
+                var parsedEventIds = parsedEvents.Select(e => e.Reference.Id).ToHashSet();
+                var fallbackEvents = rawEvents
+                    .Where(re => !parsedEventIds.Contains(re.Reference.Id) && string.IsNullOrEmpty(re.RawData))
+                    .Select(re =>
+                    {
+                        var eventData = group.First(e => e.EventId == re.Reference.Id.ToString());
+                        return new CalendarEvent
+                        {
+                            Reference = re.Reference,
+                            StartTime = eventData.StartTime.HasValue
+                                ? Instant.FromUnixTimeSeconds(eventData.StartTime.Value).InUtc().LocalDateTime
+                                : LocalDateTime.FromDateTime(DateTime.UtcNow),
+                            EndTime = eventData.EndTime.HasValue
+                                ? Instant.FromUnixTimeSeconds(eventData.EndTime.Value).InUtc().LocalDateTime
+                                : LocalDateTime.FromDateTime(DateTime.UtcNow),
+                            Title = eventData.Title ?? "Untitled",
+                            ChangedAt = eventData.ChangedAt.HasValue
+                                ? Instant.FromUnixTimeSeconds(eventData.ChangedAt.Value).InUtc().LocalDateTime.ToDateTimeUnspecified()
+                                : null
+                        };
+                    });
                 calendarEvents.AddRange(parsedEvents);
+                calendarEvents.AddRange(fallbackEvents);
             }
             catch (Exception ex)
             {

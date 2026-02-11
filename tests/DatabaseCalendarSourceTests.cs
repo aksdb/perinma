@@ -1,10 +1,13 @@
 using CredentialStore;
 using Google.Apis.Json;
+using NodaTime;
 using perinma.Models;
 using perinma.Services;
+using perinma.Services.CalDAV;
+using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Storage.Models;
-using perinma.Tests.Fakes;
+using tests.Fakes;
 
 using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
 using GoogleEventDateTime =  Google.Apis.Calendar.v3.Data.EventDateTime;
@@ -19,8 +22,10 @@ public class DatabaseCalendarSourceTests
         var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
         storage = new SqliteStorage(database, credentialManager);
 
-        var googleProvider = new FakeGoogleCalendarProvider(credentialManager);
-        var calDavProvider = new FakeCalDavCalendarProvider(credentialManager);
+        var googleServiceStub = new GoogleCalendarServiceStub();
+        var calDavServiceStub = new CalDavServiceStub();
+        var googleProvider = new GoogleCalendarProvider(googleServiceStub, credentialManager);
+        var calDavProvider = new CalDavCalendarProvider(calDavServiceStub, credentialManager);
         var providers = new Dictionary<AccountType, ICalendarProvider>
         {
             { AccountType.Google, googleProvider },
@@ -52,33 +57,42 @@ public class DatabaseCalendarSourceTests
         var eventDbo = new CalendarEventDbo
         {
             CalendarId = calendarId,
-            EventId = Guid.NewGuid().ToString(),
             ExternalId = externalId,
             StartTime = new DateTimeOffset(startTime).ToUnixTimeSeconds(),
             EndTime = new DateTimeOffset(endTime).ToUnixTimeSeconds(),
             Title = title,
             ChangedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
         };
-        await storage.CreateOrUpdateEventAsync(eventDbo);
+        var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
 
         if (rawData != null)
         {
-            await storage.SetEventDataJson(eventDbo.EventId, "rawData", rawData);
+            await storage.SetEventDataJson(eventId, "rawData", rawData);
         }
 
-        return eventDbo.EventId;
+        return eventId;
     }
 
     private static GoogleEventDateTime CreateGoogleEventDateTime(DateTime dateTime, TimeZoneInfo? timeZone = null)
     {
-        return new GoogleEventDateTime
+        var eventDateTime = new GoogleEventDateTime
         {
-            DateTimeRaw = dateTime.ToString("o"),
-            TimeZone = timeZone?.Id ?? TimeZoneInfo.Local.Id
+            DateTimeRaw = dateTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffffK"),
         };
+
+        if (dateTime.Kind == DateTimeKind.Utc)
+        {
+            eventDateTime.TimeZone = null;
+        }
+        else
+        {
+            eventDateTime.TimeZone = timeZone?.Id ?? TimeZoneInfo.Local.Id;
+        }
+
+        return eventDateTime;
     }
 
-    private static string BuildGoogleEventJson(string eventId, DateTime startTime, DateTime endTime, string title, string status = "confirmed")
+    private static string BuildGoogleEventJson(string eventId, DateTime startTime, DateTime endTime, string title, string status = "confirmed", DateTime? updated = null)
     {
         var googleEvent = new GoogleEvent
         {
@@ -88,7 +102,17 @@ public class DatabaseCalendarSourceTests
             Start = CreateGoogleEventDateTime(startTime),
             End = CreateGoogleEventDateTime(endTime)
         };
-        return NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
+        var json = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
+
+        // Manually inject "updated" field if provided
+        if (updated.HasValue)
+        {
+            var utcDateTime = DateTime.SpecifyKind(updated.Value, DateTimeKind.Utc);
+            var updatedValue = utcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ");
+            json = json.Insert(1, $"\"updated\":\"{updatedValue}\",");
+        }
+
+        return json;
     }
 
     private static string BuildCalDavICalendar(string uid, DateTime startTime, DateTime endTime, string title)
@@ -179,7 +203,8 @@ END:VCALENDAR";
 
         // Act
         Console.WriteLine($"Getting events from {weekStart} to {weekEnd}");
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
         Console.WriteLine($"Got {events.Count} events");
 
         // Assert
@@ -241,7 +266,8 @@ END:VCALENDAR";
         await storage.CreateOrUpdateEventAsync(eventDbo);
 
         // Act
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         // Assert
         Assert.That(events, Has.Count.EqualTo(0));
@@ -270,7 +296,7 @@ END:VCALENDAR";
         await storage.CreateOrUpdateCalendarAsync(calendar);
 
         // Create event before time range (ends exactly at weekStart)
-        await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
+        var beforeRangeEventId = await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
         {
             CalendarId = calendar.CalendarId,
             EventId = Guid.NewGuid().ToString(),
@@ -280,7 +306,7 @@ END:VCALENDAR";
         });
 
         // Create event in time range
-        await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
+        var inRangeEventId = await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
         {
             CalendarId = calendar.CalendarId,
             EventId = Guid.NewGuid().ToString(),
@@ -290,7 +316,7 @@ END:VCALENDAR";
         });
 
         // Create event after time range (starts exactly at weekEnd)
-        await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
+        var afterRangeEventId = await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
         {
             CalendarId = calendar.CalendarId,
             EventId = Guid.NewGuid().ToString(),
@@ -300,7 +326,7 @@ END:VCALENDAR";
         });
 
         // Create event that spans the time range
-        await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
+        var spansRangeEventId = await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
         {
             CalendarId = calendar.CalendarId,
             EventId = Guid.NewGuid().ToString(),
@@ -309,8 +335,32 @@ END:VCALENDAR";
             Title = "Spans Range"
         });
 
+        // Set up RawData for the events
+        var eventsWithRawData = new[]
+        {
+            (beforeRangeEventId, weekStart.AddDays(-1), weekStart, "Before Range"),
+            (inRangeEventId, weekStart.AddHours(10), weekStart.AddHours(11), "In Range"),
+            (afterRangeEventId, weekEnd, weekEnd.AddHours(1), "After Range"),
+            (spansRangeEventId, weekStart.AddDays(-1), weekStart.AddDays(1), "Spans Range")
+        };
+
+        foreach (var (eventId, start, end, title) in eventsWithRawData)
+        {
+            var googleEvent = new GoogleEvent
+            {
+                Id = eventId.ToString(),
+                Summary = title,
+                Status = "confirmed",
+                Start = CreateGoogleEventDateTime(start),
+                End = CreateGoogleEventDateTime(end)
+            };
+            var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
+            await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
+        }
+
         // Act
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         // Assert - Should only get events that overlap with the time range
         Assert.That(events, Has.Count.EqualTo(2));
@@ -341,16 +391,15 @@ END:VCALENDAR";
         var startTime = weekStart.AddHours(10).AddMinutes(30);
         var endTime = weekStart.AddHours(11).AddMinutes(30);
         var changedAt = weekStart.AddDays(-1).AddHours(12);
-        var eventId = Guid.NewGuid().ToString();
         var externalId = "event1";
 
         await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "Google" });
         await storage.CreateOrUpdateCalendarAsync(calendar);
 
-        await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
+        var eventId = await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
         {
             CalendarId = calendar.CalendarId,
-            EventId = eventId,
+            EventId = Guid.NewGuid().ToString(),
             ExternalId = externalId,
             StartTime = new DateTimeOffset(startTime).ToUnixTimeSeconds(),
             EndTime = new DateTimeOffset(endTime).ToUnixTimeSeconds(),
@@ -358,17 +407,18 @@ END:VCALENDAR";
             ChangedAt = new DateTimeOffset(changedAt).ToUnixTimeSeconds()
         });
 
-        var rawEventJson = BuildGoogleEventJson(externalId, startTime, endTime, "Test Event");
+        var rawEventJson = BuildGoogleEventJson(externalId, startTime, endTime, "Test Event", status: "confirmed", updated: changedAt);
         await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
 
         // Act
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         // Assert
         Assert.That(events, Has.Count.EqualTo(1));
         var calendarEvent = events[0];
-        Assert.That(calendarEvent.StartTime.DateTime, Is.EqualTo(startTime));
-        Assert.That(calendarEvent.EndTime.DateTime, Is.EqualTo(endTime));
+        Assert.That(calendarEvent.StartTime, Is.EqualTo(LocalDateTime.FromDateTime(startTime)));
+        Assert.That(calendarEvent.EndTime, Is.EqualTo(LocalDateTime.FromDateTime(endTime)));
         Assert.That(calendarEvent.ChangedAt, Is.EqualTo(changedAt));
     }
 
@@ -395,7 +445,8 @@ END:VCALENDAR";
         await storage.CreateOrUpdateCalendarAsync(calendar);
 
         // Act
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         // Assert
         Assert.That(events, Has.Count.EqualTo(0));
@@ -436,25 +487,41 @@ END:VCALENDAR";
         await storage.CreateOrUpdateCalendarAsync(calendar2);
 
         // Create events in both calendars
-        await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
+        var eventStart1 = weekStart.AddHours(10);
+        var eventEnd1 = weekStart.AddHours(11);
+        var eventStart2 = weekStart.AddHours(12);
+        var eventEnd2 = weekStart.AddHours(13);
+
+        var event1Dbo = new CalendarEventDbo
         {
             CalendarId = calendar1.CalendarId,
             EventId = Guid.NewGuid().ToString(),
-            StartTime = new DateTimeOffset(weekStart.AddHours(10)).ToUnixTimeSeconds(),
-            EndTime = new DateTimeOffset(weekStart.AddHours(11)).ToUnixTimeSeconds(),
+            ExternalId = "work_event",
+            StartTime = new DateTimeOffset(eventStart1).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(eventEnd1).ToUnixTimeSeconds(),
             Title = "Work Event"
-        });
-        await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
+        };
+        var event1Id = await storage.CreateOrUpdateEventAsync(event1Dbo);
+
+        var event2Dbo = new CalendarEventDbo
         {
             CalendarId = calendar2.CalendarId,
             EventId = Guid.NewGuid().ToString(),
-            StartTime = new DateTimeOffset(weekStart.AddHours(12)).ToUnixTimeSeconds(),
-            EndTime = new DateTimeOffset(weekStart.AddHours(13)).ToUnixTimeSeconds(),
+            ExternalId = "personal_event",
+            StartTime = new DateTimeOffset(eventStart2).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(eventEnd2).ToUnixTimeSeconds(),
             Title = "Personal Event"
-        });
+        };
+        var event2Id = await storage.CreateOrUpdateEventAsync(event2Dbo);
+
+        var rawEvent1Json = BuildGoogleEventJson("work_event", eventStart1, eventEnd1, "Work Event");
+        await storage.SetEventDataJson(event1Id, "rawData", rawEvent1Json);
+        var rawEvent2Json = BuildGoogleEventJson("personal_event", eventStart2, eventEnd2, "Personal Event");
+        await storage.SetEventDataJson(event2Id, "rawData", rawEvent2Json);
 
         // Act
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         // Assert
         Assert.That(events, Has.Count.EqualTo(2));
@@ -493,17 +560,27 @@ END:VCALENDAR";
         await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "Google" });
         await storage.CreateOrUpdateCalendarAsync(calendar);
 
-        await storage.CreateOrUpdateEventAsync(new CalendarEventDbo
+        var eventStart = weekStart.AddHours(10);
+        var eventEnd = weekStart.AddHours(11);
+        var externalId = "test_event";
+
+        var eventDbo = new CalendarEventDbo
         {
             CalendarId = calendar.CalendarId,
             EventId = Guid.NewGuid().ToString(),
-            StartTime = new DateTimeOffset(weekStart.AddHours(10)).ToUnixTimeSeconds(),
-            EndTime = new DateTimeOffset(weekStart.AddHours(11)).ToUnixTimeSeconds(),
+            ExternalId = externalId,
+            StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
+            EndTime = new DateTimeOffset(eventEnd).ToUnixTimeSeconds(),
             Title = "Test Event"
-        });
+        };
+        var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
+
+        var rawEventJson = BuildGoogleEventJson(externalId, eventStart, eventEnd, "Test Event");
+        await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
 
         // Act
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         // Assert
         Assert.That(events, Has.Count.EqualTo(1));
@@ -531,19 +608,18 @@ END:VCALENDAR";
 
         var eventStart = weekStart.AddHours(10);
         var eventEnd = weekStart.AddHours(11);
-        var eventId = Guid.NewGuid().ToString();
 
         var eventDbo = new CalendarEventDbo
         {
             CalendarId = calendarId,
-            EventId = eventId,
+            EventId = Guid.NewGuid().ToString(),
             ExternalId = "recurring_event",
             StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
             EndTime = new DateTimeOffset(weekEnd.AddDays(30)).ToUnixTimeSeconds(),
             Title = "Weekly Meeting",
             ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
         };
-        await storage.CreateOrUpdateEventAsync(eventDbo);
+        var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
 
         var googleEvent = new GoogleEvent
         {
@@ -558,7 +634,8 @@ END:VCALENDAR";
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
         await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
 
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         Assert.That(events.Count, Is.GreaterThan(0));
         foreach (var evt in events)
@@ -580,19 +657,18 @@ END:VCALENDAR";
 
         var eventStart = weekStart.AddHours(10);
         var eventEnd = weekStart.AddHours(11);
-        var eventId = Guid.NewGuid().ToString();
 
         var eventDbo = new CalendarEventDbo
         {
             CalendarId = calendarId,
-            EventId = eventId,
+            EventId = Guid.NewGuid().ToString(),
             ExternalId = "single_event",
             StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
             EndTime = new DateTimeOffset(eventEnd).ToUnixTimeSeconds(),
             Title = "One-time Meeting",
             ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
         };
-        await storage.CreateOrUpdateEventAsync(eventDbo);
+        var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
 
         var googleEvent = new GoogleEvent
         {
@@ -606,12 +682,13 @@ END:VCALENDAR";
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
         await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
 
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         Assert.That(events, Has.Count.EqualTo(1));
         Assert.That(events[0].Title, Is.EqualTo("One-time Meeting"));
-        Assert.That(events[0].StartTime.DateTime, Is.EqualTo(eventStart));
-        Assert.That(events[0].EndTime.DateTime, Is.EqualTo(eventEnd));
+        Assert.That(events[0].StartTime, Is.EqualTo(Instant.FromDateTimeUtc(eventStart).InUtc().LocalDateTime));
+        Assert.That(events[0].EndTime, Is.EqualTo(Instant.FromDateTimeUtc(eventEnd).InUtc().LocalDateTime));
     }
 
     [Test]
@@ -637,19 +714,18 @@ END:VCALENDAR";
 
         var eventStart = weekStart.AddHours(10);
         var eventEnd = weekStart.AddHours(11);
-        var eventId = Guid.NewGuid().ToString();
 
         var eventDbo = new CalendarEventDbo
         {
             CalendarId = calendar.CalendarId,
-            EventId = eventId,
+            EventId = Guid.NewGuid().ToString(),
             ExternalId = "uid_123",
             StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
             EndTime = new DateTimeOffset(weekEnd.AddDays(30)).ToUnixTimeSeconds(),
             Title = "Daily Standup",
             ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
         };
-        await storage.CreateOrUpdateEventAsync(eventDbo);
+        var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
 
         var rawICalendar = $@"BEGIN:VCALENDAR
 VERSION:2.0
@@ -665,7 +741,8 @@ END:VCALENDAR";
 
         await storage.SetEventData(eventId, "rawData", rawICalendar);
 
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         Assert.That(events.Count, Is.GreaterThan(0));
         foreach (var evt in events)
@@ -697,19 +774,18 @@ END:VCALENDAR";
 
         var eventStart = weekStart.AddHours(10);
         var eventEnd = weekStart.AddHours(11);
-        var eventId = Guid.NewGuid().ToString();
 
         var eventDbo = new CalendarEventDbo
         {
             CalendarId = calendar.CalendarId,
-            EventId = eventId,
+            EventId = Guid.NewGuid().ToString(),
             ExternalId = "uid_456",
             StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
             EndTime = new DateTimeOffset(eventEnd).ToUnixTimeSeconds(),
             Title = "One-time Event",
             ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
         };
-        await storage.CreateOrUpdateEventAsync(eventDbo);
+        var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
 
         var rawICalendar = $@"BEGIN:VCALENDAR
 VERSION:2.0
@@ -724,12 +800,13 @@ END:VCALENDAR";
 
         await storage.SetEventData(eventId, "rawData", rawICalendar);
 
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         Assert.That(events, Has.Count.EqualTo(1));
         Assert.That(events[0].Title, Is.EqualTo("One-time Event"));
-        Assert.That(events[0].StartTime.DateTime, Is.EqualTo(eventStart));
-        Assert.That(events[0].EndTime.DateTime, Is.EqualTo(eventEnd));
+        Assert.That(events[0].StartTime, Is.EqualTo(LocalDateTime.FromDateTime(eventStart)));
+        Assert.That(events[0].EndTime, Is.EqualTo(LocalDateTime.FromDateTime(eventEnd)));
     }
 
     [Test]
@@ -745,19 +822,18 @@ END:VCALENDAR";
 
         var eventStart = weekStart.AddDays(-14);
         var eventEnd = weekStart.AddDays(-14).AddHours(1);
-        var eventId = Guid.NewGuid().ToString();
 
         var eventDbo = new CalendarEventDbo
         {
             CalendarId = calendarId,
-            EventId = eventId,
+            EventId = Guid.NewGuid().ToString(),
             ExternalId = "past_recurring",
             StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
             EndTime = new DateTimeOffset(eventStart.AddDays(7)).ToUnixTimeSeconds(),
             Title = "Past Event",
             ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
         };
-        await storage.CreateOrUpdateEventAsync(eventDbo);
+        var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
 
         var googleEvent = new GoogleEvent
         {
@@ -772,7 +848,8 @@ END:VCALENDAR";
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
         await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
 
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         Assert.That(events, Has.Count.EqualTo(0));
     }
@@ -814,7 +891,8 @@ END:VCALENDAR";
         };
         await storage.CreateOrUpdateEventAsync(eventDbo);
 
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         Assert.That(events, Has.Count.EqualTo(1));
         Assert.That(events[0].Title, Is.EqualTo("Unknown Type Event"));
@@ -833,19 +911,18 @@ END:VCALENDAR";
 
         var eventStart = weekStart.AddHours(10);
         var eventEnd = weekStart.AddHours(11);
-        var eventId = Guid.NewGuid().ToString();
 
         var eventDbo = new CalendarEventDbo
         {
             CalendarId = calendarId,
-            EventId = eventId,
+            EventId = Guid.NewGuid().ToString(),
             ExternalId = "recurring_with_tz",
             StartTime = new DateTimeOffset(eventStart).ToUnixTimeSeconds(),
             EndTime = new DateTimeOffset(weekEnd.AddDays(30)).ToUnixTimeSeconds(),
             Title = "Weekly Meeting with TZ",
             ChangedAt = new DateTimeOffset(weekStart).ToUnixTimeSeconds()
         };
-        await storage.CreateOrUpdateEventAsync(eventDbo);
+        var eventId = await storage.CreateOrUpdateEventAsync(eventDbo);
 
         var googleEvent = new GoogleEvent
         {
@@ -860,7 +937,8 @@ END:VCALENDAR";
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
         await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
 
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         Assert.That(events.Count, Is.GreaterThan(0));
         foreach (var evt in events)
@@ -937,18 +1015,20 @@ END:VCALENDAR";
             }
             """);
         
-        var events = calendarSource.GetCalendarEvents(new DateTime(2022, 11, 10), new DateTime(2022, 12, 01));
+        var events = calendarSource.GetCalendarEvents(
+            new Interval(Instant.FromDateTimeUtc(new DateTime(2022, 11, 10, 0, 0, 0, DateTimeKind.Utc)),
+            Instant.FromDateTimeUtc(new DateTime(2022, 12, 01, 0, 0, 0, DateTimeKind.Utc))));
         Assert.That(events.Count, Is.EqualTo(2));
         
         var event1 = events[0];
         var event2 = events[1];
         Assert.Multiple(() =>
         {
-            Assert.That(event1.StartTime.DateTime, Is.EqualTo(new DateTime(2022, 11, 15, 0, 0, 0)));
-            Assert.That(event1.EndTime.DateTime, Is.EqualTo(new DateTime(2022, 11, 16, 0, 0, 0)));
+            Assert.That(event1.StartTime, Is.EqualTo(LocalDateTime.FromDateTime(new DateTime(2022, 11, 15, 0, 0, 0, DateTimeKind.Unspecified))));
+            Assert.That(event1.EndTime, Is.EqualTo(LocalDateTime.FromDateTime(new DateTime(2022, 11, 16, 0, 0, 0, DateTimeKind.Unspecified))));
 
-            Assert.That(event2.StartTime.DateTime, Is.EqualTo(new DateTime(2022, 11, 29, 0, 0, 0)));
-            Assert.That(event2.EndTime.DateTime, Is.EqualTo(new DateTime(2022, 11, 30, 0, 0, 0)));
+            Assert.That(event2.StartTime, Is.EqualTo(LocalDateTime.FromDateTime(new DateTime(2022, 11, 29, 0, 0, 0, DateTimeKind.Unspecified))));
+            Assert.That(event2.EndTime, Is.EqualTo(LocalDateTime.FromDateTime(new DateTime(2022, 11, 30, 0, 0, 0, DateTimeKind.Unspecified))));
         });
     }
 
@@ -1023,13 +1103,14 @@ END:VCALENDAR";
             NewtonsoftJsonSerializer.Instance.Serialize(cancelledGoogleEvent));
 
         // Act
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         // Assert: Should have 6 occurrences, not 7 (one was cancelled)
         Assert.That(events.Count, Is.EqualTo(6));
         
         // Verify the cancelled date is not in the results
-        var cancelledDate = cancelledStart.Date;
+        var cancelledDate = LocalDate.FromDateTime(cancelledStart.Date);
         var eventDates = events.Select(e => e.StartTime.Date).ToList();
         Assert.That(eventDates, Does.Not.Contain(cancelledDate));
     }
@@ -1102,16 +1183,16 @@ END:VCALENDAR";
             NewtonsoftJsonSerializer.Instance.Serialize(modifiedGoogleEvent));
 
         // Act
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         // Assert: Should still have 7 occurrences
         Assert.That(events.Count, Is.EqualTo(7));
 
         // Verify the modified instance appears with the new time (2pm UTC, not 10am UTC)
-        // Note: The returned time is in local timezone, so we compare in UTC
-        var wednesdayEvents = events.Where(e => e.StartTime.Date == weekStart.AddDays(2).Date).ToList();
+        var wednesdayEvents = events.Where(e => e.StartTime.Date == LocalDate.FromDateTime(weekStart.AddDays(2).Date)).ToList();
         Assert.That(wednesdayEvents.Count, Is.EqualTo(1));
-        Assert.That(wednesdayEvents[0].StartTime.ToUtc().Hour, Is.EqualTo(14)); // 2pm UTC
+        Assert.That(wednesdayEvents[0].StartTime.Hour, Is.EqualTo(14)); // 2pm
         Assert.That(wednesdayEvents[0].Title, Is.EqualTo("Daily Standup (Rescheduled)"));
     }
 
@@ -1155,7 +1236,8 @@ END:VCALENDAR";
             NewtonsoftJsonSerializer.Instance.Serialize(cancelledGoogleEvent));
 
         // Act
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         // Assert: Cancelled events should not appear
         Assert.That(events.Count, Is.EqualTo(0));
@@ -1201,13 +1283,14 @@ END:VCALENDAR";
             NewtonsoftJsonSerializer.Instance.Serialize(modifiedGoogleEvent));
 
         // Act
-        var events = calendarSource.GetCalendarEvents(weekStart, weekEnd);
+        var interval = new Interval(Instant.FromDateTimeUtc(weekStart), Instant.FromDateTimeUtc(weekEnd));
+        var events = calendarSource.GetCalendarEvents(interval);
 
         // Assert: Modified (non-cancelled) instances should appear
         Assert.That(events.Count, Is.EqualTo(1));
         Assert.That(events[0].Title, Is.EqualTo("Daily Standup (Rescheduled)"));
-        // Note: The returned time is in local timezone, so we compare in UTC
-        Assert.That(events[0].StartTime.ToUtc().Hour, Is.EqualTo(14)); // 2pm UTC
+        // Assert that the time is 2pm
+        Assert.That(events[0].StartTime.Hour, Is.EqualTo(14)); // 2pm
     }
 
     #endregion
