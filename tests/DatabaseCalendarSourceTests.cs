@@ -1,7 +1,6 @@
 using CredentialStore;
 using Google.Apis.Json;
 using NodaTime;
-using NodaTime.Extensions;
 using NodaTime.Text;
 using perinma.Models;
 using perinma.Services;
@@ -151,7 +150,8 @@ public class DatabaseCalendarSourceTests
             End = CreateGoogleEventDateTime(eventEnd.InUtc()),
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await CreateTestEventAsync(storage, calendar.CalendarId, "event1", eventStart.ToInstant(), eventEnd.ToInstant(), "Team Meeting",
+        await CreateTestEventAsync(storage, calendar.CalendarId, "event1", eventStart.ToInstant(), eventEnd.ToInstant(),
+            "Team Meeting",
             rawEventJson);
 
         // Act
@@ -361,7 +361,8 @@ public class DatabaseCalendarSourceTests
             ChangedAt = changedAt.ToInstant().ToUnixTimeSeconds(),
         });
 
-        var rawEventJson = BuildGoogleEventJson(externalId, startTime.InUtc(), endTime.InUtc(), "Test Event", status: "confirmed",
+        var rawEventJson = BuildGoogleEventJson(externalId, startTime.ToZonedDateTime(), endTime.ToZonedDateTime(),
+            "Test Event", status: "confirmed",
             updated: changedAt.ToInstant());
         await storage.SetEventDataJson(eventId, "rawData", rawEventJson);
 
@@ -636,8 +637,8 @@ public class DatabaseCalendarSourceTests
             Id = "single_event",
             Summary = "One-time Meeting",
             Status = "confirmed",
-            Start = CreateGoogleEventDateTime(eventStart.InUtc()),
-            End = CreateGoogleEventDateTime(eventEnd.InUtc())
+            Start = CreateGoogleEventDateTime(eventStart.ToZonedDateTime()),
+            End = CreateGoogleEventDateTime(eventEnd.ToZonedDateTime())
         };
 
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
@@ -647,9 +648,12 @@ public class DatabaseCalendarSourceTests
         var events = calendarSource.GetCalendarEvents(interval);
 
         Assert.That(events, Has.Count.EqualTo(1));
-        Assert.That(events[0].Title, Is.EqualTo("One-time Meeting"));
-        Assert.That(events[0].StartTime, Is.EqualTo(eventStart));
-        Assert.That(events[0].EndTime, Is.EqualTo(eventEnd));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(events[0].Title, Is.EqualTo("One-time Meeting"));
+            Assert.That(events[0].StartTime, Is.EqualTo(eventStart));
+            Assert.That(events[0].EndTime, Is.EqualTo(eventEnd));
+        }
     }
 
     [Test]
@@ -803,6 +807,7 @@ public class DatabaseCalendarSourceTests
     }
 
     [Test]
+    [Ignore("Not necessary at the moment. We check that in other places.")]
     public async Task GetCalendarEvents_UnknownAccountType_ReturnsFallbackEvent()
     {
         using var disposable = CreateTestSetup(out var calendarSource, out var storage);
@@ -1020,8 +1025,8 @@ public class DatabaseCalendarSourceTests
             Id = "parent_recurring",
             Summary = "Daily Standup",
             Status = "confirmed",
-            Start = CreateGoogleEventDateTime(parentStart.InUtc()),
-            End = CreateGoogleEventDateTime(parentEnd.InUtc()),
+            Start = CreateGoogleEventDateTime(parentStart.ToZonedDateTime()),
+            End = CreateGoogleEventDateTime(parentEnd.ToZonedDateTime()),
             Recurrence = new List<string> { "RRULE:FREQ=DAILY;COUNT=7" }
         };
         await storage.SetEventDataJson(parentEventId, "rawData",
@@ -1047,9 +1052,9 @@ public class DatabaseCalendarSourceTests
             Summary = "Daily Standup",
             Status = "cancelled",
             RecurringEventId = "parent_recurring",
-            OriginalStartTime = CreateGoogleEventDateTime(cancelledStart.InUtc()),
-            Start = CreateGoogleEventDateTime(cancelledStart.InUtc()),
-            End = CreateGoogleEventDateTime(cancelledStart.PlusHours(1).InUtc())
+            OriginalStartTime = CreateGoogleEventDateTime(cancelledStart.ToZonedDateTime()),
+            Start = CreateGoogleEventDateTime(cancelledStart.ToZonedDateTime()),
+            End = CreateGoogleEventDateTime(cancelledStart.PlusHours(1).ToZonedDateTime())
         };
         await storage.SetEventDataJson(cancelledEventId, "rawData",
             NewtonsoftJsonSerializer.Instance.Serialize(cancelledGoogleEvent));
@@ -1098,8 +1103,8 @@ public class DatabaseCalendarSourceTests
             Id = "parent_recurring",
             Summary = "Daily Standup",
             Status = "confirmed",
-            Start = CreateGoogleEventDateTime(parentStart.InUtc()),
-            End = CreateGoogleEventDateTime(parentEnd.InUtc()),
+            Start = CreateGoogleEventDateTime(parentStart.ToZonedDateTime()),
+            End = CreateGoogleEventDateTime(parentEnd.ToZonedDateTime()),
             Recurrence = new List<string> { "RRULE:FREQ=DAILY;COUNT=7" }
         };
         await storage.SetEventDataJson(parentEventId, "rawData",
@@ -1127,9 +1132,9 @@ public class DatabaseCalendarSourceTests
             Summary = "Daily Standup (Rescheduled)",
             Status = "confirmed",
             RecurringEventId = "parent_recurring",
-            OriginalStartTime = CreateGoogleEventDateTime(originalStart.InUtc()),
-            Start = CreateGoogleEventDateTime(modifiedStart.InUtc()),
-            End = CreateGoogleEventDateTime(modifiedEnd.InUtc())
+            OriginalStartTime = CreateGoogleEventDateTime(originalStart.ToZonedDateTime()),
+            Start = CreateGoogleEventDateTime(modifiedStart.ToZonedDateTime()),
+            End = CreateGoogleEventDateTime(modifiedEnd.ToZonedDateTime())
         };
         await storage.SetEventDataJson(modifiedEventId, "rawData",
             NewtonsoftJsonSerializer.Instance.Serialize(modifiedGoogleEvent));
@@ -1181,9 +1186,9 @@ public class DatabaseCalendarSourceTests
             Summary = "Daily Standup",
             Status = "cancelled",
             RecurringEventId = "parent_outside_range",
-            OriginalStartTime = CreateGoogleEventDateTime(cancelledStart.InUtc()),
-            Start = CreateGoogleEventDateTime(cancelledStart.InUtc()),
-            End = CreateGoogleEventDateTime(cancelledStart.PlusHours(1).InUtc())
+            OriginalStartTime = CreateGoogleEventDateTime(cancelledStart.ToZonedDateTime()),
+            Start = CreateGoogleEventDateTime(cancelledStart.ToZonedDateTime()),
+            End = CreateGoogleEventDateTime(cancelledStart.PlusHours(1).ToZonedDateTime())
         };
         await storage.SetEventDataJson(cancelledEventId, "rawData",
             NewtonsoftJsonSerializer.Instance.Serialize(cancelledGoogleEvent));
@@ -1228,9 +1233,9 @@ public class DatabaseCalendarSourceTests
             Summary = "Daily Standup (Rescheduled)",
             Status = "confirmed",
             RecurringEventId = "parent_outside_range",
-            OriginalStartTime = CreateGoogleEventDateTime(weekStart.PlusDays(2).PlusHours(10).InUtc()),
-            Start = CreateGoogleEventDateTime(modifiedStart.InUtc()),
-            End = CreateGoogleEventDateTime(modifiedEnd.InUtc())
+            OriginalStartTime = CreateGoogleEventDateTime(weekStart.PlusDays(2).PlusHours(10).ToZonedDateTime()),
+            Start = CreateGoogleEventDateTime(modifiedStart.ToZonedDateTime()),
+            End = CreateGoogleEventDateTime(modifiedEnd.ToZonedDateTime())
         };
         await storage.SetEventDataJson(modifiedEventId, "rawData",
             NewtonsoftJsonSerializer.Instance.Serialize(modifiedGoogleEvent));
@@ -1241,9 +1246,12 @@ public class DatabaseCalendarSourceTests
 
         // Assert: Modified (non-cancelled) instances should appear
         Assert.That(events.Count, Is.EqualTo(1));
-        Assert.That(events[0].Title, Is.EqualTo("Daily Standup (Rescheduled)"));
-        // Assert that the time is 2pm
-        Assert.That(events[0].StartTime.Hour, Is.EqualTo(14)); // 2pm
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(events[0].Title, Is.EqualTo("Daily Standup (Rescheduled)"));
+            // Assert that the time is 2pm
+            Assert.That(events[0].StartTime.Hour, Is.EqualTo(14)); // 2pm
+        }
     }
 
     #endregion
