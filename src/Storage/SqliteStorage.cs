@@ -1,15 +1,14 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using NodaTime;
+using perinma.Models;
 using perinma.Services;
 using perinma.Storage.Models;
-using perinma.Models;
 
 namespace perinma.Storage;
 
@@ -286,7 +285,7 @@ public class SqliteStorage : IDisposable
         }
         else
         {
-            var calendarId = System.Guid.NewGuid().ToString();
+            var calendarId = Guid.NewGuid().ToString();
             var rowsAffected = await _connection.ExecuteAsync(
                 "INSERT INTO calendar (account_id, calendar_id, external_id, name, color, enabled, last_sync) " +
                 "VALUES (@AccountId, @CalendarId, @ExternalId, @Name, @Color, @Enabled, @LastSync)",
@@ -997,7 +996,8 @@ public class SqliteStorage : IDisposable
 
     public async Task<bool> CreateOrUpdateAddressBookAsync(AddressBookDbo addressBook)
     {
-        var existing = await GetAddressBookByExternalIdAsync(addressBook.AccountId, addressBook.ExternalId ?? string.Empty);
+        var existing =
+            await GetAddressBookByExternalIdAsync(addressBook.AccountId, addressBook.ExternalId ?? string.Empty);
 
         if (existing != null)
         {
@@ -1156,9 +1156,20 @@ public class SqliteStorage : IDisposable
         );
     }
 
+    public async Task<string?> GetContactPhotoUrlAsync(string addressBookId, string externalId)
+    {
+        return await _connection.QuerySingleOrDefaultAsync<string?>(
+            "SELECT photo_url AS PhotoUrl " +
+            "FROM contact WHERE address_book_id = @AddressBookId AND external_id = @ExternalId",
+            new { AddressBookId = addressBookId, ExternalId = externalId },
+            commandTimeout: 30
+        );
+    }
+
     public async Task<string> CreateOrUpdateContactAsync(ContactDbo contactDbo)
     {
-        var existing = await GetContactByExternalIdAsync(contactDbo.AddressBookId, contactDbo.ExternalId ?? string.Empty);
+        var existing =
+            await GetContactByExternalIdAsync(contactDbo.AddressBookId, contactDbo.ExternalId ?? string.Empty);
 
         if (existing != null)
         {

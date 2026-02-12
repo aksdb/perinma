@@ -163,6 +163,12 @@ public partial class ContactItemViewModel : ObservableObject
             if (PhotoUrl.StartsWith("blob://", StringComparison.OrdinalIgnoreCase))
             {
                 var base64Data = PhotoUrl["blob://".Length..];
+                // Strip query parameters if present
+                var queryIndex = base64Data.IndexOf('?');
+                if (queryIndex >= 0)
+                {
+                    base64Data = base64Data[..queryIndex];
+                }
                 var bytes = Convert.FromBase64String(base64Data);
                 using var stream = new MemoryStream(bytes);
                 PhotoBitmap = new Bitmap(stream);

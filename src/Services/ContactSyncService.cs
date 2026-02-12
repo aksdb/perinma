@@ -3,13 +3,16 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using CommunityToolkit.Mvvm.Messaging;
+using perinma.Messaging;
+using perinma.Models;
 using perinma.Storage;
 using perinma.Storage.Models;
-using perinma.Models;
-using perinma.Messaging;
 
 namespace perinma.Services;
 
@@ -164,7 +167,8 @@ public class ContactSyncService
             Console.WriteLine($"Sync token invalid, performing full sync: {ex.Message}");
             isFullSync = true;
             result = await provider.GetAddressBooksAsync(account.AccountId, null, cancellationToken);
-            Console.WriteLine($"Found {result.AddressBooks.Count} address books in full sync for account {account.Name}");
+            Console.WriteLine(
+                $"Found {result.AddressBooks.Count} address books in full sync for account {account.Name}");
         }
 
         var currentSyncTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -202,7 +206,8 @@ public class ContactSyncService
                         break;
                     case DataAttribute.JsonText jsonText:
                         // For now, store JSON as text - could add SetAddressBookDataJsonAsync if needed
-                        await _storage.SetAddressBookDataAsync(addressBookDbo.AddressBookId, dataPair.Key, jsonText.value);
+                        await _storage.SetAddressBookDataAsync(addressBookDbo.AddressBookId, dataPair.Key,
+                            jsonText.value);
                         break;
                 }
             }
@@ -255,7 +260,8 @@ public class ContactSyncService
             isFullSync = true;
             result = await provider.GetContactsAsync(accountId, addressBook.ExternalId ?? string.Empty, null,
                 cancellationToken);
-            Console.WriteLine($"Found {result.Contacts.Count} contacts in full sync for address book {addressBook.Name}");
+            Console.WriteLine(
+                $"Found {result.Contacts.Count} contacts in full sync for address book {addressBook.Name}");
         }
 
         var currentSyncTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -278,8 +284,12 @@ public class ContactSyncService
                 continue;
             }
 
-            // Download photo and convert to blob:// URL
-            var photoBlobUrl = await DownloadPhotoAsBlobAsync(contact.PhotoUrl, cancellationToken);
+            // Get existing photo URL to check cache
+            var existingPhotoUrl =
+                await _storage.GetContactPhotoUrlAsync(addressBook.AddressBookId, contact.ExternalId);
+
+            // Download photo and convert to blob:// URL with hash
+            var photoBlobUrl = await DownloadPhotoAsBlobAsync(contact.PhotoUrl, existingPhotoUrl, cancellationToken);
 
             var contactDbo = new ContactDbo
             {
@@ -314,6 +324,7 @@ public class ContactSyncService
                         groupIds.Add(groupId);
                     }
                 }
+
                 await _storage.SetContactGroupMembershipAsync(contactId, groupIds);
             }
         }
@@ -400,16 +411,36 @@ public class ContactSyncService
 
     /// <summary>
     /// Downloads a photo URL and converts it to a blob:// URL with base64 data.
+    /// Uses a hash of the original URL to determine if re-download is needed.
     /// </summary>
-    private static async Task<string?> DownloadPhotoAsBlobAsync(string? photoUrl, CancellationToken cancellationToken)
+    private static async Task<string?> DownloadPhotoAsBlobAsync(
+        string? photoUrl,
+        string? existingPhotoBlobUrl,
+        CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(photoUrl) || !photoUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(photoUrl))
         {
-            return photoUrl; // Already a blob:// URL or invalid
+            return existingPhotoBlobUrl;
+        }
+
+        if (!photoUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return photoUrl;
         }
 
         try
         {
+            var photoUrlHash = ComputePhotoUrlHash(photoUrl);
+
+            if (!string.IsNullOrWhiteSpace(existingPhotoBlobUrl) && existingPhotoBlobUrl.StartsWith("blob://"))
+            {
+                var existingHash = ExtractHashFromBlobUrl(existingPhotoBlobUrl);
+                if (existingHash == photoUrlHash)
+                {
+                    return existingPhotoBlobUrl;
+                }
+            }
+
             using var httpClient = new HttpClient();
             using var response = await httpClient.GetAsync(photoUrl, cancellationToken).ConfigureAwait(false);
 
@@ -421,11 +452,39 @@ public class ContactSyncService
 
             var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
             var base64 = Convert.ToBase64String(bytes);
-            return $"blob://{base64}";
+            return $"blob://{base64}?hash={photoUrlHash}";
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error downloading photo: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Computes a SHA256 hash of a photo URL.
+    /// </summary>
+    private static string ComputePhotoUrlHash(string photoUrl)
+    {
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(photoUrl);
+        var hash = sha256.ComputeHash(bytes);
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Extracts the hash parameter from a blob URL.
+    /// </summary>
+    private static string? ExtractHashFromBlobUrl(string blobUrl)
+    {
+        try
+        {
+            var uri = new Uri(blobUrl);
+            var query = HttpUtility.ParseQueryString(uri.Query);
+            return query["hash"];
+        }
+        catch
+        {
             return null;
         }
     }

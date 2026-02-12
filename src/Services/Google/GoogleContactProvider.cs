@@ -11,25 +11,17 @@ namespace perinma.Services.Google;
 /// <summary>
 /// Google People API implementation of IContactProvider.
 /// </summary>
-public class GoogleContactProvider : IContactProvider
+public class GoogleContactProvider(
+    IGooglePeopleService googlePeopleService,
+    CredentialManagerService credentialManager)
+    : IContactProvider
 {
-    private readonly IGooglePeopleService _googlePeopleService;
-    private readonly CredentialManagerService _credentialManager;
-
     // Google uses a single virtual "address book" for all contacts
     private const string DefaultAddressBookExternalId = "people/me";
     private const string DefaultAddressBookName = "Contacts";
 
-    public GoogleContactProvider(
-        IGooglePeopleService googlePeopleService,
-        CredentialManagerService credentialManager)
-    {
-        _googlePeopleService = googlePeopleService;
-        _credentialManager = credentialManager;
-    }
-
     /// <inheritdoc/>
-    public CredentialManagerService CredentialManager => _credentialManager;
+    public CredentialManagerService CredentialManager => credentialManager;
 
     /// <inheritdoc/>
     public async Task<AddressBookSyncResult> GetAddressBooksAsync(
@@ -39,14 +31,14 @@ public class GoogleContactProvider : IContactProvider
     {
         // Google doesn't have multiple address books - return a single virtual one
         // We still verify credentials work by testing the connection
-        var googleCredentials = _credentialManager.GetGoogleCredentials(accountId);
+        var googleCredentials = credentialManager.GetGoogleCredentials(accountId);
         if (googleCredentials == null)
         {
             throw new InvalidOperationException($"No Google credentials found for account {accountId}");
         }
 
         // Create service to verify credentials are valid
-        await _googlePeopleService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
+        await googlePeopleService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
 
         return new AddressBookSyncResult
         {
@@ -70,14 +62,14 @@ public class GoogleContactProvider : IContactProvider
         string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        var googleCredentials = _credentialManager.GetGoogleCredentials(accountId);
+        var googleCredentials = credentialManager.GetGoogleCredentials(accountId);
         if (googleCredentials == null)
         {
             throw new InvalidOperationException($"No Google credentials found for account {accountId}");
         }
 
-        var service = await _googlePeopleService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
-        var result = await _googlePeopleService.GetContactsAsync(service, syncToken, cancellationToken);
+        var service = await googlePeopleService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
+        var result = await googlePeopleService.GetContactsAsync(service, syncToken, cancellationToken);
 
         var contacts = new List<ProviderContact>();
 
@@ -103,14 +95,14 @@ public class GoogleContactProvider : IContactProvider
         string? syncToken = null,
         CancellationToken cancellationToken = default)
     {
-        var googleCredentials = _credentialManager.GetGoogleCredentials(accountId);
+        var googleCredentials = credentialManager.GetGoogleCredentials(accountId);
         if (googleCredentials == null)
         {
             throw new InvalidOperationException($"No Google credentials found for account {accountId}");
         }
 
-        var service = await _googlePeopleService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
-        var result = await _googlePeopleService.GetContactGroupsAsync(service, syncToken, cancellationToken);
+        var service = await googlePeopleService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
+        var result = await googlePeopleService.GetContactGroupsAsync(service, syncToken, cancellationToken);
 
         var groups = result.Groups.Select(g => new ProviderContactGroup
         {
@@ -134,16 +126,16 @@ public class GoogleContactProvider : IContactProvider
     {
         try
         {
-            var googleCredentials = _credentialManager.GetGoogleCredentials(accountId);
+            var googleCredentials = credentialManager.GetGoogleCredentials(accountId);
             if (googleCredentials == null)
             {
                 return false;
             }
 
-            var service = await _googlePeopleService.CreateServiceAsync(googleCredentials, cancellationToken);
+            var service = await googlePeopleService.CreateServiceAsync(googleCredentials, cancellationToken);
 
             // Try to fetch a small number of contacts as a connection test
-            await _googlePeopleService.GetContactsAsync(service, null, cancellationToken);
+            await googlePeopleService.GetContactsAsync(service, null, cancellationToken);
             return true;
         }
         catch (Exception ex)
