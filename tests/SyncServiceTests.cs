@@ -1,9 +1,11 @@
 using Dapper;
+using NodaTime;
 using perinma.Services;
 using perinma.Services.CalDAV;
 using perinma.Storage.Models;
-using perinma.Tests.Fakes;
+using tests.Fakes;
 using tests.Base;
+using tests.Helpers;
 
 namespace tests;
 
@@ -13,10 +15,10 @@ public class SyncServiceTests : SyncTestBase
     public async Task WithNewCalendars_SavesCalendarsToDatabase()
     {
         // Arrange
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true, color: "#ff0000"),
-            FakeGoogleCalendarService.CreateCalendar("cal2", "Personal Calendar", selected: true, color: "#00ff00"),
-            FakeGoogleCalendarService.CreateCalendar("cal3", "Disabled Calendar", selected: false)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true, color: "#ff0000"),
+            TestDataHelpers.CreateGoogleCalendarRaw("cal2", "Personal Calendar", selected: true, color: "#00ff00"),
+            TestDataHelpers.CreateGoogleCalendarRaw("cal3", "Disabled Calendar", selected: false)
         );
 
         var account = await CreateGoogleAccountAsync();
@@ -57,13 +59,13 @@ public class SyncServiceTests : SyncTestBase
         // - cal1 unchanged
         // - cal2 with updated name and disabled
         // - cal3 not returned (deleted remotely)
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true, color: "#ff0000"),
-            FakeGoogleCalendarService.CreateCalendar("cal2", "Personal Calendar - Updated", selected: false, color: "#00ff00")
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true, color: "#ff0000"),
+            TestDataHelpers.CreateGoogleCalendarRaw("cal2", "Personal Calendar - Updated", selected: false, color: "#00ff00")
         );
 
         // Simulate invalid sync token on first call, then succeed on retry with full sync
-        FakeGoogleService.SetInvalidSyncTokenBehavior(true);
+        GoogleServiceStub.SetInvalidSyncTokenBehavior(true);
 
         // Act
         await SyncService.SyncAllAccountsAsync();
@@ -100,10 +102,10 @@ public class SyncServiceTests : SyncTestBase
         StoreGoogleCredentials(account.AccountId);
 
         // First sync: 3 calendars
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Calendar 1"),
-            FakeGoogleCalendarService.CreateCalendar("cal2", "Calendar 2"),
-            FakeGoogleCalendarService.CreateCalendar("cal3", "Calendar 3")
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Calendar 1"),
+            TestDataHelpers.CreateGoogleCalendarRaw("cal2", "Calendar 2"),
+            TestDataHelpers.CreateGoogleCalendarRaw("cal3", "Calendar 3")
         );
 
         // Perform first sync
@@ -120,9 +122,9 @@ public class SyncServiceTests : SyncTestBase
         await Task.Delay(1000);
 
         // Second sync: Only 2 calendars (cal3 removed remotely)
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Calendar 1"),
-            FakeGoogleCalendarService.CreateCalendar("cal2", "Calendar 2")
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Calendar 1"),
+            TestDataHelpers.CreateGoogleCalendarRaw("cal2", "Calendar 2")
         );
 
         // Act - Perform second full sync (no sync token means full sync)
@@ -146,7 +148,7 @@ public class SyncServiceTests : SyncTestBase
         StoreCalDavCredentials(account.AccountId);
 
         // First sync: Create calendars with default enabled status (CalDAV always returns selected=true)
-        FakeCalDavService.SetCalendars(
+        CalDavServiceStub.SetCalendars(
             new CalDavCalendar
             {
                 Url = "https://caldav.example.com/calendars/work",
@@ -203,9 +205,9 @@ public class SyncServiceTests : SyncTestBase
         StoreGoogleCredentials(account.AccountId);
 
         // Set up fake service with one active calendar and one deleted calendar
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Active Calendar"),
-            FakeGoogleCalendarService.CreateDeletedCalendar("cal2")
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Active Calendar"),
+            TestDataHelpers.CreateGoogleCalendarRaw("cal2", "Deleted Calendar", deleted: true)
         );
 
         // Act
@@ -228,15 +230,15 @@ public class SyncServiceTests : SyncTestBase
         StoreGoogleCredentials(account.AccountId);
 
         // Set up fake service with calendar and events
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
         );
 
         var eventStart = DateTime.UtcNow.AddHours(1);
         var eventEnd = DateTime.UtcNow.AddHours(2);
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateEvent("event1", "Team Meeting", eventStart, eventEnd),
-            FakeGoogleCalendarService.CreateEvent("event2", "Lunch Break", eventStart.AddHours(2), eventEnd.AddHours(2))
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateGoogleEventRaw("event1", "Team Meeting", eventStart, eventEnd),
+            TestDataHelpers.CreateGoogleEventRaw("event2", "Lunch Break", eventStart.AddHours(2), eventEnd.AddHours(2))
         );
 
         // Act
@@ -272,16 +274,16 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateGoogleAccountAsync();
         StoreGoogleCredentials(account.AccountId);
 
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
         );
 
         // Create a recurring event with UNTIL clause
         // Weekly meeting starting Jan 1, 2025 at 10:00 UTC, ending March 31, 2025
         var eventStart = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
         var eventEnd = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc);
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateRecurringEvent(
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateRecurringGoogleEvent(
                 "recurring1",
                 "Weekly Team Sync",
                 eventStart,
@@ -314,16 +316,16 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateGoogleAccountAsync();
         StoreGoogleCredentials(account.AccountId);
 
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
         );
 
         // Create a daily recurring event with COUNT=5
         // Starting Jan 15, 2025 at 14:00 UTC, 2 hours duration
         var eventStart = new DateTime(2025, 1, 15, 14, 0, 0, DateTimeKind.Utc);
         var eventEnd = new DateTime(2025, 1, 15, 16, 0, 0, DateTimeKind.Utc);
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateRecurringEvent(
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateRecurringGoogleEvent(
                 "recurring2",
                 "Daily Standup",
                 eventStart,
@@ -361,16 +363,16 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateGoogleAccountAsync();
         StoreGoogleCredentials(account.AccountId);
 
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
         );
 
         // Create a recurring event with timezone (America/New_York = UTC-5 in winter)
         // Monthly event at 9:00 AM New York time for 3 months
         var eventStart = new DateTime(2025, 2, 1, 9, 0, 0, DateTimeKind.Utc); // 9 AM in UTC for test
         var eventEnd = new DateTime(2025, 2, 1, 10, 0, 0, DateTimeKind.Utc);
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateRecurringEventWithTimezone(
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateRecurringGoogleEventWithTimezone(
                 "recurring3",
                 "Monthly Review",
                 eventStart,
@@ -408,15 +410,15 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateGoogleAccountAsync();
         StoreGoogleCredentials(account.AccountId);
 
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
         );
 
         // Create an infinite recurring event (no UNTIL or COUNT)
         var eventStart = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
         var eventEnd = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc);
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateRecurringEvent(
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateRecurringGoogleEvent(
                 "recurring4",
                 "Weekly Infinite Meeting",
                 eventStart,
@@ -451,7 +453,7 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateCalDavAccountAsync();
         StoreCalDavCredentials(account.AccountId);
 
-        FakeCalDavService.SetCalendars(new CalDavCalendar
+        CalDavServiceStub.SetCalendars(new CalDavCalendar
         {
             Url = "https://caldav.example.com/calendars/work",
             DisplayName = "Work Calendar",
@@ -460,11 +462,11 @@ public class SyncServiceTests : SyncTestBase
         });
 
         // Create a recurring event with UNTIL clause via raw iCalendar
-        var eventStart = new DateTime(2025, 3, 1, 9, 0, 0, DateTimeKind.Utc);
-        var eventEnd = new DateTime(2025, 3, 1, 10, 30, 0, DateTimeKind.Utc);
-        FakeCalDavService.SetEvents(
+        var eventStart = new ZonedDateTime(Instant.FromUtc(2025, 3, 1, 9, 0), DateTimeZone.Utc);
+        var eventEnd = new ZonedDateTime(Instant.FromUtc(2025, 3, 1, 10, 30), DateTimeZone.Utc);
+        CalDavServiceStub.SetEvents(
             "https://caldav.example.com/calendars/work",
-            FakeCalDavService.CreateRecurringEvent(
+            TestDataHelpers.CreateCalDavEventWithRecurrence(
                 "caldav-recurring1",
                 "https://caldav.example.com/calendars/work/event1.ics",
                 "Weekly Planning",
@@ -499,7 +501,7 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateCalDavAccountAsync();
         StoreCalDavCredentials(account.AccountId);
 
-        FakeCalDavService.SetCalendars(new CalDavCalendar
+        CalDavServiceStub.SetCalendars(new CalDavCalendar
         {
             Url = "https://caldav.example.com/calendars/personal",
             DisplayName = "Personal Calendar",
@@ -509,11 +511,11 @@ public class SyncServiceTests : SyncTestBase
 
         // Create a recurring event with COUNT clause
         // Daily for 10 occurrences, starting May 1, 2025
-        var eventStart = new DateTime(2025, 5, 1, 8, 0, 0, DateTimeKind.Utc);
-        var eventEnd = new DateTime(2025, 5, 1, 8, 30, 0, DateTimeKind.Utc);
-        FakeCalDavService.SetEvents(
+        var eventStart = new ZonedDateTime(Instant.FromUtc(2025, 5, 1, 8, 0), DateTimeZone.Utc);
+        var eventEnd = new ZonedDateTime(Instant.FromUtc(2025, 5, 1, 8, 30), DateTimeZone.Utc);
+        CalDavServiceStub.SetEvents(
             "https://caldav.example.com/calendars/personal",
-            FakeCalDavService.CreateRecurringEvent(
+            TestDataHelpers.CreateCalDavEventWithRecurrence(
                 "caldav-recurring2",
                 "https://caldav.example.com/calendars/personal/event2.ics",
                 "Morning Routine",
@@ -553,7 +555,7 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateCalDavAccountAsync();
         StoreCalDavCredentials(account.AccountId);
 
-        FakeCalDavService.SetCalendars(new CalDavCalendar
+        CalDavServiceStub.SetCalendars(new CalDavCalendar
         {
             Url = "https://caldav.example.com/calendars/europe",
             DisplayName = "Europe Calendar",
@@ -563,17 +565,17 @@ public class SyncServiceTests : SyncTestBase
 
         // Create a recurring event with Europe/Berlin timezone
         // Weekly for 4 occurrences, starting June 1, 2025 at 15:00 local time
-        var eventStart = new DateTime(2025, 6, 1, 15, 0, 0, DateTimeKind.Utc);
-        var eventEnd = new DateTime(2025, 6, 1, 16, 0, 0, DateTimeKind.Utc);
-        FakeCalDavService.SetEvents(
+        var berlinZone = DateTimeZoneProviders.Tzdb["Europe/Berlin"];
+        var eventStart = new ZonedDateTime(Instant.FromUtc(2025, 6, 1, 13, 0), berlinZone);
+        var eventEnd = new ZonedDateTime(Instant.FromUtc(2025, 6, 1, 14, 0), berlinZone);
+        CalDavServiceStub.SetEvents(
             "https://caldav.example.com/calendars/europe",
-            FakeCalDavService.CreateRecurringEventWithTimezone(
+            TestDataHelpers.CreateCalDavEventWithRecurrenceAndTimezone(
                 "caldav-recurring3",
                 "https://caldav.example.com/calendars/europe/event3.ics",
                 "European Team Call",
                 eventStart,
                 eventEnd,
-                "Europe/Berlin",
                 "RRULE:FREQ=WEEKLY;COUNT=4"
             )
         );
@@ -606,15 +608,15 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateGoogleAccountAsync();
         StoreGoogleCredentials(account.AccountId);
 
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
         );
 
         // Create a non-recurring event
         var eventStart = new DateTime(2025, 7, 15, 14, 0, 0, DateTimeKind.Utc);
         var eventEnd = new DateTime(2025, 7, 15, 15, 30, 0, DateTimeKind.Utc);
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateEvent(
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateGoogleEventRaw(
                 "single-event",
                 "One-time Meeting",
                 eventStart,
@@ -656,19 +658,19 @@ public class SyncServiceTests : SyncTestBase
         StoreGoogleCredentials(account.AccountId);
 
         // Initial sync with 3 calendars and events
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Calendar 1", selected: true),
-            FakeGoogleCalendarService.CreateCalendar("cal2", "Calendar 2", selected: true),
-            FakeGoogleCalendarService.CreateCalendar("cal3", "Calendar 3", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Calendar 1", selected: true),
+            TestDataHelpers.CreateGoogleCalendarRaw("cal2", "Calendar 2", selected: true),
+            TestDataHelpers.CreateGoogleCalendarRaw("cal3", "Calendar 3", selected: true)
         );
 
         var eventStart = DateTime.UtcNow.AddHours(1);
         var eventEnd = DateTime.UtcNow.AddHours(2);
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateEvent("event1", "Event 1", eventStart, eventEnd)
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateGoogleEventRaw("event1", "Event 1", eventStart, eventEnd)
         );
-        FakeGoogleService.SetEvents("cal2",
-            FakeGoogleCalendarService.CreateEvent("event2", "Event 2", eventStart, eventEnd)
+        GoogleServiceStub.SetRawEvents("cal2",
+            TestDataHelpers.CreateGoogleEventRaw("event2", "Event 2", eventStart, eventEnd)
         );
 
         // Perform initial sync
@@ -688,16 +690,16 @@ public class SyncServiceTests : SyncTestBase
         Assert.That(tokenBefore, Is.EqualTo("some-sync-token"));
 
         // Now simulate remote changes - only 2 calendars exist now
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Calendar 1 - Updated", selected: true),
-            FakeGoogleCalendarService.CreateCalendar("cal4", "New Calendar", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Calendar 1 - Updated", selected: true),
+            TestDataHelpers.CreateGoogleCalendarRaw("cal4", "New Calendar", selected: true)
         );
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateEvent("event1", "Event 1 - Updated", eventStart, eventEnd),
-            FakeGoogleCalendarService.CreateEvent("event3", "New Event", eventStart.AddHours(3), eventEnd.AddHours(3))
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateGoogleEventRaw("event1", "Event 1 - Updated", eventStart, eventEnd),
+            TestDataHelpers.CreateGoogleEventRaw("event3", "New Event", eventStart.AddHours(3), eventEnd.AddHours(3))
         );
-        FakeGoogleService.SetEvents("cal4",
-            FakeGoogleCalendarService.CreateEvent("event4", "Event in New Calendar", eventStart, eventEnd)
+        GoogleServiceStub.SetRawEvents("cal4",
+            TestDataHelpers.CreateGoogleEventRaw("event4", "Event in New Calendar", eventStart, eventEnd)
         );
 
         // Act - Force resync
@@ -751,7 +753,7 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateCalDavAccountAsync();
         StoreCalDavCredentials(account.AccountId);
 
-        FakeCalDavService.SetCalendars(new CalDavCalendar
+        CalDavServiceStub.SetCalendars(new CalDavCalendar
         {
             Url = "https://caldav.example.com/calendars/work",
             DisplayName = "Work Calendar",
@@ -770,7 +772,7 @@ public class SyncServiceTests : SyncTestBase
         await Storage.SetAccountData(account, "calendarSyncToken", "caldav-sync-token");
 
         // Change remote state
-        FakeCalDavService.SetCalendars(
+        CalDavServiceStub.SetCalendars(
             new CalDavCalendar
             {
                 Url = "https://caldav.example.com/calendars/personal",
@@ -865,8 +867,8 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateGoogleAccountAsync();
         StoreGoogleCredentials(account.AccountId);
 
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
         );
 
         var recurringStart = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
@@ -874,15 +876,15 @@ public class SyncServiceTests : SyncTestBase
 
         var overrideTime = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
 
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateRecurringEvent(
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateRecurringGoogleEvent(
                 "recurring1",
                 "Weekly Meeting",
                 recurringStart,
                 recurringEnd,
                 "RRULE:FREQ=WEEKLY;BYDAY=WE"
             ),
-            FakeGoogleCalendarService.CreateCancelledOverride(
+            TestDataHelpers.CreateCancelledGoogleEventOverride(
                 "override1",
                 "recurring1",
                 overrideTime
@@ -920,8 +922,8 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateGoogleAccountAsync();
         StoreGoogleCredentials(account.AccountId);
 
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
         );
 
         var recurringStart = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
@@ -931,15 +933,15 @@ public class SyncServiceTests : SyncTestBase
         var newStart = new DateTime(2025, 1, 8, 9, 0, 0, DateTimeKind.Utc); // Earlier than original
         var newEnd = new DateTime(2025, 1, 8, 10, 30, 0, DateTimeKind.Utc);
 
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateRecurringEvent(
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateRecurringGoogleEvent(
                 "recurring1",
                 "Weekly Meeting",
                 recurringStart,
                 recurringEnd,
                 "RRULE:FREQ=WEEKLY;BYDAY=WE"
             ),
-            FakeGoogleCalendarService.CreateModifiedOverride(
+            TestDataHelpers.CreateModifiedGoogleEventOverride(
                 "override1",
                 "recurring1",
                 "Extended Meeting",
@@ -978,8 +980,8 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateGoogleAccountAsync();
         StoreGoogleCredentials(account.AccountId);
 
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
         );
 
         var recurringStart = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
@@ -988,15 +990,15 @@ public class SyncServiceTests : SyncTestBase
         var newStart = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
         var newEnd = new DateTime(2025, 1, 8, 11, 30, 0, DateTimeKind.Utc);
 
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateRecurringEvent(
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateRecurringGoogleEvent(
                 "recurring1",
                 "Weekly Meeting",
                 recurringStart,
                 recurringEnd,
                 "RRULE:FREQ=WEEKLY;BYDAY=WE"
             ),
-            FakeGoogleCalendarService.CreateModifiedOverride(
+            TestDataHelpers.CreateModifiedGoogleEventOverride(
                 "override1",
                 "recurring1",
                 "Rescheduled Meeting",
@@ -1036,8 +1038,8 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateGoogleAccountAsync();
         StoreGoogleCredentials(account.AccountId);
 
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
         );
 
         var recurringStart = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
@@ -1047,8 +1049,8 @@ public class SyncServiceTests : SyncTestBase
         var newEnd = new DateTime(2025, 1, 8, 11, 30, 0, DateTimeKind.Utc);
 
         // First sync: Override arrives before parent
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateModifiedOverride(
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateModifiedGoogleEventOverride(
                 "override1",
                 "recurring1",
                 "Rescheduled Meeting",
@@ -1071,15 +1073,15 @@ public class SyncServiceTests : SyncTestBase
         Assert.That(eventListAfterFirstSync[0].ExternalId, Is.EqualTo("override1"));
 
         // Second sync: Parent arrives
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateRecurringEvent(
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateRecurringGoogleEvent(
                 "recurring1",
                 "Weekly Meeting",
                 recurringStart,
                 recurringEnd,
                 "RRULE:FREQ=WEEKLY;BYDAY=WE"
             ),
-            FakeGoogleCalendarService.CreateModifiedOverride(
+            TestDataHelpers.CreateModifiedGoogleEventOverride(
                 "override1",
                 "recurring1",
                 "Rescheduled Meeting",
@@ -1116,8 +1118,8 @@ public class SyncServiceTests : SyncTestBase
         var account = await CreateGoogleAccountAsync();
         StoreGoogleCredentials(account.AccountId);
 
-        FakeGoogleService.SetCalendars(
-            FakeGoogleCalendarService.CreateCalendar("cal1", "Work Calendar", selected: true)
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
         );
 
         var overrideTime = new DateTime(2025, 1, 8, 10, 0, 0, DateTimeKind.Utc);
@@ -1125,8 +1127,8 @@ public class SyncServiceTests : SyncTestBase
         var newEnd = new DateTime(2025, 1, 8, 11, 30, 0, DateTimeKind.Utc);
 
         // Sync with only override, parent never arrives
-        FakeGoogleService.SetEvents("cal1",
-            FakeGoogleCalendarService.CreateModifiedOverride(
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateModifiedGoogleEventOverride(
                 "override1",
                 "recurring1",
                 "Rescheduled Meeting",

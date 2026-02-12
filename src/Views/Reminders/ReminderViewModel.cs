@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NodaTime;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage.Models;
@@ -33,7 +34,7 @@ public partial class ReminderViewModel : ViewModelBase
     private string _calendarColor = string.Empty;
 
     [ObservableProperty]
-    private DateTime _startTime;
+    private LocalDateTime? _startTime;
 
     [ObservableProperty]
     private TimeSpan _timeUntilEvent;
@@ -66,18 +67,18 @@ public partial class ReminderViewModel : ViewModelBase
             return;
         }
 
-        var occurrenceTime = DateTimeOffset.FromUnixTimeSeconds(_targetTime).LocalDateTime;
-        var startTime = await _reminderService.GetEventStartTimeAsync(_eventId, occurrenceTime, _accountType, cancellationToken);
-        if (startTime.HasValue)
+        var occurrenceInstant = Instant.FromUnixTimeSeconds(_targetTime);
+        var startTimeInstant = await _reminderService.GetEventStartTimeAsync(_eventId, occurrenceInstant, _accountType, cancellationToken);
+        if (startTimeInstant.HasValue)
         {
-            StartTime = startTime.Value;
-            TimeUntilEvent = StartTime - DateTime.Now;
+            StartTime = startTimeInstant.Value.InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault()).LocalDateTime;
+            TimeUntilEvent = startTimeInstant.Value.ToDateTimeUtc() - DateTime.Now;
         }
         else
         {
-            // Fallback to the stored occurrence time (already local time)
-            StartTime = occurrenceTime;
-            TimeUntilEvent = StartTime - DateTime.Now;
+            // Fallback to the stored occurrence time (convert to local time for display)
+            StartTime = occurrenceInstant.InZone(DateTimeZoneProviders.Tzdb.GetSystemDefault()).LocalDateTime;
+            TimeUntilEvent = occurrenceInstant.ToDateTimeUtc() - DateTime.Now;
         }
 
         _startTimeInitialized = true;

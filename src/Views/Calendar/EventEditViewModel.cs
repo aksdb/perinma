@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NodaTime;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
@@ -125,12 +126,12 @@ public partial class EventEditViewModel : ViewModelBase
             Title = existingEvent.Title ?? string.Empty;
             Description = string.Empty;
             Location = string.Empty;
-            _startTime = existingEvent.StartTime;
-            _endTime = existingEvent.EndTime;
+            _startTime = existingEvent.StartTime.ToDateTimeUnspecified();
+            _endTime = existingEvent.EndTime.ToDateTimeUnspecified();
             _duration = _endTime - _startTime;
             SelectedCalendar = calendar;
 
-            var rawDataTask = _storage.GetEventData(existingEvent.Id.ToString(), "rawData");
+            var rawDataTask = _storage.GetEventData(existingEvent.Reference.Id.ToString(), "rawData");
             _existingRawEventData = rawDataTask.GetAwaiter().GetResult();
         }
         else
@@ -172,20 +173,23 @@ public partial class EventEditViewModel : ViewModelBase
             var calendarExternalId = targetCalendar.ExternalId ?? string.Empty;
             var provider = _providers.GetValueOrDefault(targetCalendar.Account.Type);
 
+            var startInstant = LocalDateTime.FromDateTime(StartTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
+            var endInstant = LocalDateTime.FromDateTime(EndTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
+
             if (IsEditMode && _existingEvent != null && provider != null)
             {
                 await provider.UpdateEventAsync(
                     accountId,
                     calendarExternalId,
-                    _existingEvent.ExternalId ?? string.Empty,
+                    _existingEvent.Reference.ExternalId ?? string.Empty,
                     Title,
                     string.IsNullOrWhiteSpace(Description) ? null : Description,
                     string.IsNullOrWhiteSpace(Location) ? null : Location,
-                    StartTime,
-                    EndTime,
+                    startInstant,
+                    endInstant,
                     _existingRawEventData);
 
-                _onCompleted(_existingEvent.ExternalId ?? string.Empty);
+                _onCompleted(_existingEvent.Reference.ExternalId ?? string.Empty);
                 RequestClose?.Invoke(this, EventArgs.Empty);
             }
             else if (provider != null)
@@ -196,8 +200,8 @@ public partial class EventEditViewModel : ViewModelBase
                     Title,
                     string.IsNullOrWhiteSpace(Description) ? null : Description,
                     string.IsNullOrWhiteSpace(Location) ? null : Location,
-                    StartTime,
-                    EndTime,
+                    startInstant,
+                    endInstant,
                     null);
 
                 _onCompleted(newEventId);

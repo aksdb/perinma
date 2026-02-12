@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using NodaTime;
+using perinma.Models;
 
 namespace perinma.Services;
 
@@ -12,9 +14,13 @@ namespace perinma.Services;
 public interface ICalendarProvider
 {
     /// <summary>
-    /// Gets the credential manager service used by this provider.
+    /// Parse all the given raw events into a list of CalendarEvents within the given TimeRange.
+    /// The TimeRange is relevant to restrict recurring events.
     /// </summary>
-    CredentialManagerService CredentialManager { get; }
+    /// <param name="rawEvents"></param>
+    /// <param name="timeRange"></param>
+    /// <returns></returns>
+    List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange);
 
     /// <summary>
     /// Syncs calendars for an account, optionally using incremental sync.
@@ -57,12 +63,10 @@ public interface ICalendarProvider
     /// </summary>
     /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
     /// <param name="rawCalendarData">Optional raw calendar data for default reminders (JSON for Google)</param>
-    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of reminder minutes before event start</returns>
-    Task<IList<int>> GetReminderMinutesAsync(
+    IList<int> GetReminderMinutes(
         string rawEventData,
-        string? rawCalendarData = null,
-        CancellationToken cancellationToken = default);
+        string? rawCalendarData = null);
 
     /// <summary>
     /// Gets all reminder occurrences with their trigger times for an event.
@@ -71,25 +75,21 @@ public interface ICalendarProvider
     /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
     /// <param name="rawCalendarData">Optional raw calendar data for default reminders (JSON for Google)</param>
     /// <param name="referenceTime">Reference time for filtering (defaults to UTC now)</param>
-    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of tuples containing occurrence time and trigger time for each reminder</returns>
-    Task<IList<(DateTime Occurrence, DateTime TriggerTime)>> GetNextReminderOccurrencesAsync(
+    IList<(Instant Occurrence, Instant TriggerTime)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        DateTime referenceTime = default,
-        CancellationToken cancellationToken = default);
+        Instant referenceTime = default);
 
     /// <summary>
-    /// Gets the event start time from raw event data, preserving timezone information.
+    /// Get the actual matching event start time to recover timezone information.
     /// </summary>
     /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
     /// <param name="occurrenceTime">Optional occurrence time for recurring events. If provided, returns the start time for this specific occurrence.</param>
-    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Event start time with timezone information, or null if parsing fails</returns>
-    Task<DateTimeOffset?> GetEventStartTimeAsync(
+    Instant? GetEventStartTime(
         string rawEventData,
-        DateTime? occurrenceTime = null,
-        CancellationToken cancellationToken = default);
+        Instant? occurrenceTime = null);
 
     /// <summary>
     /// Responds to an event invitation with the specified status.
@@ -116,8 +116,8 @@ public interface ICalendarProvider
     /// <param name="title">Event title</param>
     /// <param name="description">Event description (optional)</param>
     /// <param name="location">Event location (optional)</param>
-    /// <param name="startTime">Event start time</param>
-    /// <param name="endTime">Event end time</param>
+    /// <param name="startTime">Event start time as UTC Instant</param>
+    /// <param name="endTime">Event end time as UTC Instant</param>
     /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The external ID of the created event</returns>
@@ -127,8 +127,8 @@ public interface ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        Instant startTime,
+        Instant endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default);
 
@@ -141,8 +141,8 @@ public interface ICalendarProvider
     /// <param name="title">Event title</param>
     /// <param name="description">Event description (optional)</param>
     /// <param name="location">Event location (optional)</param>
-    /// <param name="startTime">Event start time</param>
-    /// <param name="endTime">Event end time</param>
+    /// <param name="startTime">Event start time as UTC Instant</param>
+    /// <param name="endTime">Event end time as UTC Instant</param>
     /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task UpdateEventAsync(
@@ -152,8 +152,8 @@ public interface ICalendarProvider
         string title,
         string? description,
         string? location,
-        DateTime startTime,
-        DateTime endTime,
+        Instant startTime,
+        Instant endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default);
 }
@@ -252,12 +252,12 @@ public class ProviderEvent
     /// <summary>
     /// Start time of the event (or first occurrence for recurring events).
     /// </summary>
-    public DateTime? StartTime { get; init; }
+    public Instant? StartTime { get; init; }
 
     /// <summary>
     /// End time of the event. For recurring events, this is the end of the recurrence span.
     /// </summary>
-    public DateTime? EndTime { get; init; }
+    public Instant? EndTime { get; init; }
 
     /// <summary>
     /// Event status (e.g., "confirmed", "cancelled", "tentative").
@@ -277,7 +277,7 @@ public class ProviderEvent
     /// <summary>
     /// For override events: the original start time of the occurrence being modified.
     /// </summary>
-    public DateTime? OriginalStartTime { get; init; }
+    public Instant? OriginalStartTime { get; init; }
 
     /// <summary>
     /// Raw provider data serialized as string for later use (JSON or iCalendar).

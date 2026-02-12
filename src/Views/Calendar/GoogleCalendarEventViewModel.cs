@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
+using NodaTime;
 using perinma.Models;
 using perinma.Services;
 using perinma.Services.Google;
@@ -109,7 +110,7 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
     {
         try
         {
-            var rawData = await _storage.GetEventData(_calendarEvent.Id.ToString(), "rawData");
+            var rawData = await _storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
             if (!string.IsNullOrEmpty(rawData))
             {
                 var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(rawData);
@@ -338,9 +339,9 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
         {
             IsUpdating = true;
 
-            var accountId = _calendarEvent.Calendar.Account.Id.ToString();
-            var calendarId = _calendarEvent.Calendar.ExternalId;
-            var eventId = _calendarEvent.ExternalId;
+            var accountId = _calendarEvent.Reference.Calendar.Account.Id.ToString();
+            var calendarId = _calendarEvent.Reference.Calendar.ExternalId;
+            var eventId = _calendarEvent.Reference.ExternalId;
 
             if (string.IsNullOrEmpty(calendarId) || string.IsNullOrEmpty(eventId))
             {
@@ -349,7 +350,7 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
             }
 
             // Get raw event data for the provider
-            var rawData = await _storage.GetEventData(_calendarEvent.Id.ToString(), "rawData");
+            var rawData = await _storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
             if (string.IsNullOrEmpty(rawData))
             {
                 Console.WriteLine("Failed to get raw event data");
@@ -369,7 +370,7 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
             };
 
             // Update the attendee list to reflect the change
-            var selfAttendee = Attendees.FirstOrDefault(a => a.DisplayName == _calendarEvent.Calendar.Account.Name);
+            var selfAttendee = Attendees.FirstOrDefault(a => a.DisplayName == _calendarEvent.Reference.Calendar.Account.Name);
             if (selfAttendee != null)
             {
                 selfAttendee.ResponseStatus = CurrentResponseStatus;

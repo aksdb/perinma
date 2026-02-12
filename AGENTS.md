@@ -116,7 +116,7 @@ mise set -E local GOOGLE_CLIENT_SECRET=your-client-secret
 - Use `[Test]` attribute on test methods
 - Test naming: `MethodName_Scenario_ExpectedResult` (PascalCase)
 - Use `Assert.That(actual, Is.EqualTo(expected))` syntax
-  - Combine multiple assertions using `Assert.Multple`, aside from Count or NotNull
+  - Combine multiple assertions using `using (Assert.EnterMultipleScope())`, aside from Count or NotNull
     assertions that are prerequisites to the assertions to be combined
 - Arrange-Act-Assert pattern in test bodies
 - Tests use explicit using statements for tested namespaces

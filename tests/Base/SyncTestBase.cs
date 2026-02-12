@@ -6,7 +6,7 @@ using perinma.Services.CalDAV;
 using perinma.Services.Google;
 using perinma.Storage;
 using perinma.Storage.Models;
-using perinma.Tests.Fakes;
+using tests.Fakes;
 
 namespace tests.Base;
 
@@ -19,8 +19,8 @@ public abstract class SyncTestBase
     protected DatabaseService? Database { get; private set; }
     protected CredentialManagerService CredentialManager { get; private set; } = null!;
     protected SqliteStorage Storage { get; private set; } = null!;
-    protected FakeGoogleCalendarService FakeGoogleService { get; private set; } = null!;
-    protected FakeCalDavService FakeCalDavService { get; private set; } = null!;
+    protected GoogleCalendarServiceStub GoogleServiceStub { get; private set; } = null!;
+    protected CalDavServiceStub CalDavServiceStub { get; private set; } = null!;
     protected Dictionary<AccountType, ICalendarProvider> Providers { get; private set; } = null!;
     protected ReminderService ReminderService { get; private set; } = null!;
     protected SyncService SyncService { get; private set; } = null!;
@@ -33,13 +33,13 @@ public abstract class SyncTestBase
         CredentialManager = new CredentialManagerService(new InMemoryCredentialStore());
         Storage = new SqliteStorage(Database, CredentialManager);
 
-        // Initialize fake services
-        FakeGoogleService = new FakeGoogleCalendarService();
-        FakeCalDavService = new FakeCalDavService();
+        // Initialize service stubs
+        GoogleServiceStub = new GoogleCalendarServiceStub();
+        CalDavServiceStub = new CalDavServiceStub();
 
         // Initialize providers
-        var googleProvider = new GoogleCalendarProvider(FakeGoogleService, CredentialManager);
-        var calDavProvider = new CalDavCalendarProvider(FakeCalDavService, CredentialManager);
+        var googleProvider = new GoogleCalendarProvider(GoogleServiceStub, CredentialManager);
+        var calDavProvider = new CalDavCalendarProvider(CalDavServiceStub, CredentialManager);
         Providers = new Dictionary<AccountType, ICalendarProvider>
         {
             [AccountType.Google] = googleProvider,

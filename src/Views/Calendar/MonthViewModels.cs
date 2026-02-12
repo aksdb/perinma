@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using NodaTime;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
@@ -16,7 +17,7 @@ public partial class MonthDayViewModel : ObservableObject
     private int _dayNumber;
 
     [ObservableProperty]
-    private DateTime _date;
+    private LocalDate _date;
 
     [ObservableProperty]
     private bool _isCurrentMonth;
@@ -85,7 +86,7 @@ public partial class MonthEventViewModel : ObservableObject
                 return new CalendarEventViewModel(CalendarEvent);
 
             ICalendarProvider? calendarProvider = null;
-            var accountType = CalendarEvent.Calendar.Account.Type;
+            var accountType = CalendarEvent.Reference.Calendar.Account.Type;
 
             if (Providers != null && Providers.TryGetValue(accountType, out var provider))
             {

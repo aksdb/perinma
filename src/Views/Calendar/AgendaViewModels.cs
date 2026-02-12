@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using NodaTime;
+using NodaTime.Text;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
@@ -12,17 +14,19 @@ namespace perinma.Views.Calendar;
 
 public partial class AgendaDayViewModel : ObservableObject
 {
+    private static readonly LocalDatePattern DateDisplayPattern = LocalDatePattern.CreateWithInvariantCulture("MMMM d, yyyy");
+    
     [ObservableProperty]
-    private DateTime _date;
+    private LocalDate _date;
 
     [ObservableProperty]
     private bool _isToday;
 
     public ObservableCollection<AgendaEventViewModel> Events { get; } = [];
 
-    public string DayOfWeek => Date.ToString("dddd");
+    public string DayOfWeek => Date.DayOfWeek.ToString();
 
-    public string DateDisplay => Date.ToString("MMMM d, yyyy");
+    public string DateDisplay => DateDisplayPattern.Format(Date);
 
     public bool HasEvents => Events.Count > 0;
 }
@@ -110,7 +114,7 @@ public partial class AgendaEventViewModel : ObservableObject
                 return new CalendarEventViewModel(CalendarEvent);
 
             ICalendarProvider? calendarProvider = null;
-            var accountType = CalendarEvent.Calendar.Account.Type;
+            var accountType = CalendarEvent.Reference.Calendar.Account.Type;
 
             if (Providers != null && Providers.TryGetValue(accountType, out var provider))
             {

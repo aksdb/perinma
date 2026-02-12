@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NodaTime;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
@@ -71,7 +72,7 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
     {
         try
         {
-            var rawData = await _storage.GetEventData(_calendarEvent.Id.ToString(), "rawData");
+            var rawData = await _storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
             if (!string.IsNullOrEmpty(rawData))
             {
                 var calendar = ICalCalendar.Load(rawData);
@@ -289,9 +290,9 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
         {
             IsUpdating = true;
 
-            var accountId = _calendarEvent.Calendar.Account.Id.ToString();
-            var calendarId = _calendarEvent.Calendar.ExternalId;
-            var eventId = _calendarEvent.ExternalId;
+            var accountId = _calendarEvent.Reference.Calendar.Account.Id.ToString();
+            var calendarId = _calendarEvent.Reference.Calendar.ExternalId;
+            var eventId = _calendarEvent.Reference.ExternalId;
 
             if (string.IsNullOrEmpty(calendarId) || string.IsNullOrEmpty(eventId))
             {
@@ -300,7 +301,7 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
             }
 
             // Get raw event data for the provider
-            var rawData = await _storage.GetEventData(_calendarEvent.Id.ToString(), "rawData");
+            var rawData = await _storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
             if (string.IsNullOrEmpty(rawData))
             {
                 Console.WriteLine("Failed to get raw event data");
