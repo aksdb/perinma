@@ -422,34 +422,34 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
     private void LoadMonthView()
     {
-        var firstOfMonth = new DateTime(ViewStart.Year, ViewStart.Month, 1);
-        var lastOfMonth = firstOfMonth.AddMonths(1).AddDays(-1);
+        var firstOfMonth = new LocalDate(ViewStart.Year, ViewStart.Month, 1);
+        var lastOfMonth = firstOfMonth.PlusMonths(1).PlusDays(-1);
 
         // Find the Monday before or on the first of the month
         var startOffset = ((int)firstOfMonth.DayOfWeek + 6) % 7;
-        var gridStart = firstOfMonth.AddDays(-startOffset);
+        var gridStart = firstOfMonth.PlusDays(-startOffset);
 
         // Always show 6 weeks (42 days) for consistent grid
-        var gridEnd = gridStart.AddDays(42);
+        var gridEnd = gridStart.PlusDays(42);
 
         // Get all events for the visible range
-        var events = _calendarSource.GetCalendarEvents(new Interval(gridStart.ToInstant(), gridEnd.ToInstant())).ToList();
+        var events = _calendarSource.GetCalendarEvents(new Interval(gridStart.AtMidnight().ToInstant(), gridEnd.AtMidnight().ToInstant())).ToList();
 
         // Build day view models
         for (var i = 0; i < 42; i++)
         {
-            var date = gridStart.AddDays(i);
+            var date = gridStart.PlusDays(i);
             var dayVm = new MonthDayViewModel
             {
                 Date = date,
                 DayNumber = date.Day,
                 IsCurrentMonth = date.Month == ViewStart.Month,
-                IsToday = date.Date == DateTime.Today
+                IsToday = date == SystemClock.Instance.InTzdbSystemDefaultZone().GetCurrentDate()
             };
 
             // Add events for this day
             var dayEvents = events
-                .Where(e => e.StartTime.Date <= LocalDate.FromDateTime(date) && e.EndTime.Date >= LocalDate.FromDateTime(date))
+                .Where(e => e.StartTime.Date <= date && e.EndTime.Date >= date)
                 .OrderBy(e => e.StartTime);
 
             foreach (var evt in dayEvents)
