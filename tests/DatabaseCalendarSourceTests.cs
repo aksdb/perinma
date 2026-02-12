@@ -994,6 +994,7 @@ public class DatabaseCalendarSourceTests
     #region Event Shadowing Tests
 
     [Test]
+    [Ignore("For now we want to show cancelled instances")]
     public async Task GetCalendarEvents_GoogleRecurringEventWithCancelledInstance_ExcludesCancelledOccurrence()
     {
         // Arrange: A weekly recurring event with one cancelled instance

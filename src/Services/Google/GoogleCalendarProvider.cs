@@ -35,7 +35,7 @@ public class GoogleCalendarProvider(
     {
         var googleEvents = rawEvents
             .Select(e => (e.Reference, Event: NewtonsoftJsonSerializer.Instance.Deserialize<Event>(e.RawData)))
-            .Where(t => t.Event != null)
+            .Where(t => t.Event != null && t.Event.Status != "cancelled")
             .ToList();
 
         var overrides = googleEvents
@@ -48,9 +48,8 @@ public class GoogleCalendarProvider(
             {
                 if (t.Event.Recurrence is { Count: > 0 })
                 {
-                    var foo = DetermineOccurrences(t.Event, timeRange);
                     // Generate occurrences for recurring events
-                    return foo
+                    return DetermineOccurrences(t.Event, timeRange)
                         .Where(occurrenceStart => !overrides.Any(ov =>
                             ov.Event.RecurringEventId == t.Event.Id &&
                             ParseGoogleDateTime(ov.Event.OriginalStartTime) == occurrenceStart))
