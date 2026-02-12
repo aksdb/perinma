@@ -129,7 +129,7 @@ public class ContactSyncService
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error syncing contacts for address book {addressBook.Name}: {ex.Message}");
+                    Console.WriteLine($"Error syncing contacts for address book {addressBook.Name}: {ex}");
                 }
             }
         }

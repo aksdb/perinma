@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Auth.OAuth2;
@@ -14,13 +15,16 @@ using perinma.Storage.Models;
 
 namespace perinma.Services.Google;
 
+[JsonSerializable(typeof(GooglePeopleService.CombinedSyncToken))]
+internal partial class GooglePeopleContext : JsonSerializerContext { }
+
 public class GooglePeopleService : IGooglePeopleService
 {
     // Fields to request from the People API
     private const string PersonFields = "names,emailAddresses,phoneNumbers,addresses,photos,memberships";
     private const string GroupFields = "name,groupType,memberCount";
 
-    private sealed record CombinedSyncToken(string? Personal, string? Directory);
+    public sealed record CombinedSyncToken(string? Personal, string? Directory);
 
     /// <summary>
     /// Creates a PeopleServiceService from GoogleCredentials
@@ -153,7 +157,7 @@ public class GooglePeopleService : IGooglePeopleService
         }
 
         var combined = new CombinedSyncToken(personalSyncToken, directorySyncToken);
-        return JsonSerializer.Serialize(combined);
+        return JsonSerializer.Serialize(combined, GooglePeopleContext.Default.CombinedSyncToken);
     }
 
     /// <summary>
@@ -168,7 +172,7 @@ public class GooglePeopleService : IGooglePeopleService
 
         try
         {
-            var combined = JsonSerializer.Deserialize<CombinedSyncToken>(combinedToken);
+            var combined = JsonSerializer.Deserialize(combinedToken, GooglePeopleContext.Default.CombinedSyncToken);
             if (combined != null)
             {
                 return (combined.Personal, combined.Directory);
