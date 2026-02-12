@@ -477,9 +477,8 @@ public partial class CalendarWeekViewModel : ViewModelBase
     {
         // Show 14 days in agenda view
         const int agendaDays = 14;
-        var start = ViewStart;
-        var end = start.AddDays(agendaDays);
-        var systemZone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var start = ViewStart.ToLocalDateTime();
+        var end = start.PlusDays(agendaDays);
 
         var events = _calendarSource.GetCalendarEvents(new Interval(start.ToInstant(), end.ToInstant()))
             .OrderBy(e => e.StartTime)
@@ -488,16 +487,15 @@ public partial class CalendarWeekViewModel : ViewModelBase
         // Group events by day
         for (var i = 0; i < agendaDays; i++)
         {
-            var date = start.AddDays(i);
+            var date = start.PlusDays(i);
             var dayVm = new AgendaDayViewModel
             {
-                Date = date,
-                IsToday = date.Date == DateTime.Today
+                Date = date.Date,
+                IsToday = date.Date == SystemClock.Instance.GetCurrentInstant().ToLocalDateTime().Date,
             };
 
-            var dateLocal = LocalDate.FromDateTime(date);
             var dayEvents = events
-                .Where(e => e.StartTime.Date == dateLocal || (e.StartTime.Date < dateLocal && e.EndTime.Date >= dateLocal))
+                .Where(e => e.StartTime.Date == date.Date || (e.StartTime.Date < date.Date && e.EndTime.Date >= date.Date))
                 .OrderBy(e => e.StartTime.TimeOfDay == LocalTime.Midnight ? TimeSpan.MinValue : new TimeSpan(e.StartTime.TimeOfDay.Hour, e.StartTime.TimeOfDay.Minute, e.StartTime.TimeOfDay.Second));
 
             foreach (var evt in dayEvents)
