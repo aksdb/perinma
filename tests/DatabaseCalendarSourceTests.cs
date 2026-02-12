@@ -969,24 +969,24 @@ public class DatabaseCalendarSourceTests
             """);
 
         var events = calendarSource.GetCalendarEvents(
-            new Interval(Instant.FromDateTimeUtc(new DateTime(2022, 11, 10, 0, 0, 0, DateTimeKind.Utc)),
-                Instant.FromDateTimeUtc(new DateTime(2022, 12, 01, 0, 0, 0, DateTimeKind.Utc))));
-        Assert.That(events.Count, Is.EqualTo(2));
+            new Interval(Instant.FromUtc(2022, 11, 10, 0, 0, 0),
+                Instant.FromUtc(2022, 12, 01, 0, 0, 0)));
+        Assert.That(events, Has.Count.EqualTo(2));
 
         var event1 = events[0];
         var event2 = events[1];
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(event1.StartTime,
-                Is.EqualTo(LocalDateTime.FromDateTime(new DateTime(2022, 11, 15, 0, 0, 0, DateTimeKind.Unspecified))));
+                Is.EqualTo(new LocalDateTime(2022, 11, 15, 0, 0, 0)));
             Assert.That(event1.EndTime,
-                Is.EqualTo(LocalDateTime.FromDateTime(new DateTime(2022, 11, 16, 0, 0, 0, DateTimeKind.Unspecified))));
+                Is.EqualTo(new LocalDateTime(2022, 11, 16, 0, 0, 0)));
 
             Assert.That(event2.StartTime,
-                Is.EqualTo(LocalDateTime.FromDateTime(new DateTime(2022, 11, 29, 0, 0, 0, DateTimeKind.Unspecified))));
+                Is.EqualTo(new LocalDateTime(2022, 11, 29, 0, 0, 0)));
             Assert.That(event2.EndTime,
-                Is.EqualTo(LocalDateTime.FromDateTime(new DateTime(2022, 11, 30, 0, 0, 0, DateTimeKind.Unspecified))));
-        });
+                Is.EqualTo(new LocalDateTime(2022, 11, 30, 0, 0, 0)));
+        }
     }
 
     #endregion
