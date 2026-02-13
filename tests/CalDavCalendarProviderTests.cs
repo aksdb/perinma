@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using CredentialStore;
 using NodaTime;
 using perinma.Models;
@@ -11,7 +9,6 @@ using tests.Helpers;
 
 namespace tests;
 
-[TestFixture]
 public class CalDavCalendarProviderTests
 {
     private CredentialManagerService _credentialManager = null!;
@@ -354,7 +351,8 @@ public class CalDavCalendarProviderTests
         // Arrange
         var start = new ZonedDateTime(Instant.FromUtc(2025, 1, 1, 10, 0), DateTimeZone.Utc);
         var end = new ZonedDateTime(Instant.FromUtc(2025, 1, 1, 11, 0), DateTimeZone.Utc);
-        var rawICal = TestDataHelpers.CreateRecurringCalDavEventRaw("recurring-uid-1", "Daily Standup", start, end, "RRULE:FREQ=DAILY;COUNT=5");
+        var rawICal = TestDataHelpers.CreateRecurringCalDavEventRaw("recurring-uid-1", "Daily Standup", start, end,
+            "RRULE:FREQ=DAILY;COUNT=5");
         _serviceStub.SetEvents(
             "https://caldav.example.com/calendars/work",
             new CalDavEvent
@@ -696,8 +694,108 @@ public class CalDavCalendarProviderTests
         Assert.That(result, Is.Empty);
     }
 
+    #endregion
+
+    #region CreateEventAsync Tests
+
     [Test]
-    public async Task GetReminderOccurrencesAsync_WithRecurringEvent_ReturnsTriggerTime()
+    public async Task CreateEventAsync_WithLocalTime_PreservesTimezone()
+    {
+        // Arrange
+        var calendarUrl = "https://caldav.example.com/calendars/work";
+        var localStart =
+            Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Local).ToUniversalTime());
+        var localEnd =
+            Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Local).ToUniversalTime());
+
+        // Act
+        var result = await _provider.CreateEventAsync(
+            _accountId,
+            calendarUrl,
+            "Test Meeting",
+            "Test Description",
+            "Office",
+            localStart,
+            localEnd);
+
+        // Assert
+        var createdEvents = _serviceStub.GetCreatedEvents();
+        Assert.That(createdEvents, Has.Count.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(createdEvents[0].StartTime, Is.EqualTo(localStart.ToDateTimeUtc()));
+            Assert.That(createdEvents[0].EndTime, Is.EqualTo(localEnd.ToDateTimeUtc()));
+            Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Utc));
+            Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Utc));
+        }
+    }
+
+    [Test]
+    public async Task CreateEventAsync_WithUtcTime_PreservesUtc()
+    {
+        // Arrange
+        var calendarUrl = "https://caldav.example.com/calendars/work";
+        var utcStart = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Utc));
+        var utcEnd = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Utc));
+
+        // Act
+        var result = await _provider.CreateEventAsync(
+            _accountId,
+            calendarUrl,
+            "Test Meeting",
+            "Test Description",
+            "Office",
+            utcStart,
+            utcEnd);
+
+        // Assert
+        var createdEvents = _serviceStub.GetCreatedEvents();
+        Assert.That(createdEvents, Has.Count.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(createdEvents[0].StartTime, Is.EqualTo(utcStart.ToDateTimeUtc()));
+            Assert.That(createdEvents[0].EndTime, Is.EqualTo(utcEnd.ToDateTimeUtc()));
+            Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Utc));
+            Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Utc));
+        }
+    }
+
+    [Test]
+    public async Task CreateEventAsync_WithUnspecifiedTime_TreatsAsLocal()
+    {
+        // Arrange
+        var calendarUrl = "https://caldav.example.com/calendars/work";
+        var unspecifiedStart = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0).ToUniversalTime());
+        var unspecifiedEnd = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0).ToUniversalTime());
+
+        // Act
+        var result = await _provider.CreateEventAsync(
+            _accountId,
+            calendarUrl,
+            "Test Meeting",
+            "Test Description",
+            "Office",
+            unspecifiedStart,
+            unspecifiedEnd);
+
+        // Assert
+        var createdEvents = _serviceStub.GetCreatedEvents();
+        Assert.That(createdEvents, Has.Count.EqualTo(1));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(createdEvents[0].StartTime, Is.EqualTo(unspecifiedStart.ToDateTimeUtc()));
+            Assert.That(createdEvents[0].EndTime, Is.EqualTo(unspecifiedEnd.ToDateTimeUtc()));
+            Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Utc));
+            Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Utc));
+        }
+    }
+
+    #endregion
+
+    #region Special cases
+
+    [Test]
+    public void GetReminderOccurrencesAsync_WithRecurringEvent_ReturnsTriggerTime()
     {
         var rawEventData =
             """
@@ -766,90 +864,83 @@ public class CalDavCalendarProviderTests
         });*/
     }
 
+    [Test]
+    public async Task VCalendarWithMultipleEvents()
+    {
+        var rawEventData =
+            """
+            BEGIN:VCALENDAR
+            PRODID:DAVx5/4.5.9-gplay ical4j/3.2.19
+            VERSION:2.0
+            BEGIN:VTIMEZONE
+            TZID:Europe/Berlin
+            BEGIN:STANDARD
+            TZNAME:CET
+            TZOFFSETFROM:+0200
+            TZOFFSETTO:+0100
+            DTSTART:19961027T030000
+            RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
+            END:STANDARD
+            BEGIN:DAYLIGHT
+            TZNAME:CEST
+            TZOFFSETFROM:+0100
+            TZOFFSETTO:+0200
+            DTSTART:19810329T020000
+            RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU
+            END:DAYLIGHT
+            END:VTIMEZONE
+            BEGIN:VEVENT
+            DTSTAMP:20260213T103044Z
+            UID:6c48d2ac-65ac-4c96-93e8-3337441f19c6
+            SUMMARY:The Title
+            DTSTART;TZID=Europe/Berlin:20260122T110000
+            DTEND;TZID=Europe/Berlin:20260122T121500
+            RRULE:FREQ=WEEKLY;COUNT=8;BYDAY=TH
+            CLASS:PUBLIC
+            EXDATE;TZID=Europe/Berlin:20260219T110000
+            END:VEVENT
+            BEGIN:VEVENT
+            DTSTAMP:20260213T103044Z
+            UID:6c48d2ac-65ac-4c96-93e8-3337441f19c6
+            RECURRENCE-ID;TZID=Europe/Berlin:20260312T110000
+            SUMMARY:The Title
+            DTSTART;TZID=Europe/Berlin:20260326T110000
+            DTEND;TZID=Europe/Berlin:20260326T121500
+            STATUS:TENTATIVE
+            SEQUENCE:1
+            CLASS:PUBLIC
+            END:VEVENT
+            END:VCALENDAR
+            """;
+
+        _serviceStub.SetEvents("/cal", CalDavService.ParseEvents(rawEventData, "/cal/item1").ToArray());
+        var syncResult = await _provider.GetEventsAsync(_accountId, "/cal");
+        Assert.That(syncResult.Events, Has.Count.EqualTo(1));
+        var providerEvent = syncResult.Events.First();
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(providerEvent.Title, Is.EqualTo("The Title"));
+            Assert.That(providerEvent.StartTime, Is.EqualTo(Instant.FromUtc(2026, 1, 22, 10, 0, 0)));
+            Assert.That(providerEvent.EndTime, Is.EqualTo(Instant.FromUtc(2026, 3, 26, 11, 15, 0)));
+        }
+
+        var parsedEvents = _provider.ParseCalendarEvents([
+            new RawEvent
+            {
+                RawData = rawEventData,
+                Reference = new EventReference
+                {
+                    Calendar = null!,
+                    ExternalId = "",
+                    Id = Guid.Empty,
+                }
+            }
+        ], new Interval(
+            Instant.FromUtc(2026, 1, 1, 0, 0, 0),
+            Instant.FromUtc(2026, 5, 1, 0, 0, 0)
+        ));
+        Assert.That(parsedEvents, Has.Count.EqualTo(8));
+    }
+
     #endregion
-
-#region CreateEventAsync Tests
-
-[Test]
-public async Task CreateEventAsync_WithLocalTime_PreservesTimezone()
-{
-    // Arrange
-    var calendarUrl = "https://caldav.example.com/calendars/work";
-    var localStart = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Local).ToUniversalTime());
-    var localEnd = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Local).ToUniversalTime());
-
-    // Act
-    var result = await _provider.CreateEventAsync(
-        _accountId,
-        calendarUrl,
-        "Test Meeting",
-        "Test Description",
-        "Office",
-        localStart,
-        localEnd);
-
-    // Assert
-    var createdEvents = _serviceStub.GetCreatedEvents();
-    Assert.That(createdEvents, Has.Count.EqualTo(1));
-    Assert.That(createdEvents[0].StartTime, Is.EqualTo(localStart.ToDateTimeUtc()));
-    Assert.That(createdEvents[0].EndTime, Is.EqualTo(localEnd.ToDateTimeUtc()));
-    Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Utc));
-    Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Utc));
-}
-
-[Test]
-public async Task CreateEventAsync_WithUtcTime_PreservesUtc()
-{
-    // Arrange
-    var calendarUrl = "https://caldav.example.com/calendars/work";
-    var utcStart = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Utc));
-    var utcEnd = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Utc));
-
-    // Act
-    var result = await _provider.CreateEventAsync(
-        _accountId,
-        calendarUrl,
-        "Test Meeting",
-        "Test Description",
-        "Office",
-        utcStart,
-        utcEnd);
-
-    // Assert
-    var createdEvents = _serviceStub.GetCreatedEvents();
-    Assert.That(createdEvents, Has.Count.EqualTo(1));
-    Assert.That(createdEvents[0].StartTime, Is.EqualTo(utcStart.ToDateTimeUtc()));
-    Assert.That(createdEvents[0].EndTime, Is.EqualTo(utcEnd.ToDateTimeUtc()));
-    Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Utc));
-    Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Utc));
-}
-
-[Test]
-public async Task CreateEventAsync_WithUnspecifiedTime_TreatsAsLocal()
-{
-    // Arrange
-    var calendarUrl = "https://caldav.example.com/calendars/work";
-    var unspecifiedStart = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0).ToUniversalTime());
-    var unspecifiedEnd = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0).ToUniversalTime());
-
-    // Act
-    var result = await _provider.CreateEventAsync(
-        _accountId,
-        calendarUrl,
-        "Test Meeting",
-        "Test Description",
-        "Office",
-        unspecifiedStart,
-        unspecifiedEnd);
-
-    // Assert
-    var createdEvents = _serviceStub.GetCreatedEvents();
-    Assert.That(createdEvents, Has.Count.EqualTo(1));
-    Assert.That(createdEvents[0].StartTime, Is.EqualTo(unspecifiedStart.ToDateTimeUtc()));
-    Assert.That(createdEvents[0].EndTime, Is.EqualTo(unspecifiedEnd.ToDateTimeUtc()));
-    Assert.That(createdEvents[0].StartTime.Kind, Is.EqualTo(DateTimeKind.Utc));
-    Assert.That(createdEvents[0].EndTime.Kind, Is.EqualTo(DateTimeKind.Utc));
-}
-
-#endregion
 }

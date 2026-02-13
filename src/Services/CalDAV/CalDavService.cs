@@ -111,36 +111,12 @@ public class CalDavService : ICalDavService
 
             try
             {
-                var calendar = client.ParseICalendar(item.CalendarData);
-                if (calendar == null)
-                    continue;
-
-                foreach (var evt in calendar.Events)
-                {
-                    if (evt.Uid == null)
-                    {
-                        Console.WriteLine("Skipping CalDAV event without UID");
-                        continue;
-                    }
-                    events.Add(new CalDavEvent
-                    {
-                        Uid = evt.Uid,
-                        Url = item.Href,
-                        Summary = evt.Summary,
-                        StartTime = evt.Start?.AsUtc,
-                        EndTime = evt.End?.AsUtc,
-                        Status = evt.Status,
-                        ETag = item.ETag,
-                        RawICalendar = item.CalendarData,
-                        Deleted = false
-                    });
-                }
+                events.AddRange(ParseEvents(item.CalendarData, item.Href, item.ETag));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error parsing iCalendar for {item.Href}: {ex.Message}");
+                Console.WriteLine($"Error parsing iCalendar for {item.Href}: {ex}");
                 // Skip malformed events
-                continue;
             }
         }
 
@@ -576,6 +552,45 @@ public class CalDavService : ICalDavService
         }
 
         return sharedCalendars;
+    }
+
+    public static List<CalDavEvent> ParseEvents(string rawCalendar, string sourceUrl, string? etag = null)
+    {
+        var calendar = Calendar.Load(rawCalendar);
+        if (calendar == null)
+            return [];
+
+        return calendar.Events
+            .GroupBy(e => e.Uid)
+            .Select(uidEventPairs =>
+            {
+                if (uidEventPairs.Key == null)
+                {
+                    Console.WriteLine("Skipping CalDAV event without UID");
+                    return null;
+                }
+                
+                // We just take the first with recurrence info ... or fall back to the first in the
+                // list if we don't have anything better.
+                var evt = uidEventPairs
+                              .FirstOrDefault(evt => evt.RecurrenceIdentifier == null)
+                          ?? uidEventPairs.First();
+                return new CalDavEvent
+                {
+                    Uid = uidEventPairs.Key,
+                    Url = sourceUrl,
+                    Summary = evt.Summary,
+                    StartTime = evt.Start?.AsUtc,
+                    EndTime = evt.End?.AsUtc,
+                    Status = evt.Status,
+                    ETag = etag,
+                    ICalendar = calendar,
+                    RawICalendar = rawCalendar,
+                    Deleted = false
+                };
+            })
+            .OfType<CalDavEvent>()
+            .ToList();
     }
 
     private static string TrimTrailingSlash(string url)

@@ -1,4 +1,5 @@
 using System;
+using Ical.Net;
 
 namespace perinma.Services.CalDAV;
 
@@ -24,6 +25,7 @@ public class CalDavEvent
     public DateTime? EndTime { get; init; }
     public string? Status { get; init; }
     public string? ETag { get; init; }
+    public Calendar? ICalendar { get; init; }
     public string? RawICalendar { get; init; }
     public bool Deleted { get; init; }
 }

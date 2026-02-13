@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Ical.Net.DataTypes;
 using NodaTime;
+using NodaTime.Extensions;
 using perinma.Models;
 using perinma.Utils;
 using Calendar = Ical.Net.Calendar;
@@ -124,9 +125,10 @@ public class CalDavCalendarProvider(
         // Convert to provider-agnostic format
         var calendars = result.Calendars.Select(c =>
         {
-            var data = new Dictionary<string, DataAttribute>();
-
-            data["rawData"] = new DataAttribute.Text(c.PropfindXml);
+            var data = new Dictionary<string, DataAttribute>
+            {
+                ["rawData"] = new DataAttribute.Text(c.PropfindXml)
+            };
 
             if (c.Owner != null)
                 data["owner"] = new DataAttribute.Text(c.Owner);
@@ -164,25 +166,14 @@ public class CalDavCalendarProvider(
     {
         var calDavCredentials = credentialManager.GetCalDavCredentials(accountId);
         if (calDavCredentials == null)
-        {
             throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
-        }
 
         // Fetch events from CalDAV server
         var result =
             await calDavService.GetEventsAsync(calDavCredentials, calendarExternalId, syncToken, cancellationToken);
 
         // Convert to provider-agnostic format
-        var events = new List<ProviderEvent>();
-
-        foreach (var evt in result.Events)
-        {
-            var providerEvent = ConvertCalDavEvent(evt);
-            if (providerEvent != null)
-            {
-                events.Add(providerEvent);
-            }
-        }
+        var events = result.Events.Select(ConvertCalDavEvent).OfType<ProviderEvent>().ToList();
 
         return new EventSyncResult
         {
@@ -207,6 +198,10 @@ public class CalDavCalendarProvider(
 
     private static ProviderEvent? ConvertCalDavEvent(CalDavEvent evt)
     {
+        var iCalendar = evt.ICalendar ?? evt.RawICalendar?.Let(Calendar.Load);
+        if (iCalendar == null)
+            return null;
+        
         // Check if event was deleted or cancelled
         var isDeleted = evt.Status == "CANCELLED" || evt.Deleted;
 
@@ -222,17 +217,26 @@ public class CalDavCalendarProvider(
             };
         }
 
-        var endTime = evt.EndTime?.Let(Instant.FromDateTimeUtc);
+        Instant? startTime = null;
+        Instant? endTime = null;
 
-        // Parse recurrence end time from raw iCalendar data if present
-        if (!string.IsNullOrEmpty(evt.RawICalendar))
+        foreach (var iCalEvent in iCalendar.Events)
         {
-            var recurrenceEndTime = ParseCalDavRecurrenceEndTime(evt.RawICalendar);
-            if (recurrenceEndTime.HasValue)
-                endTime = Instant.FromDateTimeUtc(recurrenceEndTime.Value.ToUniversalTime());
-        }
+            if (iCalEvent.Uid != evt.Uid)
+                continue;
 
-        var startTime = evt.StartTime?.Let(Instant.FromDateTimeUtc);
+            var eventStart = iCalEvent.Start?.AsUtc.ToInstant();
+            var eventEnd  = iCalEvent.End?.AsUtc.ToInstant();
+            
+            if (eventStart != null && (startTime == null || eventStart < startTime))
+                startTime = eventStart;
+            
+            var recurrenceEndTime = RecurrenceParser.CalculateRecurrenceEndTime(iCalEvent)?.ToUniversalTime().ToInstant();
+            if (recurrenceEndTime != null && (endTime == null || recurrenceEndTime > endTime))
+                endTime = recurrenceEndTime;
+            if (recurrenceEndTime == null && eventEnd != null && (endTime == null || eventEnd > endTime))
+                endTime = eventEnd;
+        }
 
         return new ProviderEvent
         {
@@ -246,29 +250,6 @@ public class CalDavCalendarProvider(
             OriginalStartTime = null,
             RawData = evt.RawICalendar
         };
-    }
-
-    /// <summary>
-    /// Parses recurrence end time from raw iCalendar data.
-    /// </summary>
-    private static DateTime? ParseCalDavRecurrenceEndTime(string rawICalendar)
-    {
-        try
-        {
-            var calendar = Calendar.Load(rawICalendar);
-            var calendarEvent = calendar?.Events.FirstOrDefault();
-
-            if (calendarEvent != null)
-            {
-                return RecurrenceParser.CalculateRecurrenceEndTime(calendarEvent);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error parsing CalDAV recurrence: {ex.Message}");
-        }
-
-        return null;
     }
 
     /// <inheritdoc/>
@@ -291,7 +272,7 @@ public class CalDavCalendarProvider(
             return [];
 
         var alarms = evt.Alarms;
-        if (alarms == null || alarms.Count == 0)
+        if (alarms.Count == 0)
             return [];
 
         List<int> reminderMinutes = [];
@@ -299,9 +280,7 @@ public class CalDavCalendarProvider(
         foreach (var alarm in alarms)
         {
             if (alarm.Trigger?.IsRelative != true || !alarm.Trigger.Duration.HasValue)
-            {
                 continue;
-            }
 
             var duration = alarm.Trigger.Duration.Value;
             // Use ToTimeSpanUnspecified() to convert Duration to TimeSpan
