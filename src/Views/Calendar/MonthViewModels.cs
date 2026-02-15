@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Avalonia.Media;
@@ -8,6 +7,7 @@ using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Utils;
+using perinma.Views.Calendar.EventView;
 
 namespace perinma.Views.Calendar;
 
@@ -35,9 +35,9 @@ public partial class MonthDayViewModel : ObservableObject
 
     public IBrush Foreground => IsCurrentMonth ? Brushes.Black : Brushes.Gray;
 
-    public Avalonia.Media.FontWeight FontWeight => IsToday
-        ? Avalonia.Media.FontWeight.Bold
-        : Avalonia.Media.FontWeight.Normal;
+    public FontWeight FontWeight => IsToday
+        ? FontWeight.Bold
+        : FontWeight.Normal;
 }
 
 public partial class MonthEventViewModel : ObservableObject

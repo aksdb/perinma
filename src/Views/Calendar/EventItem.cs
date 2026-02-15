@@ -12,6 +12,7 @@ using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Utils;
+using perinma.Views.Calendar.EventView;
 
 namespace perinma.Views.Calendar;
 
@@ -20,7 +21,7 @@ public partial class EventItem : TemplatedControl
     // Disable false-positive warnings in relation to the code generator.
 #pragma warning disable CS0169 // Field is never used
 #pragma warning disable CS0414 // Field is assigned but never used
-    
+
     [AvaStyledProperty]
     private string _title = "[no title]";
 
@@ -42,10 +43,10 @@ public partial class EventItem : TemplatedControl
 
     [AvaStyledProperty]
     private IBrush _foregroundBrush = Brushes.Black;
-    
+
     [AvaStyledProperty]
     private IBrush _borderBrush = Brushes.Transparent;
-    
+
     /// <summary>
     /// Visual state of the event for styling purposes.
     /// </summary>
@@ -53,8 +54,10 @@ public partial class EventItem : TemplatedControl
     {
         /// <summary>Event has been accepted (default styling)</summary>
         Accepted,
+
         /// <summary>Event needs response (pending or tentative)</summary>
         NeedsResponse,
+
         /// <summary>Event has been declined</summary>
         Declined
     }
@@ -93,12 +96,12 @@ public partial class EventItem : TemplatedControl
 
     [AvaStyledProperty]
     private bool _showInlineTimes = true;
-    
+
     [AvaStyledProperty]
     private bool _showStackedTimes = false;
 
     private double _inlineTimeTextWidth;
-    
+
     [AvaStyledProperty]
     private CalendarEvent? _calendarEvent;
 
@@ -110,7 +113,7 @@ public partial class EventItem : TemplatedControl
 
     [AvaStyledProperty]
     private IRespondableEventViewModel? _eventViewModel;
-    
+
     public event EventHandler<CalendarEvent?>? EventDoubleTapped;
 
 #pragma warning restore CS0169
@@ -199,8 +202,8 @@ public partial class EventItem : TemplatedControl
                 BackgroundBrush = new SolidColorBrush(declinedBrightColor, 0.9);
                 ForegroundBrush = new SolidColorBrush(ColorUtils.ContrastTextColor(declinedBrightColor));
                 BorderBrush = new SolidColorBrush(Color);
-                Classes.Set("needsResponse", true);  // Reuses dashed border styling
-                Classes.Set("declined", true);        // Adds strikethrough
+                Classes.Set("needsResponse", true); // Reuses dashed border styling
+                Classes.Set("declined", true); // Adds strikethrough
                 break;
         }
     }
@@ -234,7 +237,10 @@ public partial class EventItem : TemplatedControl
             {
                 await Task.Delay(150, singleTapCtx.Token);
                 ShowFlyout(border);
-            } catch (TaskCanceledException) { }
+            }
+            catch (TaskCanceledException)
+            {
+            }
         };
         border.DoubleTapped += (sender, args) =>
         {

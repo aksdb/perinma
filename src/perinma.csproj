@@ -63,6 +63,10 @@
         <DependentUpon>SettingsWindow.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Calendar\EventView\CalendarEventView.axaml.cs">
+        <DependentUpon>CalendarEventView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
 
     <ItemGroup>

@@ -9,13 +9,15 @@ using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Utils;
+using perinma.Views.Calendar.EventView;
 
 namespace perinma.Views.Calendar;
 
 public partial class AgendaDayViewModel : ObservableObject
 {
-    private static readonly LocalDatePattern DateDisplayPattern = LocalDatePattern.CreateWithInvariantCulture("MMMM d, yyyy");
-    
+    private static readonly LocalDatePattern DateDisplayPattern =
+        LocalDatePattern.CreateWithInvariantCulture("MMMM d, yyyy");
+
     [ObservableProperty]
     private LocalDate _date;
 
