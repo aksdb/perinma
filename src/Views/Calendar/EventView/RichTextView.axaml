@@ -7,8 +7,9 @@
              mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="150"
              x:Class="perinma.Views.Calendar.EventView.RichTextView"
              x:DataType="ev:RichTextViewModel">
-
+    
     <StackPanel Spacing="4">
+        <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
         <html:HtmlPanel x:Name="HtmlPanel"
                         Text="{Binding HtmlText}"
                         MaxHeight="200"

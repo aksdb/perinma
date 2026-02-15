@@ -8,13 +8,13 @@
              mc:Ignorable="d" d:DesignWidth="350" d:DesignHeight="150"
              x:Class="perinma.Views.Calendar.EventView.CalendarEventView">
 
-    <StackPanel Spacing="8" Margin="12">
+    <StackPanel Margin="12">
         <TextBlock Text="{Binding CalendarEvent.Title}" FontWeight="Bold" FontSize="14" />
         <Separator />
         <ItemsControl ItemsSource="{Binding EventDetails}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <ContentControl Content="{Binding}" />
+                    <ContentControl Content="{Binding}" Margin="0 8 0 0" />
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>

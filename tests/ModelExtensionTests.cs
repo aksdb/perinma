@@ -19,15 +19,15 @@ public class ModelExtensionTests
     public void SetAndGet_MultipleExtensionsSameType_DoNotOverwriteEachOther()
     {
         var values = new ModelExtensions();
-        var description = new RichText.SimpleText("Meeting description");
+        var timeZone = "UTC";
         var location = "Office Room 1";
         
-        values.Set(CalendarEventExtensions.Description, description);
+        values.Set(CalendarEventExtensions.TimeZone, timeZone);
         values.Set(CalendarEventExtensions.Location, location);
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(values.Get(CalendarEventExtensions.Description), Is.EqualTo(description), "Description should not be overwritten by Location");
-            Assert.That(values.Get(CalendarEventExtensions.Location), Is.EqualTo(location), "Location should be correctly retrieved");
+            Assert.That(values.Get(CalendarEventExtensions.TimeZone), Is.EqualTo(timeZone), "TimeZone should not be overwritten by Location");
+            Assert.That(values.Get(CalendarEventExtensions.Location), Is.EqualTo(location), "Location should be correctly retrieTimeZoneved");
         }
     }
 

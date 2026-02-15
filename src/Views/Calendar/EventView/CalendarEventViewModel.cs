@@ -58,36 +58,26 @@ public partial class CalendarEventViewModel : ViewModelBase
 
         var location = CalendarEvent.Extensions.Get(CalendarEventExtensions.Location);
         if (!string.IsNullOrEmpty(location))
-        {
             EventDetails.Add(new SimpleTextViewModel
             {
                 Label = "Location",
                 Content = location
             });
-        }
+        
+        var conference = CalendarEvent.Extensions.Get(CalendarEventExtensions.Conference);
+        if (conference != null)
+            EventDetails.Add(new ConferenceViewModel(conference));
 
         var description = CalendarEvent.Extensions.Get(CalendarEventExtensions.Description);
         if (description != null)
-        {
-            EventDetails.Add(new RichTextViewModel(description));
-        }
+            EventDetails.Add(new RichTextViewModel("Description", description));
 
         var participants = CalendarEvent.Extensions.Get(CalendarEventExtensions.Participants);
         if (participants is { Count: > 0 })
-        {
             EventDetails.Add(new ParticipantsViewModel(participants));
-        }
 
         var attachments = CalendarEvent.Extensions.Get(CalendarEventExtensions.Attachments);
         if (attachments is { Count: > 0 })
-        {
             EventDetails.Add(new AttachmentsViewModel(attachments));
-        }
-
-        var conference = CalendarEvent.Extensions.Get(CalendarEventExtensions.Conference);
-        if (conference != null)
-        {
-            EventDetails.Add(new ConferenceViewModel(conference));
-        }
     }
 }

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace perinma.Models;
 
-public record ModelExtension<T>;
+public class ModelExtension<T>;
 
 public class ModelExtensions
 {

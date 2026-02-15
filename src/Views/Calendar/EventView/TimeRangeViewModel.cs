@@ -1,14 +1,23 @@
 using NodaTime;
+using NodaTime.Text;
 
 namespace perinma.Views.Calendar.EventView;
 
 public class TimeRangeViewModel : ViewModelBase
 {
+    
+    private static readonly LocalDatePattern DateDisplayPattern =
+        LocalDatePattern.CreateWithInvariantCulture("MMMM d, yyyy");
+    
+    private static readonly LocalTimePattern TimeDisplayPattern =
+        LocalTimePattern.CreateWithInvariantCulture("HH:mm");
 
     public TimeRangeViewModel(LocalDateTime start, LocalDateTime end, bool fullDay = false)
     {
         var startDate = start.Date;
         var endDate = end.Date;
+
+        var startDateText = DateDisplayPattern.Format(startDate);
 
         if (fullDay)
         {
@@ -16,17 +25,23 @@ public class TimeRangeViewModel : ViewModelBase
             // we want to display is shorter.
             endDate = endDate.PlusDays(-1);
 
-            Text = startDate == endDate ? $"{startDate}" : $"{startDate} - {endDate}";
+            if (startDate == endDate)
+                Text = startDateText;
+            else 
+                Text = $"{startDateText} - {DateDisplayPattern.Format(endDate)}";
         }
         else
         {
+            var startTimeText = TimeDisplayPattern.Format(start.TimeOfDay);
+            var endTimeText = TimeDisplayPattern.Format(end.TimeOfDay);
+            
             if (startDate == endDate)
             {
-                Text = $"{startDate}, {start.TimeOfDay} - {end.TimeOfDay}";
+                Text = $"{startDateText}, {startTimeText} - {endTimeText}";
             }
             else
             {
-                Text = $"{start} - {end}";
+                Text = $"{startDateText}, {startTimeText} - {DateDisplayPattern.Format(endDate)}, {endTimeText}";
             }
         }
     }

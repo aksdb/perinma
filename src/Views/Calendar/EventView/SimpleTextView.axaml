@@ -13,6 +13,6 @@
     
     <StackPanel Orientation="Vertical">
         <TextBlock Text="{Binding Label}" FontWeight="Bold"/>
-        <TextBlock Text="{Binding Content}"/>
+        <TextBlock Text="{Binding Content}" TextWrapping="Wrap"/>
     </StackPanel>
 </UserControl>

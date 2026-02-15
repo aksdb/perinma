@@ -8,7 +8,7 @@
              x:DataType="ev:ParticipantsViewModel">
 
     <StackPanel Spacing="4">
-        <TextBlock Text="Participants" FontWeight="SemiBold" FontSize="12" />
+        <TextBlock Text="Participants" FontWeight="SemiBold" />
         <ItemsControl ItemsSource="{Binding Participants}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="ev:ParticipantItemViewModel">
