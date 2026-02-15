@@ -386,7 +386,6 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         EndTimeText = e.EndTime.ToString("HH:mm", null),
                         ShowInlineTimes = true,
                         CalendarEvent = e,
-                        Storage = _storage,
                         Providers = _providers,
                         NeedsResponse = needsResponse,
                         IsDeclined = isDeclined,

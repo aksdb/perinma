@@ -10,7 +10,6 @@ using Avalonia.Media.TextFormatting;
 using Lucdem.Avalonia.SourceGenerators.Attributes;
 using perinma.Models;
 using perinma.Services;
-using perinma.Storage;
 using perinma.Utils;
 using perinma.Views.Calendar.EventView;
 
@@ -106,9 +105,6 @@ public partial class EventItem : TemplatedControl
     private CalendarEvent? _calendarEvent;
 
     [AvaStyledProperty]
-    private SqliteStorage? _storage;
-
-    [AvaStyledProperty]
     private IReadOnlyDictionary<AccountType, ICalendarProvider>? _providers;
 
     [AvaStyledProperty]
@@ -147,7 +143,6 @@ public partial class EventItem : TemplatedControl
                 RecalculateInlineTimeWidth();
                 break;
             case nameof(CalendarEvent):
-            case nameof(Storage):
             case nameof(Providers):
                 EventViewModel = CreateViewModel() as IRespondableEventViewModel;
                 break;
@@ -251,7 +246,7 @@ public partial class EventItem : TemplatedControl
 
     private void ShowFlyout(Border border)
     {
-        if (Storage == null || CalendarEvent == null)
+        if (CalendarEvent == null)
         {
             FlyoutBase.ShowAttachedFlyout(border);
             return;

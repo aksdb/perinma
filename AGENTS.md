@@ -99,6 +99,8 @@ mise set -E local GOOGLE_CLIENT_SECRET=your-client-secret
 - Use specific exception types when possible
 - Log errors to `Console.WriteLine` with context: status codes, response bodies, etc.
   - When part of a UI flow, show and await a MessageBox
+  - When including an exception in the Console log, log the exception, not just its message
+    (we want a stacktrace)
 - Wrap HTTP errors with descriptive messages including status code
 - Try-catch with specific exception types, avoid catching bare `Exception` unless needed
 - Handle nullable values before using (null coalescing `??`, null-conditional `?.`)

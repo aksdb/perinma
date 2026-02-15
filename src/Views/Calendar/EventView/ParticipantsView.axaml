@@ -11,35 +11,8 @@
         <TextBlock Text="Participants" FontWeight="SemiBold" />
         <ItemsControl ItemsSource="{Binding Participants}">
             <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="ev:ParticipantItemViewModel">
-                    <Border Padding="4,3" Margin="0,1" Background="Transparent" CornerRadius="4">
-                        <Grid ColumnDefinitions="28,16,*">
-                            <Border Width="24" Height="24" CornerRadius="12"
-                                    Background="{DynamicResource SystemAccentColorLight2}">
-                                <TextBlock Text="{Binding Initials}"
-                                           FontSize="9"
-                                           FontWeight="SemiBold"
-                                           Foreground="White"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center" />
-                            </Border>
-
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding StatusIcon}"
-                                       Foreground="{Binding StatusColor}"
-                                       FontWeight="Bold"
-                                       VerticalAlignment="Center"
-                                       HorizontalAlignment="Center"
-                                       ToolTip.Tip="{Binding StatusTooltip}"
-                                       IsVisible="{Binding HasStatus}" />
-
-                            <TextBlock Grid.Column="2"
-                                       Text="{Binding Name}"
-                                       VerticalAlignment="Center"
-                                       Margin="4,0,0,0"
-                                       TextTrimming="CharacterEllipsis" />
-                        </Grid>
-                    </Border>
+                <DataTemplate x:DataType="ev:ParticipantViewModel">
+                    <ev:ParticipantView />
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>

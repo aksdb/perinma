@@ -112,9 +112,6 @@ public partial class AgendaEventViewModel : ObservableObject
             if (CalendarEvent == null)
                 return null;
 
-            if (Storage == null)
-                return new CalendarEventViewModel(CalendarEvent);
-
             ICalendarProvider? calendarProvider = null;
             var accountType = CalendarEvent.Reference.Calendar.Account.Type;
 
@@ -125,8 +122,8 @@ public partial class AgendaEventViewModel : ObservableObject
 
             return accountType switch
             {
-                AccountType.Google => new GoogleCalendarEventViewModel(CalendarEvent, Storage, calendarProvider),
-                AccountType.CalDav => new CalDavEventViewModel(CalendarEvent, Storage, calendarProvider),
+                AccountType.Google => new GoogleCalendarEventViewModel(CalendarEvent, calendarProvider),
+                AccountType.CalDav => new CalDavEventViewModel(CalendarEvent, calendarProvider),
                 _ => new CalendarEventViewModel(CalendarEvent)
             };
         }

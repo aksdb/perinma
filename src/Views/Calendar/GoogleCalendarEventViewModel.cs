@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using perinma.Models;
 using perinma.Services;
@@ -32,7 +33,6 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
     public CalendarEvent CalendarEvent => _calendarEvent;
 
     private readonly CalendarEvent _calendarEvent;
-    private readonly SqliteStorage _storage;
     private readonly ICalendarProvider? _calendarProvider;
 
     [ObservableProperty]
@@ -96,11 +96,9 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
 
     public GoogleCalendarEventViewModel(
         CalendarEvent calendarEvent,
-        SqliteStorage storage,
         ICalendarProvider? calendarProvider = null)
     {
         _calendarEvent = calendarEvent;
-        _storage = storage;
         _calendarProvider = calendarProvider;
         _isLoading = true;
         _ = LoadEventDataAsync();
@@ -110,7 +108,10 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
     {
         try
         {
-            var rawData = await _storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
+            var storage = App.Services?.GetRequiredService<SqliteStorage>();
+            if (storage == null) return;
+            
+            var rawData = await storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
             if (!string.IsNullOrEmpty(rawData))
             {
                 var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(rawData);
@@ -158,6 +159,9 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
             return;
         }
 
+        var storage = App.Services?.GetRequiredService<SqliteStorage>();
+        if (storage == null) return;
+
         foreach (var attendee in googleEvent.Attendees)
         {
             var name = attendee.DisplayName ?? attendee.Email;
@@ -179,7 +183,7 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
             // Try to enrich with contact data
             if (!string.IsNullOrEmpty(email))
             {
-                var contact = await _storage.GetContactByEmailAsync(email);
+                var contact = await storage.GetContactByEmailAsync(email);
                 if (contact != null)
                 {
                     attendeeVm.EnrichWithContact(contact);
@@ -211,13 +215,16 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
         if (string.IsNullOrEmpty(displayName) && string.IsNullOrEmpty(email))
             return null;
 
+        var storage = App.Services?.GetRequiredService<SqliteStorage>();
+        if (storage == null) return null;
+
         var name = displayName ?? email ?? string.Empty;
         var vm = AttendeeViewModel.Create(name, email, EventResponseStatus.None, isOrganizer: false);
 
         // Try to enrich with contact data
         if (!string.IsNullOrEmpty(email))
         {
-            var contact = await _storage.GetContactByEmailAsync(email);
+            var contact = await storage.GetContactByEmailAsync(email);
             if (contact != null)
             {
                 vm.EnrichWithContact(contact);
@@ -350,7 +357,10 @@ public partial class GoogleCalendarEventViewModel : ViewModelBase, IRespondableE
             }
 
             // Get raw event data for the provider
-            var rawData = await _storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
+            var storage = App.Services?.GetRequiredService<SqliteStorage>();
+            if (storage == null) return;
+            
+            var rawData = await storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
             if (string.IsNullOrEmpty(rawData))
             {
                 Console.WriteLine("Failed to get raw event data");

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using perinma.Models;
 using perinma.Services;
@@ -18,7 +19,6 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
     public CalendarEvent CalendarEvent => _calendarEvent;
 
     private readonly CalendarEvent _calendarEvent;
-    private readonly SqliteStorage _storage;
     private readonly ICalendarProvider? _calendarProvider;
 
     [ObservableProperty]
@@ -58,11 +58,9 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
 
     public CalDavEventViewModel(
         CalendarEvent calendarEvent,
-        SqliteStorage storage,
         ICalendarProvider? calendarProvider = null)
     {
         _calendarEvent = calendarEvent;
-        _storage = storage;
         _calendarProvider = calendarProvider;
         _isLoading = true;
         _ = LoadEventDataAsync();
@@ -72,7 +70,10 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
     {
         try
         {
-            var rawData = await _storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
+            var storage = App.Services?.GetRequiredService<SqliteStorage>();
+            if (storage == null) return;
+            
+            var rawData = await storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
             if (!string.IsNullOrEmpty(rawData))
             {
                 var calendar = ICalCalendar.Load(rawData);
@@ -134,6 +135,9 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
         if (iCalEvent.Attendees == null)
             return;
 
+        var storage = App.Services?.GetRequiredService<SqliteStorage>();
+        if (storage == null) return;
+
         foreach (var attendee in iCalEvent.Attendees)
         {
             var email = ExtractEmailFromUri(attendee.Value?.ToString());
@@ -157,7 +161,7 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
             // Try to enrich with contact data
             if (!string.IsNullOrEmpty(email))
             {
-                var contact = await _storage.GetContactByEmailAsync(email);
+                var contact = await storage.GetContactByEmailAsync(email);
                 if (contact != null)
                 {
                     attendeeVm.EnrichWithContact(contact);
@@ -205,13 +209,16 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
         if (string.IsNullOrEmpty(displayName) && string.IsNullOrEmpty(email))
             return null;
 
+        var storage = App.Services?.GetRequiredService<SqliteStorage>();
+        if (storage == null) return null;
+
         var name = displayName ?? email ?? string.Empty;
         var vm = AttendeeViewModel.Create(name, email, EventResponseStatus.None, isOrganizer: false);
 
         // Try to enrich with contact data
         if (!string.IsNullOrEmpty(email))
         {
-            var contact = await _storage.GetContactByEmailAsync(email);
+            var contact = await storage.GetContactByEmailAsync(email);
             if (contact != null)
             {
                 vm.EnrichWithContact(contact);
@@ -300,15 +307,18 @@ public partial class CalDavEventViewModel : ViewModelBase, IRespondableEventView
                 return;
             }
 
-            // Get raw event data for the provider
-            var rawData = await _storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
+            // Get raw event data for provider
+            var storage = App.Services?.GetRequiredService<SqliteStorage>();
+            if (storage == null) return;
+            
+            var rawData = await storage.GetEventData(_calendarEvent.Reference.Id.ToString(), "rawData");
             if (string.IsNullOrEmpty(rawData))
             {
                 Console.WriteLine("Failed to get raw event data");
                 return;
             }
 
-            // Use the provider to respond to the event
+            // Use the provider to respond to event
             await _calendarProvider.RespondToEventAsync(accountId, calendarId, eventId, rawData, responseStatus);
 
             // Update local state

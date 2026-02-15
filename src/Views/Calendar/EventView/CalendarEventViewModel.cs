@@ -63,7 +63,7 @@ public partial class CalendarEventViewModel : ViewModelBase
                 Label = "Location",
                 Content = location
             });
-        
+
         var conference = CalendarEvent.Extensions.Get(CalendarEventExtensions.Conference);
         if (conference != null)
             EventDetails.Add(new ConferenceViewModel(conference));
@@ -74,7 +74,11 @@ public partial class CalendarEventViewModel : ViewModelBase
 
         var participants = CalendarEvent.Extensions.Get(CalendarEventExtensions.Participants);
         if (participants is { Count: > 0 })
-            EventDetails.Add(new ParticipantsViewModel(participants));
+        {
+            var participantsVm = new ParticipantsViewModel(participants);
+            EventDetails.Add(participantsVm);
+            _ = participantsVm.EnrichParticipantsAsync();
+        }
 
         var attachments = CalendarEvent.Extensions.Get(CalendarEventExtensions.Attachments);
         if (attachments is { Count: > 0 })
