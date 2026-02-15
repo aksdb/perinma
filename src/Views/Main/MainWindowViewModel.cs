@@ -47,6 +47,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private readonly ICardDavService _cardDavService;
     private readonly ThemeService _themeService;
     private readonly SettingsService _settingsService;
+    private readonly SqliteStorage _storage;
     private DebugWindow? _debugWindow;
 
     [ObservableProperty]
@@ -78,7 +79,12 @@ public partial class MainWindowViewModel : ObservableRecipient,
         SyncService syncService,
         ContactSyncService contactSyncService,
         ICalDavService calDavService,
-        ICardDavService cardDavService)
+        ICardDavService cardDavService,
+        ThemeService themeService,
+        SettingsService settingsService,
+        SqliteStorage storage,
+        GoogleCalendarService googleCalendarService,
+        GoogleOAuthService googleOAuthService)
     {
         _databaseService = databaseService;
         _credentialManager = credentialManager;
@@ -86,17 +92,16 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _contactSyncService = contactSyncService;
         _calDavService = calDavService;
         _cardDavService = cardDavService;
-        _themeService = new ThemeService();
+        _themeService = themeService;
+        _settingsService = settingsService;
+        _storage = storage;
+        _googleCalendarService = googleCalendarService;
+        _googleOAuthService = googleOAuthService;
 
-        var storage = new SqliteStorage(databaseService, credentialManager);
-        var calendarSource = new DatabaseCalendarSource(storage, syncService.Providers);
-        //var calendarSource = new DummyCalendarSource(DateTime.Now);
-        _googleCalendarService = new GoogleCalendarService();
-        _googleOAuthService = new GoogleOAuthService(_googleCalendarService);
-        _settingsService = new SettingsService(storage);
-        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, storage, _settingsService, syncService.Providers);
-        CalendarListViewModel = new CalendarListViewModel(storage, _googleCalendarService, credentialManager, CalendarWeekViewModel);
-        ContactsViewModel = new ContactsViewModel(storage);
+        var calendarSource = new DatabaseCalendarSource(_storage, _syncService.Providers);
+        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, _storage, _settingsService, _syncService.Providers);
+        CalendarListViewModel = new CalendarListViewModel(_storage, _googleCalendarService, _credentialManager, CalendarWeekViewModel);
+        ContactsViewModel = new ContactsViewModel(_storage);
 
         Initialize();
     }
@@ -143,8 +148,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
             return;
         }
 
-        var storage = new SqliteStorage(_databaseService, _credentialManager);
-        var reminderService = new ReminderService(storage, _syncService.Providers);
+        var reminderService = new ReminderService(_storage, _syncService.Providers);
 
         _debugWindow = new DebugWindow();
         _debugWindow.DataContext = new DebugWindowViewModel(reminderService);
@@ -325,8 +329,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
                     try
                     {
                         // Get the account details
-                        var storage = new SqliteStorage(_databaseService, _credentialManager);
-                        var account = await storage.GetAccountByIdAsync(message.AccountId);
+                        var account = await _storage.GetAccountByIdAsync(message.AccountId);
 
                         if (account != null)
                         {
