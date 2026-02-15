@@ -46,7 +46,7 @@ public record CalendarEvent
     /// </summary>
     public EventResponseStatus ResponseStatus { get; set; } = EventResponseStatus.None;
 
-    public ExtensionValues Extensions { get; init; } = new();
+    public ModelExtensions Extensions { get; init; } = new();
 }
 
 public record RawEvent
@@ -55,29 +55,39 @@ public record RawEvent
     public required string RawData { get; init; }
 }
 
-public class Extension<T>
+public abstract record RichText
 {
-    internal Extension()
+    public record SimpleText(string value) : RichText;
+    public record HTML(string value) : RichText;
+}
+
+public record CalendarEventAttachment
+{
+    public required string Title { get; init; }
+    public required string Url { get; init; }
+}
+
+public record CalendarEventConference
+{
+    public record EntryPoint
     {
+        public required string Label { get; init; }
+        public required string Uri { get; init; }
+        public string? AdditionalInfo { get; set; }
     }
+    
+    public required string Name { get; init; }
+    
+    public required List<EntryPoint> EntryPoints { get; init; }
 }
 
-public static class Extensions
+public static class CalendarEventExtensions
 {
-    public static Extension<string> Description = new();
-    public static Extension<string> Location = new();
-    public static Extension<List<string>> Participants = new();
-    public static Extension<bool> FullDay = new();
-    public static Extension<string> TimeZone = new();
-}
-
-public class ExtensionValues
-{
-    private readonly Dictionary<object, object> _valueByExtension = [];
-
-    public void Set<T>(Extension<T> extension, T value) =>
-        _valueByExtension[extension] = value!;
-
-    public T? Get<T>(Extension<T> extension) =>
-        _valueByExtension.TryGetValue(extension, out var v) ? (T)v : default;
+    public static ModelExtension<bool> FullDay = new();
+    public static ModelExtension<string> TimeZone = new();
+    public static ModelExtension<RichText> Description = new();
+    public static ModelExtension<string> Location = new();
+    public static ModelExtension<List<string>> Participants = new();
+    public static ModelExtension<List<CalendarEventAttachment>> Attachments = new();
+    public static ModelExtension<CalendarEventConference> Conference = new();
 }

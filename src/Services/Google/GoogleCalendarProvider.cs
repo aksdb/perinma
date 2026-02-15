@@ -28,7 +28,7 @@ public class GoogleCalendarProvider(
     : ICalendarProvider
 {
 
-    private static Extension<GoogleEvent> GoogleEventExtension = new();
+    private static ModelExtension<GoogleEvent> GoogleEventExtension = new();
     
     /// <inheritdoc/>
     public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange)
@@ -92,12 +92,34 @@ public class GoogleCalendarProvider(
             ?.FirstOrDefault(a => a.Self == true)
             ?.ResponseStatus;
 
-        var extensions = new ExtensionValues();
+        var extensions = new ModelExtensions();
         extensions.Set(GoogleEventExtension, googleEvent);
         if (fullDay)
-            extensions.Set(Extensions.FullDay, true);
+            extensions.Set(CalendarEventExtensions.FullDay, true);
         if (timeZone is not null)
-            extensions.Set(Extensions.TimeZone, timeZone);
+            extensions.Set(CalendarEventExtensions.TimeZone, timeZone);
+        if (!string.IsNullOrEmpty(googleEvent.Location))
+            extensions.Set(CalendarEventExtensions.Location, googleEvent.Location);
+        if (!string.IsNullOrEmpty(googleEvent.Description))
+            extensions.Set(CalendarEventExtensions.Description, new RichText.HTML(googleEvent.Description));
+        if (googleEvent.Attachments?.Count > 0)
+            extensions.Set(CalendarEventExtensions.Attachments, googleEvent.Attachments.Select(a =>
+                new CalendarEventAttachment
+                {
+                    Title = a.Title,
+                    Url = a.FileUrl,
+                }).ToList());
+        if (googleEvent.ConferenceData != null)
+            extensions.Set(CalendarEventExtensions.Conference, new CalendarEventConference
+            {
+                Name = googleEvent.ConferenceData.ConferenceSolution.Name,
+                EntryPoints = googleEvent.ConferenceData.EntryPoints.Select(ep => new CalendarEventConference.EntryPoint
+                {
+                    Label = ep.Label,
+                    Uri = ep.Uri,
+                }).ToList()
+            });
+        
         
         var localStartTime = start.ToLocalDateTime();
         var localEndTime = end.ToLocalDateTime();

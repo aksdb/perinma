@@ -73,16 +73,16 @@ public class CalDavCalendarProvider(
         var localStartTime = startTime.ToLocalDateTime();
         var localEndTime = endTime.ToLocalDateTime();
         
-        var extensions = new ExtensionValues();
+        var extensions = new ModelExtensions();
         if (evt.Start?.HasTime == false)
         {
-            extensions.Set(Extensions.FullDay, true);
+            extensions.Set(CalendarEventExtensions.FullDay, true);
             localStartTime = localStartTime.Date.AtMidnight();
             localEndTime = localEndTime.Date.AtMidnight();
         }
 
         if (timeZone != null)
-            extensions.Set(Extensions.TimeZone, timeZone);
+            extensions.Set(CalendarEventExtensions.TimeZone, timeZone);
         
         
         

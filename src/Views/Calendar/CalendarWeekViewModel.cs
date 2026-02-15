@@ -360,7 +360,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                     }
 
                     // Detect all-day events: modeled as midnight-to-midnight spans
-                    var isFullDay = e.Extensions.Get(Extensions.FullDay);
+                    var isFullDay = e.Extensions.Get(CalendarEventExtensions.FullDay);
                     
                     // Determine if this event needs a response (not yet accepted, tentative, or declined)
                     var needsResponse = e.ResponseStatus is EventResponseStatus.NeedsAction
