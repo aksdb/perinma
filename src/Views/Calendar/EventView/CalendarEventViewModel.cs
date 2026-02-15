@@ -79,5 +79,9 @@ public partial class CalendarEventViewModel : ViewModelBase
         var attachments = CalendarEvent.Extensions.Get(CalendarEventExtensions.Attachments);
         if (attachments is { Count: > 0 })
             EventDetails.Add(new AttachmentsViewModel(attachments));
+
+        var participation = CalendarEvent.Extensions.Get(CalendarEventExtensions.Participation);
+        if (participation != null)
+            EventDetails.Add(new ParticipationViewModel(participation));
     }
 }

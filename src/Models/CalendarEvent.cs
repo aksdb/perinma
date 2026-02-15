@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using NodaTime;
 
 namespace perinma.Models;
@@ -83,10 +84,23 @@ public record CalendarEventConference
         public required string Uri { get; init; }
         public string? AdditionalInfo { get; set; }
     }
-    
+
     public required string Name { get; init; }
-    
+
     public required List<EntryPoint> EntryPoints { get; init; }
+}
+
+public record ParticipationActions
+{
+    public Func<Task>? Accept { get; init; }
+    public Func<Task>? Decline { get; init; }
+    public Func<Task>? Tentative { get; init; }
+}
+
+public record Participation
+{
+    public required EventResponseStatus CurrentState { get; init; }
+    public ParticipationActions? Actions { get; init; }
 }
 
 public static class CalendarEventExtensions
@@ -98,4 +112,5 @@ public static class CalendarEventExtensions
     public static ModelExtension<List<CalendarEventParticipant>> Participants = new();
     public static ModelExtension<List<CalendarEventAttachment>> Attachments = new();
     public static ModelExtension<CalendarEventConference> Conference = new();
+    public static ModelExtension<Participation> Participation = new();
 }

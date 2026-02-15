@@ -30,7 +30,10 @@ public class GoogleCalendarProvider(
     private static ModelExtension<GoogleEvent> GoogleEventExtension = new();
 
     /// <inheritdoc/>
-    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange)
+    public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange) =>
+        ParseCalendarEventsInternal(rawEvents, timeRange);
+
+    private List<CalendarEvent> ParseCalendarEventsInternal(List<RawEvent> rawEvents, Interval timeRange)
     {
         var googleEvents = rawEvents
             .Select(e => (e.Reference, Event: NewtonsoftJsonSerializer.Instance.Deserialize<Event>(e.RawData)))
@@ -64,7 +67,7 @@ public class GoogleCalendarProvider(
             .ToList();
     }
 
-    private static CalendarEvent MapToCalendarEvent(EventReference reference, Event googleEvent,
+    private CalendarEvent MapToCalendarEvent(EventReference reference, Event googleEvent,
         Instant? occurrenceStart)
     {
         var start = occurrenceStart ?? ParseGoogleDateTime(googleEvent.Start) ?? default;
@@ -130,6 +133,27 @@ public class GoogleCalendarProvider(
                     Status = MapResponseStatus(a.ResponseStatus),
                     IsOrganizer = a.Organizer ?? false
                 }).ToList());
+
+        var selfAttendee = googleEvent.Attendees?.FirstOrDefault(a => a.Self == true);
+        var canRespond = selfAttendee != null && !(selfAttendee.Organizer ?? false);
+        if (canRespond)
+        {
+            var responseStatus = MapResponseStatus(selfAttendee.ResponseStatus);
+            var accountId = reference.Calendar.Account.Id.ToString();
+            var calendarId = reference.Calendar.ExternalId;
+            var eventId = reference.ExternalId;
+            var participation = new Participation
+            {
+                CurrentState = responseStatus,
+                Actions = new ParticipationActions
+                {
+                    Accept = async () => await this.RespondToEventAsync(accountId, calendarId, eventId, string.Empty, "accepted"),
+                    Decline = async () => await this.RespondToEventAsync(accountId, calendarId, eventId, string.Empty, "declined"),
+                    Tentative = async () => await this.RespondToEventAsync(accountId, calendarId, eventId, string.Empty, "tentative")
+                }
+            };
+            extensions.Set(CalendarEventExtensions.Participation, participation);
+        }
 
         var localStartTime = start.ToLocalDateTime();
         var localEndTime = end.ToLocalDateTime();
