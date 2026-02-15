@@ -244,7 +244,7 @@ public static class TestDataHelpers
     private static string SerializeCalendar(ICalCalendar calendar)
     {
         var serializer = new CalendarSerializer();
-        return serializer.SerializeToString(calendar);
+        return serializer.SerializeToString(calendar) ?? string.Empty;
     }
 
     private static CalDateTime ToCalDateTime(ZonedDateTime zonedDateTime)

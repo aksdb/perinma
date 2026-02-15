@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -13,7 +14,7 @@ public partial class MessageBoxWindow : Window
         InitializeComponent();
     }
 
-    public static Task<MessageBoxResult> ShowAsync(Window owner, string title, string message, MessageBoxType type, MessageBoxButtons buttons)
+    public static Task<MessageBoxResult> ShowAsync(Window? owner, string title, string message, MessageBoxType type, MessageBoxButtons buttons)
     {
         var messageBox = new MessageBoxWindow();
         messageBox.Title = title;
@@ -25,7 +26,7 @@ public partial class MessageBoxWindow : Window
 
         messageBox.Closed += (_, _) => tcs.TrySetResult(messageBox._result);
 
-        messageBox.ShowDialog(owner);
+        messageBox.ShowDialog(owner!);
 
         return tcs.Task;
     }

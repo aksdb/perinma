@@ -164,7 +164,7 @@ public partial class CalendarWeekView : UserControl
 
     private void OnEventDoubleTapped(object? sender, Models.CalendarEvent? calendarEvent)
     {
-        if (_viewModel == null) return;
+        if (_viewModel == null || calendarEvent == null) return;
 
         var onCompleted = new Action<string>(async (errorMessage) =>
         {
@@ -544,8 +544,15 @@ public partial class CalendarWeekView : UserControl
             foreach (var vm in _items)
             {
                 _canvas.Children.Add(vm);
+                vm.EventDoubleTapped -= OnEventItemDoubleTapped;
+                vm.EventDoubleTapped += OnEventItemDoubleTapped;
             }
             RefreshContent();
+        }
+
+        private void OnEventItemDoubleTapped(object? sender, Models.CalendarEvent? calendarEvent)
+        {
+            EventDoubleTapped?.Invoke(sender, calendarEvent);
         }
 
         public void RefreshContent()

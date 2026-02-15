@@ -102,7 +102,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     }
 
     [RelayCommand]
-    private async void ShowCalendarView()
+    private async Task ShowCalendarView()
     {
         IsCalendarViewActive = true;
         await CalendarWeekViewModel.InitializeAsync();

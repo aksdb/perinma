@@ -262,7 +262,7 @@ public class CalDavService : ICalDavService
 
         if (ShouldAddTimezone(startTime, endTime))
         {
-            if (!calendar.TimeZones.Select(vtz => vtz.TzId).Contains(TimeZoneInfo.Local.Id))
+            if (calendar != null && !calendar.TimeZones.Select(vtz => vtz.TzId).Contains(TimeZoneInfo.Local.Id))
             {
                 calendar.AddTimeZone(TimeZoneInfo.Local.Id);
             }

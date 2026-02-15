@@ -312,7 +312,10 @@ public partial class AclManagementViewModel : ViewModelBase
             await client.SetAclAsync(_calendar.ExternalId!, acl);
 
             // Update local database with new ACL data
-            await _storage.SetCalendarDataAsync(_calendar.Id.ToString(), "rawACL", aclXml);
+            if (aclXml != null)
+            {
+                await _storage.SetCalendarDataAsync(_calendar.Id.ToString(), "rawACL", aclXml);
+            }
             Console.WriteLine($"Updated ACL in database for calendar {_calendar.Name}");
 
             WasSaved = true;

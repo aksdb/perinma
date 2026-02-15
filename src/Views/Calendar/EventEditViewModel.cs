@@ -15,7 +15,7 @@ namespace perinma.Views.Calendar;
 public partial class EventEditViewModel : ViewModelBase
 {
     private readonly SqliteStorage _storage;
-    private readonly IReadOnlyDictionary<AccountType, ICalendarProvider> _providers;
+    private readonly IReadOnlyDictionary<AccountType, ICalendarProvider>? _providers;
     private readonly Action<string> _onCompleted;
     private readonly CalendarEvent? _existingEvent;
     private readonly CalendarModel? _calendar;
@@ -112,7 +112,7 @@ public partial class EventEditViewModel : ViewModelBase
         CalendarEvent? existingEvent,
         CalendarModel? calendar,
         SqliteStorage storage,
-        IReadOnlyDictionary<AccountType, ICalendarProvider> providers,
+        IReadOnlyDictionary<AccountType, ICalendarProvider>? providers,
         Action<string> onCompleted)
     {
         _existingEvent = existingEvent;
@@ -171,7 +171,7 @@ public partial class EventEditViewModel : ViewModelBase
 
             var accountId = targetCalendar.Account.Id.ToString();
             var calendarExternalId = targetCalendar.ExternalId ?? string.Empty;
-            var provider = _providers.GetValueOrDefault(targetCalendar.Account.Type);
+            var provider = _providers?.GetValueOrDefault(targetCalendar.Account.Type);
 
             var startInstant = LocalDateTime.FromDateTime(StartTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
             var endInstant = LocalDateTime.FromDateTime(EndTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();

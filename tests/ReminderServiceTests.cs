@@ -58,7 +58,7 @@ public class ReminderServiceTests
 
         // Setup test account and calendar
         _accountId = Guid.NewGuid();
-        await _storage.CreateAccountAsync(new AccountDbo
+        await _storage!.CreateAccountAsync(new AccountDbo
         {
             AccountId = _accountId.ToString(),
             Name = "Test Account",
@@ -74,13 +74,13 @@ public class ReminderServiceTests
             Color = "#FF0000",
             Enabled = 1
         };
-        await _storage.CreateOrUpdateCalendarAsync(calendar);
+        await _storage!.CreateOrUpdateCalendarAsync(calendar);
         _calendarId = calendar.CalendarId;
 
         // Create a base event in the database
         var startTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
         var startTimeUnix = new DateTimeOffset(startTime).ToUnixTimeSeconds();
-        _eventId = await _storage.CreateOrUpdateEventAsync(new CalendarEventDbo
+        _eventId = await _storage!.CreateOrUpdateEventAsync(new CalendarEventDbo
         {
             CalendarId = _calendarId,
             StartTime = startTimeUnix,
@@ -116,14 +116,14 @@ public class ReminderServiceTests
             }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         // Act - Pass reference time in the past so reminders are considered
-        await _reminderService.PopulateRemindersForEventAsync(_eventId, _calendarId, AccountType.Google,
+        await _reminderService!.PopulateRemindersForEventAsync(_eventId, _calendarId, AccountType.Google,
             referenceTime: eventStartTime.Minus(Duration.FromHours(1)));
 
         // Assert
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         Assert.That(reminders.Count, Is.EqualTo(1));
         Assert.That(reminders[0].TargetId, Is.EqualTo(_eventId));
         var actualTriggerTime = Instant.FromUnixTimeSeconds(reminders[0].TriggerTime);
@@ -153,14 +153,14 @@ public class ReminderServiceTests
             }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         // Act - Pass reference time in the past so reminders are considered
-        await _reminderService.PopulateRemindersForEventAsync(_eventId, _calendarId, AccountType.Google,
+        await _reminderService!.PopulateRemindersForEventAsync(_eventId, _calendarId, AccountType.Google,
             referenceTime: eventStartTime.Minus(Duration.FromHours(1)));
 
         // Assert
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         Assert.That(reminders.Count, Is.EqualTo(2));
     }
 
@@ -183,15 +183,15 @@ public class ReminderServiceTests
             }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         // Create initial reminder
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var initialReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var initialReminders = await _storage!.GetRemindersByEventAsync(_eventId);
 
         // Act
-        await _reminderService.PopulateRemindersForEventAsync(_eventId, _calendarId, AccountType.Google);
-        var finalReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _reminderService!.PopulateRemindersForEventAsync(_eventId, _calendarId, AccountType.Google);
+        var finalReminders = await _storage!.GetRemindersByEventAsync(_eventId);
 
         // Assert
         Assert.That(finalReminders.Count, Is.EqualTo(initialReminders.Count));
@@ -217,17 +217,17 @@ public class ReminderServiceTests
             }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         // Create old reminder (60 minutes before)
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), oldTriggerTime.ToDateTimeUtc());
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), oldTriggerTime.ToDateTimeUtc());
 
         // Act - Use reference time before event start to include future reminders
-        await _reminderService.PopulateRemindersForEventAsync(_eventId, _calendarId, AccountType.Google,
+        await _reminderService!.PopulateRemindersForEventAsync(_eventId, _calendarId, AccountType.Google,
             referenceTime: eventStartTime.Minus(Duration.FromHours(2)));
 
         // Assert
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         Assert.That(reminders.Count, Is.EqualTo(1));
         var actualTriggerTime = Instant.FromUnixTimeSeconds(reminders[0].TriggerTime);
         var newTriggerTime = eventStartTime.Minus(Duration.FromMinutes(5));
@@ -248,13 +248,13 @@ public class ReminderServiceTests
             // No Reminders property - means no reminders
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         // Act
-        await _reminderService.PopulateRemindersForEventAsync(_eventId, _calendarId, AccountType.Google);
+        await _reminderService!.PopulateRemindersForEventAsync(_eventId, _calendarId, AccountType.Google);
 
         // Assert
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         Assert.That(reminders.Count, Is.EqualTo(0));
     }
 
@@ -285,19 +285,19 @@ public class ReminderServiceTests
             }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         // Create reminder that was fired (30 minute reminder already past)
         var firstTriggerTime = eventStartTime.Minus(Duration.FromMinutes(30));
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), firstTriggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), firstTriggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         // Act - dismiss should create the 5-minute reminder
-        await _reminderService.DismissReminderAsync(reminderId);
+        await _reminderService!.DismissReminderAsync(reminderId);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         Assert.That(updatedReminders.Count, Is.EqualTo(1));
         Assert.That(updatedReminders[0].ReminderId, Is.Not.EqualTo(reminderId));
         var actualTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
@@ -319,19 +319,19 @@ public class ReminderServiceTests
             // No recurrence = no more occurrences
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         // Create reminder that was already fired (before event starts, no recurrence means no more reminders)
         var triggerTime = Instant.FromUtc(2026, 1, 25, 9, 50); // 10 minutes before
-        await _storage.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         // Act - dismiss should delete reminder (no more occurrences for non-recurring event)
-        await _reminderService.DismissReminderAsync(reminderId);
+        await _reminderService!.DismissReminderAsync(reminderId);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         Assert.That(updatedReminders.Count, Is.EqualTo(0));
     }
 
@@ -354,19 +354,19 @@ public class ReminderServiceTests
             }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         // Create reminder for first occurrence that was already fired
         var triggerTime = meetingStartTime.Minus(Duration.FromMinutes(30));
-        await _storage.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         // Act - dismiss should create reminder for next week's occurrence
-        await _reminderService.DismissReminderAsync(reminderId);
+        await _reminderService!.DismissReminderAsync(reminderId);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         Assert.That(updatedReminders.Count, Is.EqualTo(1));
         Assert.That(updatedReminders[0].ReminderId, Is.Not.EqualTo(reminderId));
         var actualTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
@@ -388,19 +388,19 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = meetingStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         // Create reminder for meeting that has already started
         var triggerTime = meetingStartTime.Minus(Duration.FromMinutes(10));
-        await _storage.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         // Act
-        await _reminderService.DismissReminderAsync(reminderId);
+        await _reminderService!.DismissReminderAsync(reminderId);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         Assert.That(updatedReminders.Count, Is.EqualTo(0));
     }
 
@@ -423,19 +423,19 @@ public class ReminderServiceTests
             }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         // Create reminder for first occurrence
         var triggerTime = meetingStartTime.Minus(Duration.FromMinutes(10));
-        await _storage.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         // Act
-        await _reminderService.DismissReminderAsync(reminderId);
+        await _reminderService!.DismissReminderAsync(reminderId);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         Assert.That(updatedReminders.Count, Is.EqualTo(1));
         Assert.That(updatedReminders[0].ReminderId, Is.Not.EqualTo(reminderId));
         var actualTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
@@ -451,7 +451,7 @@ public class ReminderServiceTests
         var reminderId = "non-existent-id";
 
         // Act & Assert - should not throw
-        Assert.That(async () => await _reminderService.DismissReminderAsync(reminderId), Throws.Nothing);
+        Assert.That(async () => await _reminderService!.DismissReminderAsync(reminderId), Throws.Nothing);
     }
 
     #endregion
@@ -471,20 +471,20 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 9, 50);
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         var beforeSnooze = SystemClock.Instance.GetCurrentInstant();
 
         // Act
-        await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.OneMinute);
+        await _reminderService!.SnoozeReminderAsync(reminderId, SnoozeInterval.OneMinute);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         Assert.That(updatedReminders.Count, Is.EqualTo(1));
         var newTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
         var afterSnooze = SystemClock.Instance.GetCurrentInstant();
@@ -505,20 +505,20 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 9, 50);
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         var beforeSnooze = SystemClock.Instance.GetCurrentInstant();
 
         // Act
-        await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.FiveMinutes);
+        await _reminderService!.SnoozeReminderAsync(reminderId, SnoozeInterval.FiveMinutes);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var newTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
         var afterSnooze = SystemClock.Instance.GetCurrentInstant();
         Assert.That(newTriggerTime, Is.GreaterThanOrEqualTo(beforeSnooze.Plus(Duration.FromMinutes(5)).Minus(Duration.FromSeconds(1))));
@@ -538,20 +538,20 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 9, 50);
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         var beforeSnooze = SystemClock.Instance.GetCurrentInstant();
 
         // Act
-        await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.TenMinutes);
+        await _reminderService!.SnoozeReminderAsync(reminderId, SnoozeInterval.TenMinutes);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var newTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
         var afterSnooze = SystemClock.Instance.GetCurrentInstant();
         Assert.That(newTriggerTime, Is.GreaterThanOrEqualTo(beforeSnooze.Plus(Duration.FromMinutes(10)).Minus(Duration.FromSeconds(1))));
@@ -571,20 +571,20 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 9, 50);
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         var beforeSnooze = SystemClock.Instance.GetCurrentInstant();
 
         // Act
-        await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.FifteenMinutes);
+        await _reminderService!.SnoozeReminderAsync(reminderId, SnoozeInterval.FifteenMinutes);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var newTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
         var afterSnooze = SystemClock.Instance.GetCurrentInstant();
         Assert.That(newTriggerTime, Is.GreaterThanOrEqualTo(beforeSnooze.Plus(Duration.FromMinutes(15)).Minus(Duration.FromSeconds(1))));
@@ -604,20 +604,20 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 9, 50);
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         var beforeSnooze = SystemClock.Instance.GetCurrentInstant();
 
         // Act
-        await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.ThirtyMinutes);
+        await _reminderService!.SnoozeReminderAsync(reminderId, SnoozeInterval.ThirtyMinutes);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var newTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
         var afterSnooze = SystemClock.Instance.GetCurrentInstant();
         Assert.That(newTriggerTime, Is.GreaterThanOrEqualTo(beforeSnooze.Plus(Duration.FromMinutes(30)).Minus(Duration.FromSeconds(1))));
@@ -637,20 +637,20 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 9, 50);
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         var beforeSnooze = SystemClock.Instance.GetCurrentInstant();
 
         // Act
-        await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.OneHour);
+        await _reminderService!.SnoozeReminderAsync(reminderId, SnoozeInterval.OneHour);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var newTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
         var afterSnooze = SystemClock.Instance.GetCurrentInstant();
         Assert.That(newTriggerTime, Is.GreaterThanOrEqualTo(beforeSnooze.Plus(Duration.FromHours(1)).Minus(Duration.FromSeconds(1))));
@@ -670,20 +670,20 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 9, 50);
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         var beforeSnooze = SystemClock.Instance.GetCurrentInstant();
 
         // Act
-        await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.TwoHours);
+        await _reminderService!.SnoozeReminderAsync(reminderId, SnoozeInterval.TwoHours);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var newTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
         var afterSnooze = SystemClock.Instance.GetCurrentInstant();
         Assert.That(newTriggerTime, Is.GreaterThanOrEqualTo(beforeSnooze.Plus(Duration.FromHours(2)).Minus(Duration.FromSeconds(1))));
@@ -703,20 +703,20 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 9, 50);
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         var expectedTomorrow = SystemClock.Instance.GetCurrentInstant().InUtc().Date.PlusDays(1).AtMidnight().InUtc().ToInstant();
 
         // Act
-        await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.Tomorrow);
+        await _reminderService!.SnoozeReminderAsync(reminderId, SnoozeInterval.Tomorrow);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var newTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
         Assert.That(newTriggerTime.InUtc().Date, Is.EqualTo(expectedTomorrow.InUtc().Date));
     }
@@ -734,20 +734,20 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = meetingStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 11, 50);
-        await _storage.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         var expectedTriggerTime = meetingStartTime.Minus(Duration.FromMinutes(1));
 
         // Act
-        await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.OneMinuteBeforeStart);
+        await _reminderService!.SnoozeReminderAsync(reminderId, SnoozeInterval.OneMinuteBeforeStart);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         Assert.That(updatedReminders.Count, Is.EqualTo(1));
         var newTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
         Assert.That(newTriggerTime, Is.EqualTo(expectedTriggerTime));
@@ -766,20 +766,20 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = meetingStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 11, 50);
-        await _storage.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
-        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+        await _storage!.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
         var reminderId = reminders[0].ReminderId;
 
         var expectedTriggerTime = meetingStartTime;
 
         // Act
-        await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.WhenItStarts);
+        await _reminderService!.SnoozeReminderAsync(reminderId, SnoozeInterval.WhenItStarts);
 
         // Assert
-        var updatedReminders = await _storage.GetRemindersByEventAsync(_eventId);
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
         Assert.That(updatedReminders.Count, Is.EqualTo(1));
         var newTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
         Assert.That(newTriggerTime, Is.EqualTo(expectedTriggerTime));
@@ -792,7 +792,7 @@ public class ReminderServiceTests
         var reminderId = "non-existent-id";
 
         // Act & Assert - should not throw
-        Assert.That(async () => await _reminderService.SnoozeReminderAsync(reminderId, SnoozeInterval.FiveMinutes), Throws.Nothing);
+        Assert.That(async () => await _reminderService!.SnoozeReminderAsync(reminderId, SnoozeInterval.FiveMinutes), Throws.Nothing);
     }
 
     #endregion
@@ -812,13 +812,13 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 9, 50);
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
 
         // Act
-        var dueReminders = await _reminderService.GetDueRemindersAsync();
+        var dueReminders = await _reminderService!.GetDueRemindersAsync();
 
         // Assert
         Assert.That(dueReminders.Count, Is.EqualTo(1));
@@ -838,14 +838,14 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 9, 50);
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
 
         // Act
-        var dueReminders1 = await _reminderService.GetDueRemindersAsync();
-        var dueReminders2 = await _reminderService.GetDueRemindersAsync();
+        var dueReminders1 = await _reminderService!.GetDueRemindersAsync();
+        var dueReminders2 = await _reminderService!.GetDueRemindersAsync();
 
         // Assert - second call should return empty because reminder was marked as fired
         Assert.That(dueReminders1.Count, Is.EqualTo(1));
@@ -865,14 +865,14 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         // Create reminder in the future
         var triggerTime = SystemClock.Instance.GetCurrentInstant().Plus(Duration.FromHours(1));
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
 
         // Act
-        var dueReminders = await _reminderService.GetDueRemindersAsync();
+        var dueReminders = await _reminderService!.GetDueRemindersAsync();
 
         // Assert
         Assert.That(dueReminders.Count, Is.EqualTo(0));
@@ -895,19 +895,19 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         var triggerTime = Instant.FromUtc(2026, 1, 25, 9, 50);
-        await _storage.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        await _storage!.CreateReminderAsync(_eventId, eventStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
 
         // Get reminders to mark them as fired
-        await _reminderService.GetDueRemindersAsync();
+        await _reminderService!.GetDueRemindersAsync();
 
         // Act
         _reminderService.ClearFiredReminders();
 
         // Assert - should be able to get the same reminder again
-        var dueReminders = await _reminderService.GetDueRemindersAsync();
+        var dueReminders = await _reminderService!.GetDueRemindersAsync();
         Assert.That(dueReminders.Count, Is.EqualTo(1));
     }
 
@@ -928,10 +928,10 @@ public class ReminderServiceTests
             End = new GoogleEventDateTime { DateTimeDateTimeOffset = eventStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc() }
         };
         var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-        await _storage.SetEventData(_eventId, "rawData", rawEventJson);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
 
         // Act
-        var startTime = await _reminderService.GetEventStartTimeAsync(_eventId, eventStartTime, AccountType.Google);
+        var startTime = await _reminderService!.GetEventStartTimeAsync(_eventId, eventStartTime, AccountType.Google);
 
         // Assert
         Assert.That(startTime, Is.Not.Null);
@@ -944,7 +944,7 @@ public class ReminderServiceTests
         // Arrange - no raw data stored
 
         // Act
-        var startTime = await _reminderService.GetEventStartTimeAsync(_eventId, SystemClock.Instance.GetCurrentInstant(), AccountType.Google);
+        var startTime = await _reminderService!.GetEventStartTimeAsync(_eventId, SystemClock.Instance.GetCurrentInstant(), AccountType.Google);
 
         // Assert
         Assert.That(startTime, Is.Null);
@@ -956,10 +956,10 @@ public class ReminderServiceTests
     public async Task GetEventStartTimeAsync_WithUnknownAccountType_ReturnsNull()
     {
         // Arrange
-        await _storage.SetEventData(_eventId, "rawData", "test-raw-data");
+        await _storage!.SetEventData(_eventId, "rawData", "test-raw-data");
 
         // Act
-        var startTime = await _reminderService.GetEventStartTimeAsync(_eventId, SystemClock.Instance.GetCurrentInstant(), AccountType.CalDav);
+        var startTime = await _reminderService!.GetEventStartTimeAsync(_eventId, SystemClock.Instance.GetCurrentInstant(), AccountType.CalDav);
 
         // Assert
         Assert.That(startTime, Is.Null);
