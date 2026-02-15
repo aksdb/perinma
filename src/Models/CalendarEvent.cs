@@ -67,6 +67,14 @@ public record CalendarEventAttachment
     public required string Url { get; init; }
 }
 
+public record CalendarEventParticipant
+{
+    public required string Email { get; init; }
+    public string? Name { get; init; }
+    public EventResponseStatus Status { get; init; } = EventResponseStatus.None;
+    public bool IsOrganizer { get; init; }
+}
+
 public record CalendarEventConference
 {
     public record EntryPoint
@@ -87,7 +95,7 @@ public static class CalendarEventExtensions
     public static ModelExtension<string> TimeZone = new();
     public static ModelExtension<RichText> Description = new();
     public static ModelExtension<string> Location = new();
-    public static ModelExtension<List<string>> Participants = new();
+    public static ModelExtension<List<CalendarEventParticipant>> Participants = new();
     public static ModelExtension<List<CalendarEventAttachment>> Attachments = new();
     public static ModelExtension<CalendarEventConference> Conference = new();
 }

@@ -27,9 +27,8 @@ public class GoogleCalendarProvider(
     CredentialManagerService credentialManager)
     : ICalendarProvider
 {
-
     private static ModelExtension<GoogleEvent> GoogleEventExtension = new();
-    
+
     /// <inheritdoc/>
     public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange)
     {
@@ -59,7 +58,8 @@ public class GoogleCalendarProvider(
                 // Regular non-recurring event
                 return [MapToCalendarEvent(t.Reference, t.Event, null)];
             })
-            .Concat(overrides.Select(ov => MapToCalendarEvent(ov.Reference, ov.Event, null))) // Include the overrides themselves
+            .Concat(overrides.Select(ov =>
+                MapToCalendarEvent(ov.Reference, ov.Event, null))) // Include the overrides themselves
             .Where(ce => ce.StartTime.ToInstant() <= timeRange.End && ce.EndTime.ToInstant() >= timeRange.Start)
             .ToList();
     }
@@ -77,7 +77,8 @@ public class GoogleCalendarProvider(
         // Calculate duration if it's an occurrence
         var duration = TimeSpan.Zero;
         if (googleEvent is { Start: not null, End: not null })
-            duration = googleEvent.End.DateTimeDateTimeOffset - googleEvent.Start.DateTimeDateTimeOffset ?? TimeSpan.Zero;
+            duration = googleEvent.End.DateTimeDateTimeOffset - googleEvent.Start.DateTimeDateTimeOffset ??
+                       TimeSpan.Zero;
         var end = start.Plus(Duration.FromTimeSpan(duration));
 
         if (fullDay)
@@ -119,8 +120,17 @@ public class GoogleCalendarProvider(
                     Uri = ep.Uri,
                 }).ToList()
             });
-        
-        
+
+        if (googleEvent.Attendees is { Count: > 0 })
+            extensions.Set(CalendarEventExtensions.Participants, googleEvent.Attendees.Select(a =>
+                new CalendarEventParticipant
+                {
+                    Email = a.Email,
+                    Name = a.DisplayName,
+                    Status = MapResponseStatus(a.ResponseStatus),
+                    IsOrganizer = a.Organizer ?? false
+                }).ToList());
+
         var localStartTime = start.ToLocalDateTime();
         var localEndTime = end.ToLocalDateTime();
 
@@ -130,7 +140,7 @@ public class GoogleCalendarProvider(
             localStartTime = localStartTime.Date.AtMidnight();
             localEndTime = localEndTime.Date.AtMidnight();
         }
-        
+
         return new CalendarEvent
         {
             Reference = reference,

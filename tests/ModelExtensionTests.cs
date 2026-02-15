@@ -35,13 +35,21 @@ public class ModelExtensionTests
     public void SetAndGet_ListExtension_ReturnsValue()
     {
         var values = new ModelExtensions();
-        List<string> participants = [
-            "Alice",
-            "Bob"
+        List<CalendarEventParticipant> participants = [
+            new CalendarEventParticipant
+            {
+                Email = "alice@example.com",
+                Name = "Alice"
+            },
+            new CalendarEventParticipant
+            {
+                Email = "bob@example.com",
+                Name = "Bob"
+            }
         ];
-        
+
         values.Set(CalendarEventExtensions.Participants, participants);
-        
+
         Assert.That(values.Get(CalendarEventExtensions.Participants), Is.EqualTo(participants));
     }
 
