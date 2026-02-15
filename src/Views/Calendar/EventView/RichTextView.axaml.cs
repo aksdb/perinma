@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace perinma.Views.Calendar.EventView;
 
-public partial class CalendarEventView : UserControl
+public partial class RichTextView : UserControl
 {
-    public CalendarEventView()
+    public RichTextView()
     {
         InitializeComponent();
     }

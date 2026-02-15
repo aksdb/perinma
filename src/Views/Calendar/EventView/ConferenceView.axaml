@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ev="clr-namespace:perinma.Views.Calendar.EventView"
+             mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="150"
+             x:Class="perinma.Views.Calendar.EventView.ConferenceView"
+             x:DataType="ev:ConferenceViewModel">
+
+    <StackPanel Spacing="4">
+        <TextBlock Text="Conference" FontWeight="SemiBold" FontSize="12" />
+        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+        <ItemsControl ItemsSource="{Binding EntryPoints}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="ev:ConferenceEntryPointViewModel">
+                    <Border Padding="4,3" Margin="0,1" Background="Transparent" CornerRadius="4">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="{Binding Label}"
+                                       FontSize="11"
+                                       Foreground="Gray" />
+                            <TextBlock Text="{Binding Uri}"
+                                       Foreground="Blue"
+                                       Cursor="Hand"
+                                       TextDecorations="Underline"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding AdditionalInfo}"
+                                       IsVisible="{Binding AdditionalInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       FontSize="11"
+                                       Foreground="Gray"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+
+</UserControl>

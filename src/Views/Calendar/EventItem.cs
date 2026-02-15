@@ -270,36 +270,7 @@ public partial class EventItem : TemplatedControl
 
     private object? CreateViewModel()
     {
-        if (Storage == null || CalendarEvent == null)
-        {
-            return null;
-        }
-
-        ICalendarProvider? calendarProvider = null;
-        var accountType = CalendarEvent.Reference.Calendar.Account.Type;
-
-        if (Providers != null && Providers.TryGetValue(accountType, out var provider))
-        {
-            calendarProvider = provider;
-        }
-
-        if (CalendarEvent.Reference.Calendar.Account.Type == AccountType.Google)
-        {
-            return new GoogleCalendarEventViewModel(
-                CalendarEvent,
-                Storage,
-                calendarProvider);
-        }
-
-        if (CalendarEvent.Reference.Calendar.Account.Type == AccountType.CalDav)
-        {
-            return new CalDavEventViewModel(
-                CalendarEvent,
-                Storage,
-                calendarProvider);
-        }
-
-        return new CalendarEventViewModel(CalendarEvent);
+        return CalendarEvent == null ? null : new CalendarEventViewModel(CalendarEvent);
     }
 
     private void RecalculateInlineTimeWidth()

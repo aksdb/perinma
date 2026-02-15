@@ -6,7 +6,7 @@
              xmlns:eventView="clr-namespace:perinma.Views.Calendar.EventView"
              x:DataType="eventView:CalendarEventViewModel"
              mc:Ignorable="d" d:DesignWidth="350" d:DesignHeight="150"
-             x:Class="perinma.Views.Calendar.CalendarEventView">
+             x:Class="perinma.Views.Calendar.EventView.CalendarEventView">
 
     <StackPanel Spacing="8" Margin="12">
         <TextBlock Text="{Binding CalendarEvent.Title}" FontWeight="Bold" FontSize="14" />
