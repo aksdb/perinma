@@ -11,6 +11,9 @@ public partial class CalendarEventViewModel : ViewModelBase
     [ObservableProperty]
     private CalendarEvent _calendarEvent;
 
+    [ObservableProperty]
+    private ViewModelBase? _timeDetails;
+
     public ObservableCollection<ViewModelBase> EventDetails { get; } = [];
 
     public CalendarEventViewModel(CalendarEvent calendarEvent)
@@ -50,11 +53,11 @@ public partial class CalendarEventViewModel : ViewModelBase
 
         var fullDayValue = CalendarEvent.Extensions.Get(CalendarEventExtensions.FullDay);
         var fullDay = fullDayValue;
-        EventDetails.Add(new TimeRangeViewModel(
+        TimeDetails = new TimeRangeViewModel(
             CalendarEvent.StartTime,
             CalendarEvent.EndTime,
             fullDay
-        ));
+        );
 
         var location = CalendarEvent.Extensions.Get(CalendarEventExtensions.Location);
         if (!string.IsNullOrEmpty(location))
