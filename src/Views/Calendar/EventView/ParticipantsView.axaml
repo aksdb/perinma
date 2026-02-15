@@ -9,13 +9,15 @@
 
     <StackPanel Spacing="4">
         <TextBlock Text="Participants" FontWeight="SemiBold" />
-        <ItemsControl ItemsSource="{Binding Participants}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="ev:ParticipantViewModel">
-                    <ev:ParticipantView />
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Participants}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="ev:ParticipantViewModel">
+                        <ev:ParticipantView />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
     </StackPanel>
 
 </UserControl>
