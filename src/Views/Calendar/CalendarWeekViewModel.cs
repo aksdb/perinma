@@ -18,11 +18,6 @@ namespace perinma.Views.Calendar;
 public partial class CalendarWeekViewModel : ViewModelBase
 {
     private readonly ICalendarSource _calendarSource;
-    private readonly SqliteStorage? _storage;
-    private readonly IReadOnlyDictionary<AccountType, ICalendarProvider>? _providers;
-
-    public SqliteStorage? Storage => _storage;
-    public IReadOnlyDictionary<AccountType, ICalendarProvider>? Providers => _providers;
 
     [ObservableProperty]
     private CalendarEvent? _selectedEvent;
@@ -123,13 +118,9 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
     public CalendarWeekViewModel(
         ICalendarSource calendarSource,
-        SqliteStorage? storage = null,
-        SettingsService? settingsService = null,
-        IReadOnlyDictionary<AccountType, ICalendarProvider>? providers = null)
+        SettingsService? settingsService = null)
     {
         _calendarSource = calendarSource;
-        _storage = storage;
-        _providers = providers;
         SettingsService = settingsService;
         DayColumns = 7;
         ViewStart = DateTime.Now;
@@ -386,7 +377,6 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         EndTimeText = e.EndTime.ToString("HH:mm", null),
                         ShowInlineTimes = true,
                         CalendarEvent = e,
-                        Providers = _providers,
                         NeedsResponse = needsResponse,
                         IsDeclined = isDeclined,
                     };
@@ -462,9 +452,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         : Color.Parse(evt.Reference.Calendar.Color),
                     CalendarEvent = evt,
                     IsFullDay = isFullDay,
-                    TimeText = isFullDay ? string.Empty : evt.StartTime.ToString("HH:mm", null),
-                    Storage = _storage,
-                    Providers = _providers
+                    TimeText = isFullDay ? string.Empty : evt.StartTime.ToString("HH:mm", null)
                 });
             }
 
@@ -512,9 +500,7 @@ public partial class CalendarWeekViewModel : ViewModelBase
                         ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
                         : Color.Parse(evt.Reference.Calendar.Color),
                     CalendarName = evt.Reference.Calendar.Name,
-                    CalendarEvent = evt,
-                    Storage = _storage,
-                    Providers = _providers
+                    CalendarEvent = evt
                 });
             }
 

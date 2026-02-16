@@ -2,8 +2,6 @@ using System;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using perinma.Models;
-using perinma.Storage;
-using perinma.Services;
 using perinma.Views.MessageBox;
 
 namespace perinma.Views.Calendar;
@@ -49,8 +47,6 @@ public partial class CalendarMonthView : UserControl
             DataContext = new EventEditViewModel(
                 null,
                 null,
-                _viewModel.Storage!,
-                _viewModel.Providers,
                 onCompleted)
         };
         editor.Show();

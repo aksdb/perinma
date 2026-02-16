@@ -9,7 +9,6 @@ using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Lucdem.Avalonia.SourceGenerators.Attributes;
 using perinma.Models;
-using perinma.Services;
 using perinma.Utils;
 using perinma.Views.Calendar.EventView;
 
@@ -104,12 +103,6 @@ public partial class EventItem : TemplatedControl
     [AvaStyledProperty]
     private CalendarEvent? _calendarEvent;
 
-    [AvaStyledProperty]
-    private IReadOnlyDictionary<AccountType, ICalendarProvider>? _providers;
-
-    [AvaStyledProperty]
-    private IRespondableEventViewModel? _eventViewModel;
-
     public event EventHandler<CalendarEvent?>? EventDoubleTapped;
 
 #pragma warning restore CS0169
@@ -141,10 +134,6 @@ public partial class EventItem : TemplatedControl
             case nameof(FontStyle):
             case nameof(FontWeight):
                 RecalculateInlineTimeWidth();
-                break;
-            case nameof(CalendarEvent):
-            case nameof(Providers):
-                EventViewModel = CreateViewModel() as IRespondableEventViewModel;
                 break;
         }
     }
@@ -255,9 +244,7 @@ public partial class EventItem : TemplatedControl
         var flyout = FlyoutBase.GetAttachedFlyout(border);
         if (flyout is Flyout fly && fly.Content is ContentControl contentControl)
         {
-            var viewModel = CreateViewModel();
-            EventViewModel = viewModel as IRespondableEventViewModel;
-            contentControl.Content = viewModel;
+            contentControl.Content = CreateViewModel();
         }
 
         FlyoutBase.ShowAttachedFlyout(border);

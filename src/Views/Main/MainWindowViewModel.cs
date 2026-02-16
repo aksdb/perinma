@@ -99,7 +99,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _googleOAuthService = googleOAuthService;
 
         var calendarSource = new DatabaseCalendarSource(_storage, _syncService.Providers);
-        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, _storage, _settingsService, _syncService.Providers);
+        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, _settingsService);
         CalendarListViewModel = new CalendarListViewModel(_storage, _googleCalendarService, _credentialManager, CalendarWeekViewModel);
         ContactsViewModel = new ContactsViewModel(_storage);
 

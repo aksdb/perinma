@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using perinma.Models;
 using perinma.Services;
@@ -15,7 +16,6 @@ namespace perinma.Views.Calendar;
 public partial class EventEditViewModel : ViewModelBase
 {
     private readonly SqliteStorage _storage;
-    private readonly IReadOnlyDictionary<AccountType, ICalendarProvider>? _providers;
     private readonly Action<string> _onCompleted;
     private readonly CalendarEvent? _existingEvent;
     private readonly CalendarModel? _calendar;
@@ -111,14 +111,19 @@ public partial class EventEditViewModel : ViewModelBase
     public EventEditViewModel(
         CalendarEvent? existingEvent,
         CalendarModel? calendar,
-        SqliteStorage storage,
-        IReadOnlyDictionary<AccountType, ICalendarProvider>? providers,
         Action<string> onCompleted)
     {
         _existingEvent = existingEvent;
         _calendar = calendar;
+        _onCompleted = onCompleted;
+        
+        var storage = App.Services?.GetRequiredService<SqliteStorage>();
+        if (storage == null)
+        {
+            throw new InvalidOperationException("SqliteStorage not available");
+        }
+        
         _storage = storage;
-        _providers = providers;
         _onCompleted = onCompleted;
 
         if (existingEvent != null && calendar != null)
@@ -171,7 +176,8 @@ public partial class EventEditViewModel : ViewModelBase
 
             var accountId = targetCalendar.Account.Id.ToString();
             var calendarExternalId = targetCalendar.ExternalId ?? string.Empty;
-            var provider = _providers?.GetValueOrDefault(targetCalendar.Account.Type);
+            var providerService = App.Services?.GetRequiredService<SyncService>();
+            var provider = providerService?.Providers?.GetValueOrDefault(targetCalendar.Account.Type);
 
             var startInstant = LocalDateTime.FromDateTime(StartTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
             var endInstant = LocalDateTime.FromDateTime(EndTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();

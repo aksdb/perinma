@@ -105,8 +105,6 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            _storage,
-            _providers,
             id => _completedEventId = id);
 
         Assert.That(viewModel.IsEditMode, Is.False);
@@ -126,8 +124,6 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            _storage,
-            _providers,
             id => _completedEventId = id);
 
         var task = viewModel.SaveCommand.ExecuteAsync(null);
@@ -143,8 +139,6 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            _storage,
-            _providers,
             id => _completedEventId = id);
 
         viewModel.Title = "New Meeting";
@@ -165,8 +159,6 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            _storage,
-            _providers,
             id => _completedEventId = id);
 
         var originalDuration = viewModel.Duration;
@@ -184,8 +176,6 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            _storage,
-            _providers,
             id => _completedEventId = id);
 
         var startTime = viewModel.StartTime;
@@ -202,8 +192,6 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            _storage,
-            _providers,
             id => _completedEventId = id);
 
         var startTime = viewModel.StartTime;
@@ -221,8 +209,6 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            _storage,
-            _providers,
             id => _completedEventId = id);
 
         var startTime = viewModel.StartTime;
@@ -239,8 +225,6 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            _storage,
-            _providers,
             id => _completedEventId = id);
 
         var propertyChanged = false;
@@ -261,8 +245,6 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            _storage,
-            _providers,
             id => _completedEventId = id);
 
         viewModel.CancelCommand.Execute(null);
@@ -276,8 +258,6 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            _storage,
-            _providers,
             id => _completedEventId = id);
 
         var closeInvoked = false;

@@ -4,8 +4,6 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using NodaTime;
 using perinma.Models;
-using perinma.Services;
-using perinma.Storage;
 using perinma.Utils;
 using perinma.Views.Calendar.EventView;
 
@@ -57,10 +55,6 @@ public partial class MonthEventViewModel : ObservableObject
     [ObservableProperty]
     private string _timeText = string.Empty;
 
-    // Dependencies for creating event detail view model
-    public SqliteStorage? Storage { get; set; }
-    public IReadOnlyDictionary<AccountType, ICalendarProvider>? Providers { get; set; }
-
     public IBrush Background => new SolidColorBrush(Color);
 
     public IBrush Foreground
@@ -82,20 +76,7 @@ public partial class MonthEventViewModel : ObservableObject
             if (CalendarEvent == null)
                 return null;
 
-            ICalendarProvider? calendarProvider = null;
-            var accountType = CalendarEvent.Reference.Calendar.Account.Type;
-
-            if (Providers != null && Providers.TryGetValue(accountType, out var provider))
-            {
-                calendarProvider = provider;
-            }
-
-            return accountType switch
-            {
-                AccountType.Google => new GoogleCalendarEventViewModel(CalendarEvent, calendarProvider),
-                AccountType.CalDav => new CalDavEventViewModel(CalendarEvent, calendarProvider),
-                _ => new CalendarEventViewModel(CalendarEvent)
-            };
+            return new CalendarEventViewModel(CalendarEvent);
         }
     }
 }

@@ -188,8 +188,6 @@ public partial class CalendarWeekView : UserControl
             DataContext = new EventEditViewModel(
                 calendarEvent,
                 calendarEvent.Reference.Calendar,
-                _viewModel.Storage!,
-                _viewModel.Providers,
                 onCompleted)
         };
         editor.Show();
@@ -221,8 +219,6 @@ public partial class CalendarWeekView : UserControl
             DataContext = new EventEditViewModel(
                 null,
                 null,
-                _viewModel.Storage!,
-                _viewModel.Providers,
                 onCompleted)
         };
         editor.Show();

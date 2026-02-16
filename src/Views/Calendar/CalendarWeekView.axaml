@@ -44,21 +44,12 @@
                                    Stroke="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}"
                                    StrokeDashArray="4,2" />
                         
-                         <Border Name="Border"
-                                 CornerRadius="10"
-                                 Background="{Binding BackgroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                                 Margin="1"
-                                 Bounds="{Binding AvailableBounds, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}">
-                             <Border.ContextMenu>
-                                 <ContextMenu>
-                                     <MenuItem Header="Respond" IsVisible="{Binding EventViewModel.CanRespond, RelativeSource={RelativeSource TemplatedParent}}">
-                                         <MenuItem Header="Accept" Command="{Binding EventViewModel.AcceptEventCommand, RelativeSource={RelativeSource TemplatedParent}}" />
-                                         <MenuItem Header="Tentative" Command="{Binding EventViewModel.TentativeEventCommand, RelativeSource={RelativeSource TemplatedParent}}" />
-                                         <MenuItem Header="Decline" Command="{Binding EventViewModel.DeclineEventCommand, RelativeSource={RelativeSource TemplatedParent}}" />
-                                     </MenuItem>
-                                 </ContextMenu>
-                             </Border.ContextMenu>
-                              <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">
+                          <Border Name="Border"
+                                  CornerRadius="10"
+                                  Background="{Binding BackgroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                                  Margin="1"
+                                  Bounds="{Binding AvailableBounds, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}">
+                               <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">
                                   <TextBlock Name="TitleTextBlock"
                                              Text="{Binding Title, RelativeSource={RelativeSource TemplatedParent}}"
                                              FontWeight="Bold"
