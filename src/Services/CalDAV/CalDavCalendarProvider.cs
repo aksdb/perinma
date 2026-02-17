@@ -84,7 +84,20 @@ public class CalDavCalendarProvider(
         if (timeZone != null)
             extensions.Set(CalendarEventExtensions.TimeZone, timeZone);
         
+        if (evt.Location != null)
+            extensions.Set(CalendarEventExtensions.Location, evt.Location);
         
+        if (evt.Description != null)
+            extensions.Set(CalendarEventExtensions.Description, new RichText.SimpleText(evt.Description));
+        
+        if (evt.Url != null)
+            extensions.Set(CalendarEventExtensions.Attachments, [
+                new CalendarEventAttachment
+                {
+                    Title = "URL",
+                    Url = evt.Url.ToString(),
+                }
+            ]);
         
         return new CalendarEvent
         {
