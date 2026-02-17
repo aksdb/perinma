@@ -22,7 +22,8 @@
                                        Foreground="Blue"
                                        Cursor="Hand"
                                        TextDecorations="Underline"
-                                       TextWrapping="Wrap" />
+                                       TextWrapping="Wrap"
+                                       PointerPressed="OnUriPointerPressed" />
                             <TextBlock Text="{Binding AdditionalInfo}"
                                        IsVisible="{Binding AdditionalInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                        FontSize="11"

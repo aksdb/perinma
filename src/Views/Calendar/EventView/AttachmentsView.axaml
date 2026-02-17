@@ -18,7 +18,8 @@
                                Cursor="Hand"
                                TextDecorations="Underline"
                                Margin="0,2,0,2"
-                               Tag="{Binding Url}" />
+                               Tag="{Binding Url}"
+                               PointerPressed="OnAttachmentPointerPressed" />
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
