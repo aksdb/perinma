@@ -12,14 +12,24 @@
         <ItemsControl ItemsSource="{Binding Attachments}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="ev:AttachmentItemViewModel">
-                    <TextBlock Text="{Binding Title}"
-                               Foreground="Blue"
-                               TextWrapping="Wrap"
-                               Cursor="Hand"
-                               TextDecorations="Underline"
-                               Margin="0,2,0,2"
-                               Tag="{Binding Url}"
-                               PointerPressed="OnAttachmentPointerPressed" />
+                    <StackPanel
+                        ToolTip.Tip="{Binding Url}">
+                        <TextBlock Text="{Binding Title}"
+                                   Foreground="Blue"
+                                   TextWrapping="Wrap"
+                                   Cursor="Hand"
+                                   TextDecorations="Underline"
+                                   Margin="0,2,0,2"
+                                   Tag="{Binding Url}"
+                                   PointerPressed="OnAttachmentPointerPressed">
+                        </TextBlock>
+                        <StackPanel.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Open" Command="{Binding OpenUrlCommand}" />
+                                <MenuItem Header="Copy" Command="{Binding CopyUrlCommand}" />
+                            </ContextMenu>
+                        </StackPanel.ContextMenu>
+                    </StackPanel>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
