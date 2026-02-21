@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using CredentialStore;
+using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using perinma.Models;
 using perinma.Services;
@@ -38,6 +39,13 @@ public class EventEditViewModelTests
         {
             { AccountType.Google, _provider }
         };
+        
+        var services = new ServiceCollection();
+        services.AddSingleton(_provider);
+        services.AddSingleton(_providers);
+        services.AddSingleton(_storage);
+        services.AddSingleton(new SyncService(_storage, _credentialManager, _providers, null!));
+        perinma.App.Services = services.BuildServiceProvider();
 
         var accountId = Guid.NewGuid();
         _account = new Account

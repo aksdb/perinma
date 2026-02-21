@@ -211,13 +211,9 @@ public class CalDavCalendarProvider(
 
     private static ProviderEvent? ConvertCalDavEvent(CalDavEvent evt)
     {
-        var iCalendar = evt.ICalendar ?? evt.RawICalendar?.Let(Calendar.Load);
-        if (iCalendar == null)
-            return null;
-        
         // Check if event was deleted or cancelled
         var isDeleted = evt.Status == "CANCELLED" || evt.Deleted;
-
+        
         if (isDeleted)
         {
             return new ProviderEvent
@@ -229,6 +225,10 @@ public class CalDavCalendarProvider(
                 RawData = evt.RawICalendar
             };
         }
+        
+        var iCalendar = evt.ICalendar ?? evt.RawICalendar?.Let(Calendar.Load);
+        if (iCalendar == null)
+            return null;
 
         Instant? startTime = null;
         Instant? endTime = null;

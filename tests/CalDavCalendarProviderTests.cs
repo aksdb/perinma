@@ -385,8 +385,8 @@ public class CalDavCalendarProviderTests
     public async Task GetEventsAsync_WithUntitledEvent_UsesDefaultTitle()
     {
         // Arrange
-        var start = new DateTime(2025, 1, 15, 10, 0, 0, DateTimeKind.Utc);
-        var end = new DateTime(2025, 1, 15, 11, 0, 0, DateTimeKind.Utc);
+        var start = new ZonedDateTime(Instant.FromUtc(2025, 1, 15, 10, 0, 0), DateTimeZone.Utc);
+        var end = new ZonedDateTime(Instant.FromUtc(2025, 1, 15, 11, 0, 0), DateTimeZone.Utc);
         _serviceStub.SetEvents(
             "https://caldav.example.com/calendars/work",
             new CalDavEvent
@@ -394,10 +394,12 @@ public class CalDavCalendarProviderTests
                 Uid = "event-uid-1",
                 Url = "https://caldav.example.com/calendars/work/event1.ics",
                 Summary = null, // No title
-                StartTime = start,
-                EndTime = end,
+                StartTime = start.ToDateTimeUtc(),
+                EndTime = end.ToDateTimeUtc(),
                 Status = "CONFIRMED",
-                Deleted = false
+                Deleted = false,
+                RawICalendar = TestDataHelpers.CreateCalDavEventRaw("event-uid-1", null!,
+                    start, end)
             }
         );
 
@@ -405,6 +407,7 @@ public class CalDavCalendarProviderTests
         var result = await _provider.GetEventsAsync(_accountId, "https://caldav.example.com/calendars/work");
 
         // Assert
+        Assert.That(result.Events, Has.Count.EqualTo(1));
         Assert.That(result.Events[0].Title, Is.EqualTo("Untitled Event"));
     }
 
