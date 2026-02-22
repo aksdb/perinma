@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -9,6 +10,7 @@ using NodaTime;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
+using perinma.Views.Calendar.EventEdit;
 using CalendarModel = perinma.Models.Calendar;
 
 namespace perinma.Views.Calendar;
@@ -22,22 +24,6 @@ public partial class EventEditViewModel : ViewModelBase
     private readonly string? _existingRawEventData;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsEditMode))]
-    private string _title = string.Empty;
-
-    [ObservableProperty]
-    private string _description = string.Empty;
-
-    [ObservableProperty]
-    private string _location = string.Empty;
-
-    [ObservableProperty]
-    private DateTime _startTime;
-
-    [ObservableProperty]
-    private DateTime _endTime;
-
-    [ObservableProperty]
     private bool _isSaving;
 
     [ObservableProperty]
@@ -46,34 +32,16 @@ public partial class EventEditViewModel : ViewModelBase
     [ObservableProperty]
     private CalendarModel? _selectedCalendar;
 
-    [ObservableProperty]
-    private TimeSpan _duration;
+    public ObservableCollection<IEditableField> EditFields { get; } = [];
 
-    partial void OnStartTimeChanged(DateTime value)
-    {
-        _endTime = value.Add(_duration);
-        OnPropertyChanged(nameof(EndTime));
-    }
+    private TitleEditViewModel? _titleField;
+    private TimeRangeEditViewModel? _timeRangeField;
+    private DescriptionEditViewModel? _descriptionField;
+    private LocationEditViewModel? _locationField;
 
-    partial void OnEndTimeChanged(DateTime value)
+    partial void OnSelectedCalendarChanged(CalendarModel? value)
     {
-        if (value < _startTime)
-        {
-            _endTime = _startTime.Add(_duration);
-            OnPropertyChanged(nameof(EndTime));
-            OnPropertyChanged(nameof(StartTime));
-        }
-        else
-        {
-            _duration = _endTime - _startTime;
-            OnPropertyChanged(nameof(Duration));
-        }
-    }
-
-    partial void OnDurationChanged(TimeSpan value)
-    {
-        _endTime = _startTime.Add(_duration);
-        OnPropertyChanged(nameof(EndTime));
+        PopulateEditFields();
     }
 
     public bool IsEditMode => _existingEvent != null;
@@ -116,24 +84,18 @@ public partial class EventEditViewModel : ViewModelBase
         _existingEvent = existingEvent;
         _calendar = calendar;
         _onCompleted = onCompleted;
-        
+
         var storage = App.Services?.GetRequiredService<SqliteStorage>();
         if (storage == null)
         {
             throw new InvalidOperationException("SqliteStorage not available");
         }
-        
+
         _storage = storage;
         _onCompleted = onCompleted;
 
         if (existingEvent != null && calendar != null)
         {
-            Title = existingEvent.Title ?? string.Empty;
-            Description = string.Empty;
-            Location = string.Empty;
-            _startTime = existingEvent.StartTime.ToDateTimeUnspecified();
-            _endTime = existingEvent.EndTime.ToDateTimeUnspecified();
-            _duration = _endTime - _startTime;
             SelectedCalendar = calendar;
 
             var rawDataTask = _storage.GetEventData(existingEvent.Reference.Id.ToString(), "rawData");
@@ -141,12 +103,52 @@ public partial class EventEditViewModel : ViewModelBase
         }
         else
         {
-            var now = DateTime.Now;
-            var rounded = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0, DateTimeKind.Local);
-            _startTime = rounded;
-            _duration = TimeSpan.FromMinutes(30);
-            _endTime = _startTime.Add(_duration);
             SelectedCalendar = calendar;
+        }
+
+        PopulateEditFields();
+    }
+
+    private void PopulateEditFields()
+    {
+        EditFields.Clear();
+
+        var targetCalendar = SelectedCalendar ?? _calendar;
+        if (targetCalendar == null)
+            return;
+
+        var providerService = App.Services?.GetRequiredService<SyncService>();
+        var provider = providerService?.Providers?.GetValueOrDefault(targetCalendar.Account.Type);
+        if (provider == null)
+            return;
+
+        var supportedExtensions = provider.GetSupportedExtensions();
+
+        _titleField = new TitleEditViewModel();
+        if (_existingEvent != null && _existingEvent.Title != null)
+            _titleField.Title = _existingEvent.Title;
+        EditFields.Add(_titleField);
+
+        _timeRangeField = new TimeRangeEditViewModel();
+        if (_existingEvent != null)
+        {
+            _timeRangeField.StartTime = _existingEvent.StartTime.ToDateTimeUnspecified();
+            _timeRangeField.EndTime = _existingEvent.EndTime.ToDateTimeUnspecified();
+        }
+        EditFields.Add(_timeRangeField);
+
+        if (supportedExtensions.Contains(CalendarEventExtensions.Description))
+        {
+            var existingDescription = _existingEvent?.Extensions.Get(CalendarEventExtensions.Description);
+            _descriptionField = new DescriptionEditViewModel(existingDescription);
+            EditFields.Add(_descriptionField);
+        }
+
+        if (supportedExtensions.Contains(CalendarEventExtensions.Location))
+        {
+            var existingLocation = _existingEvent?.Extensions.Get(CalendarEventExtensions.Location);
+            _locationField = new LocationEditViewModel(existingLocation);
+            EditFields.Add(_locationField);
         }
     }
 
@@ -156,7 +158,7 @@ public partial class EventEditViewModel : ViewModelBase
         if (IsSaving)
             return;
 
-        if (string.IsNullOrWhiteSpace(Title))
+        if (_titleField == null || string.IsNullOrWhiteSpace(_titleField.Title))
         {
             ErrorMessage = "Please enter a title";
             return;
@@ -176,11 +178,19 @@ public partial class EventEditViewModel : ViewModelBase
 
             var accountId = targetCalendar.Account.Id.ToString();
             var calendarExternalId = targetCalendar.ExternalId ?? string.Empty;
-            var providerService = App.Services?.GetRequiredService<SyncService>();
-            var provider = providerService?.Providers?.GetValueOrDefault(targetCalendar.Account.Type);
+            var provider = App.Services?.GetRequiredService<SyncService>()?.Providers?.GetValueOrDefault(targetCalendar.Account.Type);
 
-            var startInstant = LocalDateTime.FromDateTime(StartTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
-            var endInstant = LocalDateTime.FromDateTime(EndTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
+            var startInstant = LocalDateTime.FromDateTime(_timeRangeField!.StartTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
+            var endInstant = LocalDateTime.FromDateTime(_timeRangeField.EndTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
+
+            string? description = null;
+            if (_descriptionField != null)
+            {
+                var richText = _descriptionField.GetRichText();
+                description = richText is RichText.HTML html ? html.value : null;
+            }
+
+            string? location = _locationField?.Location;
 
             if (IsEditMode && _existingEvent != null && provider != null)
             {
@@ -188,9 +198,9 @@ public partial class EventEditViewModel : ViewModelBase
                     accountId,
                     calendarExternalId,
                     _existingEvent.Reference.ExternalId ?? string.Empty,
-                    Title,
-                    string.IsNullOrWhiteSpace(Description) ? null : Description,
-                    string.IsNullOrWhiteSpace(Location) ? null : Location,
+                    _titleField.Title,
+                    description,
+                    location,
                     startInstant,
                     endInstant,
                     _existingRawEventData);
@@ -203,9 +213,9 @@ public partial class EventEditViewModel : ViewModelBase
                 var newEventId = await provider.CreateEventAsync(
                     accountId,
                     calendarExternalId,
-                    Title,
-                    string.IsNullOrWhiteSpace(Description) ? null : Description,
-                    string.IsNullOrWhiteSpace(Location) ? null : Location,
+                    _titleField.Title,
+                    description,
+                    location,
                     startInstant,
                     endInstant,
                     null);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using CredentialStore;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,7 @@ using perinma.Storage;
 using perinma.Storage.Models;
 using tests.Fakes;
 using perinma.Views.Calendar;
+using perinma.Views.Calendar.EventEdit;
 
 namespace tests;
 
@@ -118,12 +120,24 @@ public class EventEditViewModelTests
         Assert.That(viewModel.IsEditMode, Is.False);
         Assert.That(viewModel.WindowTitle, Is.EqualTo("New Event"));
         Assert.That(viewModel.SelectedCalendar, Is.EqualTo(_calendar));
-        Assert.That(viewModel.Title, Is.EqualTo(string.Empty));
-        Assert.That(viewModel.Description, Is.EqualTo(string.Empty));
-        Assert.That(viewModel.Location, Is.EqualTo(string.Empty));
-        Assert.That(viewModel.Duration, Is.EqualTo(TimeSpan.FromMinutes(30)));
         Assert.That(viewModel.ErrorMessage, Is.EqualTo(string.Empty));
         Assert.That(viewModel.IsSaving, Is.False);
+
+        var titleField = viewModel.EditFields.OfType<TitleEditViewModel>().FirstOrDefault();
+        Assert.That(titleField, Is.Not.Null);
+        Assert.That(titleField.Title, Is.EqualTo(string.Empty));
+
+        var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().FirstOrDefault();
+        Assert.That(timeRangeField, Is.Not.Null);
+        Assert.That(timeRangeField.Duration, Is.EqualTo(TimeSpan.FromMinutes(30)));
+
+        var descriptionField = viewModel.EditFields.OfType<DescriptionEditViewModel>().FirstOrDefault();
+        Assert.That(descriptionField, Is.Not.Null);
+        Assert.That(descriptionField.Description, Is.Null);
+
+        var locationField = viewModel.EditFields.OfType<LocationEditViewModel>().FirstOrDefault();
+        Assert.That(locationField, Is.Not.Null);
+        Assert.That(locationField.Location, Is.Null);
     }
 
     [Test]
@@ -149,11 +163,18 @@ public class EventEditViewModelTests
             _calendar,
             id => _completedEventId = id);
 
-        viewModel.Title = "New Meeting";
-        viewModel.Description = "Team standup";
-        viewModel.Location = "Conference Room A";
-        viewModel.StartTime = DateTime.Now.AddHours(2);
-        viewModel.Duration = TimeSpan.FromHours(1);
+        var titleField = viewModel.EditFields.OfType<TitleEditViewModel>().First();
+        titleField.Title = "New Meeting";
+
+        var descriptionField = viewModel.EditFields.OfType<DescriptionEditViewModel>().First();
+        descriptionField.Description = "Team standup";
+
+        var locationField = viewModel.EditFields.OfType<LocationEditViewModel>().First();
+        locationField.Location = "Conference Room A";
+
+        var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
+        timeRangeField.StartTime = DateTime.Now.AddHours(2);
+        timeRangeField.Duration = TimeSpan.FromHours(1);
 
         await viewModel.SaveCommand.ExecuteAsync(null);
 
@@ -169,13 +190,14 @@ public class EventEditViewModelTests
             _calendar,
             id => _completedEventId = id);
 
-        var originalDuration = viewModel.Duration;
+        var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
+        var originalDuration = timeRangeField.Duration;
         var newStartTime = DateTime.Now.AddHours(5);
 
-        viewModel.StartTime = newStartTime;
+        timeRangeField.StartTime = newStartTime;
 
-        Assert.That(viewModel.EndTime, Is.EqualTo(newStartTime.Add(originalDuration)));
-        Assert.That(viewModel.Duration, Is.EqualTo(originalDuration));
+        Assert.That(timeRangeField.EndTime, Is.EqualTo(newStartTime.Add(originalDuration)));
+        Assert.That(timeRangeField.Duration, Is.EqualTo(originalDuration));
     }
 
     [Test]
@@ -186,12 +208,13 @@ public class EventEditViewModelTests
             _calendar,
             id => _completedEventId = id);
 
-        var startTime = viewModel.StartTime;
+        var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
+        var startTime = timeRangeField.StartTime;
         var newEndTime = startTime.AddHours(2);
 
-        viewModel.EndTime = newEndTime;
+        timeRangeField.EndTime = newEndTime;
 
-        Assert.That(viewModel.Duration, Is.EqualTo(TimeSpan.FromHours(2)));
+        Assert.That(timeRangeField.Duration, Is.EqualTo(TimeSpan.FromHours(2)));
     }
 
     [Test]
@@ -202,13 +225,14 @@ public class EventEditViewModelTests
             _calendar,
             id => _completedEventId = id);
 
-        var startTime = viewModel.StartTime;
-        var duration = viewModel.Duration;
+        var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
+        var startTime = timeRangeField.StartTime;
+        var duration = timeRangeField.Duration;
         var invalidEndTime = startTime.AddHours(-1);
 
-        viewModel.EndTime = invalidEndTime;
+        timeRangeField.EndTime = invalidEndTime;
 
-        Assert.That(viewModel.EndTime, Is.EqualTo(startTime.Add(duration)));
+        Assert.That(timeRangeField.EndTime, Is.EqualTo(startTime.Add(duration)));
     }
 
     [Test]
@@ -219,32 +243,13 @@ public class EventEditViewModelTests
             _calendar,
             id => _completedEventId = id);
 
-        var startTime = viewModel.StartTime;
+        var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
+        var startTime = timeRangeField.StartTime;
         var newDuration = TimeSpan.FromHours(2);
 
-        viewModel.Duration = newDuration;
+        timeRangeField.Duration = newDuration;
 
-        Assert.That(viewModel.EndTime, Is.EqualTo(startTime.Add(newDuration)));
-    }
-
-    [Test]
-    public void TitleChanged_NotifiesIsEditMode()
-    {
-        var viewModel = new EventEditViewModel(
-            null,
-            _calendar,
-            id => _completedEventId = id);
-
-        var propertyChanged = false;
-        viewModel.PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == nameof(viewModel.IsEditMode))
-                propertyChanged = true;
-        };
-
-        viewModel.Title = "Test";
-
-        Assert.That(propertyChanged, Is.True);
+        Assert.That(timeRangeField.EndTime, Is.EqualTo(startTime.Add(newDuration)));
     }
 
     [Test]
@@ -274,5 +279,62 @@ public class EventEditViewModelTests
         viewModel.CancelCommand.Execute(null);
 
         Assert.That(closeInvoked, Is.True);
+    }
+
+    [Test]
+    public void CalendarChanged_UpdatesEditFieldsBasedOnProvider()
+    {
+        var calDavProvider = new CalDavCalendarProviderStub();
+        _providers[AccountType.CalDav] = calDavProvider;
+
+        var calDavAccount = new Account
+        {
+            Id = Guid.NewGuid(),
+            Name = "CalDAV Account",
+            Type = AccountType.CalDav,
+            SortOrder = 1
+        };
+
+        _storage.CreateAccountAsync(new AccountDbo
+        {
+            AccountId = calDavAccount.Id.ToString(),
+            Name = "CalDAV Account",
+            Type = AccountType.CalDav.ToString(),
+            SortOrder = 1
+        }).Wait();
+
+        var calDavCalendarId = Guid.NewGuid();
+        var calDavCalendar = new Calendar
+        {
+            Account = calDavAccount,
+            Id = calDavCalendarId,
+            ExternalId = "caldav-calendar",
+            Name = "CalDAV Calendar",
+            Color = "#00ff00",
+            Enabled = true
+        };
+
+        _storage.CreateOrUpdateCalendarAsync(new CalendarDbo
+        {
+            AccountId = calDavAccount.Id.ToString(),
+            CalendarId = calDavCalendarId.ToString(),
+            ExternalId = "caldav-calendar",
+            Name = "CalDAV Calendar",
+            Color = "#00ff00",
+            Enabled = 1
+        }).Wait();
+
+        var viewModel = new EventEditViewModel(
+            null,
+            _calendar,
+            id => _completedEventId = id);
+
+        Assert.That(viewModel.EditFields.OfType<DescriptionEditViewModel>().FirstOrDefault(), Is.Not.Null, "Google provider should have Description");
+        Assert.That(viewModel.EditFields.OfType<LocationEditViewModel>().FirstOrDefault(), Is.Not.Null, "Google provider should have Location");
+
+        viewModel.SelectedCalendar = calDavCalendar;
+
+        Assert.That(viewModel.EditFields.OfType<DescriptionEditViewModel>().FirstOrDefault(), Is.Not.Null, "CalDAV provider should have Description");
+        Assert.That(viewModel.EditFields.OfType<LocationEditViewModel>().FirstOrDefault(), Is.Not.Null, "CalDAV provider should have Location");
     }
 }

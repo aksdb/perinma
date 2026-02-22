@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:cal="using:perinma.Views.Calendar"
+        xmlns:edit="using:perinma.Views.Calendar.EventEdit"
         mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="550"
         x:Class="perinma.Views.Calendar.EventEditView"
         x:DataType="cal:EventEditViewModel"
@@ -34,67 +35,86 @@
                 </ComboBox>
             </StackPanel>
 
-            <!-- Title -->
-            <StackPanel Spacing="4">
-                <TextBlock Text="Title" FontWeight="SemiBold" FontSize="12"/>
-                <TextBox Text="{Binding Title}"
-                         Watermark="Event title"
-                         HorizontalAlignment="Stretch"/>
-            </StackPanel>
+            <!-- Dynamic Edit Fields -->
+            <ItemsControl ItemsSource="{Binding EditFields}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <ContentControl Content="{Binding}">
+                            <ContentControl.DataTemplates>
+                                <!-- Title Edit -->
+                                <DataTemplate DataType="edit:TitleEditViewModel">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
+                                        <TextBox Text="{Binding Title}"
+                                                 Watermark="Event title"
+                                                 HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+                                </DataTemplate>
 
-            <!-- Date/Time Section -->
-            <StackPanel Spacing="8">
-                <!-- Start Date/Time -->
-                <StackPanel Spacing="4">
-                    <TextBlock Text="Start" FontWeight="SemiBold" FontSize="12"/>
-                    <Grid ColumnDefinitions="*,8,*">
-                        <CalendarDatePicker Name="StartDatePicker"
-                                        SelectedDate="{Binding StartTime}"
-                                        HorizontalAlignment="Stretch"
-                                        IsTodayHighlighted="True"/>
-                        <TimePicker Name="StartTimePicker"
-                                   Grid.Column="2"
-                                   ClockIdentifier="24HourClock"
-                                   SelectedTime="{Binding StartTime, Converter={StaticResource DateTimeToTimeSpanConverter}}"
-                                   HorizontalAlignment="Stretch"/>
-                    </Grid>
-                </StackPanel>
+                                <!-- Time Range Edit -->
+                                <DataTemplate DataType="edit:TimeRangeEditViewModel">
+                                    <StackPanel Spacing="8">
+                                        <!-- Start Date/Time -->
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Start" FontWeight="SemiBold" FontSize="12"/>
+                                            <Grid ColumnDefinitions="*,8,*">
+                                                <CalendarDatePicker Name="StartDatePicker"
+                                                                SelectedDate="{Binding StartTime}"
+                                                                HorizontalAlignment="Stretch"
+                                                                IsTodayHighlighted="True"/>
+                                                <TimePicker Name="StartTimePicker"
+                                                           Grid.Column="2"
+                                                           ClockIdentifier="24HourClock"
+                                                           SelectedTime="{Binding StartTime, Converter={StaticResource DateTimeToTimeSpanConverter}}"
+                                                           HorizontalAlignment="Stretch"/>
+                                            </Grid>
+                                        </StackPanel>
 
-                <!-- End Date/Time -->
-                <StackPanel Spacing="4">
-                    <TextBlock Text="End" FontWeight="SemiBold" FontSize="12"/>
-                    <Grid ColumnDefinitions="*,8,*">
-                        <CalendarDatePicker Name="EndDatePicker"
-                                        SelectedDate="{Binding EndTime}"
-                                        HorizontalAlignment="Stretch"
-                                        IsTodayHighlighted="True"/>
-                        <TimePicker Name="EndTimePicker"
-                                   Grid.Column="2"
-                                   ClockIdentifier="24HourClock"
-                                   SelectedTime="{Binding EndTime, Converter={StaticResource DateTimeToTimeSpanConverter}}"
-                                   HorizontalAlignment="Stretch"/>
-                    </Grid>
-                </StackPanel>
-            </StackPanel>
+                                        <!-- End Date/Time -->
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="End" FontWeight="SemiBold" FontSize="12"/>
+                                            <Grid ColumnDefinitions="*,8,*">
+                                                <CalendarDatePicker Name="EndDatePicker"
+                                                                SelectedDate="{Binding EndTime}"
+                                                                HorizontalAlignment="Stretch"
+                                                                IsTodayHighlighted="True"/>
+                                                <TimePicker Name="EndTimePicker"
+                                                           Grid.Column="2"
+                                                           ClockIdentifier="24HourClock"
+                                                           SelectedTime="{Binding EndTime, Converter={StaticResource DateTimeToTimeSpanConverter}}"
+                                                           HorizontalAlignment="Stretch"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
 
-            <!-- Description -->
-            <StackPanel Spacing="4">
-                <TextBlock Text="Description" FontWeight="SemiBold" FontSize="12"/>
-                <TextBox Text="{Binding Description}"
-                         Watermark="Description (optional)"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         HorizontalAlignment="Stretch"
-                         Height="80"/>
-            </StackPanel>
+                                <!-- Description Edit -->
+                                <DataTemplate DataType="edit:DescriptionEditViewModel">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
+                                        <TextBox Text="{Binding Description}"
+                                                 Watermark="Description (optional)"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="Wrap"
+                                                 HorizontalAlignment="Stretch"
+                                                 Height="80"/>
+                                    </StackPanel>
+                                </DataTemplate>
 
-            <!-- Location -->
-            <StackPanel Spacing="4">
-                <TextBlock Text="Location" FontWeight="SemiBold" FontSize="12"/>
-                <TextBox Text="{Binding Location}"
-                         Watermark="Location (optional)"
-                         HorizontalAlignment="Stretch"/>
-            </StackPanel>
+                                <!-- Location Edit -->
+                                <DataTemplate DataType="edit:LocationEditViewModel">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
+                                        <TextBox Text="{Binding Location}"
+                                                 Watermark="Location (optional)"
+                                                 HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ContentControl.DataTemplates>
+                        </ContentControl>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </StackPanel>
 
         <!-- Error Message -->
