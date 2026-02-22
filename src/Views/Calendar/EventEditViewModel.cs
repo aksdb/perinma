@@ -183,14 +183,17 @@ public partial class EventEditViewModel : ViewModelBase
             var startInstant = LocalDateTime.FromDateTime(_timeRangeField!.StartTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
             var endInstant = LocalDateTime.FromDateTime(_timeRangeField.EndTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
 
-            string? description = null;
+            var extensions = new ModelExtensions();
+
             if (_descriptionField != null)
             {
                 var richText = _descriptionField.GetRichText();
-                description = richText is RichText.HTML html ? html.value : null;
+                if (richText != null)
+                    extensions.Set(CalendarEventExtensions.Description, richText);
             }
 
-            string? location = _locationField?.Location;
+            if (_locationField != null && !string.IsNullOrWhiteSpace(_locationField.Location))
+                extensions.Set(CalendarEventExtensions.Location, _locationField.Location);
 
             if (IsEditMode && _existingEvent != null && provider != null)
             {
@@ -199,8 +202,7 @@ public partial class EventEditViewModel : ViewModelBase
                     calendarExternalId,
                     _existingEvent.Reference.ExternalId ?? string.Empty,
                     _titleField.Title,
-                    description,
-                    location,
+                    extensions,
                     startInstant,
                     endInstant,
                     _existingRawEventData);
@@ -214,8 +216,7 @@ public partial class EventEditViewModel : ViewModelBase
                     accountId,
                     calendarExternalId,
                     _titleField.Title,
-                    description,
-                    location,
+                    extensions,
                     startInstant,
                     endInstant,
                     null);

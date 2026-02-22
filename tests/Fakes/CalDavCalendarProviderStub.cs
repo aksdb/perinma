@@ -84,13 +84,21 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         string accountId,
         string calendarId,
         string title,
-        string? description,
-        string? location,
+        ModelExtensions extensions,
         Instant startTime,
         Instant endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
+        var description = extensions.Get(CalendarEventExtensions.Description) switch
+        {
+            RichText.HTML html => html.value,
+            RichText.SimpleText st => st.value,
+            _ => null
+        };
+
+        var location = extensions.Get(CalendarEventExtensions.Location);
+
         return Task.FromResult(Guid.NewGuid().ToString());
     }
 
@@ -99,8 +107,7 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         string calendarId,
         string eventId,
         string title,
-        string? description,
-        string? location,
+        ModelExtensions extensions,
         Instant startTime,
         Instant endTime,
         string? rawEventData = null,

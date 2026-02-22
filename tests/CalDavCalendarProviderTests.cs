@@ -711,13 +711,16 @@ public class CalDavCalendarProviderTests
         var localEnd =
             Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Local).ToUniversalTime());
 
+        var extensions = new ModelExtensions();
+        extensions.Set(CalendarEventExtensions.Description, new RichText.SimpleText("Test Description"));
+        extensions.Set(CalendarEventExtensions.Location, "Office");
+
         // Act
         var result = await _provider.CreateEventAsync(
             _accountId,
             calendarUrl,
             "Test Meeting",
-            "Test Description",
-            "Office",
+            extensions,
             localStart,
             localEnd);
 
@@ -741,13 +744,16 @@ public class CalDavCalendarProviderTests
         var utcStart = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Utc));
         var utcEnd = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Utc));
 
+        var extensions = new ModelExtensions();
+        extensions.Set(CalendarEventExtensions.Description, new RichText.SimpleText("Test Description"));
+        extensions.Set(CalendarEventExtensions.Location, "Office");
+
         // Act
         var result = await _provider.CreateEventAsync(
             _accountId,
             calendarUrl,
             "Test Meeting",
-            "Test Description",
-            "Office",
+            extensions,
             utcStart,
             utcEnd);
 
@@ -771,13 +777,16 @@ public class CalDavCalendarProviderTests
         var unspecifiedStart = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0).ToUniversalTime());
         var unspecifiedEnd = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0).ToUniversalTime());
 
+        var extensions = new ModelExtensions();
+        extensions.Set(CalendarEventExtensions.Description, new RichText.SimpleText("Test Description"));
+        extensions.Set(CalendarEventExtensions.Location, "Office");
+
         // Act
         var result = await _provider.CreateEventAsync(
             _accountId,
             calendarUrl,
             "Test Meeting",
-            "Test Description",
-            "Office",
+            extensions,
             unspecifiedStart,
             unspecifiedEnd);
 

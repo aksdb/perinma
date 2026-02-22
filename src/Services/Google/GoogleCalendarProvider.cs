@@ -597,8 +597,7 @@ public class GoogleCalendarProvider(
         string accountId,
         string calendarId,
         string title,
-        string? description,
-        string? location,
+        ModelExtensions extensions,
         Instant startTime,
         Instant endTime,
         string? rawEventData = null,
@@ -611,6 +610,16 @@ public class GoogleCalendarProvider(
         }
 
         var service = await googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
+
+        var description = extensions.Get(CalendarEventExtensions.Description) switch
+        {
+            RichText.HTML html => html.value,
+            RichText.SimpleText st => st.value,
+            _ => null
+        };
+
+        var location = extensions.Get(CalendarEventExtensions.Location);
+
         return await googleCalendarService.CreateEventAsync(service, calendarId, title, description, location,
             startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc(), rawEventData, cancellationToken);
     }
@@ -621,8 +630,7 @@ public class GoogleCalendarProvider(
         string calendarId,
         string eventId,
         string title,
-        string? description,
-        string? location,
+        ModelExtensions extensions,
         Instant startTime,
         Instant endTime,
         string? rawEventData = null,
@@ -635,6 +643,16 @@ public class GoogleCalendarProvider(
         }
 
         var service = await googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
+
+        var description = extensions.Get(CalendarEventExtensions.Description) switch
+        {
+            RichText.HTML html => html.value,
+            RichText.SimpleText st => st.value,
+            _ => null
+        };
+
+        var location = extensions.Get(CalendarEventExtensions.Location);
+
         await googleCalendarService.UpdateEventAsync(service, calendarId, eventId, title, description, location,
             startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc(), rawEventData, cancellationToken);
     }
@@ -642,9 +660,13 @@ public class GoogleCalendarProvider(
     /// <inheritdoc/>
     public IList<object> GetSupportedExtensions() =>
     [
+        CalendarEventExtensions.FullDay,
+        CalendarEventExtensions.TimeZone,
         CalendarEventExtensions.Location,
         CalendarEventExtensions.Description,
         CalendarEventExtensions.Attachments,
+        CalendarEventExtensions.Conference,
         CalendarEventExtensions.Participants,
+        CalendarEventExtensions.Participation
     ];
 }

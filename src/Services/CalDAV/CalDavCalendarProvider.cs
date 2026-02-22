@@ -446,8 +446,7 @@ public class CalDavCalendarProvider(
         string accountId,
         string calendarId,
         string title,
-        string? description,
-        string? location,
+        ModelExtensions extensions,
         Instant startTime,
         Instant endTime,
         string? rawEventData = null,
@@ -458,6 +457,15 @@ public class CalDavCalendarProvider(
         {
             throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
         }
+
+        var description = extensions.Get(CalendarEventExtensions.Description) switch
+        {
+            RichText.HTML html => html.value,
+            RichText.SimpleText st => st.value,
+            _ => null
+        };
+
+        var location = extensions.Get(CalendarEventExtensions.Location);
 
         return await calDavService.CreateEventAsync(
             calDavCredentials,
@@ -477,8 +485,7 @@ public class CalDavCalendarProvider(
         string calendarId,
         string eventId,
         string title,
-        string? description,
-        string? location,
+        ModelExtensions extensions,
         Instant startTime,
         Instant endTime,
         string? rawEventData = null,
@@ -490,7 +497,15 @@ public class CalDavCalendarProvider(
             throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
         }
 
-        // For CalDAV, eventId is event URL and rawEventData contains current iCalendar data
+        var description = extensions.Get(CalendarEventExtensions.Description) switch
+        {
+            RichText.HTML html => html.value,
+            RichText.SimpleText st => st.value,
+            _ => null
+        };
+
+        var location = extensions.Get(CalendarEventExtensions.Location);
+
         await calDavService.UpdateEventAsync(
             calDavCredentials,
             eventId,
@@ -507,7 +522,10 @@ public class CalDavCalendarProvider(
     /// <inheritdoc/>
     public IList<object> GetSupportedExtensions() =>
     [
+        CalendarEventExtensions.FullDay,
+        CalendarEventExtensions.TimeZone,
         CalendarEventExtensions.Location,
         CalendarEventExtensions.Description,
+        CalendarEventExtensions.Attachments
     ];
 }

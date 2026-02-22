@@ -114,8 +114,7 @@ public interface ICalendarProvider
     /// <param name="accountId">Account ID to create event for</param>
     /// <param name="calendarId">External ID of the calendar</param>
     /// <param name="title">Event title</param>
-    /// <param name="description">Event description (optional)</param>
-    /// <param name="location">Event location (optional)</param>
+    /// <param name="extensions">Event extensions (description, location, etc.)</param>
     /// <param name="startTime">Event start time as UTC Instant</param>
     /// <param name="endTime">Event end time as UTC Instant</param>
     /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
@@ -125,8 +124,7 @@ public interface ICalendarProvider
         string accountId,
         string calendarId,
         string title,
-        string? description,
-        string? location,
+        ModelExtensions extensions,
         Instant startTime,
         Instant endTime,
         string? rawEventData = null,
@@ -139,8 +137,7 @@ public interface ICalendarProvider
     /// <param name="calendarId">External ID of the calendar</param>
     /// <param name="eventId">External ID of the event to update</param>
     /// <param name="title">Event title</param>
-    /// <param name="description">Event description (optional)</param>
-    /// <param name="location">Event location (optional)</param>
+    /// <param name="extensions">Event extensions (description, location, etc.)</param>
     /// <param name="startTime">Event start time as UTC Instant</param>
     /// <param name="endTime">Event end time as UTC Instant</param>
     /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
@@ -150,8 +147,7 @@ public interface ICalendarProvider
         string calendarId,
         string eventId,
         string title,
-        string? description,
-        string? location,
+        ModelExtensions extensions,
         Instant startTime,
         Instant endTime,
         string? rawEventData = null,
