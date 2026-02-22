@@ -201,8 +201,9 @@ public partial class CalendarWeekView : UserControl
         {
             if (!string.IsNullOrEmpty(errorMessage))
             {
+                var owner = VisualRoot as Window;
                 await MessageBoxWindow.ShowAsync(
-                    null,
+                    owner,
                     "Error",
                     errorMessage,
                     MessageBoxType.Error,

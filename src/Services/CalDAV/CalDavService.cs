@@ -206,7 +206,7 @@ public class CalDavService : ICalDavService
 
         var evt = calendar.Events.FirstOrDefault();
         var eventUid = evt?.Uid ?? Guid.NewGuid().ToString();
-        var eventUrl = $"{TrimTrailingSlash(calendarUrl)}{eventUid}.ics";
+        var eventUrl = $"{TrimTrailingSlash(calendarUrl)}/{eventUid}.ics";
 
         await client.PutCalendarObjectAsync(eventUrl, iCalendarData, null, cancellationToken);
 
@@ -559,12 +559,12 @@ public class CalDavService : ICalDavService
                 // If server doesn't support ACL properties (e.g., SOGo returns 501),
                 // log and continue without ACL data
                 var statusCode = ex.StatusCode.HasValue ? ((int)ex.StatusCode).ToString() : "unknown";
-                Console.WriteLine($"Failed to fetch ACL for calendar {calendar.DisplayName} ({calendar.Url}): {ex.Message} (Status: {statusCode})");
+                Console.WriteLine($"Failed to fetch ACL for calendar {calendar.DisplayName} ({calendar.Url}): {ex} (Status: {statusCode})");
             }
             catch (Exception ex)
             {
                 // Other errors (network, parsing, etc.)
-                Console.WriteLine($"Error fetching ACL for calendar {calendar.DisplayName} ({calendar.Url}): {ex.Message}");
+                Console.WriteLine($"Error fetching ACL for calendar {calendar.DisplayName} ({calendar.Url}): {ex}");
             }
         }
     }

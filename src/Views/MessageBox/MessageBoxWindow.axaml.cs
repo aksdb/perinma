@@ -26,7 +26,14 @@ public partial class MessageBoxWindow : Window
 
         messageBox.Closed += (_, _) => tcs.TrySetResult(messageBox._result);
 
-        messageBox.ShowDialog(owner!);
+        if (owner != null)
+        {
+            messageBox.ShowDialog(owner);
+        }
+        else
+        {
+            messageBox.Show();
+        }
 
         return tcs.Task;
     }
