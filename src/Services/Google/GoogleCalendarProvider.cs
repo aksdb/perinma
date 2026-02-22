@@ -693,6 +693,23 @@ public class GoogleCalendarProvider(
     }
 
     /// <inheritdoc/>
+    public async Task DeleteEventAsync(
+        string accountId,
+        string calendarId,
+        string eventId,
+        CancellationToken cancellationToken = default)
+    {
+        var googleCredentials = credentialManager.GetGoogleCredentials(accountId);
+        if (googleCredentials == null)
+        {
+            throw new InvalidOperationException($"No Google credentials found for account {accountId}");
+        }
+
+        var service = await googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
+        await googleCalendarService.DeleteEventAsync(service, calendarId, eventId, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public IList<object> GetSupportedExtensions() =>
     [
         CalendarEventExtensions.FullDay,

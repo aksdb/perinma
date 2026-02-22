@@ -143,36 +143,42 @@
                                           Margin="2,0,2,2">
                                 <ItemsControl ItemsSource="{Binding Events}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="cal:MonthEventViewModel">
-                                            <Button Background="{Binding Background}"
-                                                    CornerRadius="3"
-                                                    Padding="4,1"
-                                                    Margin="0,1"
-                                                    HorizontalAlignment="Stretch"
-                                                    HorizontalContentAlignment="Left"
-                                                    BorderThickness="0"
-                                                    Cursor="Hand">
-                                                <Button.Styles>
-                                                    <Style Selector="Button:pointerover /template/ ContentPresenter">
-                                                        <Setter Property="Background" Value="{Binding Background}"/>
-                                                        <Setter Property="Opacity" Value="0.8"/>
-                                                    </Style>
-                                                    <Style Selector="Button:pressed /template/ ContentPresenter">
-                                                        <Setter Property="Background" Value="{Binding Background}"/>
-                                                        <Setter Property="Opacity" Value="0.6"/>
-                                                    </Style>
-                                                </Button.Styles>
-                                                <Button.Flyout>
-                                                    <Flyout Placement="Right">
-                                                        <ContentControl Content="{Binding EventViewModel}"/>
-                                                    </Flyout>
-                                                </Button.Flyout>
-                                                <TextBlock Text="{Binding Title}"
-                                                           FontSize="11"
-                                                           Foreground="{Binding Foreground}"
-                                                           TextTrimming="CharacterEllipsis"/>
-                                            </Button>
-                                        </DataTemplate>
+                                         <DataTemplate x:DataType="cal:MonthEventViewModel">
+                                             <Button Background="{Binding Background}"
+                                                     CornerRadius="3"
+                                                     Padding="4,1"
+                                                     Margin="0,1"
+                                                     HorizontalAlignment="Stretch"
+                                                     HorizontalContentAlignment="Left"
+                                                     BorderThickness="0"
+                                                     Cursor="Hand">
+                                                 <Button.Styles>
+                                                     <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                                         <Setter Property="Background" Value="{Binding Background}"/>
+                                                         <Setter Property="Opacity" Value="0.8"/>
+                                                     </Style>
+                                                     <Style Selector="Button:pressed /template/ ContentPresenter">
+                                                         <Setter Property="Background" Value="{Binding Background}"/>
+                                                         <Setter Property="Opacity" Value="0.6"/>
+                                                     </Style>
+                                                 </Button.Styles>
+                                                 <Button.ContextMenu>
+                                                     <ContextMenu>
+                                                         <MenuItem Header="Edit" Command="{Binding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                                         <MenuItem Header="Delete" Command="{Binding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                                     </ContextMenu>
+                                                 </Button.ContextMenu>
+                                                 <Button.Flyout>
+                                                     <Flyout Placement="Right">
+                                                         <ContentControl Content="{Binding EventViewModel}"/>
+                                                     </Flyout>
+                                                 </Button.Flyout>
+                                                 <TextBlock Text="{Binding Title}"
+                                                            FontSize="11"
+                                                            Foreground="{Binding Foreground}"
+                                                            TextTrimming="CharacterEllipsis"/>
+                                             </Button>
+                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </ScrollViewer>

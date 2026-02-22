@@ -164,6 +164,15 @@ public class CalDavClient
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task DeleteCalendarObjectAsync(
+        string objectUrl,
+        CancellationToken cancellationToken = default)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Delete, objectUrl);
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
     public Calendar? ParseICalendar(string icalData)
     {
         return Calendar.Load(icalData);

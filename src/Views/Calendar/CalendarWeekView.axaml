@@ -32,23 +32,29 @@
             </Setter>
         </Style>
 
-        <!-- Template for EventChip templated control -->
-        <Style Selector="cal|EventItem">
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Grid>
-                        <!-- Dashed border rectangle (only visible when needsResponse class is present) -->
-                        <Rectangle Name="DashedBorder"
-                                   RadiusX="10" RadiusY="10"
-                                   StrokeThickness="2"
-                                   Stroke="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                                   StrokeDashArray="4,2" />
-                        
+         <!-- Template for EventChip templated control -->
+         <Style Selector="cal|EventItem">
+             <Setter Property="Template">
+                 <ControlTemplate>
+                     <Grid>
+                         <!-- Dashed border rectangle (only visible when needsResponse class is present) -->
+                         <Rectangle Name="DashedBorder"
+                                    RadiusX="10" RadiusY="10"
+                                    StrokeThickness="2"
+                                    Stroke="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                                    StrokeDashArray="4,2" />
+
                           <Border Name="Border"
                                   CornerRadius="10"
                                   Background="{Binding BackgroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
                                   Margin="1"
                                   Bounds="{Binding AvailableBounds, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}">
+                              <Border.ContextMenu>
+                                  <ContextMenu>
+                                      <MenuItem Header="Edit" Command="{Binding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}"/>
+                                      <MenuItem Header="Delete" Command="{Binding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}"/>
+                                  </ContextMenu>
+                              </Border.ContextMenu>
                                <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">
                                   <TextBlock Name="TitleTextBlock"
                                              Text="{Binding Title, RelativeSource={RelativeSource TemplatedParent}}"
@@ -85,10 +91,10 @@
                                  </Flyout>
                              </FlyoutBase.AttachedFlyout>
                          </Border>
-                    </Grid>
-                </ControlTemplate>
-            </Setter>
-        </Style>
+                     </Grid>
+                 </ControlTemplate>
+             </Setter>
+         </Style>
 
         <!-- Style to show dashed border for events needing response (pending or declined) -->
         <Style Selector="cal|EventItem.needsResponse /template/ Rectangle#DashedBorder">

@@ -230,6 +230,15 @@ public class CalDavService : ICalDavService
         return updatedICalendar;
     }
 
+    public async Task DeleteEventAsync(
+        CalDavCredentials credentials,
+        string eventUrl,
+        CancellationToken cancellationToken = default)
+    {
+        var client = CreateClient(credentials);
+        await client.DeleteCalendarObjectAsync(eventUrl, cancellationToken);
+    }
+
 
     private CalDavClient CreateClient(CalDavCredentials credentials)
     {

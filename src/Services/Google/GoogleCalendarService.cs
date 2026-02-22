@@ -382,6 +382,16 @@ public class GoogleCalendarService : IGoogleCalendarService
         await request.ExecuteAsync(cancellationToken);
     }
 
+    public async Task DeleteEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        CancellationToken cancellationToken = default)
+    {
+        var request = service.Events.Delete(calendarId, eventId);
+        await request.ExecuteAsync(cancellationToken);
+    }
+
     public class CalendarSyncResult
     {
         public required IList<CalendarListEntry> Calendars { get; init; }

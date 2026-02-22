@@ -68,6 +68,17 @@ public interface ICalDavService
         Ical.Net.Calendar calendar,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Deletes an existing event.
+    /// </summary>
+    /// <param name="credentials">CalDAV credentials</param>
+    /// <param name="eventUrl">URL of event to delete</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task DeleteEventAsync(
+        CalDavCredentials credentials,
+        string eventUrl,
+        CancellationToken cancellationToken = default);
+
     public class CalendarSyncResult
     {
         public required IList<CalDavCalendar> Calendars { get; init; }

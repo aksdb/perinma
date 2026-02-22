@@ -94,4 +94,17 @@ public interface IGoogleCalendarService
         string eventId,
         Event @event,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes an existing event.
+    /// </summary>
+    /// <param name="service">Authenticated CalendarService</param>
+    /// <param name="calendarId">Calendar ID containing event</param>
+    /// <param name="eventId">Event ID to delete</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task DeleteEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        CancellationToken cancellationToken = default);
 }

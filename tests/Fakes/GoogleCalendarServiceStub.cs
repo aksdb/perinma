@@ -196,4 +196,13 @@ public class GoogleCalendarServiceStub : IGoogleCalendarService
     {
         return Task.CompletedTask;
     }
+
+    public Task DeleteEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
 }

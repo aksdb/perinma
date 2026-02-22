@@ -154,6 +154,19 @@ public interface ICalendarProvider
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Deletes an existing event.
+    /// </summary>
+    /// <param name="accountId">Account ID to delete event for</param>
+    /// <param name="calendarId">External ID of the calendar</param>
+    /// <param name="eventId">External ID of the event to delete</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task DeleteEventAsync(
+        string accountId,
+        string calendarId,
+        string eventId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the list of ModelExtensions that this provider supports.
     /// </summary>
     /// <returns>List of supported ModelExtensions</returns>

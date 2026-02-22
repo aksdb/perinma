@@ -549,6 +549,25 @@ public class CalDavCalendarProvider(
             cancellationToken);
     }
 
+    /// <inheritdoc/>
+    public async Task DeleteEventAsync(
+        string accountId,
+        string calendarId,
+        string eventId,
+        CancellationToken cancellationToken = default)
+    {
+        var calDavCredentials = credentialManager.GetCalDavCredentials(accountId);
+        if (calDavCredentials == null)
+        {
+            throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
+        }
+
+        await calDavService.DeleteEventAsync(
+            calDavCredentials,
+            eventId,
+            cancellationToken);
+    }
+
     private static bool ShouldAddTimezone(DateTime startTime, DateTime endTime)
     {
         return startTime.Kind == DateTimeKind.Local || endTime.Kind == DateTimeKind.Local;

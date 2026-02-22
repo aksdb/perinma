@@ -107,6 +107,15 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         return Task.CompletedTask;
     }
 
+    public Task DeleteEventAsync(
+        string accountId,
+        string calendarId,
+        string eventId,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
     public IList<object> GetSupportedExtensions() =>
     [
         CalendarEventExtensions.FullDay,

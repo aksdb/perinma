@@ -121,6 +121,14 @@ public class CalDavServiceStub : ICalDavService
         return Task.FromResult(serializer.SerializeToString(calendar) ?? string.Empty);
     }
 
+    public Task DeleteEventAsync(
+        CalDavCredentials credentials,
+        string eventUrl,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
     public IReadOnlyList<Ical.Net.Calendar> GetCreatedCalendars()
     {
         return _createdCalendars.AsReadOnly();

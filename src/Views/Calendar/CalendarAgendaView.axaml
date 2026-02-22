@@ -112,59 +112,66 @@
                         <!-- Events for this day -->
                         <ItemsControl ItemsSource="{Binding Events}" Margin="8,0,0,0">
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="cal:AgendaEventViewModel">
-                                    <Button Background="{Binding Background}"
-                                            CornerRadius="6"
-                                            Padding="12,8"
-                                            Margin="0,4"
-                                            HorizontalAlignment="Stretch"
-                                            HorizontalContentAlignment="Stretch"
-                                            BorderThickness="0"
-                                            Cursor="Hand">
-                                        <Button.Styles>
-                                            <Style Selector="Button:pointerover /template/ ContentPresenter">
-                                                <Setter Property="Background" Value="{Binding Background}"/>
-                                                <Setter Property="Opacity" Value="0.8"/>
-                                            </Style>
-                                            <Style Selector="Button:pressed /template/ ContentPresenter">
-                                                <Setter Property="Background" Value="{Binding Background}"/>
-                                                <Setter Property="Opacity" Value="0.6"/>
-                                            </Style>
-                                        </Button.Styles>
-                                        <Button.Flyout>
-                                            <Flyout Placement="Right">
-                                                <ContentControl Content="{Binding EventViewModel}"/>
-                                            </Flyout>
-                                        </Button.Flyout>
-                                        <Grid ColumnDefinitions="Auto,*">
-                                            <!-- Time Column -->
-                                            <StackPanel Grid.Column="0" 
-                                                        Width="80"
-                                                        VerticalAlignment="Top">
-                                                <TextBlock Text="{Binding TimeDisplay}"
-                                                           FontSize="13"
-                                                           Foreground="{Binding Foreground}"/>
-                                                <TextBlock Text="{Binding DurationDisplay}"
-                                                           FontSize="11"
-                                                           Foreground="{Binding SecondaryForeground}"
-                                                           IsVisible="{Binding ShowDuration}"/>
-                                            </StackPanel>
-                                            
-                                            <!-- Event Details -->
-                                            <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                                <TextBlock Text="{Binding Title}"
-                                                           FontWeight="SemiBold"
-                                                           FontSize="14"
-                                                           Foreground="{Binding Foreground}"
-                                                           TextWrapping="Wrap"/>
-                                                <TextBlock Text="{Binding CalendarName}"
-                                                           FontSize="12"
-                                                           Foreground="{Binding SecondaryForeground}"
-                                                           Margin="0,2,0,0"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Button>
-                                </DataTemplate>
+                                     <DataTemplate x:DataType="cal:AgendaEventViewModel">
+                                     <Button Background="{Binding Background}"
+                                             CornerRadius="6"
+                                             Padding="12,8"
+                                             Margin="0,4"
+                                             HorizontalAlignment="Stretch"
+                                             HorizontalContentAlignment="Stretch"
+                                             BorderThickness="0"
+                                             Cursor="Hand"
+                                             Name="EventButton">
+                                         <Button.Styles>
+                                             <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                                 <Setter Property="Background" Value="{Binding Background}"/>
+                                                 <Setter Property="Opacity" Value="0.8"/>
+                                             </Style>
+                                             <Style Selector="Button:pressed /template/ ContentPresenter">
+                                                 <Setter Property="Background" Value="{Binding Background}"/>
+                                                 <Setter Property="Opacity" Value="0.6"/>
+                                             </Style>
+                                          </Button.Styles>
+                                          <Button.ContextMenu>
+                                              <ContextMenu>
+                                                  <MenuItem Header="Edit" Command="{Binding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                                  <MenuItem Header="Delete" Command="{Binding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                              </ContextMenu>
+                                          </Button.ContextMenu>
+                                          <Button.Flyout>
+                                             <Flyout Placement="Right">
+                                                 <ContentControl Content="{Binding EventViewModel}"/>
+                                             </Flyout>
+                                         </Button.Flyout>
+                                         <Grid ColumnDefinitions="Auto,*">
+                                             <!-- Time Column -->
+                                             <StackPanel Grid.Column="0"
+                                                         Width="80"
+                                                         VerticalAlignment="Top">
+                                                 <TextBlock Text="{Binding TimeDisplay}"
+                                                            FontSize="13"
+                                                            Foreground="{Binding Foreground}"/>
+                                                 <TextBlock Text="{Binding DurationDisplay}"
+                                                            FontSize="11"
+                                                            Foreground="{Binding SecondaryForeground}"
+                                                            IsVisible="{Binding ShowDuration}"/>
+                                             </StackPanel>
+
+                                             <!-- Event Details -->
+                                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                                 <TextBlock Text="{Binding Title}"
+                                                            FontWeight="SemiBold"
+                                                            FontSize="14"
+                                                            Foreground="{Binding Foreground}"
+                                                            TextWrapping="Wrap"/>
+                                                 <TextBlock Text="{Binding CalendarName}"
+                                                            FontSize="12"
+                                                            Foreground="{Binding SecondaryForeground}"
+                                                            Margin="0,2,0,0"/>
+                                             </StackPanel>
+                                         </Grid>
+                                     </Button>
+                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>

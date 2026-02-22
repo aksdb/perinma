@@ -6,12 +6,14 @@ using System.Threading.Tasks;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NodaTime.Extensions;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Utils;
+using perinma.Views.MessageBox;
 
 namespace perinma.Views.Calendar;
 
@@ -617,6 +619,84 @@ public partial class CalendarWeekViewModel : ViewModelBase
     private void CreateNewEvent()
     {
         SelectedEvent = null;
+    }
+
+    [RelayCommand]
+    private async Task EditEventAsync(CalendarEvent? eventToEdit)
+    {
+        if (eventToEdit == null) return;
+        await OpenEventEditorAsync(eventToEdit);
+    }
+
+    [RelayCommand]
+    private async Task DeleteEventAsync(CalendarEvent? eventToDelete)
+    {
+        if (eventToDelete == null) return;
+
+        var eventTitle = eventToDelete.Title ?? "[no title]";
+
+        var result = await MessageBoxWindow.ShowAsync(
+            null,
+            "Delete Event",
+            $"Are you sure you want to delete \"{eventTitle}\"?",
+            MessageBoxType.Warning,
+            MessageBoxButtons.YesNo);
+
+        if (result != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        var accountId = eventToDelete.Reference.Calendar.Account.Id.ToString();
+        var calendarId = eventToDelete.Reference.Calendar.ExternalId;
+        var eventId = eventToDelete.Reference.ExternalId;
+
+        try
+        {
+            var syncService = App.Services?.GetRequiredService<SyncService>();
+            if (syncService == null)
+            {
+                throw new InvalidOperationException("SyncService not available");
+            }
+
+            var provider = syncService.Providers?.GetValueOrDefault(eventToDelete.Reference.Calendar.Account.Type);
+            if (provider == null)
+            {
+                throw new InvalidOperationException($"No provider found for account type {eventToDelete.Reference.Calendar.Account.Type}");
+            }
+
+            await provider.DeleteEventAsync(accountId, calendarId, eventId);
+            Load();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to delete event: {ex}");
+            throw;
+        }
+    }
+
+    private async Task OpenEventEditorAsync(CalendarEvent calendarEvent)
+    {
+        var onCompleted = new Action<string>(async (errorMessage) =>
+        {
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                Console.WriteLine($"Event edit failed: {errorMessage}");
+            }
+            else
+            {
+                Load();
+            }
+        });
+
+        var editor = new EventEditView
+        {
+            DataContext = new EventEditViewModel(
+                calendarEvent,
+                calendarEvent.Reference.Calendar,
+                onCompleted)
+        };
+        editor.Show();
     }
 }
 
