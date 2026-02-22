@@ -17,7 +17,7 @@ public class CalDavServiceStub : ICalDavService
 {
     private readonly List<CalDavCalendar> _calendars = new();
     private readonly Dictionary<string, List<CalDavEvent>> _eventsByCalendar = new();
-    private readonly List<(string CalendarUrl, string Title, string? Description, string? Location, DateTime StartTime, DateTime EndTime)> _createdEvents = new();
+    private readonly List<Ical.Net.Calendar> _createdCalendars = new();
 
     /// <summary>
     /// Sets the calendars to return.
@@ -93,20 +93,19 @@ public class CalDavServiceStub : ICalDavService
     public Task<string> CreateEventAsync(
         CalDavCredentials credentials,
         string calendarUrl,
-        string title,
-        string? description,
-        string? location,
-        DateTime startTime,
-        DateTime endTime,
-        string? rawEventData = null,
+        Ical.Net.Calendar calendar,
         CancellationToken cancellationToken = default)
     {
-        var eventUid = Guid.NewGuid().ToString();
+        var evt = calendar?.Events.FirstOrDefault();
+        var eventUid = evt?.Uid ?? Guid.NewGuid().ToString();
         var eventUrl = calendarUrl.EndsWith("/")
             ? calendarUrl + $"{eventUid}.ics"
             : calendarUrl + $"/{eventUid}.ics";
 
-        _createdEvents.Add((calendarUrl, title, description, location, startTime, endTime));
+        if (calendar != null)
+        {
+            _createdCalendars.Add(calendar);
+        }
 
         return Task.FromResult(eventUrl);
     }
@@ -114,39 +113,21 @@ public class CalDavServiceStub : ICalDavService
     public Task<string> UpdateEventAsync(
         CalDavCredentials credentials,
         string eventUrl,
-        string rawICalendar,
-        string title,
-        string? description,
-        string? location,
-        DateTime startTime,
-        DateTime endTime,
-        string? rawEventData = null,
+        Ical.Net.Calendar calendar,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(rawICalendar);
+        _createdCalendars.Add(calendar);
+        var serializer = new Ical.Net.Serialization.CalendarSerializer();
+        return Task.FromResult(serializer.SerializeToString(calendar) ?? string.Empty);
     }
 
-    public Task<string> UpdateEventAsync(
-        CalDavCredentials credentials,
-        string eventUrl,
-        string rawICalendar,
-        string title,
-        string? description,
-        string? location,
-        DateTime startTime,
-        DateTime endTime,
-        CancellationToken cancellationToken = default)
+    public IReadOnlyList<Ical.Net.Calendar> GetCreatedCalendars()
     {
-        return UpdateEventAsync(credentials, eventUrl, rawICalendar, title, description, location, startTime, endTime, null, cancellationToken);
+        return _createdCalendars.AsReadOnly();
     }
 
-    public IReadOnlyList<(string CalendarUrl, string Title, string? Description, string? Location, DateTime StartTime, DateTime EndTime)> GetCreatedEvents()
+    public void ClearCreatedCalendars()
     {
-        return _createdEvents.AsReadOnly();
-    }
-
-    public void ClearCreatedEvents()
-    {
-        _createdEvents.Clear();
+        _createdCalendars.Clear();
     }
 }

@@ -181,12 +181,7 @@ public class GoogleCalendarServiceStub : IGoogleCalendarService
     public Task<string> CreateEventAsync(
         CalendarService service,
         string calendarId,
-        string title,
-        string? description,
-        string? location,
-        DateTime startTime,
-        DateTime endTime,
-        string? rawEventData = null,
+        Event @event,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult("stub_event_id");
@@ -196,12 +191,7 @@ public class GoogleCalendarServiceStub : IGoogleCalendarService
         CalendarService service,
         string calendarId,
         string eventId,
-        string title,
-        string? description,
-        string? location,
-        DateTime startTime,
-        DateTime endTime,
-        string? rawEventData = null,
+        Event @event,
         CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;

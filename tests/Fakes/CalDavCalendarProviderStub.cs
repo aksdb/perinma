@@ -90,15 +90,6 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
-        var description = extensions.Get(CalendarEventExtensions.Description) switch
-        {
-            RichText.HTML html => html.value,
-            RichText.SimpleText st => st.value,
-            _ => null
-        };
-
-        var location = extensions.Get(CalendarEventExtensions.Location);
-
         return Task.FromResult(Guid.NewGuid().ToString());
     }
 

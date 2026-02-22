@@ -28,6 +28,7 @@ public class GoogleCalendarProvider(
     : ICalendarProvider
 {
     private static ModelExtension<GoogleEvent> GoogleEventExtension = new();
+    private static readonly InstantPattern Iso8601Pattern = InstantPattern.ExtendedIso;
 
     /// <inheritdoc/>
     public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange) =>
@@ -611,6 +612,19 @@ public class GoogleCalendarProvider(
 
         var service = await googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
 
+        var googleEvent = new Event
+        {
+            Summary = title,
+            Start = new EventDateTime
+            {
+                DateTimeRaw = Iso8601Pattern.Format(startTime)
+            },
+            End = new EventDateTime
+            {
+                DateTimeRaw = Iso8601Pattern.Format(endTime)
+            }
+        };
+
         var description = extensions.Get(CalendarEventExtensions.Description) switch
         {
             RichText.HTML html => html.value,
@@ -618,10 +632,14 @@ public class GoogleCalendarProvider(
             _ => null
         };
 
-        var location = extensions.Get(CalendarEventExtensions.Location);
+        if (description != null)
+            googleEvent.Description = description;
 
-        return await googleCalendarService.CreateEventAsync(service, calendarId, title, description, location,
-            startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc(), rawEventData, cancellationToken);
+        var location = extensions.Get(CalendarEventExtensions.Location);
+        if (location != null)
+            googleEvent.Location = location;
+
+        return await googleCalendarService.CreateEventAsync(service, calendarId, googleEvent, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -644,6 +662,19 @@ public class GoogleCalendarProvider(
 
         var service = await googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
 
+        var googleEvent = new Event
+        {
+            Summary = title,
+            Start = new EventDateTime
+            {
+                DateTimeRaw = Iso8601Pattern.Format(startTime)
+            },
+            End = new EventDateTime
+            {
+                DateTimeRaw = Iso8601Pattern.Format(endTime)
+            }
+        };
+
         var description = extensions.Get(CalendarEventExtensions.Description) switch
         {
             RichText.HTML html => html.value,
@@ -651,10 +682,14 @@ public class GoogleCalendarProvider(
             _ => null
         };
 
-        var location = extensions.Get(CalendarEventExtensions.Location);
+        if (description != null)
+            googleEvent.Description = description;
 
-        await googleCalendarService.UpdateEventAsync(service, calendarId, eventId, title, description, location,
-            startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc(), rawEventData, cancellationToken);
+        var location = extensions.Get(CalendarEventExtensions.Location);
+        if (location != null)
+            googleEvent.Location = location;
+
+        await googleCalendarService.UpdateEventAsync(service, calendarId, eventId, googleEvent, cancellationToken);
     }
 
     /// <inheritdoc/>

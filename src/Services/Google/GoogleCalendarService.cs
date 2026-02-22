@@ -362,30 +362,10 @@ public class GoogleCalendarService : IGoogleCalendarService
     public async Task<string> CreateEventAsync(
         CalendarService service,
         string calendarId,
-        string title,
-        string? description,
-        string? location,
-        DateTime startTime,
-        DateTime endTime,
-        string? rawEventData = null,
+        Event @event,
         CancellationToken cancellationToken = default)
     {
-        var googleEvent = new Event
-        {
-            Summary = title,
-            Description = description,
-            Location = location,
-            Start = new EventDateTime
-            {
-                DateTimeRaw = startTime.ToString("o")
-            },
-            End = new EventDateTime
-            {
-                DateTimeRaw = endTime.ToString("o")
-            }
-        };
-
-        var request = service.Events.Insert(googleEvent, calendarId);
+        var request = service.Events.Insert(@event, calendarId);
         var createdEvent = await request.ExecuteAsync(cancellationToken);
 
         return createdEvent.Id;
@@ -395,31 +375,11 @@ public class GoogleCalendarService : IGoogleCalendarService
         CalendarService service,
         string calendarId,
         string eventId,
-        string title,
-        string? description,
-        string? location,
-        DateTime startTime,
-        DateTime endTime,
-        string? rawEventData = null,
+        Event @event,
         CancellationToken cancellationToken = default)
     {
-        // Get current event
-        var googleEvent = await service.Events.Get(calendarId, eventId).ExecuteAsync(cancellationToken);
-
-        googleEvent.Summary = title;
-        googleEvent.Description = description;
-        googleEvent.Location = location;
-        googleEvent.Start = new EventDateTime
-        {
-            DateTimeRaw = startTime.ToString("o")
-        };
-        googleEvent.End = new EventDateTime
-        {
-            DateTimeRaw = endTime.ToString("o")
-        };
-
-        // Send update to Google
-        await service.Events.Update(googleEvent, calendarId, eventId).ExecuteAsync(cancellationToken);
+        var request = service.Events.Update(@event, calendarId, eventId);
+        await request.ExecuteAsync(cancellationToken);
     }
 
     public class CalendarSyncResult

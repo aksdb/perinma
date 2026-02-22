@@ -195,38 +195,17 @@ public class CalDavService : ICalDavService
     public async Task<string> CreateEventAsync(
         CalDavCredentials credentials,
         string calendarUrl,
-        string title,
-        string? description,
-        string? location,
-        DateTime startTime,
-        DateTime endTime,
-        string? rawEventData = null,
+        Ical.Net.Calendar calendar,
         CancellationToken cancellationToken = default)
     {
         var client = CreateClient(credentials);
- 
-        var calendar = new Calendar();
-        var evt = new CalendarEvent
-        {
-            Summary = title,
-            Description = description,
-            Location = location,
-            Start = ToCalDateTime(startTime),
-            End = ToCalDateTime(endTime),
-            Uid = Guid.NewGuid().ToString()
-        };
-
-        if (ShouldAddTimezone(startTime, endTime))
-            calendar.AddTimeZone(TimeZoneInfo.Local.Id);
-        
-        calendar.Events.Add(evt);
 
         var serializer = new CalendarSerializer();
         var iCalendarData = serializer.SerializeToString(calendar)
             ?? throw new InvalidOperationException("Failed to serialize calendar");
 
-
-        var eventUid = evt.Uid ?? Guid.NewGuid().ToString();
+        var evt = calendar.Events.FirstOrDefault();
+        var eventUid = evt?.Uid ?? Guid.NewGuid().ToString();
         var eventUrl = $"{TrimTrailingSlash(calendarUrl)}{eventUid}.ics";
 
         await client.PutCalendarObjectAsync(eventUrl, iCalendarData, null, cancellationToken);
@@ -237,68 +216,18 @@ public class CalDavService : ICalDavService
     public async Task<string> UpdateEventAsync(
         CalDavCredentials credentials,
         string eventUrl,
-        string rawICalendar,
-        string title,
-        string? description,
-        string? location,
-        DateTime startTime,
-        DateTime endTime,
-        string? rawEventData = null,
+        Ical.Net.Calendar calendar,
         CancellationToken cancellationToken = default)
     {
         var client = CreateClient(credentials);
 
-        var calendar = Calendar.Load(rawICalendar);
-        var evt = calendar?.Events.FirstOrDefault();
-
-        if (evt == null)
-            throw new InvalidOperationException("Could not parse event from iCalendar data");
-
-        evt.Summary = title;
-        evt.Description = description;
-        evt.Location = location;
-        evt.Start = ToCalDateTime(startTime);
-        evt.End = ToCalDateTime(endTime);
-
-        if (ShouldAddTimezone(startTime, endTime))
-        {
-            if (calendar != null && !calendar.TimeZones.Select(vtz => vtz.TzId).Contains(TimeZoneInfo.Local.Id))
-            {
-                calendar.AddTimeZone(TimeZoneInfo.Local.Id);
-            }
-        }
-        
         var serializer = new CalendarSerializer();
         var updatedICalendar = serializer.SerializeToString(calendar)
-            ?? throw new InvalidOperationException("Failed to serialize updated calendar");
+            ?? throw new InvalidOperationException("Failed to serialize calendar");
 
         await client.PutCalendarObjectAsync(eventUrl, updatedICalendar, null, cancellationToken);
 
         return updatedICalendar;
-    }
-
-    public async Task<string> UpdateEventAsync(
-        CalDavCredentials credentials,
-        string eventUrl,
-        string rawICalendar,
-        string title,
-        string? description,
-        string? location,
-        DateTime startTime,
-        DateTime endTime,
-        CancellationToken cancellationToken = default)
-    {
-        return await UpdateEventAsync(
-            credentials,
-            eventUrl,
-            rawICalendar,
-            title,
-            description,
-            location,
-            startTime,
-            endTime,
-            null,
-            cancellationToken);
     }
 
 

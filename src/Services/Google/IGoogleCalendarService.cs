@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Calendar.v3;
+using Google.Apis.Calendar.v3.Data;
 using perinma.Storage.Models;
 
 namespace perinma.Services.Google;
@@ -70,23 +71,13 @@ public interface IGoogleCalendarService
     /// </summary>
     /// <param name="service">Authenticated CalendarService</param>
     /// <param name="calendarId">Calendar ID to create event in</param>
-    /// <param name="title">Event title</param>
-    /// <param name="description">Event description (optional)</param>
-    /// <param name="location">Event location (optional)</param>
-    /// <param name="startTime">Event start time</param>
-    /// <param name="endTime">Event end time</param>
-    /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
+    /// <param name="event">Event data</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The external ID of the created event</returns>
     Task<string> CreateEventAsync(
         CalendarService service,
         string calendarId,
-        string title,
-        string? description,
-        string? location,
-        DateTime startTime,
-        DateTime endTime,
-        string? rawEventData = null,
+        Event @event,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -95,22 +86,12 @@ public interface IGoogleCalendarService
     /// <param name="service">Authenticated CalendarService</param>
     /// <param name="calendarId">Calendar ID containing event</param>
     /// <param name="eventId">Event ID to update</param>
-    /// <param name="title">Event title</param>
-    /// <param name="description">Event description (optional)</param>
-    /// <param name="location">Event location (optional)</param>
-    /// <param name="startTime">Event start time</param>
-    /// <param name="endTime">Event end time</param>
-    /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
+    /// <param name="event">Event data</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task UpdateEventAsync(
         CalendarService service,
         string calendarId,
         string eventId,
-        string title,
-        string? description,
-        string? location,
-        DateTime startTime,
-        DateTime endTime,
-        string? rawEventData = null,
+        Event @event,
         CancellationToken cancellationToken = default);
 }

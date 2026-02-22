@@ -11,6 +11,7 @@ using perinma.Utils;
 using Calendar = Ical.Net.Calendar;
 using Duration = NodaTime.Duration;
 using ICalEvent = Ical.Net.CalendarComponents.CalendarEvent;
+using CalDateTime = Ical.Net.DataTypes.CalDateTime;
 
 namespace perinma.Services.CalDAV;
 
@@ -467,15 +468,28 @@ public class CalDavCalendarProvider(
 
         var location = extensions.Get(CalendarEventExtensions.Location);
 
+        var calendar = new Ical.Net.Calendar();
+        var calendarEvent = new Ical.Net.CalendarComponents.CalendarEvent
+        {
+            Summary = title,
+            Description = description,
+            Location = location,
+            Start = new CalDateTime(startTime.ToDateTimeUtc(), true),
+            End = new CalDateTime(endTime.ToDateTimeUtc(), true),
+            Uid = Guid.NewGuid().ToString()
+        };
+
+        if (ShouldAddTimezone(startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc()))
+        {
+            calendar.AddTimeZone(TimeZoneInfo.Local.Id);
+        }
+
+        calendar.Events.Add(calendarEvent);
+
         return await calDavService.CreateEventAsync(
             calDavCredentials,
             calendarId,
-            title,
-            description,
-            location,
-            startTime.ToDateTimeUtc(),
-            endTime.ToDateTimeUtc(),
-            rawEventData,
+            calendar,
             cancellationToken);
     }
 
@@ -506,17 +520,38 @@ public class CalDavCalendarProvider(
 
         var location = extensions.Get(CalendarEventExtensions.Location);
 
+        var calendar = Ical.Net.Calendar.Load(rawEventData ?? string.Empty);
+        var calendarEvent = calendar?.Events.FirstOrDefault();
+
+        if (calendarEvent == null)
+        {
+            throw new InvalidOperationException("Could not parse event from iCalendar data");
+        }
+
+        calendarEvent.Summary = title;
+        calendarEvent.Description = description;
+        calendarEvent.Location = location;
+        calendarEvent.Start = new CalDateTime(startTime.ToDateTimeUtc(), true);
+        calendarEvent.End = new CalDateTime(endTime.ToDateTimeUtc(), true);
+
+        if (ShouldAddTimezone(startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc()))
+        {
+            if (calendar != null && !calendar.TimeZones.Select(vtz => vtz.TzId).Contains(TimeZoneInfo.Local.Id))
+            {
+                calendar.AddTimeZone(TimeZoneInfo.Local.Id);
+            }
+        }
+
         await calDavService.UpdateEventAsync(
             calDavCredentials,
             eventId,
-            rawEventData ?? string.Empty,
-            title,
-            description,
-            location,
-            startTime.ToDateTimeUtc(),
-            endTime.ToDateTimeUtc(),
-            rawEventData,
+            calendar!,
             cancellationToken);
+    }
+
+    private static bool ShouldAddTimezone(DateTime startTime, DateTime endTime)
+    {
+        return startTime.Kind == DateTimeKind.Local || endTime.Kind == DateTimeKind.Local;
     }
 
     /// <inheritdoc/>
