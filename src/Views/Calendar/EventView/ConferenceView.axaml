@@ -10,26 +10,20 @@
 
     <StackPanel Spacing="4">
         <TextBlock Text="Conference" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-        <ItemsControl ItemsSource="{Binding EntryPoints}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="ev:ConferenceEntryPointViewModel">
-                    <Border Padding="4,3" Margin="0,1" Background="Transparent" CornerRadius="4">
-                        <StackPanel Spacing="2">
-                            <TextBlock Text="{Binding Label}"
-                                       FontSize="11"
-                                       Foreground="Gray" />
-                            <cm:Hyperlink DisplayText="{Binding Uri}" Uri="{Binding Uri}" />
-                            <TextBlock Text="{Binding AdditionalInfo}"
-                                       IsVisible="{Binding AdditionalInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                       FontSize="11"
-                                       Foreground="Gray"
-                                       TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <StackPanel Orientation="Horizontal" Spacing="4">
+            <TextBlock Text="{Binding Name}" />
+            <ItemsControl ItemsSource="{Binding EntryPoints}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="ev:ConferenceEntryPointViewModel">
+                        <cm:Hyperlink DisplayText="{Binding Label}" Uri="{Binding Uri}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="4"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </StackPanel>
     </StackPanel>
-
 </UserControl>

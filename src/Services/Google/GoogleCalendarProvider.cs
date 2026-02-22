@@ -117,11 +117,14 @@ public class GoogleCalendarProvider(
             extensions.Set(CalendarEventExtensions.Conference, new CalendarEventConference
             {
                 Name = googleEvent.ConferenceData.ConferenceSolution.Name,
-                EntryPoints = googleEvent.ConferenceData.EntryPoints.Select(ep => new CalendarEventConference.EntryPoint
-                {
-                    Label = ep.Label,
-                    Uri = ep.Uri,
-                }).ToList()
+                EntryPoints = googleEvent.ConferenceData.EntryPoints
+                    .OrderBy(ep => ep.EntryPointType)
+                    .Reverse()
+                    .Select(ep => new CalendarEventConference.EntryPoint
+                    {
+                        Label = ep.EntryPointType,
+                        Uri = ep.Uri,
+                    }).ToList()
             });
 
         if (googleEvent.Attendees is { Count: > 0 })
@@ -147,9 +150,12 @@ public class GoogleCalendarProvider(
                 CurrentState = responseStatus,
                 Actions = new ParticipationActions
                 {
-                    Accept = async () => await this.RespondToEventAsync(accountId, calendarId, eventId, string.Empty, "accepted"),
-                    Decline = async () => await this.RespondToEventAsync(accountId, calendarId, eventId, string.Empty, "declined"),
-                    Tentative = async () => await this.RespondToEventAsync(accountId, calendarId, eventId, string.Empty, "tentative")
+                    Accept = async () =>
+                        await this.RespondToEventAsync(accountId, calendarId, eventId, string.Empty, "accepted"),
+                    Decline = async () =>
+                        await this.RespondToEventAsync(accountId, calendarId, eventId, string.Empty, "declined"),
+                    Tentative = async () =>
+                        await this.RespondToEventAsync(accountId, calendarId, eventId, string.Empty, "tentative")
                 }
             };
             extensions.Set(CalendarEventExtensions.Participation, participation);

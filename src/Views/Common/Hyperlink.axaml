@@ -11,8 +11,7 @@
                    Foreground="Blue"
                    TextWrapping="Wrap"
                    Cursor="Hand"
-                   TextDecorations="Underline"
-                   Margin="0,2,0,2" />
+                   TextDecorations="Underline" />
         <StackPanel.ContextMenu>
             <ContextMenu>
                 <MenuItem Header="Open" Click="OnOpenClick" />
