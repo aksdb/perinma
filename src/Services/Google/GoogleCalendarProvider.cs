@@ -638,4 +638,13 @@ public class GoogleCalendarProvider(
         await googleCalendarService.UpdateEventAsync(service, calendarId, eventId, title, description, location,
             startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc(), rawEventData, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public IList<object> GetSupportedExtensions() =>
+    [
+        CalendarEventExtensions.Location,
+        CalendarEventExtensions.Description,
+        CalendarEventExtensions.Attachments,
+        CalendarEventExtensions.Participants,
+    ];
 }

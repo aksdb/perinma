@@ -156,6 +156,12 @@ public interface ICalendarProvider
         Instant endTime,
         string? rawEventData = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the list of ModelExtensions that this provider supports.
+    /// </summary>
+    /// <returns>List of supported ModelExtensions</returns>
+    IList<object> GetSupportedExtensions();
 }
 
 /// <summary>

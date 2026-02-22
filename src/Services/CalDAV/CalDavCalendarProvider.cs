@@ -503,4 +503,11 @@ public class CalDavCalendarProvider(
             rawEventData,
             cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public IList<object> GetSupportedExtensions() =>
+    [
+        CalendarEventExtensions.Location,
+        CalendarEventExtensions.Description,
+    ];
 }
