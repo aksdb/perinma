@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ev="clr-namespace:perinma.Views.Calendar.EventView"
+             xmlns:cm="clr-namespace:perinma.Views.Common"
              mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="150"
              x:Class="perinma.Views.Calendar.EventView.ConferenceView"
              x:DataType="ev:ConferenceViewModel">
@@ -18,12 +19,7 @@
                             <TextBlock Text="{Binding Label}"
                                        FontSize="11"
                                        Foreground="Gray" />
-                            <TextBlock Text="{Binding Uri}"
-                                       Foreground="Blue"
-                                       Cursor="Hand"
-                                       TextDecorations="Underline"
-                                       TextWrapping="Wrap"
-                                       PointerPressed="OnUriPointerPressed" />
+                            <cm:Hyperlink DisplayText="{Binding Uri}" Uri="{Binding Uri}" />
                             <TextBlock Text="{Binding AdditionalInfo}"
                                        IsVisible="{Binding AdditionalInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                        FontSize="11"

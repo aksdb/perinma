@@ -22,15 +22,4 @@ public partial class AttachmentItemViewModel(CalendarEventAttachment attachment)
     [ObservableProperty]
     private string _url = attachment.Url;
 
-    [RelayCommand]
-    private void CopyUrl()
-    {
-        PlatformUtil.Clipboard().SetTextAsync(Url);
-    }
-
-    [RelayCommand]
-    private void OpenUrl()
-    {
-        PlatformUtil.OpenBrowser(Url);
-    }
 }
