@@ -214,12 +214,12 @@ public class CalDavCalendarProvider(
     {
         // Check if event was deleted or cancelled
         var isDeleted = evt.Status == "CANCELLED" || evt.Deleted;
-        
+
         if (isDeleted)
         {
             return new ProviderEvent
             {
-                ExternalId = evt.Uid,
+                ExternalId = evt.Url,
                 Title = evt.Summary,
                 Status = evt.Status,
                 Deleted = true,
@@ -254,7 +254,7 @@ public class CalDavCalendarProvider(
 
         return new ProviderEvent
         {
-            ExternalId = evt.Uid,
+            ExternalId = evt.Url,
             Title = evt.Summary ?? "Untitled Event",
             StartTime = startTime,
             EndTime = endTime,
@@ -562,15 +562,35 @@ public class CalDavCalendarProvider(
             throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
         }
 
+        // eventId should be the full URL. If it's not (starts with relative path or is just UID),
+        // construct it from calendarUrl
+        string eventUrl;
+        if (eventId.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            eventId.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            eventUrl = eventId;
+        }
+        else
+        {
+            // Relative path or UID - construct full URL
+            var uid = eventId.EndsWith(".ics") ? eventId[..^4] : eventId;
+            eventUrl = $"{TrimTrailingSlash(calendarId)}/{uid}.ics";
+        }
+
         await calDavService.DeleteEventAsync(
             calDavCredentials,
-            eventId,
+            eventUrl,
             cancellationToken);
     }
 
     private static bool ShouldAddTimezone(DateTime startTime, DateTime endTime)
     {
         return startTime.Kind == DateTimeKind.Local || endTime.Kind == DateTimeKind.Local;
+    }
+
+    private static string TrimTrailingSlash(string url)
+    {
+        return url.EndsWith('/') ? url.TrimEnd('/') : url;
     }
 
     /// <inheritdoc/>

@@ -90,16 +90,24 @@ public class CalDavService : ICalDavService
 
         foreach (var item in syncResponse.Items)
         {
+            // Make absolute URL if relative
+            var absoluteUrl = item.Href;
+            if (!Uri.IsWellFormedUriString(absoluteUrl, UriKind.Absolute))
+            {
+                var baseUri = new Uri(calendarUrl);
+                absoluteUrl = new Uri(baseUri, item.Href).ToString();
+            }
+
             if (item.IsDeleted)
             {
                 // Extract UID from URL for deleted events
-                var uid = ExtractUidFromUrl(item.Href);
+                var uid = ExtractUidFromUrl(absoluteUrl);
                 if (!string.IsNullOrEmpty(uid))
                 {
                     events.Add(new CalDavEvent
                     {
                         Uid = uid,
-                        Url = item.Href,
+                        Url = absoluteUrl,
                         Deleted = true
                     });
                 }
@@ -111,11 +119,11 @@ public class CalDavService : ICalDavService
 
             try
             {
-                events.AddRange(ParseEvents(item.CalendarData, item.Href, item.ETag));
+                events.AddRange(ParseEvents(item.CalendarData, absoluteUrl, item.ETag));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error parsing iCalendar for {item.Href}: {ex}");
+                Console.WriteLine($"Error parsing iCalendar for {absoluteUrl}: {ex}");
                 // Skip malformed events
             }
         }
