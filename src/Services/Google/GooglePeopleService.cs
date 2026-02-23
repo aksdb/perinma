@@ -266,9 +266,10 @@ public class GooglePeopleService : IGooglePeopleService
                 directoryPageToken = directoryResponse.NextPageToken;
                 newDirectorySyncToken = directoryResponse.NextSyncToken;
             }
-            catch (Exception ex) when (ex.Message.Contains("403") || ex.Message.Contains("Forbidden"))
+            catch (Exception ex)
             {
-                // Directory contacts may not be available for all accounts
+                // Directory contacts may not be available for all accounts (requires Google Workspace)
+                // Handle all errors gracefully: 400, 403, 404, etc.
                 Console.WriteLine($"Directory contacts not available: {ex.Message}");
                 break;
             }

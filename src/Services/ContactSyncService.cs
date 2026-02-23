@@ -213,13 +213,20 @@ public class ContactSyncService
             }
         }
 
-        if (isFullSync)
+        // If this was a full sync, clean up address books that weren't updated
+        // Only delete if we actually synced some address books - this prevents
+        // deleting all address books if the API returns an empty list due to an error
+        if (isFullSync && result.AddressBooks.Count > 0)
         {
             var deletedCount = await _storage.DeleteAddressBooksNotSyncedAsync(account.AccountId, currentSyncTime);
             if (deletedCount > 0)
             {
                 Console.WriteLine($"Deleted {deletedCount} address book(s) that were removed remotely");
             }
+        }
+        else if (isFullSync && result.AddressBooks.Count == 0)
+        {
+            Console.WriteLine($"Skipping address book cleanup - no address books returned from API (may be a permissions issue)");
         }
 
         if (!string.IsNullOrEmpty(result.SyncToken))
@@ -329,13 +336,20 @@ public class ContactSyncService
             }
         }
 
-        if (isFullSync)
+        // If this was a full sync, clean up contacts that weren't updated
+        // Only delete if we actually synced some contacts - this prevents
+        // deleting all contacts if the API returns an empty list due to an error
+        if (isFullSync && result.Contacts.Count > 0)
         {
             var deletedCount = await _storage.DeleteContactsNotSyncedAsync(addressBook.AddressBookId, currentSyncTime);
             if (deletedCount > 0)
             {
                 Console.WriteLine($"Deleted {deletedCount} contact(s) that were removed remotely");
             }
+        }
+        else if (isFullSync && result.Contacts.Count == 0)
+        {
+            Console.WriteLine($"Skipping contact cleanup - no contacts returned from API (may be a permissions issue)");
         }
 
         if (!string.IsNullOrEmpty(result.SyncToken))

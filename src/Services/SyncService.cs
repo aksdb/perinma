@@ -290,13 +290,19 @@ public class SyncService
         }
 
         // If this was a full sync, clean up calendars that weren't updated
-        if (isFullSync)
+        // Only delete if we actually synced some calendars - this prevents
+        // deleting all calendars if the API returns an empty list due to an error
+        if (isFullSync && result.Calendars.Count > 0)
         {
             var deletedCount = await _storage.DeleteCalendarsNotSyncedAsync(account.AccountId, currentSyncTime);
             if (deletedCount > 0)
             {
                 Console.WriteLine($"Deleted {deletedCount} calendar(s) that were removed remotely");
             }
+        }
+        else if (isFullSync && result.Calendars.Count == 0)
+        {
+            Console.WriteLine($"Skipping calendar cleanup - no calendars returned from API (may be a permissions issue)");
         }
 
         // Store new sync token for next incremental sync
@@ -405,13 +411,19 @@ public class SyncService
         await _storage.ProcessEventRelationBacklogAsync(calendar.CalendarId);
 
         // If this was a full sync, clean up events that weren't updated
-        if (isFullSync)
+        // Only delete if we actually synced some events - this prevents
+        // deleting all events if the API returns an empty list due to an error
+        if (isFullSync && result.Events.Count > 0)
         {
             var deletedCount = await _storage.DeleteEventsNotSyncedAsync(calendar.CalendarId, currentSyncTime);
             if (deletedCount > 0)
             {
                 Console.WriteLine($"Deleted {deletedCount} event(s) that were removed remotely");
             }
+        }
+        else if (isFullSync && result.Events.Count == 0)
+        {
+            Console.WriteLine($"Skipping event cleanup - no events returned from API (may be a permissions issue)");
         }
 
         // Store the new sync token for the next incremental sync
