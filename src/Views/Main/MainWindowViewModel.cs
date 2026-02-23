@@ -239,7 +239,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         catch (Exception ex)
         {
             SyncStatusText = $"Sync failed: {ex.Message}";
-            Console.WriteLine($"Sync failed: {ex.Message}");
+            Console.WriteLine($"Sync failed: {ex}");
         }
     }
 

@@ -211,8 +211,8 @@ public class DatabaseCalendarSource(
                 {
                     Reference = new EventReference
                     {
-                        Calendar = storage.GetCachedCalendar(new Guid(e.CalendarId)) 
-                                   ?? throw new InvalidOperationException("calendar inconsistency"),
+                        Calendar = storage.GetCachedCalendar(new Guid(e.CalendarId))
+                                   ?? throw new InvalidOperationException($"calendar inconsistency: calendar {e.CalendarId} not found in cache"),
                         Id = Guid.Parse(e.EventId),
                         ExternalId = e.ExternalId,
                     },
