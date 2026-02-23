@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:wizard="using:perinma.Views.Settings.AddAccountWizard"
+             xmlns:cm="clr-namespace:perinma.Views.Common"
              x:DataType="wizard:GoogleConnectionStepViewModel"
              mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
              x:Class="perinma.Views.Settings.AddAccountWizard.GoogleConnectionStepView">
@@ -18,6 +19,11 @@
                 Command="{Binding ConnectCommand}"
                 IsEnabled="{Binding !IsConnecting}"
                 HorizontalAlignment="Left" />
+
+        <cm:Hyperlink Uri="{Binding OAuthUrl}"
+                      DisplayText="Open authentication link in browser"
+                      IsVisible="{Binding OAuthUrl, Converter={x:Static ObjectConverters.IsNotNull}}"
+                      HorizontalAlignment="Left" />
 
         <ProgressBar IsIndeterminate="True"
                      IsVisible="{Binding IsConnecting}"

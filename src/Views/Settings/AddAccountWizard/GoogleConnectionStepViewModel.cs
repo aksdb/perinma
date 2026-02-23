@@ -13,6 +13,7 @@ public partial class GoogleConnectionStepViewModel : ViewModelBase
 {
     private readonly GoogleOAuthService _oauthService;
     private GoogleCredentials? _credentials;
+    private Task<GoogleCredentials>? _credentialsTask;
 
     [ObservableProperty]
     private string _statusMessage = "Click 'Connect' to authenticate with Google";
@@ -22,6 +23,9 @@ public partial class GoogleConnectionStepViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isConnected = false;
+
+    [ObservableProperty]
+    private string? _oAuthUrl = null;
 
     public GoogleConnectionStepViewModel(GoogleOAuthService oauthService)
     {
@@ -36,10 +40,15 @@ public partial class GoogleConnectionStepViewModel : ViewModelBase
 
         try
         {
-            StatusMessage = "Opening browser for authentication...\nIf the browser didn't open, you may need to manually navigate to the OAuth URL.";
+            // Start authentication process to get the OAuth URL
+            var (oauthUrl, credentialsTask) = await _oauthService.StartAuthenticationAsync(ct);
+            OAuthUrl = oauthUrl;
+            _credentialsTask = credentialsTask;
 
-            // Authenticate with Google via OAuth service
-            _credentials = await _oauthService.AuthenticateAsync(ct);
+            StatusMessage = "Click the link below to authenticate with Google.\nAfter authorizing, return here to complete the connection.";
+
+            // Wait for the authentication to complete
+            _credentials = await _credentialsTask;
 
             IsConnected = true;
             StatusMessage = "Successfully connected to Google!";

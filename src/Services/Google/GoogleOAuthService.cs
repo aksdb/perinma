@@ -26,6 +26,17 @@ public class GoogleOAuthService
 
     public async Task<GoogleCredentials> AuthenticateAsync(CancellationToken cancellationToken = default)
     {
+        var (_, credentialsTask) = await StartAuthenticationAsync(cancellationToken);
+
+        // Build and open OAuth URL
+        var oauthUrl = _oauthUrl!;
+        PlatformUtil.OpenBrowser(oauthUrl);
+
+        return await credentialsTask;
+    }
+
+    public async Task<(string oauthUrl, Task<GoogleCredentials> credentialsTask)> StartAuthenticationAsync(CancellationToken cancellationToken = default)
+    {
         var tcs = new TaskCompletionSource<GoogleCredentials>();
         await using var registration = cancellationToken.Register(() => tcs.TrySetCanceled());
 
@@ -85,12 +96,14 @@ public class GoogleOAuthService
         // Assign redirectUri after listener creation; the callback will run later
         redirectUri = callbackUrl;
 
-        // Build and open OAuth URL
+        // Build OAuth URL
         var oauthUrl = BuildOAuthUrl(callbackUrl, expectedState);
-        PlatformUtil.OpenBrowser(oauthUrl);
 
-        return await tcs.Task;
+        _oauthUrl = oauthUrl;
+        return (oauthUrl, tcs.Task);
     }
+
+    private string? _oauthUrl;
 
     private static string BuildOAuthUrl(string redirectUri, string state)
     {
