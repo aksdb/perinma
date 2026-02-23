@@ -81,7 +81,7 @@ public class SqliteStorage : IDisposable
             commandTimeout: 30
         );
 
-        if (rowsAffected > 0 && _cacheInitialized)
+        if (rowsAffected > 0)
         {
             var accountModel = new Account
             {
@@ -304,25 +304,33 @@ public class SqliteStorage : IDisposable
 
             calendar.CalendarId = calendarId;
 
-            if (rowsAffected > 0 && _cacheInitialized)
+            if (rowsAffected > 0)
             {
                 var accountGuid = Guid.Parse(calendar.AccountId);
-                if (_accountCache.TryGetValue(accountGuid, out var account))
+                if (!_accountCache.TryGetValue(accountGuid, out var account))
                 {
-                    var calendarModel = new Calendar
+                    account = new Account
                     {
-                        Account = account,
-                        Id = Guid.Parse(calendarId),
-                        ExternalId = calendar.ExternalId,
-                        Name = calendar.Name,
-                        Color = calendar.Color,
-                        Enabled = calendar.Enabled != 0,
-                        LastSync = calendar.LastSync.HasValue
-                            ? DateTimeOffset.FromUnixTimeSeconds(calendar.LastSync.Value).DateTime
-                            : null
+                        Id = accountGuid,
+                        Name = await _connection.QuerySingleOrDefaultAsync<string>("SELECT name FROM account WHERE account_id = @AccountId", new { AccountId = calendar.AccountId }, commandTimeout: 30) ?? "Unknown Account",
+                        Type = Enum.TryParse<AccountType>(await _connection.QuerySingleOrDefaultAsync<string>("SELECT type FROM account WHERE account_id = @AccountId", new { AccountId = calendar.AccountId }, commandTimeout: 30) ?? "Google", ignoreCase: true, out var accountType) ? accountType : AccountType.Google
                     };
-                    _calendarCache[calendarModel.Id] = calendarModel;
+                    _accountCache[accountGuid] = account;
                 }
+                
+                var calendarModel = new Calendar
+                {
+                    Account = account,
+                    Id = Guid.Parse(calendarId),
+                    ExternalId = calendar.ExternalId,
+                    Name = calendar.Name,
+                    Color = calendar.Color,
+                    Enabled = calendar.Enabled != 0,
+                    LastSync = calendar.LastSync.HasValue
+                        ? DateTimeOffset.FromUnixTimeSeconds(calendar.LastSync.Value).DateTime
+                        : null
+                };
+                _calendarCache[calendarModel.Id] = calendarModel;
             }
 
             return rowsAffected > 0;
