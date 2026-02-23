@@ -666,7 +666,7 @@ public class DatabaseCalendarSourceTests
         var weekEnd = weekStart.PlusDays(7);
 
         var accountId = Guid.NewGuid().ToString();
-        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "CalDAV" });
+        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "CalDav" });
 
         var calendar = new CalendarDbo
         {
@@ -718,7 +718,7 @@ public class DatabaseCalendarSourceTests
         var weekEnd = weekStart.PlusDays(7);
 
         var accountId = Guid.NewGuid().ToString();
-        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "CalDAV" });
+        await storage.CreateAccountAsync(new AccountDbo { AccountId = accountId, Name = "Test", Type = "CalDav" });
 
         var calendar = new CalendarDbo
         {

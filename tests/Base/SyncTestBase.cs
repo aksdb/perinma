@@ -85,7 +85,7 @@ public abstract class SyncTestBase
         {
             AccountId = accountId,
             Name = name,
-            Type = "CalDAV"
+            Type = "CalDav"
         };
         await Storage.CreateAccountAsync(account);
         return account;
@@ -115,7 +115,7 @@ public abstract class SyncTestBase
     {
         var credentials = new CalDavCredentials
         {
-            Type = "CalDAV",
+            Type = "CalDav",
             ServerUrl = serverUrl,
             Username = username,
             Password = password

@@ -446,6 +446,17 @@ public class SqliteStorage : IDisposable
         );
     }
 
+    public async Task<bool> DeleteEventByExternalIdAsync(string calendarId, string externalId)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            "DELETE FROM calendar_event WHERE calendar_id = @CalendarId AND external_id = @ExternalId",
+            new { CalendarId = calendarId, ExternalId = externalId },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
     /// <summary>
     /// Create or update the given event. A possible update is determined by the combination
     /// of calendarId and externalId.

@@ -27,7 +27,7 @@ public class CalDavCalendarProviderTests
         // Store default credentials
         var credentials = new CalDavCredentials
         {
-            Type = "CalDAV",
+            Type = "CalDav",
             ServerUrl = "https://caldav.example.com",
             Username = "testuser@example.com",
             Password = "testpass"

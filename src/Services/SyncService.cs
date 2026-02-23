@@ -236,7 +236,12 @@ public class SyncService
         {
             if (calendar.Deleted)
             {
-                Console.WriteLine($"Calendar {calendar.Name} was deleted, will clean up");
+                var existingCalendar = await _storage.GetCalendarByExternalIdAsync(account.AccountId, calendar.ExternalId ?? string.Empty);
+                if (existingCalendar != null)
+                {
+                    await _storage.DeleteCalendarAsync(existingCalendar.CalendarId);
+                    Console.WriteLine($"Deleted calendar {calendar.Name} from local database");
+                }
                 continue;
             }
 
@@ -294,7 +299,7 @@ public class SyncService
             }
         }
 
-        // Store the new sync token for next incremental sync
+        // Store new sync token for next incremental sync
         if (!string.IsNullOrEmpty(result.SyncToken))
         {
             await _storage.SetAccountData(account, "calendarSyncToken", result.SyncToken);
@@ -350,7 +355,8 @@ public class SyncService
         {
             if (evt.Deleted)
             {
-                Console.WriteLine($"Event {evt.Title} was deleted, will clean up");
+                await _storage.DeleteEventByExternalIdAsync(calendar.CalendarId, evt.ExternalId ?? string.Empty);
+                Console.WriteLine($"Deleted event {evt.Title} from local database");
                 continue;
             }
 
@@ -408,7 +414,7 @@ public class SyncService
             }
         }
 
-        // Store the new sync token for next incremental sync
+        // Store the new sync token for the next incremental sync
         if (!string.IsNullOrEmpty(result.SyncToken))
         {
             await _storage.SetCalendarDataAsync(calendar.CalendarId, "eventSyncToken", result.SyncToken);

@@ -792,8 +792,122 @@ public class SyncServiceTests : SyncTestBase
         var calendarList = calendarsAfterResync.ToList();
 
         Assert.That(calendarList, Has.Count.EqualTo(1));
-        Assert.That(calendarList[0].Name, Is.EqualTo("Personal Calendar"));
-        Assert.That(calendarList[0].ExternalId, Is.EqualTo("https://caldav.example.com/calendars/personal"));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(calendarList[0].Name, Is.EqualTo("Personal Calendar"));
+            Assert.That(calendarList[0].ExternalId, Is.EqualTo("https://caldav.example.com/calendars/personal"));
+        }
+    }
+
+    [Test]
+    public async Task IncrementalSync_DeletesRemovedEvents()
+    {
+        // Arrange
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
+
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
+        );
+
+        var eventStart = DateTime.UtcNow.AddHours(1);
+        var eventEnd = DateTime.UtcNow.AddHours(2);
+
+        // Initial sync with 3 events
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateGoogleEventRaw("event1", "Team Meeting", eventStart, eventEnd),
+            TestDataHelpers.CreateGoogleEventRaw("event2", "Lunch Break", eventStart.AddHours(2), eventEnd.AddHours(2)),
+            TestDataHelpers.CreateGoogleEventRaw("event3", "Code Review", eventStart.AddHours(4), eventEnd.AddHours(4))
+        );
+
+        await SyncService.SyncAllAccountsAsync();
+
+        // Verify initial state - 3 events synced
+        var calendar = (await Storage.GetCalendarsByAccountAsync(account.AccountId)).First();
+        var eventsAfterFirstSync = (await Storage.GetEventsByCalendarAsync(calendar.CalendarId)).ToList();
+        Assert.That(eventsAfterFirstSync.Count, Is.EqualTo(3));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(eventsAfterFirstSync.Any(e => e.ExternalId == "event1"), Is.True);
+            Assert.That(eventsAfterFirstSync.Any(e => e.ExternalId == "event2"), Is.True);
+            Assert.That(eventsAfterFirstSync.Any(e => e.ExternalId == "event3"), Is.True);
+        }
+
+        // Wait to ensure different timestamp for second sync
+        await Task.Delay(1000);
+
+        // Simulate incremental sync: event2 was deleted remotely (returned with status cancelled)
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateCancelledGoogleEvent("event2")
+        );
+
+        // Act - Perform second sync (incremental, has sync token)
+        await SyncService.SyncAllAccountsAsync();
+
+        // Assert - event2 should be deleted from database
+        var eventsAfterSecondSync = (await Storage.GetEventsByCalendarAsync(calendar.CalendarId)).ToList();
+        Assert.That(eventsAfterSecondSync.Count, Is.EqualTo(2), "Should have 2 events after deletion");
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(eventsAfterSecondSync.Any(e => e.ExternalId == "event1"), Is.True, "event1 should still exist");
+            Assert.That(eventsAfterSecondSync.Any(e => e.ExternalId == "event2"), Is.False, "event2 should be deleted");
+            Assert.That(eventsAfterSecondSync.Any(e => e.ExternalId == "event3"), Is.True, "event3 should still exist");
+        }
+    }
+
+    [Test]
+    public async Task IncrementalSync_PreservesExistingEvents()
+    {
+        // Arrange
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
+
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
+        );
+
+        var eventStart = DateTime.UtcNow.AddHours(1);
+        var eventEnd = DateTime.UtcNow.AddHours(2);
+
+        // First sync with 2 events
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateGoogleEventRaw("event1", "Team Meeting", eventStart, eventEnd),
+            TestDataHelpers.CreateGoogleEventRaw("event2", "Lunch Break", eventStart.AddHours(2), eventEnd.AddHours(2))
+        );
+
+        // Act - First sync
+        await SyncService.SyncAllAccountsAsync();
+
+        // Assert - Verify both events were synced
+        var calendar = (await Storage.GetCalendarsByAccountAsync(account.AccountId)).First();
+        var eventsAfterFirstSync = (await Storage.GetEventsByCalendarAsync(calendar.CalendarId)).ToList();
+        Assert.That(eventsAfterFirstSync.Count, Is.EqualTo(2));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(eventsAfterFirstSync.Any(e => e.ExternalId == "event1"), Is.True);
+            Assert.That(eventsAfterFirstSync.Any(e => e.ExternalId == "event2"), Is.True);
+        }
+
+        // Wait to ensure different timestamp for second sync
+        await Task.Delay(1000);
+
+        // Second sync: Add another event, keep previous events
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateGoogleEventRaw("event3", "Code Review", eventStart.AddHours(4), eventEnd.AddHours(4))
+        );
+
+        // Act - Perform second sync (incremental, has sync token)
+        await SyncService.SyncAllAccountsAsync();
+
+        // Assert - Previous events should still be there, new event should be added
+        var eventsAfterSecondSync = (await Storage.GetEventsByCalendarAsync(calendar.CalendarId)).ToList();
+        Assert.That(eventsAfterSecondSync.Count, Is.EqualTo(3), "Should have 3 events after adding one");
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(eventsAfterSecondSync.Any(e => e.ExternalId == "event1"), Is.True, "event1 should still exist");
+            Assert.That(eventsAfterSecondSync.Any(e => e.ExternalId == "event2"), Is.True, "event2 should still exist");
+            Assert.That(eventsAfterSecondSync.Any(e => e.ExternalId == "event3"), Is.True, "event3 should be added");
+        }
     }
 
     [Test]
