@@ -401,8 +401,8 @@ public class SyncService
                 }
                 else
                 {
-                    await _storage.AddEventRelationToBacklogAsync(calendar.CalendarId, evt.RecurringEventId,
-                        evt.ExternalId);
+                    await _storage.AddEventRelationToBacklogAsync(calendar.CalendarId, evt.RecurringEventId ?? string.Empty,
+                        evt.ExternalId ?? string.Empty);
                 }
             }
         }

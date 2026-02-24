@@ -648,8 +648,8 @@ public partial class CalendarWeekViewModel : ViewModelBase
         }
 
         var accountId = eventToDelete.Reference.Calendar.Account.Id.ToString();
-        var calendarId = eventToDelete.Reference.Calendar.ExternalId;
-        var eventId = eventToDelete.Reference.ExternalId;
+        var calendarId = eventToDelete.Reference.Calendar.ExternalId ?? string.Empty;
+        var eventId = eventToDelete.Reference.ExternalId ?? string.Empty;
 
         try
         {

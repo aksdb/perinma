@@ -727,10 +727,13 @@ public class CalDavCalendarProviderTests
         // Assert
         var createdCalendars = _serviceStub.GetCreatedCalendars();
         Assert.That(createdCalendars, Has.Count.EqualTo(1));
+        var createdEvent = createdCalendars[0].Events!.First();
+        var startValue = createdEvent.Start?.Value;
+        var endValue = createdEvent.End?.Value;
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(createdCalendars[0].Events[0].Start.Value, Is.EqualTo(localStart.ToDateTimeUtc()));
-            Assert.That(createdCalendars[0].Events[0].End.Value, Is.EqualTo(localEnd.ToDateTimeUtc()));
+            Assert.That(startValue, Is.EqualTo(localStart.ToDateTimeUtc()));
+            Assert.That(endValue, Is.EqualTo(localEnd.ToDateTimeUtc()));
         }
     }
 
@@ -758,10 +761,13 @@ public class CalDavCalendarProviderTests
         // Assert
         var createdCalendars = _serviceStub.GetCreatedCalendars();
         Assert.That(createdCalendars, Has.Count.EqualTo(1));
+        var createdEvent = createdCalendars[0].Events!.First();
+        var startValue = createdEvent.Start?.Value;
+        var endValue = createdEvent.End?.Value;
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(createdCalendars[0].Events[0].Start.Value, Is.EqualTo(utcStart.ToDateTimeUtc()));
-            Assert.That(createdCalendars[0].Events[0].End.Value, Is.EqualTo(utcEnd.ToDateTimeUtc()));
+            Assert.That(startValue, Is.EqualTo(utcStart.ToDateTimeUtc()));
+            Assert.That(endValue, Is.EqualTo(utcEnd.ToDateTimeUtc()));
         }
     }
 
@@ -789,10 +795,13 @@ public class CalDavCalendarProviderTests
         // Assert
         var createdCalendars = _serviceStub.GetCreatedCalendars();
         Assert.That(createdCalendars, Has.Count.EqualTo(1));
+        var createdEvent = createdCalendars[0].Events!.First();
+        var startValue = createdEvent.Start?.Value;
+        var endValue = createdEvent.End?.Value;
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(createdCalendars[0].Events[0].Start.Value, Is.EqualTo(unspecifiedStart.ToDateTimeUtc()));
-            Assert.That(createdCalendars[0].Events[0].End.Value, Is.EqualTo(unspecifiedEnd.ToDateTimeUtc()));
+            Assert.That(startValue, Is.EqualTo(unspecifiedStart.ToDateTimeUtc()));
+            Assert.That(endValue, Is.EqualTo(unspecifiedEnd.ToDateTimeUtc()));
         }
     }
 

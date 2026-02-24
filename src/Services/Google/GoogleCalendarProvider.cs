@@ -142,10 +142,10 @@ public class GoogleCalendarProvider(
         var canRespond = selfAttendee != null && !(selfAttendee.Organizer ?? false);
         if (canRespond)
         {
-            var responseStatus = MapResponseStatus(selfAttendee.ResponseStatus);
+            var responseStatus = MapResponseStatus(selfAttendee.ResponseStatus ?? "needsAction");
             var accountId = reference.Calendar.Account.Id.ToString();
-            var calendarId = reference.Calendar.ExternalId;
-            var eventId = reference.ExternalId;
+            var calendarId = reference.Calendar.ExternalId ?? string.Empty;
+            var eventId = reference.ExternalId ?? string.Empty;
             var participation = new Participation
             {
                 CurrentState = responseStatus,
