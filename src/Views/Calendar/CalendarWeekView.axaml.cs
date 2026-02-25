@@ -84,12 +84,6 @@ public partial class CalendarWeekView : UserControl
         
         _mainView.SetEvents(_viewModel.Events);
 
-        var createEventButton = this.FindControl<Button>("CreateEventButton");
-        if (createEventButton != null)
-        {
-            createEventButton.Click += OnCreateNewEvent;
-        }
-
         _viewModel.PropertyChanged += (sender, args) =>
         {
             switch (args.PropertyName)
@@ -184,38 +178,6 @@ public partial class CalendarWeekView : UserControl
             DataContext = new EventEditViewModel(
                 calendarEvent,
                 calendarEvent.Reference.Calendar,
-                onCompleted)
-        };
-        editor.Show();
-    }
-
-    private void OnCreateNewEvent(object? sender, RoutedEventArgs e)
-    {
-        if (_viewModel == null) return;
-
-        var onCompleted = new Action<string>(async (errorMessage) =>
-        {
-            if (!string.IsNullOrEmpty(errorMessage))
-            {
-                var owner = VisualRoot as Window;
-                await MessageBoxWindow.ShowAsync(
-                    owner,
-                    "Error",
-                    errorMessage,
-                    MessageBoxType.Error,
-                    MessageBoxButtons.Ok);
-            }
-            else
-            {
-                _viewModel.Load();
-            }
-        });
-
-        var editor = new EventEditView
-        {
-            DataContext = new EventEditViewModel(
-                null,
-                null,
                 onCompleted)
         };
         editor.Show();

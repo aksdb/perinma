@@ -7,50 +7,7 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="perinma.Views.Calendar.CalendarMonthView">
 
-    <Grid RowDefinitions="Auto,Auto,*">
-        <!-- Navigation Bar -->
-        <Grid Grid.Row="0" Margin="0, 10, 0, 10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Navigation Controls (Center) -->
-            <StackPanel Grid.Column="1"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Center">
-                <Button Command="{Binding PreviousCommand}"
-                        Margin="0, 0, 8, 0"
-                        Padding="8, 4">
-                    ←
-                </Button>
-                <TextBlock Text="{Binding DateRangeDisplay}"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           VerticalAlignment="Center"
-                           MinWidth="200"
-                           TextAlignment="Center"
-                           Margin="0, 0, 8, 0"/>
-                <Button Command="{Binding TodayCommand}"
-                        Margin="0, 0, 8, 0"
-                        Padding="8, 4">
-                    Today
-                </Button>
-                <Button Command="{Binding NextCommand}"
-                        Padding="8, 4">
-                    →
-                </Button>
-            </StackPanel>
-
-            <!-- Create Event Button (Right) -->
-            <Button Grid.Column="2"
-                    Command="{Binding CreateNewEventCommand}"
-                    Content="Create Event"
-                    Padding="8, 4"
-                    Margin="10, 0, 10, 0"/>
-        </Grid>
-        
+    <Grid RowDefinitions="Auto,*">
         <!-- Weekday Headers -->
         <UniformGrid Grid.Row="1" Columns="7">
             <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
@@ -77,7 +34,7 @@
         </UniformGrid>
 
         <!-- Month Grid -->
-        <ItemsControl Grid.Row="2" Name="MonthGrid" ItemsSource="{Binding MonthDays}">
+        <ItemsControl Grid.Row="1" Name="MonthGrid" ItemsSource="{Binding MonthDays}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <UniformGrid Columns="7" Rows="6"/>

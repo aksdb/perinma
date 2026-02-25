@@ -112,59 +112,14 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,*">
-        <!-- Navigation Bar -->
-        <Grid Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
-              Margin="0, 10, 0, 10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Navigation Controls (Center) -->
-            <StackPanel Grid.Column="1"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Center">
-                <Button Command="{Binding PreviousCommand}"
-                        Margin="0, 0, 8, 0"
-                        Padding="8, 4">
-                    ←
-                </Button>
-                <TextBlock Text="{Binding DateRangeDisplay}"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           VerticalAlignment="Center"
-                           MinWidth="200"
-                           TextAlignment="Center"
-                           Margin="0, 0, 8, 0"/>
-                <Button Command="{Binding TodayCommand}"
-                        Margin="0, 0, 8, 0"
-                        Padding="8, 4">
-                    Today
-                </Button>
-                <Button Command="{Binding NextCommand}"
-                        Padding="8, 4">
-                    →
-                </Button>
-            </StackPanel>
-
-            <!-- Create Event Button (Right) -->
-            <Button Grid.Column="2"
-                    Name="CreateEventButton"
-                    Command="{Binding CreateNewEventCommand}"
-                    Content="Create Event"
-                    Padding="8, 4"
-                    Margin="10, 0, 10, 0"/>
-        </Grid>
-
-        <TextBlock Grid.Row="1" Grid.Column="0"
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,*">
+        <TextBlock Grid.Row="0" Grid.Column="0"
                    FontSize="{DynamicResource CalendarTimeHourFontSize}"
                    Foreground="Gray"
                    VerticalAlignment="Center"
                    Text="All-day"
                    Margin="4, 0, 4, 0"/>
-        <StackPanel Grid.Column="1" Grid.Row="1">
+        <StackPanel Grid.Column="1" Grid.Row="0">
             <!-- Weekday headers -->
             <!--<Grid Name="WeekdayNames" />-->
             <ItemsControl ItemsSource="{Binding WeekDayHeaders}">
@@ -199,11 +154,11 @@
                 </Border.Background>
             </Border>
         </StackPanel>
-        <ScrollViewer Name="TimeRows" Grid.Column="0" Grid.Row="2"
+        <ScrollViewer Name="TimeRows" Grid.Column="0" Grid.Row="1"
                       VerticalScrollBarVisibility="Hidden"
                       Margin="5, 0, 5, 0">
         </ScrollViewer>
-        <ScrollViewer Name="CenterView" Grid.Column="1" Grid.Row="2" Offset="{Binding #TimeRows.Offset, Mode=TwoWay}"
+        <ScrollViewer Name="CenterView" Grid.Column="1" Grid.Row="1" Offset="{Binding #TimeRows.Offset, Mode=TwoWay}"
                       Effect="">
         </ScrollViewer>
     </Grid>

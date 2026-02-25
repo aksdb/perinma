@@ -89,6 +89,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     public CalendarMonthViewModel CalendarMonthViewModel { get; }
     public CalendarWeekViewModel CalendarWeekViewModel { get; }
     public CalendarAgendaViewModel CalendarAgendaViewModel { get; }
+    public CalendarNavigationBarViewModel CalendarNavigationBarViewModel { get; }
     public CalendarListViewModel CalendarListViewModel { get; }
     public ContactsViewModel ContactsViewModel { get; }
 
@@ -121,9 +122,20 @@ public partial class MainWindowViewModel : ObservableRecipient,
         CalendarMonthViewModel = new CalendarMonthViewModel(calendarSource, _settingsService);
         CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, _settingsService);
         CalendarAgendaViewModel = new CalendarAgendaViewModel(calendarSource, _settingsService);
+        CalendarNavigationBarViewModel = new CalendarNavigationBarViewModel();
         CalendarListViewModel = new CalendarListViewModel(_storage, _googleCalendarService, _credentialManager, CalendarWeekViewModel);
         ContactsViewModel = new ContactsViewModel(_storage);
 
+        // Subscribe to DayColumns property changes to update navigation bar
+        CalendarWeekViewModel.PropertyChanged += (sender, args) =>
+        {
+            if (args.PropertyName == nameof(CalendarWeekViewModel.DayColumns))
+            {
+                SetupNavigationBar();
+            }
+        };
+
+        SetupNavigationBar();
         Initialize();
     }
 
@@ -132,6 +144,52 @@ public partial class MainWindowViewModel : ObservableRecipient,
     {
         IsCalendarViewActive = true;
         LoadCurrentCalendarView();
+    }
+
+    partial void OnCalendarViewModeChanged(CalendarView value)
+    {
+        SetupNavigationBar();
+    }
+
+    private void SetupNavigationBar()
+    {
+        CalendarNavigationBarViewModel.IsMonthView = IsMonthView;
+        CalendarNavigationBarViewModel.IsFiveDaysView = IsWeekView && CalendarWeekViewModel.DayColumns == 5;
+        CalendarNavigationBarViewModel.IsDayView = IsWeekView && CalendarWeekViewModel.DayColumns == 1;
+        CalendarNavigationBarViewModel.IsWeekView = IsWeekView && CalendarWeekViewModel.DayColumns == 7;
+        CalendarNavigationBarViewModel.IsAgendaView = IsAgendaView;
+
+        CalendarNavigationBarViewModel.ShowMonthViewCommand = ShowMonthViewCommand;
+        CalendarNavigationBarViewModel.ShowWeekViewCommand = ShowWeekViewCommand;
+        CalendarNavigationBarViewModel.ShowFiveDaysViewCommand = ShowFiveDaysViewCommand;
+        CalendarNavigationBarViewModel.ShowDayViewCommand = ShowDayViewCommand;
+        CalendarNavigationBarViewModel.ShowAgendaViewCommand = ShowAgendaViewCommand;
+
+        // Set navigation and create event commands based on current view
+        switch (CalendarViewMode)
+        {
+            case CalendarView.Month:
+                CalendarNavigationBarViewModel.PreviousCommand = CalendarMonthViewModel.PreviousCommand;
+                CalendarNavigationBarViewModel.NextCommand = CalendarMonthViewModel.NextCommand;
+                CalendarNavigationBarViewModel.TodayCommand = CalendarMonthViewModel.TodayCommand;
+                CalendarNavigationBarViewModel.CreateNewEventCommand = CalendarMonthViewModel.CreateNewEventCommand;
+                CalendarNavigationBarViewModel.DateRangeDisplay = CalendarMonthViewModel.DateRangeDisplay;
+                break;
+            case CalendarView.Week:
+                CalendarNavigationBarViewModel.PreviousCommand = CalendarWeekViewModel.PreviousCommand;
+                CalendarNavigationBarViewModel.NextCommand = CalendarWeekViewModel.NextCommand;
+                CalendarNavigationBarViewModel.TodayCommand = CalendarWeekViewModel.TodayCommand;
+                CalendarNavigationBarViewModel.CreateNewEventCommand = CalendarWeekViewModel.CreateNewEventCommand;
+                CalendarNavigationBarViewModel.DateRangeDisplay = CalendarWeekViewModel.DateRangeDisplay;
+                break;
+            case CalendarView.Agenda:
+                CalendarNavigationBarViewModel.PreviousCommand = CalendarAgendaViewModel.PreviousCommand;
+                CalendarNavigationBarViewModel.NextCommand = CalendarAgendaViewModel.NextCommand;
+                CalendarNavigationBarViewModel.TodayCommand = CalendarAgendaViewModel.TodayCommand;
+                CalendarNavigationBarViewModel.CreateNewEventCommand = CalendarAgendaViewModel.CreateNewEventCommand;
+                CalendarNavigationBarViewModel.DateRangeDisplay = CalendarAgendaViewModel.DateRangeDisplay;
+                break;
+        }
     }
 
     private void LoadCurrentCalendarView()
@@ -161,6 +219,23 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private void ShowWeekView()
     {
         CalendarViewMode = CalendarView.Week;
+        CalendarWeekViewModel.DayColumns = 7;
+        LoadCurrentCalendarView();
+    }
+
+    [RelayCommand]
+    private void ShowFiveDaysView()
+    {
+        CalendarViewMode = CalendarView.Week;
+        CalendarWeekViewModel.DayColumns = 5;
+        LoadCurrentCalendarView();
+    }
+
+    [RelayCommand]
+    private void ShowDayView()
+    {
+        CalendarViewMode = CalendarView.Week;
+        CalendarWeekViewModel.DayColumns = 1;
         LoadCurrentCalendarView();
     }
 

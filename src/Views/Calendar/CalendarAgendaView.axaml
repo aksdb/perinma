@@ -7,51 +7,8 @@
              mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="450"
              x:Class="perinma.Views.Calendar.CalendarAgendaView">
 
-    <Grid RowDefinitions="Auto,*">
-        <!-- Navigation Bar -->
-        <Grid Grid.Row="0" Margin="0, 10, 0, 10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Navigation Controls (Center) -->
-            <StackPanel Grid.Column="1"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Center">
-                <Button Command="{Binding PreviousCommand}"
-                        Margin="0, 0, 8, 0"
-                        Padding="8, 4">
-                    ←
-                </Button>
-                <TextBlock Text="{Binding DateRangeDisplay}"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           VerticalAlignment="Center"
-                           MinWidth="200"
-                           TextAlignment="Center"
-                           Margin="0, 0, 8, 0"/>
-                <Button Command="{Binding TodayCommand}"
-                        Margin="0, 0, 8, 0"
-                        Padding="8, 4">
-                    Today
-                </Button>
-                <Button Command="{Binding NextCommand}"
-                        Padding="8, 4">
-                    →
-                </Button>
-            </StackPanel>
-
-            <!-- Create Event Button (Right) -->
-            <Button Grid.Column="2"
-                    Command="{Binding CreateNewEventCommand}"
-                    Content="Create Event"
-                    Padding="8, 4"
-                    Margin="10, 0, 10, 0"/>
-        </Grid>
-        
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+    <Grid RowDefinitions="*">
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
         <ItemsControl ItemsSource="{Binding AgendaDays}" Margin="10">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="cal:AgendaDayViewModel">

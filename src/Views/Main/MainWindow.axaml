@@ -41,24 +41,7 @@
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator/>
-                    <MenuItem Header="Calendar View Mode">
-                        <MenuItem Header="_Month" Command="{Binding ShowMonthViewCommand}">
-                            <MenuItem.Icon>
-                                <CheckBox IsChecked="{Binding IsMonthView}" IsHitTestVisible="False"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="_Week" Command="{Binding ShowWeekViewCommand}">
-                            <MenuItem.Icon>
-                                <CheckBox IsChecked="{Binding IsWeekView}" IsHitTestVisible="False"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="_Agenda" Command="{Binding ShowAgendaViewCommand}">
-                            <MenuItem.Icon>
-                                <CheckBox IsChecked="{Binding IsAgendaView}" IsHitTestVisible="False"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                    </MenuItem>
-                    <Separator/>
+
                     <MenuItem Header="_Theme">
                         <MenuItem Header="_Light" Command="{Binding SetLightThemeCommand}">
                             <MenuItem.Icon>
@@ -121,19 +104,26 @@
                               ResizeBehavior="PreviousAndNext"/>
 
                 <!-- Calendar Views - switch based on ViewMode -->
-                <Panel Grid.Column="2">
-                    <!-- Month View -->
-                    <cal:CalendarMonthView DataContext="{Binding CalendarMonthViewModel}"
-                                         IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsMonthView}"/>
+                <Grid Grid.Column="2" RowDefinitions="Auto,*">
+                    <!-- Navigation Bar -->
+                    <cal:CalendarNavigationBar Grid.Row="0"
+                                            DataContext="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).CalendarNavigationBarViewModel}"/>
 
-                    <!-- Week View -->
-                    <cal:CalendarWeekView DataContext="{Binding CalendarWeekViewModel}"
-                                        IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsWeekView}"/>
+                    <!-- Calendar Views Panel -->
+                    <Panel Grid.Row="1">
+                        <!-- Month View -->
+                        <cal:CalendarMonthView DataContext="{Binding CalendarMonthViewModel}"
+                                             IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsMonthView}"/>
 
-                    <!-- Agenda View -->
-                    <cal:CalendarAgendaView DataContext="{Binding CalendarAgendaViewModel}"
-                                            IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsAgendaView}"/>
-                </Panel>
+                        <!-- Week View -->
+                        <cal:CalendarWeekView DataContext="{Binding CalendarWeekViewModel}"
+                                            IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsWeekView}"/>
+
+                        <!-- Agenda View -->
+                        <cal:CalendarAgendaView DataContext="{Binding CalendarAgendaViewModel}"
+                                                IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsAgendaView}"/>
+                    </Panel>
+                </Grid>
             </Grid>
             
             <!-- Contacts View -->
