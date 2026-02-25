@@ -69,7 +69,26 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
     public bool IsContactsViewActive => !IsCalendarViewActive;
 
+    public enum CalendarView
+    {
+        Month,
+        Week,
+        Agenda
+    }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsMonthView))]
+    [NotifyPropertyChangedFor(nameof(IsWeekView))]
+    [NotifyPropertyChangedFor(nameof(IsAgendaView))]
+    private CalendarView _calendarViewMode = CalendarView.Week;
+
+    public bool IsMonthView => CalendarViewMode == CalendarView.Month;
+    public bool IsWeekView => CalendarViewMode == CalendarView.Week;
+    public bool IsAgendaView => CalendarViewMode == CalendarView.Agenda;
+
+    public CalendarMonthViewModel CalendarMonthViewModel { get; }
     public CalendarWeekViewModel CalendarWeekViewModel { get; }
+    public CalendarAgendaViewModel CalendarAgendaViewModel { get; }
     public CalendarListViewModel CalendarListViewModel { get; }
     public ContactsViewModel ContactsViewModel { get; }
 
@@ -99,7 +118,9 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _googleOAuthService = googleOAuthService;
 
         var calendarSource = new DatabaseCalendarSource(_storage, _syncService.Providers);
+        CalendarMonthViewModel = new CalendarMonthViewModel(calendarSource, _settingsService);
         CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, _settingsService);
+        CalendarAgendaViewModel = new CalendarAgendaViewModel(calendarSource, _settingsService);
         CalendarListViewModel = new CalendarListViewModel(_storage, _googleCalendarService, _credentialManager, CalendarWeekViewModel);
         ContactsViewModel = new ContactsViewModel(_storage);
 
@@ -107,10 +128,47 @@ public partial class MainWindowViewModel : ObservableRecipient,
     }
 
     [RelayCommand]
-    private async Task ShowCalendarView()
+    private void ShowCalendarView()
     {
         IsCalendarViewActive = true;
-        await CalendarWeekViewModel.InitializeAsync();
+        LoadCurrentCalendarView();
+    }
+
+    private void LoadCurrentCalendarView()
+    {
+        switch (CalendarViewMode)
+        {
+            case CalendarView.Month:
+                CalendarMonthViewModel.Load();
+                break;
+            case CalendarView.Week:
+                CalendarWeekViewModel.Load();
+                break;
+            case CalendarView.Agenda:
+                CalendarAgendaViewModel.Load();
+                break;
+        }
+    }
+
+    [RelayCommand]
+    private void ShowMonthView()
+    {
+        CalendarViewMode = CalendarView.Month;
+        LoadCurrentCalendarView();
+    }
+
+    [RelayCommand]
+    private void ShowWeekView()
+    {
+        CalendarViewMode = CalendarView.Week;
+        LoadCurrentCalendarView();
+    }
+
+    [RelayCommand]
+    private void ShowAgendaView()
+    {
+        CalendarViewMode = CalendarView.Agenda;
+        LoadCurrentCalendarView();
     }
 
     [RelayCommand]
@@ -434,7 +492,12 @@ public partial class MainWindowViewModel : ObservableRecipient,
             else
             {
                 IsCalendarViewActive = true;
-                await CalendarWeekViewModel.InitializeAsync();
+                var lastCalendarView = await _settingsService.GetLastCalendarViewModeAsync();
+                if (Enum.TryParse<CalendarView>(lastCalendarView, out var viewMode))
+                {
+                    CalendarViewMode = viewMode;
+                }
+                LoadCurrentCalendarView();
             }
         }
         catch (Exception ex)
@@ -453,7 +516,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
             // Save calendar view mode if in calendar view
             if (IsCalendarViewActive)
             {
-                await _settingsService.SetLastCalendarViewModeAsync(CalendarWeekViewModel.ViewMode.ToString());
+                await _settingsService.SetLastCalendarViewModeAsync(CalendarViewMode.ToString());
             }
         }
         catch (Exception ex)

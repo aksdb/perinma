@@ -3,7 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cal="using:perinma.Views.Calendar"
-             x:DataType="cal:CalendarWeekViewModel"
+             x:DataType="cal:CalendarMonthViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="perinma.Views.Calendar.CalendarMonthView">
 
@@ -15,45 +15,7 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            
-            <!-- View Mode Buttons (Left) -->
-            <StackPanel Grid.Column="0"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Left"
-                        Margin="10, 0, 0, 0"
-                        Spacing="2">
-                <ToggleButton Content="Month"
-                              IsChecked="{Binding IsMonthView}"
-                              Command="{Binding SetViewModeCommand}"
-                              CommandParameter="{x:Static cal:CalendarViewMode.Month}"
-                              Padding="8, 4"
-                              FontSize="12"/>
-                <ToggleButton Content="Week"
-                              IsChecked="{Binding IsWeekView}"
-                              Command="{Binding SetViewModeCommand}"
-                              CommandParameter="{x:Static cal:CalendarViewMode.Week}"
-                              Padding="8, 4"
-                              FontSize="12"/>
-                <ToggleButton Content="5 Days"
-                              IsChecked="{Binding IsFiveDaysView}"
-                              Command="{Binding SetViewModeCommand}"
-                              CommandParameter="{x:Static cal:CalendarViewMode.FiveDays}"
-                              Padding="8, 4"
-                              FontSize="12"/>
-                <ToggleButton Content="Day"
-                              IsChecked="{Binding IsDayView}"
-                              Command="{Binding SetViewModeCommand}"
-                              CommandParameter="{x:Static cal:CalendarViewMode.Day}"
-                              Padding="8, 4"
-                              FontSize="12"/>
-                <ToggleButton Content="List"
-                              IsChecked="{Binding IsListView}"
-                              Command="{Binding SetViewModeCommand}"
-                              CommandParameter="{x:Static cal:CalendarViewMode.List}"
-                              Padding="8, 4"
-                              FontSize="12"/>
-            </StackPanel>
-            
+
             <!-- Navigation Controls (Center) -->
             <StackPanel Grid.Column="1"
                         Orientation="Horizontal"
@@ -83,8 +45,8 @@
 
             <!-- Create Event Button (Right) -->
             <Button Grid.Column="2"
+                    Command="{Binding CreateNewEventCommand}"
                     Content="Create Event"
-                    Click="OnCreateNewEvent"
                     Padding="8, 4"
                     Margin="10, 0, 10, 0"/>
         </Grid>

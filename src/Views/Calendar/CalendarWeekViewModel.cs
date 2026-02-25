@@ -17,64 +17,28 @@ using perinma.Views.MessageBox;
 
 namespace perinma.Views.Calendar;
 
-public partial class CalendarWeekViewModel : ViewModelBase
+public partial class CalendarWeekViewModel : CalendarViewModelBase
 {
-    private readonly ICalendarSource _calendarSource;
-
     [ObservableProperty]
     private CalendarEvent? _selectedEvent;
-
-    public SettingsService? SettingsService { get; }
 
     public ObservableCollection<EventItem> Events { get; } = [];
 
     // Full-day events are kept separate so they don't interfere with timed event column calculations
     public ObservableCollection<EventItem> FullDayEvents { get; } = [];
 
-    // Month view data
-    public ObservableCollection<MonthDayViewModel> MonthDays { get; } = [];
-
-    // Agenda/List view data
-    public ObservableCollection<AgendaDayViewModel> AgendaDays { get; } = [];
-
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ViewStartOffset))]
     [NotifyPropertyChangedFor(nameof(DateRangeDisplay))]
     private DateTime _viewStart;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DateRangeDisplay))]
-    [NotifyPropertyChangedFor(nameof(IsMonthView))]
-    [NotifyPropertyChangedFor(nameof(IsWeekView))]
-    [NotifyPropertyChangedFor(nameof(IsFiveDaysView))]
-    [NotifyPropertyChangedFor(nameof(IsDayView))]
-    [NotifyPropertyChangedFor(nameof(IsListView))]
-    [NotifyPropertyChangedFor(nameof(IsTimeGridView))]
-    private CalendarViewMode _viewMode = CalendarViewMode.Week;
 
-    public bool IsMonthView => ViewMode == CalendarViewMode.Month;
-    public bool IsWeekView => ViewMode == CalendarViewMode.Week;
-    public bool IsFiveDaysView => ViewMode == CalendarViewMode.FiveDays;
-    public bool IsDayView => ViewMode == CalendarViewMode.Day;
-    public bool IsListView => ViewMode == CalendarViewMode.List;
-
-    /// <summary>
-    /// True for views that show a time grid (Week, FiveDays, Day). False for Month and List views.
-    /// </summary>
-    public bool IsTimeGridView =>
-        ViewMode is CalendarViewMode.Week or CalendarViewMode.FiveDays or CalendarViewMode.Day;
 
     public string DateRangeDisplay
     {
         get
         {
-            return ViewMode switch
-            {
-                CalendarViewMode.Month => ViewStart.ToString("MMMM yyyy"),
-                CalendarViewMode.Day => ViewStart.ToString("dddd, MMMM d, yyyy"),
-                CalendarViewMode.List => $"Upcoming from {ViewStart:MMM d, yyyy}",
-                _ => FormatDateRange(ViewStart, ViewStart.AddDays(DayColumns - 1))
-            };
+            return FormatDateRange(ViewStart, ViewStart.AddDays(DayColumns - 1));
         }
     }
 
@@ -121,48 +85,13 @@ public partial class CalendarWeekViewModel : ViewModelBase
     public CalendarWeekViewModel(
         ICalendarSource calendarSource,
         SettingsService? settingsService = null)
+        : base(calendarSource, settingsService)
     {
-        _calendarSource = calendarSource;
-        SettingsService = settingsService;
         DayColumns = 7;
         ViewStart = DateTime.Now;
     }
 
-    public async Task InitializeAsync()
-    {
-        if (SettingsService == null)
-            return;
 
-        try
-        {
-            var lastViewMode = await SettingsService.GetLastCalendarViewModeAsync();
-            if (Enum.TryParse<CalendarViewMode>(lastViewMode, out var savedViewMode))
-            {
-                ViewMode = savedViewMode;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to load last calendar view mode: {ex.Message}");
-        }
-    }
-
-    partial void OnViewModeChanged(CalendarViewMode value)
-    {
-        // Update day columns based on view mode
-        DayColumns = value switch
-        {
-            CalendarViewMode.Month => 7, // Month view still uses 7 columns for the grid
-            CalendarViewMode.Week => 7,
-            CalendarViewMode.FiveDays => 5,
-            CalendarViewMode.Day => 1,
-            CalendarViewMode.List => 1, // List view doesn't use columns but needs a value
-            _ => 7
-        };
-
-        // Recalculate view start based on new mode
-        AdjustViewStartForMode(ViewStart);
-    }
 
     partial void OnViewStartChanged(DateTime value)
     {
@@ -171,37 +100,9 @@ public partial class CalendarWeekViewModel : ViewModelBase
 
     private void AdjustViewStartForMode(DateTime value)
     {
-        DateTime adjustedStart;
-
-        switch (ViewMode)
-        {
-            case CalendarViewMode.Month:
-                // Start at first day of month
-                adjustedStart = new DateTime(value.Year, value.Month, 1);
-                break;
-
-            case CalendarViewMode.Week:
-                // Start at Monday of the week
-                var weekDiff = ((int)value.DayOfWeek + 6) % 7;
-                adjustedStart = value.Date.AddDays(-weekDiff);
-                break;
-
-            case CalendarViewMode.FiveDays:
-                // Start at Monday of the week (work week)
-                var fiveDayDiff = ((int)value.DayOfWeek + 6) % 7;
-                adjustedStart = value.Date.AddDays(-fiveDayDiff);
-                break;
-
-            case CalendarViewMode.Day:
-            case CalendarViewMode.List:
-                // Just use the date as-is
-                adjustedStart = value.Date;
-                break;
-
-            default:
-                adjustedStart = value.Date;
-                break;
-        }
+        // Start at Monday of the week
+        var weekDiff = ((int)value.DayOfWeek + 6) % 7;
+        var adjustedStart = value.Date.AddDays(-weekDiff);
 
         if (ViewStart != adjustedStart)
         {
@@ -218,76 +119,67 @@ public partial class CalendarWeekViewModel : ViewModelBase
     [RelayCommand]
     private void Next()
     {
-        ViewStart = ViewMode switch
-        {
-            CalendarViewMode.Month => ViewStart.AddMonths(1),
-            CalendarViewMode.Week => ViewStart.AddDays(7),
-            CalendarViewMode.FiveDays => ViewStart.AddDays(7),
-            CalendarViewMode.Day => ViewStart.AddDays(1),
-            CalendarViewMode.List => ViewStart.AddDays(7),
-            _ => ViewStart.AddDays(7)
-        };
+        ViewStart = ViewStart.AddDays(7);
+        Load();
     }
 
     [RelayCommand]
     private void Previous()
     {
-        ViewStart = ViewMode switch
-        {
-            CalendarViewMode.Month => ViewStart.AddMonths(-1),
-            CalendarViewMode.Week => ViewStart.AddDays(-7),
-            CalendarViewMode.FiveDays => ViewStart.AddDays(-7),
-            CalendarViewMode.Day => ViewStart.AddDays(-1),
-            CalendarViewMode.List => ViewStart.AddDays(-7),
-            _ => ViewStart.AddDays(-7)
-        };
+        ViewStart = ViewStart.AddDays(-7);
+        Load();
     }
 
     [RelayCommand]
     private void Today()
     {
         ViewStart = DateTime.Today;
+        Load();
     }
 
     [RelayCommand]
-    private void SetViewMode(CalendarViewMode mode)
+    private void CreateNewEvent()
     {
-        ViewMode = mode;
+        var onCompleted = new Action<string>(async (errorMessage) =>
+        {
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                await MessageBoxWindow.ShowAsync(
+                    null,
+                    "Error",
+                    errorMessage,
+                    MessageBoxType.Error,
+                    MessageBoxButtons.Ok);
+            }
+            else
+            {
+                Load();
+            }
+        });
+
+        var editor = new EventEditView
+        {
+            DataContext = new EventEditViewModel(
+                null,
+                null,
+                onCompleted)
+        };
+        editor.Show();
     }
-
-    // Legacy commands for backward compatibility
-    [RelayCommand]
-    private void NextWeek() => Next();
-
-    [RelayCommand]
-    private void PreviousWeek() => Previous();
 
     public void Load()
     {
+        // Clear collections
         Events.Clear();
         FullDayEvents.Clear();
-        MonthDays.Clear();
-        AgendaDays.Clear();
 
-        // TODO: why the fuck is this even initialized to year 0 at one point?!
-        //   Make sure we don't actually set that; for now, this is good enough as a workaround.
+        // TODO: why the fuck is this even initialized to year 0 at one point?! //   Make sure we don't actually set that; for now, this is good enough as a workaround.
         if (ViewStart.Year < 1900)
         {
             return;
         }
 
-        switch (ViewMode)
-        {
-            case CalendarViewMode.Month:
-                LoadMonthView();
-                break;
-            case CalendarViewMode.List:
-                LoadAgendaView();
-                break;
-            default:
-                LoadTimeGridView();
-                break;
-        }
+        LoadTimeGridView();
     }
 
     private void LoadTimeGridView()
@@ -411,105 +303,6 @@ public partial class CalendarWeekViewModel : ViewModelBase
         fullDay.ForEach(FullDayEvents.Add);
     }
 
-    private void LoadMonthView()
-    {
-        var firstOfMonth = new LocalDate(ViewStart.Year, ViewStart.Month, 1);
-        var lastOfMonth = firstOfMonth.PlusMonths(1).PlusDays(-1);
-
-        // Find the Monday before or on the first of the month
-        var startOffset = ((int)firstOfMonth.DayOfWeek + 6) % 7;
-        var gridStart = firstOfMonth.PlusDays(-startOffset);
-
-        // Always show 6 weeks (42 days) for consistent grid
-        var gridEnd = gridStart.PlusDays(42);
-
-        // Get all events for the visible range
-        var events = _calendarSource.GetCalendarEvents(new Interval(gridStart.AtMidnight().ToInstant(), gridEnd.AtMidnight().ToInstant())).ToList();
-
-        // Build day view models
-        for (var i = 0; i < 42; i++)
-        {
-            var date = gridStart.PlusDays(i);
-            var dayVm = new MonthDayViewModel
-            {
-                Date = date,
-                DayNumber = date.Day,
-                IsCurrentMonth = date.Month == ViewStart.Month,
-                IsToday = date == SystemClock.Instance.InTzdbSystemDefaultZone().GetCurrentDate()
-            };
-
-            // Add events for this day
-            var dayEvents = events
-                .Where(e => e.StartTime.Date <= date && e.EndTime.Date >= date)
-                .OrderBy(e => e.StartTime);
-
-            foreach (var evt in dayEvents)
-            {
-                var isFullDay = evt.StartTime.TimeOfDay == LocalTime.Midnight && evt.EndTime.TimeOfDay == LocalTime.Midnight;
-                dayVm.Events.Add(new MonthEventViewModel
-                {
-                    Title = string.IsNullOrEmpty(evt.Title) ? "[no title]" : evt.Title,
-                    Color = string.IsNullOrEmpty(evt.Reference.Calendar.Color)
-                        ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
-                        : Color.Parse(evt.Reference.Calendar.Color),
-                    CalendarEvent = evt,
-                    IsFullDay = isFullDay,
-                    TimeText = isFullDay ? string.Empty : evt.StartTime.ToString("HH:mm", null)
-                });
-            }
-
-            MonthDays.Add(dayVm);
-        }
-    }
-
-    private void LoadAgendaView()
-    {
-        // Show 14 days in agenda view
-        const int agendaDays = 14;
-        var start = ViewStart.ToLocalDateTime();
-        var end = start.PlusDays(agendaDays);
-
-        var events = _calendarSource.GetCalendarEvents(new Interval(start.ToInstant(), end.ToInstant()))
-            .OrderBy(e => e.StartTime)
-            .ToList();
-
-        // Group events by day
-        for (var i = 0; i < agendaDays; i++)
-        {
-            var date = start.PlusDays(i);
-            var dayVm = new AgendaDayViewModel
-            {
-                Date = date.Date,
-                IsToday = date.Date == SystemClock.Instance.GetCurrentInstant().ToLocalDateTime().Date,
-            };
-
-            var dayEvents = events
-                .Where(e => e.StartTime.Date == date.Date || (e.StartTime.Date < date.Date && e.EndTime.Date >= date.Date))
-                .OrderBy(e => e.StartTime.TimeOfDay == LocalTime.Midnight ? TimeSpan.MinValue : new TimeSpan(e.StartTime.TimeOfDay.Hour, e.StartTime.TimeOfDay.Minute, e.StartTime.TimeOfDay.Second));
-
-            foreach (var evt in dayEvents)
-            {
-                var startLocal = evt.StartTime;
-                var endLocal = evt.EndTime;
-                var isFullDay = startLocal.TimeOfDay == LocalTime.Midnight && endLocal.TimeOfDay == LocalTime.Midnight;
-                dayVm.Events.Add(new AgendaEventViewModel
-                {
-                    Title = string.IsNullOrEmpty(evt.Title) ? "[no title]" : evt.Title,
-                    StartTime = startLocal.ToDateTimeUnspecified(),
-                    EndTime = endLocal.ToDateTimeUnspecified(),
-                    IsFullDay = isFullDay,
-                    Color = string.IsNullOrEmpty(evt.Reference.Calendar.Color)
-                        ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
-                        : Color.Parse(evt.Reference.Calendar.Color),
-                    CalendarName = evt.Reference.Calendar.Name,
-                    CalendarEvent = evt
-                });
-            }
-
-            AgendaDays.Add(dayVm);
-        }
-    }
-
     private static void AssignEventColumns(List<EventItem> items)
     {
         // Assign columns using competitor discovery.
@@ -600,103 +393,14 @@ public partial class CalendarWeekViewModel : ViewModelBase
         Load();
     }
 
-    [RelayCommand]
-    private void OpenEventEditor(CalendarEvent? existingEvent)
+    protected override void OnEventDeleted()
     {
-        if (_calendarSource == null)
-            return;
-
-        SelectedEvent = existingEvent;
+        Load();
     }
 
-    [RelayCommand]
-    private void CloseEventEditor()
+    protected override void OnEventChanged()
     {
-        SelectedEvent = null;
-    }
-
-    [RelayCommand]
-    private void CreateNewEvent()
-    {
-        SelectedEvent = null;
-    }
-
-    [RelayCommand]
-    private async Task EditEventAsync(CalendarEvent? eventToEdit)
-    {
-        if (eventToEdit == null) return;
-        await OpenEventEditorAsync(eventToEdit);
-    }
-
-    [RelayCommand]
-    private async Task DeleteEventAsync(CalendarEvent? eventToDelete)
-    {
-        if (eventToDelete == null) return;
-
-        var eventTitle = eventToDelete.Title ?? "[no title]";
-
-        var result = await MessageBoxWindow.ShowAsync(
-            null,
-            "Delete Event",
-            $"Are you sure you want to delete \"{eventTitle}\"?",
-            MessageBoxType.Warning,
-            MessageBoxButtons.YesNo);
-
-        if (result != MessageBoxResult.Yes)
-        {
-            return;
-        }
-
-        var accountId = eventToDelete.Reference.Calendar.Account.Id.ToString();
-        var calendarId = eventToDelete.Reference.Calendar.ExternalId ?? string.Empty;
-        var eventId = eventToDelete.Reference.ExternalId ?? string.Empty;
-
-        try
-        {
-            var syncService = App.Services?.GetRequiredService<SyncService>();
-            if (syncService == null)
-            {
-                throw new InvalidOperationException("SyncService not available");
-            }
-
-            var provider = syncService.Providers?.GetValueOrDefault(eventToDelete.Reference.Calendar.Account.Type);
-            if (provider == null)
-            {
-                throw new InvalidOperationException($"No provider found for account type {eventToDelete.Reference.Calendar.Account.Type}");
-            }
-
-            await provider.DeleteEventAsync(accountId, calendarId, eventId);
-            Load();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to delete event: {ex}");
-            throw;
-        }
-    }
-
-    private async Task OpenEventEditorAsync(CalendarEvent calendarEvent)
-    {
-        var onCompleted = new Action<string>(async (errorMessage) =>
-        {
-            if (!string.IsNullOrEmpty(errorMessage))
-            {
-                Console.WriteLine($"Event edit failed: {errorMessage}");
-            }
-            else
-            {
-                Load();
-            }
-        });
-
-        var editor = new EventEditView
-        {
-            DataContext = new EventEditViewModel(
-                calendarEvent,
-                calendarEvent.Reference.Calendar,
-                onCompleted)
-        };
-        editor.Show();
+        Load();
     }
 }
 
