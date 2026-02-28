@@ -15,6 +15,18 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
     [ObservableProperty]
     private DateTime _endTime;
 
+    [ObservableProperty]
+    private DateTime _startDate;
+
+    [ObservableProperty]
+    private DateTime _endDate;
+
+    [ObservableProperty]
+    private TimeSpan _startTimeOfDay;
+
+    [ObservableProperty]
+    private TimeSpan _endTimeOfDay;
+
     public TimeSpan Duration
     {
         get => _duration;
@@ -35,12 +47,22 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
         StartTime = rounded;
         _duration = TimeSpan.FromMinutes(30);
         EndTime = StartTime.Add(_duration);
+        
+        _startDate = StartTime.Date;
+        _endDate = EndTime.Date;
+        _startTimeOfDay = StartTime.TimeOfDay;
+        _endTimeOfDay = EndTime.TimeOfDay;
     }
 
     partial void OnStartTimeChanged(DateTime value)
     {
         EndTime = value.Add(_duration);
         OnPropertyChanged(nameof(EndTime));
+        
+        _startDate = value.Date;
+        _startTimeOfDay = value.TimeOfDay;
+        OnPropertyChanged(nameof(StartDate));
+        OnPropertyChanged(nameof(StartTimeOfDay));
     }
 
     partial void OnEndTimeChanged(DateTime value)
@@ -55,5 +77,30 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
             _duration = EndTime - StartTime;
             OnPropertyChanged(nameof(Duration));
         }
+        
+        _endDate = value.Date;
+        _endTimeOfDay = value.TimeOfDay;
+        OnPropertyChanged(nameof(EndDate));
+        OnPropertyChanged(nameof(EndTimeOfDay));
+    }
+
+    partial void OnStartDateChanged(DateTime value)
+    {
+        StartTime = value.Date + StartTime.TimeOfDay;
+    }
+
+    partial void OnEndDateChanged(DateTime value)
+    {
+        EndTime = value.Date + EndTime.TimeOfDay;
+    }
+
+    partial void OnStartTimeOfDayChanged(TimeSpan value)
+    {
+        StartTime = StartTime.Date + value;
+    }
+
+    partial void OnEndTimeOfDayChanged(TimeSpan value)
+    {
+        EndTime = EndTime.Date + value;
     }
 }

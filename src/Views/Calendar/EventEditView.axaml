@@ -59,13 +59,13 @@
                                             <TextBlock Text="Start" FontWeight="SemiBold" FontSize="12"/>
                                             <Grid ColumnDefinitions="*,8,*">
                                                 <CalendarDatePicker Name="StartDatePicker"
-                                                                SelectedDate="{Binding StartTime}"
+                                                                SelectedDate="{Binding StartDate}"
                                                                 HorizontalAlignment="Stretch"
                                                                 IsTodayHighlighted="True"/>
                                                 <TimePicker Name="StartTimePicker"
                                                            Grid.Column="2"
                                                            ClockIdentifier="24HourClock"
-                                                           SelectedTime="{Binding StartTime, Converter={StaticResource DateTimeToTimeSpanConverter}}"
+                                                           SelectedTime="{Binding StartTimeOfDay}"
                                                            HorizontalAlignment="Stretch"/>
                                             </Grid>
                                         </StackPanel>
@@ -75,13 +75,13 @@
                                             <TextBlock Text="End" FontWeight="SemiBold" FontSize="12"/>
                                             <Grid ColumnDefinitions="*,8,*">
                                                 <CalendarDatePicker Name="EndDatePicker"
-                                                                SelectedDate="{Binding EndTime}"
+                                                                SelectedDate="{Binding EndDate}"
                                                                 HorizontalAlignment="Stretch"
                                                                 IsTodayHighlighted="True"/>
                                                 <TimePicker Name="EndTimePicker"
                                                            Grid.Column="2"
                                                            ClockIdentifier="24HourClock"
-                                                           SelectedTime="{Binding EndTime, Converter={StaticResource DateTimeToTimeSpanConverter}}"
+                                                           SelectedTime="{Binding EndTimeOfDay}"
                                                            HorizontalAlignment="Stretch"/>
                                             </Grid>
                                         </StackPanel>

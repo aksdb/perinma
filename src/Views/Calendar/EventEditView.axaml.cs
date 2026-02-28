@@ -18,9 +18,9 @@ public class DateTimeToTimeSpanConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is TimeSpan timeSpan)
+        if (value is TimeSpan timeSpan && parameter is DateTime originalDateTime)
         {
-            return DateTime.Today.Add(timeSpan);
+            return originalDateTime.Date.Add(timeSpan);
         }
         return null;
     }
