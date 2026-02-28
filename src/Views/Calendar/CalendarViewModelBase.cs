@@ -15,6 +15,7 @@ namespace perinma.Views.Calendar;
 public abstract partial class CalendarViewModelBase : ViewModelBase
 {
     protected readonly ICalendarSource _calendarSource;
+    protected readonly SqliteStorage _storage;
 
     public SettingsService? SettingsService { get; }
 
@@ -22,6 +23,14 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
     {
         _calendarSource = calendarSource;
         SettingsService = settingsService;
+
+        var storage = App.Services?.GetRequiredService<SqliteStorage>();
+        if (storage == null)
+        {
+            throw new InvalidOperationException("SqliteStorage not available");
+        }
+
+        _storage = storage;
     }
 
     [RelayCommand]
@@ -68,8 +77,8 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
             }
 
             await provider.DeleteEventAsync(accountId, calendarId, eventId);
+            await _storage.DeleteEventByExternalIdAsync(eventToDelete.Reference.Calendar.Id.ToString(), eventId);
             WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
-            OnEventDeleted();
         }
         catch (Exception ex)
         {
@@ -78,8 +87,6 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
         }
     }
 
-    protected abstract void OnEventDeleted();
-
     protected async Task OpenEventEditorAsync(CalendarEvent calendarEvent)
     {
         var onCompleted = new Action<string>(async (errorMessage) =>
@@ -87,10 +94,6 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
             if (!string.IsNullOrEmpty(errorMessage))
             {
                 Console.WriteLine($"Event edit failed: {errorMessage}");
-            }
-            else
-            {
-                OnEventChanged();
             }
         });
 
@@ -103,6 +106,4 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
         };
         editor.Show();
     }
-
-    protected abstract void OnEventChanged();
 }

@@ -396,16 +396,6 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         Load();
     }
 
-    protected override void OnEventDeleted()
-    {
-        Load();
-    }
-
-    protected override void OnEventChanged()
-    {
-        Load();
-    }
-
     public void Receive(EventsChangedMessage message)
     {
         Load();

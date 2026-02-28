@@ -142,16 +142,6 @@ public partial class CalendarAgendaViewModel : CalendarViewModelBase, IRecipient
         }
     }
 
-    protected override void OnEventDeleted()
-    {
-        Load();
-    }
-
-    protected override void OnEventChanged()
-    {
-        Load();
-    }
-
     public void Receive(EventsChangedMessage message)
     {
         Load();
