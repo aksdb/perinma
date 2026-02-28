@@ -594,7 +594,7 @@ public class GoogleCalendarProvider(
     }
 
     /// <inheritdoc/>
-    public async Task<string> CreateEventAsync(
+    public async Task<(string externalId, string rawData)> CreateEventAsync(
         string accountId,
         string calendarId,
         string title,
@@ -639,11 +639,15 @@ public class GoogleCalendarProvider(
         if (location != null)
             googleEvent.Location = location;
 
-        return await googleCalendarService.CreateEventAsync(service, calendarId, googleEvent, cancellationToken);
+        var externalId = await googleCalendarService.CreateEventAsync(service, calendarId, googleEvent, cancellationToken);
+
+        var rawData = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
+
+        return (externalId, rawData);
     }
 
     /// <inheritdoc/>
-    public async Task UpdateEventAsync(
+    public async Task<string> UpdateEventAsync(
         string accountId,
         string calendarId,
         string eventId,
@@ -690,6 +694,10 @@ public class GoogleCalendarProvider(
             googleEvent.Location = location;
 
         await googleCalendarService.UpdateEventAsync(service, calendarId, eventId, googleEvent, cancellationToken);
+
+        var rawData = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
+
+        return rawData;
     }
 
     /// <inheritdoc/>

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Ical.Net.DataTypes;
+using Ical.Net.Serialization;
 using NodaTime;
 using NodaTime.Extensions;
 using perinma.Models;
@@ -443,7 +444,7 @@ public class CalDavCalendarProvider(
     }
 
     /// <inheritdoc/>
-    public async Task<string> CreateEventAsync(
+    public async Task<(string externalId, string rawData)> CreateEventAsync(
         string accountId,
         string calendarId,
         string title,
@@ -486,15 +487,21 @@ public class CalDavCalendarProvider(
 
         calendar.Events.Add(calendarEvent);
 
-        return await calDavService.CreateEventAsync(
+        var serializer = new CalendarSerializer();
+        var rawData = serializer.SerializeToString(calendar)
+            ?? throw new InvalidOperationException("Failed to serialize calendar");
+
+        var externalId = await calDavService.CreateEventAsync(
             calDavCredentials,
             calendarId,
             calendar,
             cancellationToken);
+
+        return (externalId, rawData);
     }
 
     /// <inheritdoc/>
-    public async Task UpdateEventAsync(
+    public async Task<string> UpdateEventAsync(
         string accountId,
         string calendarId,
         string eventId,
@@ -547,6 +554,12 @@ public class CalDavCalendarProvider(
             eventId,
             calendar!,
             cancellationToken);
+
+        var serializer = new CalendarSerializer();
+        var rawData = serializer.SerializeToString(calendar)
+            ?? throw new InvalidOperationException("Failed to serialize calendar");
+
+        return rawData;
     }
 
     /// <inheritdoc/>

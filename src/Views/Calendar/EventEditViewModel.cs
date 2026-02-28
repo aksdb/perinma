@@ -200,7 +200,7 @@ public partial class EventEditViewModel : ViewModelBase
 
             if (IsEditMode && _existingEvent != null && provider != null)
             {
-                await provider.UpdateEventAsync(
+                var rawData = await provider.UpdateEventAsync(
                     accountId,
                     calendarExternalId,
                     _existingEvent.Reference.ExternalId ?? string.Empty,
@@ -223,7 +223,8 @@ public partial class EventEditViewModel : ViewModelBase
                     ChangedAt = changedAt
                 };
 
-                await _storage.CreateOrUpdateEventAsync(eventDbo);
+                var eventId = await _storage.CreateOrUpdateEventAsync(eventDbo);
+                await _storage.SetEventData(eventId, "rawData", rawData);
 
                 WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
 
@@ -231,7 +232,7 @@ public partial class EventEditViewModel : ViewModelBase
             }
             else if (provider != null)
             {
-                var newEventId = await provider.CreateEventAsync(
+                var (newEventId, rawData) = await provider.CreateEventAsync(
                     accountId,
                     calendarExternalId,
                     _titleField.Title,
@@ -253,7 +254,8 @@ public partial class EventEditViewModel : ViewModelBase
                     ChangedAt = changedAt
                 };
 
-                await _storage.CreateOrUpdateEventAsync(eventDbo);
+                var eventId = await _storage.CreateOrUpdateEventAsync(eventDbo);
+                await _storage.SetEventData(eventId, "rawData", rawData);
 
                 WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
 

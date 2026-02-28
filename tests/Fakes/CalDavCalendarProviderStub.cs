@@ -80,7 +80,7 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         return Task.CompletedTask;
     }
 
-    public Task<string> CreateEventAsync(
+    public Task<(string externalId, string rawData)> CreateEventAsync(
         string accountId,
         string calendarId,
         string title,
@@ -90,10 +90,10 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(Guid.NewGuid().ToString());
+        return Task.FromResult((Guid.NewGuid().ToString(), string.Empty));
     }
 
-    public Task UpdateEventAsync(
+    public Task<string> UpdateEventAsync(
         string accountId,
         string calendarId,
         string eventId,
@@ -104,7 +104,7 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         string? rawEventData = null,
         CancellationToken cancellationToken = default)
     {
-        return Task.CompletedTask;
+        return Task.FromResult(string.Empty);
     }
 
     public Task DeleteEventAsync(

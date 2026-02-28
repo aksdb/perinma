@@ -109,18 +109,18 @@ public interface ICalendarProvider
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Creates a new event in the specified calendar.
+    /// Creates a new event in specified calendar.
     /// </summary>
     /// <param name="accountId">Account ID to create event for</param>
-    /// <param name="calendarId">External ID of the calendar</param>
+    /// <param name="calendarId">External ID of calendar</param>
     /// <param name="title">Event title</param>
     /// <param name="extensions">Event extensions (description, location, etc.)</param>
     /// <param name="startTime">Event start time as UTC Instant</param>
     /// <param name="endTime">Event end time as UTC Instant</param>
     /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The external ID of the created event</returns>
-    Task<string> CreateEventAsync(
+    /// <returns>The external ID and raw data of created event</returns>
+    Task<(string externalId, string rawData)> CreateEventAsync(
         string accountId,
         string calendarId,
         string title,
@@ -134,15 +134,15 @@ public interface ICalendarProvider
     /// Updates an existing event.
     /// </summary>
     /// <param name="accountId">Account ID to update event for</param>
-    /// <param name="calendarId">External ID of the calendar</param>
-    /// <param name="eventId">External ID of the event to update</param>
+    /// <param name="calendarId">External ID of calendar</param>
+    /// <param name="eventId">External ID of event to update</param>
     /// <param name="title">Event title</param>
     /// <param name="extensions">Event extensions (description, location, etc.)</param>
     /// <param name="startTime">Event start time as UTC Instant</param>
     /// <param name="endTime">Event end time as UTC Instant</param>
     /// <param name="rawEventData">Raw event data for context (e.g., for preserving provider-specific fields)</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task UpdateEventAsync(
+    Task<string> UpdateEventAsync(
         string accountId,
         string calendarId,
         string eventId,
