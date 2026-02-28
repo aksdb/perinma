@@ -448,66 +448,39 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
         try
         {
-            var result = await MessageBoxWindow.ShowAsync(
-                mainWindow,
-                "Re-authentication Required",
-                $"Your {message.ProviderType} account requires re-authentication. Would you like to sign in again?",
-                MessageBoxType.Warning,
-                MessageBoxButtons.YesNo);
-
-            if (result == MessageBoxResult.Yes)
+            if (message.ProviderType.Equals("Google", StringComparison.OrdinalIgnoreCase))
             {
-                if (message.ProviderType.Equals("Google", StringComparison.OrdinalIgnoreCase))
+                // Get the account details
+                var account = await _storage.GetAccountByIdAsync(message.AccountId);
+
+                if (account != null)
                 {
-                    try
-                    {
-                        // Get the account details
-                        var account = await _storage.GetAccountByIdAsync(message.AccountId);
+                    Console.WriteLine($"Starting re-authentication for account: {account.Name}");
 
-                        if (account != null)
-                        {
-                            Console.WriteLine($"Starting re-authentication for account: {account.Name}");
+                    var viewModel = new ReauthenticationDialogViewModel(
+                        message.AccountId,
+                        account.Name,
+                        _credentialManager,
+                        _googleOAuthService,
+                        _googleCalendarService);
 
-                            // Perform authentication
-                            var newCredentials = await _googleOAuthService.AuthenticateAsync();
-
-                            // Update the credentials in the credential manager
-                            _credentialManager.StoreGoogleCredentials(message.AccountId, newCredentials);
-
-                            Console.WriteLine($"Re-authentication successful for account: {account.Name}");
-
-                            await MessageBoxWindow.ShowAsync(
-                                mainWindow,
-                                "Authentication Successful",
-                                $"Your {message.ProviderType} account has been successfully re-authenticated.",
-                                MessageBoxType.Information,
-                                MessageBoxButtons.Ok);
-                        }
-                        else
-                        {
-                            Console.WriteLine($"Account not found: {message.AccountId}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Re-authentication failed: {ex.Message}");
-                        await MessageBoxWindow.ShowAsync(
-                            mainWindow,
-                            "Authentication Failed",
-                            $"Failed to re-authenticate your {message.ProviderType} account: {ex.Message}",
-                            MessageBoxType.Error,
-                            MessageBoxButtons.Ok);
-                    }
+                    var dialog = new ReauthenticationDialogWindow();
+                    dialog.SetViewModel(viewModel);
+                    await dialog.ShowDialog(mainWindow);
                 }
                 else
                 {
-                    await MessageBoxWindow.ShowAsync(
-                        mainWindow,
-                        "Not Implemented",
-                        $"Re-authentication for {message.ProviderType} is not yet implemented.",
-                        MessageBoxType.Information,
-                        MessageBoxButtons.Ok);
+                    Console.WriteLine($"Account not found: {message.AccountId}");
                 }
+            }
+            else
+            {
+                await MessageBoxWindow.ShowAsync(
+                    mainWindow,
+                    "Not Implemented",
+                    $"Re-authentication for {message.ProviderType} is not yet implemented.",
+                    MessageBoxType.Information,
+                    MessageBoxButtons.Ok);
             }
         }
         catch (Exception ex)
