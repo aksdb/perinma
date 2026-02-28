@@ -143,6 +143,11 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
     [RelayCommand]
     private void CreateNewEvent()
     {
+        CreateNewEventInternal(null, null);
+    }
+
+    public void CreateNewEventInternal(DateTime? startTime, DateTime? endTime)
+    {
         var onCompleted = new Action<string>(async (errorMessage) =>
         {
             if (!string.IsNullOrEmpty(errorMessage))
@@ -165,7 +170,9 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
             DataContext = new EventEditViewModel(
                 null,
                 null,
-                onCompleted)
+                onCompleted,
+                startTime,
+                endTime)
         };
         editor.Show();
     }

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using perinma.Services;
@@ -78,6 +79,7 @@ public partial class CalendarWeekView : UserControl
         
         _mainView.EventDoubleTapped += OnEventDoubleTapped;
         _mainView.SettingsService = _viewModel.SettingsService;
+        _mainView.ViewModel = _viewModel;
         _mainView.SettingsLoaded += OnSettingsLoaded;
         _topBarView.SetEvents(_viewModel.FullDayEvents);
         _topBarView.EventDoubleTapped += OnEventDoubleTapped;
@@ -189,6 +191,7 @@ public partial class CalendarWeekView : UserControl
         public double RowHeight = 0;
         public DateTime WeekStart;
         public SettingsService? SettingsService;
+        public CalendarWeekViewModel? ViewModel;
 
         // Cached working hours settings
         private bool[] _workingDays = [false, true, true, true, true, true, false]; // Sun-Sat, default Mon-Fri
@@ -206,6 +209,13 @@ public partial class CalendarWeekView : UserControl
         private readonly Grid _contentGrid = new();
         private System.Timers.Timer? _currentTimeUpdateTimer;
 
+        // Drag and drop state
+        private bool _isDragging;
+        private Point _dragStart;
+        private int _dragStartDay;
+        private int _dragStartSlot;
+        private Rectangle? _dragRectangle;
+
         public MainView()
         {
             _contentGrid.Children.Add(_canvas);
@@ -213,6 +223,10 @@ public partial class CalendarWeekView : UserControl
             _contentGrid.Children.Add(_overlayCanvas);
             Content = _contentGrid;
             StartCurrentTimeTimer();
+
+            PointerPressed += OnPointerPressed;
+            PointerMoved += OnPointerMoved;
+            PointerReleased += OnPointerReleased;
         }
 
         private void StartCurrentTimeTimer()
@@ -324,6 +338,141 @@ public partial class CalendarWeekView : UserControl
         {
             base.OnSizeChanged(e);
             RefreshContent();
+        }
+
+        private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            if (e.Source is EventItem)
+                return;
+
+            var point = e.GetPosition(_canvas);
+            var dayColumn = (int)(point.X / (Bounds.Width / DayColumns));
+            var slot = (int)(point.Y / RowHeight);
+
+            if (dayColumn >= 0 && dayColumn < DayColumns && slot >= 0 && slot < 24 * 4)
+            {
+                _isDragging = true;
+                _dragStart = point;
+                _dragStartDay = dayColumn;
+                _dragStartSlot = slot;
+                e.Pointer.Capture(_canvas);
+
+                CreateDragRectangle(_dragStartDay, _dragStartSlot, _dragStartDay, _dragStartSlot);
+            }
+        }
+
+        private void OnPointerMoved(object? sender, PointerEventArgs e)
+        {
+            if (!_isDragging)
+                return;
+
+            var point = e.GetPosition(_canvas);
+            var dayColumn = (int)(point.X / (Bounds.Width / DayColumns));
+            var slot = (int)(point.Y / RowHeight);
+
+            dayColumn = Math.Clamp(dayColumn, 0, DayColumns - 1);
+            slot = Math.Clamp(slot, 0, 24 * 4 - 1);
+
+            UpdateDragRectangle(_dragStartDay, _dragStartSlot, dayColumn, slot);
+        }
+
+        private async void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+        {
+            if (!_isDragging)
+                return;
+
+            _isDragging = false;
+            RemoveDragRectangle();
+
+            var point = e.GetPosition(_canvas);
+            var dayColumn = (int)(point.X / (Bounds.Width / DayColumns));
+            var slot = (int)(point.Y / RowHeight);
+
+            dayColumn = Math.Clamp(dayColumn, 0, DayColumns - 1);
+            slot = Math.Clamp(slot, 0, 24 * 4 - 1);
+
+            var (startDay, startSlot, endDay, endSlot) = NormalizeDragRange(
+                _dragStartDay, _dragStartSlot, dayColumn, slot);
+
+            var startTime = CalculateDateTime(startDay, startSlot);
+            var endTime = CalculateDateTime(endDay, endSlot + 1);
+
+            if (ViewModel != null)
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    ViewModel.CreateNewEventInternal(startTime, endTime);
+                });
+            }
+        }
+
+        private void CreateDragRectangle(int startDay, int startSlot, int endDay, int endSlot)
+        {
+            _dragRectangle = new Rectangle
+            {
+                Fill = new SolidColorBrush(Color.FromArgb(100, 0x33, 0x99, 0xFF)),
+                Stroke = new SolidColorBrush(Color.FromArgb(200, 0x33, 0x99, 0xFF)),
+                StrokeThickness = 2,
+                RadiusX = 4,
+                RadiusY = 4
+            };
+            _overlayCanvas.Children.Add(_dragRectangle);
+            UpdateDragRectangle(startDay, startSlot, endDay, endSlot);
+        }
+
+        private void UpdateDragRectangle(int startDay, int startSlot, int endDay, int endSlot)
+        {
+            if (_dragRectangle == null)
+                return;
+
+            var (normalizedStartDay, normalizedStartSlot, normalizedEndDay, normalizedEndSlot) =
+                NormalizeDragRange(startDay, startSlot, endDay, endSlot);
+
+            var columnWidth = Bounds.Width / DayColumns;
+            var left = normalizedStartDay * columnWidth + 2;
+            var width = (normalizedEndDay - normalizedStartDay + 1) * columnWidth - 4;
+            var top = normalizedStartSlot * RowHeight + 1;
+            var height = (normalizedEndSlot - normalizedStartSlot + 1) * RowHeight - 2;
+
+            Canvas.SetLeft(_dragRectangle, left);
+            Canvas.SetTop(_dragRectangle, top);
+            _dragRectangle.Width = width;
+            _dragRectangle.Height = height;
+        }
+
+        private void RemoveDragRectangle()
+        {
+            if (_dragRectangle != null)
+            {
+                _overlayCanvas.Children.Remove(_dragRectangle);
+                _dragRectangle = null;
+            }
+        }
+
+        private (int startDay, int startSlot, int endDay, int endSlot) NormalizeDragRange(
+            int day1, int slot1, int day2, int slot2)
+        {
+            var startDay = Math.Min(day1, day2);
+            var endDay = Math.Max(day1, day2);
+
+            if (day1 == day2)
+            {
+                var startSlot = Math.Min(slot1, slot2);
+                var endSlot = Math.Max(slot1, slot2);
+                return (startDay, startSlot, endDay, endSlot);
+            }
+            else
+            {
+                return (startDay, 0, endDay, 24 * 4 - 1);
+            }
+        }
+
+        private DateTime CalculateDateTime(int dayColumn, int slot)
+        {
+            var date = WeekStart.AddDays(dayColumn);
+            var hours = slot / 4;
+            var minutes = (slot % 4) * 15;
+            return new DateTime(date.Year, date.Month, date.Day, hours, minutes, 0, DateTimeKind.Local);
         }
 
         public override void Render(DrawingContext context)

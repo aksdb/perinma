@@ -79,14 +79,21 @@ public partial class EventEditViewModel : ViewModelBase
         }
     }
 
+    private DateTime? _initialStartTime;
+    private DateTime? _initialEndTime;
+
     public EventEditViewModel(
         CalendarEvent? existingEvent,
         CalendarModel? calendar,
-        Action<string> onCompleted)
+        Action<string> onCompleted,
+        DateTime? initialStartTime = null,
+        DateTime? initialEndTime = null)
     {
         _existingEvent = existingEvent;
         _calendar = calendar;
         _onCompleted = onCompleted;
+        _initialStartTime = initialStartTime;
+        _initialEndTime = initialEndTime;
 
         var storage = App.Services?.GetRequiredService<SqliteStorage>();
         if (storage == null)
@@ -95,7 +102,6 @@ public partial class EventEditViewModel : ViewModelBase
         }
 
         _storage = storage;
-        _onCompleted = onCompleted;
 
         if (existingEvent != null && calendar != null)
         {
@@ -137,6 +143,11 @@ public partial class EventEditViewModel : ViewModelBase
         {
             _timeRangeField.StartTime = _existingEvent.StartTime.ToDateTimeUnspecified();
             _timeRangeField.EndTime = _existingEvent.EndTime.ToDateTimeUnspecified();
+        }
+        else if (_initialStartTime.HasValue && _initialEndTime.HasValue)
+        {
+            _timeRangeField.StartTime = _initialStartTime.Value;
+            _timeRangeField.EndTime = _initialEndTime.Value;
         }
         EditFields.Add(_timeRangeField);
 
