@@ -38,6 +38,7 @@ public partial class CalendarAgendaViewModel : CalendarViewModelBase, IRecipient
         SettingsService? settingsService = null)
         : base(calendarSource, settingsService)
     {
+        WeakReferenceMessenger.Default.Register<EventsChangedMessage>(this);
     }
 
     [RelayCommand]

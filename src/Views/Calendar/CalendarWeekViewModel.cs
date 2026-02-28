@@ -91,6 +91,7 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
     {
         DayColumns = 7;
         ViewStart = DateTime.Now;
+        WeakReferenceMessenger.Default.Register<EventsChangedMessage>(this);
     }
 
 
