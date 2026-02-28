@@ -5,9 +5,11 @@ using System.Threading.Tasks;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using NodaTime;
 using NodaTime.Extensions;
 using NodaTime.TimeZones;
+using perinma.Messaging;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
@@ -15,7 +17,7 @@ using perinma.Views.MessageBox;
 
 namespace perinma.Views.Calendar;
 
-public partial class CalendarMonthViewModel : CalendarViewModelBase
+public partial class CalendarMonthViewModel : CalendarViewModelBase, IRecipient<EventsChangedMessage>
 {
     public ObservableCollection<MonthDayViewModel> MonthDays { get; } = [];
 
@@ -145,6 +147,11 @@ public partial class CalendarMonthViewModel : CalendarViewModelBase
     }
 
     protected override void OnEventChanged()
+    {
+        Load();
+    }
+
+    public void Receive(EventsChangedMessage message)
     {
         Load();
     }

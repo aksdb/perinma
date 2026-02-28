@@ -87,6 +87,7 @@ public class SyncService
         finally
         {
             WeakReferenceMessenger.Default.Send(new SyncEndedMessage());
+            WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
         }
 
         return result;
@@ -138,6 +139,7 @@ public class SyncService
         finally
         {
             WeakReferenceMessenger.Default.Send(new SyncEndedMessage());
+            WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
         }
 
         return result;

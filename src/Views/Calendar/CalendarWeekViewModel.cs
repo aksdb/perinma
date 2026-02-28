@@ -6,9 +6,11 @@ using System.Threading.Tasks;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NodaTime.Extensions;
+using perinma.Messaging;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
@@ -17,7 +19,7 @@ using perinma.Views.MessageBox;
 
 namespace perinma.Views.Calendar;
 
-public partial class CalendarWeekViewModel : CalendarViewModelBase
+public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<EventsChangedMessage>
 {
     [ObservableProperty]
     private CalendarEvent? _selectedEvent;
@@ -399,6 +401,11 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase
     }
 
     protected override void OnEventChanged()
+    {
+        Load();
+    }
+
+    public void Receive(EventsChangedMessage message)
     {
         Load();
     }

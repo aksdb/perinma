@@ -111,3 +111,10 @@ public class SyncContactProcessingProgressMessage
 public class ContactSyncEndedMessage
 {
 }
+
+/// <summary>
+/// Message sent when calendar events are changed (created, updated, or deleted)
+/// </summary>
+public class EventsChangedMessage
+{
+}
