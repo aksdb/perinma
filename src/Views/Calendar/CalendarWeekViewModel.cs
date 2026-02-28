@@ -165,6 +165,13 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
             }
         });
 
+        var isFullDay = false;
+        if (startTime?.Date != endTime?.Date)
+        {
+            endTime = endTime?.Date.AddDays(-1);
+            isFullDay = true;
+        }
+        
         var editor = new EventEditView
         {
             DataContext = new EventEditViewModel(
@@ -172,7 +179,8 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
                 null,
                 onCompleted,
                 startTime,
-                endTime)
+                endTime,
+                isFullDay)
         };
         editor.Show();
     }

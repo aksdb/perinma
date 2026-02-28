@@ -496,6 +496,14 @@ public partial class CalendarWeekView : UserControl
             var date = WeekStart.AddDays(dayColumn);
             var hours = slot / 4;
             var minutes = (slot % 4) * 15;
+
+            if (hours == 24)
+            {
+                date = date.AddDays(1);
+                hours = 0;
+                minutes = 0;
+            }
+            
             return new DateTime(date.Year, date.Month, date.Day, hours, minutes, 0, DateTimeKind.Local);
         }
 

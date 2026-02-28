@@ -79,29 +79,28 @@ public partial class EventEditViewModel : ViewModelBase
         }
     }
 
-    private DateTime? _initialStartTime;
-    private DateTime? _initialEndTime;
+    private readonly DateTime? _initialStartTime;
+    private readonly DateTime? _initialEndTime;
+    private readonly bool _initialFullDay;
 
     public EventEditViewModel(
         CalendarEvent? existingEvent,
         CalendarModel? calendar,
         Action<string> onCompleted,
         DateTime? initialStartTime = null,
-        DateTime? initialEndTime = null)
+        DateTime? initialEndTime = null,
+        bool isFullDay = false)
     {
         _existingEvent = existingEvent;
         _calendar = calendar;
         _onCompleted = onCompleted;
         _initialStartTime = initialStartTime;
         _initialEndTime = initialEndTime;
+        _initialFullDay = isFullDay;
 
         var storage = App.Services?.GetRequiredService<SqliteStorage>();
-        if (storage == null)
-        {
-            throw new InvalidOperationException("SqliteStorage not available");
-        }
 
-        _storage = storage;
+        _storage = storage ?? throw new InvalidOperationException("SqliteStorage not available");
 
         if (existingEvent != null && calendar != null)
         {
@@ -153,6 +152,7 @@ public partial class EventEditViewModel : ViewModelBase
         {
             _timeRangeField.StartTime = _initialStartTime.Value;
             _timeRangeField.EndTime = _initialEndTime.Value;
+            _timeRangeField.IsFullDay = _initialFullDay;
         }
         EditFields.Add(_timeRangeField);
 
