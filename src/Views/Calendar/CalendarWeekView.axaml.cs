@@ -201,7 +201,10 @@ public partial class CalendarWeekView : UserControl
         public event EventHandler<Models.CalendarEvent?>? EventDoubleTapped;
         public event EventHandler? SettingsLoaded;
 
-        private readonly Canvas _canvas = new();
+        private readonly Canvas _canvas = new()
+        {
+            Background = Brushes.Transparent
+        };
         private readonly Canvas _overlayCanvas = new()
         {
             IsHitTestVisible = false
@@ -214,7 +217,9 @@ public partial class CalendarWeekView : UserControl
         private Point _dragStart;
         private int _dragStartDay;
         private int _dragStartSlot;
+        private bool _dragStarted;
         private Rectangle? _dragRectangle;
+        private const double DragThreshold = 3.0; // Minimum pixels to move before it's considered a drag
 
         public MainView()
         {
@@ -223,10 +228,95 @@ public partial class CalendarWeekView : UserControl
             _contentGrid.Children.Add(_overlayCanvas);
             Content = _contentGrid;
             StartCurrentTimeTimer();
+        }
 
-            PointerPressed += OnPointerPressed;
-            PointerMoved += OnPointerMoved;
-            PointerReleased += OnPointerReleased;
+        protected override void OnPointerPressed(PointerPressedEventArgs e)
+        {
+            // Only handle for drag creation if left-click
+            if (e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
+                return;
+
+            // If already dragging, don't reset
+            if (_isDragging)
+                return;
+
+            // Let's event bubble through to EventItems
+            // We'll track drag creation in OnPointerMoved/Released
+        }
+
+        protected override void OnPointerMoved(PointerEventArgs e)
+        {
+            // Track drag state separately
+            bool leftButtonPressed = e.GetCurrentPoint(this).Properties.IsLeftButtonPressed;
+
+            if (_isDragging)
+            {
+                var point = e.GetPosition(_canvas);
+                var dayColumn = (int)(point.X / (Bounds.Width / DayColumns));
+                var slot = (int)(point.Y / RowHeight);
+
+                dayColumn = Math.Clamp(dayColumn, 0, DayColumns - 1);
+                slot = Math.Clamp(slot, 0, 24 * 4 - 1);
+
+                UpdateDragRectangle(_dragStartDay, _dragStartSlot, dayColumn, slot);
+                return;
+            }
+
+            // Not dragging yet - check if we should start
+            if (!leftButtonPressed)
+                return; // Button not pressed
+
+            var dragPoint = e.GetPosition(_canvas);
+            var dragDayColumn = (int)(dragPoint.X / (Bounds.Width / DayColumns));
+            var dragSlot = (int)(dragPoint.Y / RowHeight);
+
+            if (dragDayColumn < 0 || dragDayColumn >= DayColumns || dragSlot < 0 || dragSlot >= 24 * 4)
+                return;
+
+            var currentPoint = e.GetPosition(_canvas);
+            var distance = Math.Sqrt(
+                Math.Pow(currentPoint.X - _dragStart.X, 2) +
+                Math.Pow(currentPoint.Y - _dragStart.Y, 2));
+
+            if (distance > DragThreshold)
+            {
+                _isDragging = true;
+                _dragStarted = true;
+                _dragStartDay = dragDayColumn;
+                _dragStartSlot = dragSlot;
+                CreateDragRectangle(_dragStartDay, _dragStartSlot, _dragStartDay, _dragStartSlot);
+            }
+        }
+
+        protected override async void OnPointerReleased(PointerReleasedEventArgs e)
+        {
+            // Only handle if we're dragging
+            if (!_isDragging)
+                return; // Let event bubble through to EventItems
+
+            _isDragging = false;
+            RemoveDragRectangle();
+
+            var point = e.GetPosition(_canvas);
+            var dayColumn = (int)(point.X / (Bounds.Width / DayColumns));
+            var slot = (int)(point.Y / RowHeight);
+
+            dayColumn = Math.Clamp(dayColumn, 0, DayColumns - 1);
+            slot = Math.Clamp(slot, 0, 24 * 4 - 1);
+
+            var (startDay, startSlot, endDay, endSlot) = NormalizeDragRange(
+                _dragStartDay, _dragStartSlot, dayColumn, slot);
+
+            var startTime = CalculateDateTime(startDay, startSlot);
+            var endTime = CalculateDateTime(endDay, endSlot + 1);
+
+            if (ViewModel != null)
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    ViewModel.CreateNewEventInternal(startTime, endTime);
+                });
+            }
         }
 
         private void StartCurrentTimeTimer()
@@ -338,72 +428,6 @@ public partial class CalendarWeekView : UserControl
         {
             base.OnSizeChanged(e);
             RefreshContent();
-        }
-
-        private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
-        {
-            if (e.Source is EventItem)
-                return;
-
-            var point = e.GetPosition(_canvas);
-            var dayColumn = (int)(point.X / (Bounds.Width / DayColumns));
-            var slot = (int)(point.Y / RowHeight);
-
-            if (dayColumn >= 0 && dayColumn < DayColumns && slot >= 0 && slot < 24 * 4)
-            {
-                _isDragging = true;
-                _dragStart = point;
-                _dragStartDay = dayColumn;
-                _dragStartSlot = slot;
-                e.Pointer.Capture(_canvas);
-
-                CreateDragRectangle(_dragStartDay, _dragStartSlot, _dragStartDay, _dragStartSlot);
-            }
-        }
-
-        private void OnPointerMoved(object? sender, PointerEventArgs e)
-        {
-            if (!_isDragging)
-                return;
-
-            var point = e.GetPosition(_canvas);
-            var dayColumn = (int)(point.X / (Bounds.Width / DayColumns));
-            var slot = (int)(point.Y / RowHeight);
-
-            dayColumn = Math.Clamp(dayColumn, 0, DayColumns - 1);
-            slot = Math.Clamp(slot, 0, 24 * 4 - 1);
-
-            UpdateDragRectangle(_dragStartDay, _dragStartSlot, dayColumn, slot);
-        }
-
-        private async void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
-        {
-            if (!_isDragging)
-                return;
-
-            _isDragging = false;
-            RemoveDragRectangle();
-
-            var point = e.GetPosition(_canvas);
-            var dayColumn = (int)(point.X / (Bounds.Width / DayColumns));
-            var slot = (int)(point.Y / RowHeight);
-
-            dayColumn = Math.Clamp(dayColumn, 0, DayColumns - 1);
-            slot = Math.Clamp(slot, 0, 24 * 4 - 1);
-
-            var (startDay, startSlot, endDay, endSlot) = NormalizeDragRange(
-                _dragStartDay, _dragStartSlot, dayColumn, slot);
-
-            var startTime = CalculateDateTime(startDay, startSlot);
-            var endTime = CalculateDateTime(endDay, endSlot + 1);
-
-            if (ViewModel != null)
-            {
-                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-                {
-                    ViewModel.CreateNewEventInternal(startTime, endTime);
-                });
-            }
         }
 
         private void CreateDragRectangle(int startDay, int startSlot, int endDay, int endSlot)
