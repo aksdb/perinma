@@ -27,6 +27,12 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
     [ObservableProperty]
     private TimeSpan _endTimeOfDay;
 
+    [ObservableProperty]
+    private bool _isFullDay;
+
+    [ObservableProperty]
+    private bool _isFullDaySupported;
+
     public TimeSpan Duration
     {
         get => _duration;
@@ -102,5 +108,16 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
     partial void OnEndTimeOfDayChanged(TimeSpan value)
     {
         EndTime = EndTime.Date + value;
+    }
+
+    partial void OnIsFullDayChanged(bool value)
+    {
+        if (value)
+        {
+            _startDate = StartTime.Date;
+            _endDate = EndTime.Date;
+            OnPropertyChanged(nameof(StartDate));
+            OnPropertyChanged(nameof(EndDate));
+        }
     }
 }

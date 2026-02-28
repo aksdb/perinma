@@ -470,17 +470,19 @@ public class CalDavCalendarProvider(
         var location = extensions.Get(CalendarEventExtensions.Location);
 
         var calendar = new Ical.Net.Calendar();
+        var isFullDay = extensions.Get(CalendarEventExtensions.FullDay);
+
         var calendarEvent = new Ical.Net.CalendarComponents.CalendarEvent
         {
             Summary = title,
             Description = description,
             Location = location,
-            Start = new CalDateTime(startTime.ToDateTimeUtc(), true),
-            End = new CalDateTime(endTime.ToDateTimeUtc(), true),
+            Start = new CalDateTime(startTime.ToDateTimeUtc().Date, !isFullDay),
+            End = new CalDateTime(endTime.ToDateTimeUtc().Date, !isFullDay),
             Uid = Guid.NewGuid().ToString()
         };
 
-        if (ShouldAddTimezone(startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc()))
+        if (!isFullDay && ShouldAddTimezone(startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc()))
         {
             calendar.AddTimeZone(TimeZoneInfo.Local.Id);
         }
@@ -535,13 +537,15 @@ public class CalDavCalendarProvider(
             throw new InvalidOperationException("Could not parse event from iCalendar data");
         }
 
+        var isFullDay = extensions.Get(CalendarEventExtensions.FullDay);
+
         calendarEvent.Summary = title;
         calendarEvent.Description = description;
         calendarEvent.Location = location;
-        calendarEvent.Start = new CalDateTime(startTime.ToDateTimeUtc(), true);
-        calendarEvent.End = new CalDateTime(endTime.ToDateTimeUtc(), true);
+        calendarEvent.Start = new CalDateTime(startTime.ToDateTimeUtc().Date, !isFullDay);
+        calendarEvent.End = new CalDateTime(endTime.ToDateTimeUtc().Date, !isFullDay);
 
-        if (ShouldAddTimezone(startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc()))
+        if (!isFullDay && ShouldAddTimezone(startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc()))
         {
             if (calendar != null && !calendar.TimeZones.Select(vtz => vtz.TzId).Contains(TimeZoneInfo.Local.Id))
             {

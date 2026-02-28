@@ -614,16 +614,32 @@ public class GoogleCalendarProvider(
 
         var googleEvent = new Event
         {
-            Summary = title,
-            Start = new EventDateTime
+            Summary = title
+        };
+
+        var isFullDay = extensions.Get(CalendarEventExtensions.FullDay);
+        if (isFullDay == true)
+        {
+            googleEvent.Start = new EventDateTime
+            {
+                Date = startTime.ToDateTimeUtc().ToString("yyyy-MM-dd")
+            };
+            googleEvent.End = new EventDateTime
+            {
+                Date = endTime.ToDateTimeUtc().ToString("yyyy-MM-dd")
+            };
+        }
+        else
+        {
+            googleEvent.Start = new EventDateTime
             {
                 DateTimeRaw = Iso8601Pattern.Format(startTime)
-            },
-            End = new EventDateTime
+            };
+            googleEvent.End = new EventDateTime
             {
                 DateTimeRaw = Iso8601Pattern.Format(endTime)
-            }
-        };
+            };
+        }
 
         var description = extensions.Get(CalendarEventExtensions.Description) switch
         {
@@ -668,16 +684,32 @@ public class GoogleCalendarProvider(
 
         var googleEvent = new Event
         {
-            Summary = title,
-            Start = new EventDateTime
+            Summary = title
+        };
+
+        var isFullDay = extensions.Get(CalendarEventExtensions.FullDay);
+        if (isFullDay == true)
+        {
+            googleEvent.Start = new EventDateTime
+            {
+                Date = startTime.ToDateTimeUtc().ToString("yyyy-MM-dd")
+            };
+            googleEvent.End = new EventDateTime
+            {
+                Date = endTime.ToDateTimeUtc().ToString("yyyy-MM-dd")
+            };
+        }
+        else
+        {
+            googleEvent.Start = new EventDateTime
             {
                 DateTimeRaw = Iso8601Pattern.Format(startTime)
-            },
-            End = new EventDateTime
+            };
+            googleEvent.End = new EventDateTime
             {
                 DateTimeRaw = Iso8601Pattern.Format(endTime)
-            }
-        };
+            };
+        }
 
         var description = extensions.Get(CalendarEventExtensions.Description) switch
         {

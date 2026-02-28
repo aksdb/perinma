@@ -54,6 +54,12 @@
                                 <!-- Time Range Edit -->
                                 <DataTemplate DataType="edit:TimeRangeEditViewModel">
                                     <StackPanel Spacing="8">
+                                        <!-- Full Day Checkbox -->
+                                        <CheckBox Content="All-day event"
+                                                 IsChecked="{Binding IsFullDay}"
+                                                 Margin="0,4,0,0"
+                                                 IsVisible="{Binding IsFullDaySupported}"/>
+                                        
                                         <!-- Start Date/Time -->
                                         <StackPanel Spacing="4">
                                             <TextBlock Text="Start" FontWeight="SemiBold" FontSize="12"/>
@@ -66,7 +72,8 @@
                                                            Grid.Column="2"
                                                            ClockIdentifier="24HourClock"
                                                            SelectedTime="{Binding StartTimeOfDay}"
-                                                           HorizontalAlignment="Stretch"/>
+                                                           HorizontalAlignment="Stretch"
+                                                           IsVisible="{Binding !IsFullDay}"/>
                                             </Grid>
                                         </StackPanel>
 
@@ -82,7 +89,8 @@
                                                            Grid.Column="2"
                                                            ClockIdentifier="24HourClock"
                                                            SelectedTime="{Binding EndTimeOfDay}"
-                                                           HorizontalAlignment="Stretch"/>
+                                                           HorizontalAlignment="Stretch"
+                                                           IsVisible="{Binding !IsFullDay}"/>
                                             </Grid>
                                         </StackPanel>
                                     </StackPanel>

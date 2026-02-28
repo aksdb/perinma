@@ -138,11 +138,16 @@ public partial class EventEditViewModel : ViewModelBase
             _titleField.Title = _existingEvent.Title;
         EditFields.Add(_titleField);
 
-        _timeRangeField = new TimeRangeEditViewModel();
+        _timeRangeField = new TimeRangeEditViewModel
+        {
+            IsFullDaySupported = supportedExtensions.Contains(CalendarEventExtensions.FullDay)
+        };
         if (_existingEvent != null)
         {
             _timeRangeField.StartTime = _existingEvent.StartTime.ToDateTimeUnspecified();
             _timeRangeField.EndTime = _existingEvent.EndTime.ToDateTimeUnspecified();
+            var isFullDay = _existingEvent.Extensions.Get(CalendarEventExtensions.FullDay);
+            _timeRangeField.IsFullDay = isFullDay;
         }
         else if (_initialStartTime.HasValue && _initialEndTime.HasValue)
         {
@@ -194,10 +199,17 @@ public partial class EventEditViewModel : ViewModelBase
             var calendarExternalId = targetCalendar.ExternalId ?? string.Empty;
             var provider = App.Services?.GetRequiredService<SyncService>()?.Providers?.GetValueOrDefault(targetCalendar.Account.Type);
 
-            var startInstant = LocalDateTime.FromDateTime(_timeRangeField!.StartTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
-            var endInstant = LocalDateTime.FromDateTime(_timeRangeField.EndTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
-
             var extensions = new ModelExtensions();
+
+            DateTime eventStartTime = _timeRangeField.StartTime;
+            DateTime eventEndTime = _timeRangeField.EndTime;
+
+            if (_timeRangeField.IsFullDay)
+            {
+                extensions.Set(CalendarEventExtensions.FullDay, true);
+                eventStartTime = _timeRangeField.StartDate.Date;
+                eventEndTime = _timeRangeField.EndDate.Date.AddDays(1);
+            }
 
             if (_descriptionField != null)
             {
@@ -208,6 +220,9 @@ public partial class EventEditViewModel : ViewModelBase
 
             if (_locationField != null && !string.IsNullOrWhiteSpace(_locationField.Location))
                 extensions.Set(CalendarEventExtensions.Location, _locationField.Location);
+
+            var startInstant = LocalDateTime.FromDateTime(eventStartTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
+            var endInstant = LocalDateTime.FromDateTime(eventEndTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
 
             if (IsEditMode && _existingEvent != null && provider != null)
             {
