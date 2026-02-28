@@ -2,7 +2,9 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
+using perinma.Messaging;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
@@ -66,6 +68,7 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
             }
 
             await provider.DeleteEventAsync(accountId, calendarId, eventId);
+            WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
             OnEventDeleted();
         }
         catch (Exception ex)

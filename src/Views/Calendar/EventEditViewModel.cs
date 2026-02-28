@@ -5,11 +5,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using perinma.Messaging;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
+using perinma.Storage.Models;
 using perinma.Views.Calendar.EventEdit;
 using CalendarModel = perinma.Models.Calendar;
 
@@ -207,7 +210,23 @@ public partial class EventEditViewModel : ViewModelBase
                     endInstant,
                     _existingRawEventData);
 
-                _onCompleted(_existingEvent.Reference.ExternalId ?? string.Empty);
+                var calendarId = targetCalendar.Id.ToString();
+                var changedAt = SystemClock.Instance.GetCurrentInstant().ToUnixTimeSeconds();
+
+                var eventDbo = new CalendarEventDbo
+                {
+                    CalendarId = calendarId,
+                    ExternalId = _existingEvent.Reference.ExternalId,
+                    StartTime = startInstant.ToUnixTimeSeconds(),
+                    EndTime = endInstant.ToUnixTimeSeconds(),
+                    Title = _titleField.Title,
+                    ChangedAt = changedAt
+                };
+
+                await _storage.CreateOrUpdateEventAsync(eventDbo);
+
+                WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
+
                 RequestClose?.Invoke(this, EventArgs.Empty);
             }
             else if (provider != null)
@@ -221,7 +240,23 @@ public partial class EventEditViewModel : ViewModelBase
                     endInstant,
                     null);
 
-                _onCompleted(newEventId);
+                var calendarId = targetCalendar.Id.ToString();
+                var changedAt = SystemClock.Instance.GetCurrentInstant().ToUnixTimeSeconds();
+
+                var eventDbo = new CalendarEventDbo
+                {
+                    CalendarId = calendarId,
+                    ExternalId = newEventId,
+                    StartTime = startInstant.ToUnixTimeSeconds(),
+                    EndTime = endInstant.ToUnixTimeSeconds(),
+                    Title = _titleField.Title,
+                    ChangedAt = changedAt
+                };
+
+                await _storage.CreateOrUpdateEventAsync(eventDbo);
+
+                WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
+
                 RequestClose?.Invoke(this, EventArgs.Empty);
             }
             else
