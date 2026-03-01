@@ -544,6 +544,13 @@ public partial class MainWindowViewModel : ObservableRecipient,
                 if (Enum.TryParse<CalendarView>(lastCalendarView, out var viewMode))
                 {
                     CalendarViewMode = viewMode;
+                    
+                    // Restore DayColumns when in Week view
+                    if (CalendarViewMode == CalendarView.Week)
+                    {
+                        var lastDayColumns = await _settingsService.GetLastCalendarDayColumnsAsync();
+                        CalendarWeekViewModel.DayColumns = lastDayColumns;
+                    }
                 }
                 LoadCurrentCalendarView();
             }
@@ -565,6 +572,12 @@ public partial class MainWindowViewModel : ObservableRecipient,
             if (IsCalendarViewActive)
             {
                 await _settingsService.SetLastCalendarViewModeAsync(CalendarViewMode.ToString());
+                
+                // Save DayColumns when in Week view
+                if (CalendarViewMode == CalendarView.Week)
+                {
+                    await _settingsService.SetLastCalendarDayColumnsAsync(CalendarWeekViewModel.DayColumns);
+                }
             }
         }
         catch (Exception ex)

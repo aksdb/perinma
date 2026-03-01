@@ -25,6 +25,7 @@ public class SettingsService(SqliteStorage storage)
         public const string SidebarWidth = "mainWindow.sidebar.width";
         public const string LastActiveView = "mainWindow.view.lastActive";
         public const string LastCalendarViewMode = "mainWindow.view.lastCalendarViewMode";
+        public const string LastCalendarDayColumns = "mainWindow.view.lastCalendarDayColumns";
     }
 
     // Default values
@@ -46,6 +47,7 @@ public class SettingsService(SqliteStorage storage)
         public const int SidebarWidth = 250;
         public const string LastActiveView = "calendar";
         public const string LastCalendarViewMode = "Week";
+        public const int LastCalendarDayColumns = 7;
     }
 
     // Generic accessors
@@ -119,4 +121,7 @@ public class SettingsService(SqliteStorage storage)
 
     public Task<string> GetLastCalendarViewModeAsync() => GetAsync(Keys.LastCalendarViewMode, Defaults.LastCalendarViewMode);
     public Task SetLastCalendarViewModeAsync(string value) => SetAsync(Keys.LastCalendarViewMode, value);
+
+    public Task<int> GetLastCalendarDayColumnsAsync() => GetIntAsync(Keys.LastCalendarDayColumns, Defaults.LastCalendarDayColumns);
+    public Task SetLastCalendarDayColumnsAsync(int value) => SetIntAsync(Keys.LastCalendarDayColumns, value);
 }
