@@ -9,7 +9,7 @@
 
     <Grid RowDefinitions="Auto,*">
         <!-- Weekday Headers -->
-        <UniformGrid Grid.Row="1" Columns="7">
+        <UniformGrid Grid.Row="0" Columns="7">
             <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
                 <TextBlock Text="Mon" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
             </Border>
@@ -83,8 +83,8 @@
                                                  </Button.Styles>
                                                  <Button.ContextMenu>
                                                      <ContextMenu>
-                                                         <MenuItem Header="Edit" Command="{Binding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
-                                                         <MenuItem Header="Delete" Command="{Binding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                                         <MenuItem Header="Edit" Command="{ReflectionBinding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                                         <MenuItem Header="Delete" Command="{ReflectionBinding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
                                                      </ContextMenu>
                                                  </Button.ContextMenu>
                                                  <Button.Flyout>

@@ -57,8 +57,8 @@
                                           </Button.Styles>
                                           <Button.ContextMenu>
                                               <ContextMenu>
-                                                  <MenuItem Header="Edit" Command="{Binding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
-                                                  <MenuItem Header="Delete" Command="{Binding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                                  <MenuItem Header="Edit" Command="{ReflectionBinding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                                  <MenuItem Header="Delete" Command="{ReflectionBinding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
                                               </ContextMenu>
                                           </Button.ContextMenu>
                                           <Button.Flyout>

@@ -51,8 +51,8 @@
                                   Bounds="{Binding AvailableBounds, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}">
                               <Border.ContextMenu>
                                   <ContextMenu>
-                                      <MenuItem Header="Edit" Command="{Binding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}"/>
-                                      <MenuItem Header="Delete" Command="{Binding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}"/>
+                                      <MenuItem Header="Edit" Command="{ReflectionBinding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}"/>
+                                      <MenuItem Header="Delete" Command="{ReflectionBinding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}"/>
                                   </ContextMenu>
                               </Border.ContextMenu>
                                <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">
