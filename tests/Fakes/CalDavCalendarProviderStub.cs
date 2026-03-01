@@ -85,23 +85,15 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         string calendarId,
         string title,
         ModelExtensions extensions,
-        Instant startTime,
-        Instant endTime,
-        string? rawEventData = null,
+        LocalDateTime startTime,
+        LocalDateTime endTime,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult((Guid.NewGuid().ToString(), string.Empty));
     }
 
     public Task<string> UpdateEventAsync(
-        string accountId,
-        string calendarId,
-        string eventId,
-        string title,
-        ModelExtensions extensions,
-        Instant startTime,
-        Instant endTime,
-        string? rawEventData = null,
+        CalendarEvent calendarEvent,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult(string.Empty);

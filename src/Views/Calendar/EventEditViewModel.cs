@@ -8,11 +8,13 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using NodaTime.Extensions;
 using perinma.Messaging;
 using perinma.Models;
 using perinma.Services;
 using perinma.Storage;
 using perinma.Storage.Models;
+using perinma.Utils;
 using perinma.Views.Calendar.EventEdit;
 using CalendarModel = perinma.Models.Calendar;
 
@@ -201,14 +203,14 @@ public partial class EventEditViewModel : ViewModelBase
 
             var extensions = new ModelExtensions();
 
-            DateTime eventStartTime = _timeRangeField.StartTime;
-            DateTime eventEndTime = _timeRangeField.EndTime;
+            LocalDateTime eventStartTime = _timeRangeField.StartTime.ToLocalDateTime();
+            LocalDateTime eventEndTime = _timeRangeField.EndTime.ToLocalDateTime();
 
             if (_timeRangeField.IsFullDay)
             {
                 extensions.Set(CalendarEventExtensions.FullDay, true);
-                eventStartTime = _timeRangeField.StartDate.Date;
-                eventEndTime = _timeRangeField.EndDate.Date.AddDays(1);
+                eventStartTime = eventStartTime.Date.AtMidnight();
+                eventEndTime = eventEndTime.Date.PlusDays(1).AtMidnight();
             }
 
             if (_descriptionField != null)
@@ -221,20 +223,18 @@ public partial class EventEditViewModel : ViewModelBase
             if (_locationField != null && !string.IsNullOrWhiteSpace(_locationField.Location))
                 extensions.Set(CalendarEventExtensions.Location, _locationField.Location);
 
-            var startInstant = LocalDateTime.FromDateTime(eventStartTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
-            var endInstant = LocalDateTime.FromDateTime(eventEndTime).InZoneStrictly(DateTimeZoneProviders.Tzdb.GetSystemDefault()).ToInstant();
-
             if (IsEditMode && _existingEvent != null && provider != null)
             {
-                var rawData = await provider.UpdateEventAsync(
-                    accountId,
-                    calendarExternalId,
-                    _existingEvent.Reference.ExternalId ?? string.Empty,
-                    _titleField.Title,
-                    extensions,
-                    startInstant,
-                    endInstant,
-                    _existingRawEventData);
+                var updatedEvent = new CalendarEvent
+                {
+                    Reference = _existingEvent.Reference,
+                    StartTime = eventStartTime,
+                    EndTime = eventEndTime,
+                    Title = _titleField.Title,
+                    Extensions = extensions
+                };
+
+                var rawData = await provider.UpdateEventAsync(updatedEvent);
 
                 var calendarId = targetCalendar.Id.ToString();
                 var changedAt = SystemClock.Instance.GetCurrentInstant().ToUnixTimeSeconds();
@@ -243,8 +243,8 @@ public partial class EventEditViewModel : ViewModelBase
                 {
                     CalendarId = calendarId,
                     ExternalId = _existingEvent.Reference.ExternalId,
-                    StartTime = startInstant.ToUnixTimeSeconds(),
-                    EndTime = endInstant.ToUnixTimeSeconds(),
+                    StartTime = eventStartTime.ToInstant().ToUnixTimeSeconds(),
+                    EndTime = eventEndTime.ToInstant().ToUnixTimeSeconds(),
                     Title = _titleField.Title,
                     ChangedAt = changedAt
                 };
@@ -263,9 +263,8 @@ public partial class EventEditViewModel : ViewModelBase
                     calendarExternalId,
                     _titleField.Title,
                     extensions,
-                    startInstant,
-                    endInstant,
-                    null);
+                    eventStartTime,
+                    eventEndTime);
 
                 var calendarId = targetCalendar.Id.ToString();
                 var changedAt = SystemClock.Instance.GetCurrentInstant().ToUnixTimeSeconds();
@@ -274,8 +273,8 @@ public partial class EventEditViewModel : ViewModelBase
                 {
                     CalendarId = calendarId,
                     ExternalId = newEventId,
-                    StartTime = startInstant.ToUnixTimeSeconds(),
-                    EndTime = endInstant.ToUnixTimeSeconds(),
+                    StartTime = eventStartTime.ToInstant().ToUnixTimeSeconds(),
+                    EndTime = eventEndTime.ToInstant().ToUnixTimeSeconds(),
                     Title = _titleField.Title,
                     ChangedAt = changedAt
                 };

@@ -706,10 +706,12 @@ public class CalDavCalendarProviderTests
     {
         // Arrange
         var calendarUrl = "https://caldav.example.com/calendars/work";
-        var localStart =
+        var localStartInstant =
             Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Local).ToUniversalTime());
-        var localEnd =
+        var localEndInstant =
             Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Local).ToUniversalTime());
+        var localStart = localStartInstant.InZone(DateTimeZone.Utc).LocalDateTime;
+        var localEnd = localEndInstant.InZone(DateTimeZone.Utc).LocalDateTime;
 
         var extensions = new ModelExtensions();
         extensions.Set(CalendarEventExtensions.Description, new RichText.SimpleText("Test Description"));
@@ -732,8 +734,8 @@ public class CalDavCalendarProviderTests
         var endValue = createdEvent.End?.Value;
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(startValue, Is.EqualTo(localStart.ToDateTimeUtc()));
-            Assert.That(endValue, Is.EqualTo(localEnd.ToDateTimeUtc()));
+            Assert.That(startValue, Is.EqualTo(localEndInstant.ToDateTimeUtc()));
+            Assert.That(endValue, Is.EqualTo(localEndInstant.ToDateTimeUtc()));
         }
     }
 
@@ -742,8 +744,10 @@ public class CalDavCalendarProviderTests
     {
         // Arrange
         var calendarUrl = "https://caldav.example.com/calendars/work";
-        var utcStart = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Utc));
-        var utcEnd = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Utc));
+        var utcStartInstant = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0, DateTimeKind.Utc));
+        var utcEndInstant = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0, DateTimeKind.Utc));
+        var utcStart = utcStartInstant.InZone(DateTimeZone.Utc).LocalDateTime;
+        var utcEnd = utcEndInstant.InZone(DateTimeZone.Utc).LocalDateTime;
 
         var extensions = new ModelExtensions();
         extensions.Set(CalendarEventExtensions.Description, new RichText.SimpleText("Test Description"));
@@ -766,8 +770,8 @@ public class CalDavCalendarProviderTests
         var endValue = createdEvent.End?.Value;
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(startValue, Is.EqualTo(utcStart.ToDateTimeUtc()));
-            Assert.That(endValue, Is.EqualTo(utcEnd.ToDateTimeUtc()));
+            Assert.That(startValue, Is.EqualTo(utcStartInstant.ToDateTimeUtc()));
+            Assert.That(endValue, Is.EqualTo(utcEndInstant.ToDateTimeUtc()));
         }
     }
 
@@ -776,8 +780,10 @@ public class CalDavCalendarProviderTests
     {
         // Arrange
         var calendarUrl = "https://caldav.example.com/calendars/work";
-        var unspecifiedStart = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0).ToUniversalTime());
-        var unspecifiedEnd = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0).ToUniversalTime());
+        var unspecifiedStartInstant = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 10, 0, 0).ToUniversalTime());
+        var unspecifiedEndInstant = Instant.FromDateTimeUtc(new DateTime(2025, 2, 7, 11, 0, 0).ToUniversalTime());
+        var unspecifiedStart = unspecifiedStartInstant.InZone(DateTimeZone.Utc).LocalDateTime;
+        var unspecifiedEnd = unspecifiedEndInstant.InZone(DateTimeZone.Utc).LocalDateTime;
 
         var extensions = new ModelExtensions();
         extensions.Set(CalendarEventExtensions.Description, new RichText.SimpleText("Test Description"));
@@ -800,8 +806,8 @@ public class CalDavCalendarProviderTests
         var endValue = createdEvent.End?.Value;
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(startValue, Is.EqualTo(unspecifiedStart.ToDateTimeUtc()));
-            Assert.That(endValue, Is.EqualTo(unspecifiedEnd.ToDateTimeUtc()));
+            Assert.That(startValue, Is.EqualTo(unspecifiedStartInstant.ToDateTimeUtc()));
+            Assert.That(endValue, Is.EqualTo(unspecifiedEndInstant.ToDateTimeUtc()));
         }
     }
 

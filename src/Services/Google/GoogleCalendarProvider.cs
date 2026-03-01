@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Globalization;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,7 +27,6 @@ public class GoogleCalendarProvider(
     : ICalendarProvider
 {
     private static ModelExtension<GoogleEvent> GoogleEventExtension = new();
-    private static readonly InstantPattern Iso8601Pattern = InstantPattern.ExtendedIso;
 
     /// <inheritdoc/>
     public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange) =>
@@ -68,7 +66,7 @@ public class GoogleCalendarProvider(
             .ToList();
     }
 
-    private CalendarEvent MapToCalendarEvent(EventReference reference, Event googleEvent,
+    private CalendarEvent MapToCalendarEvent(EventReference reference, GoogleEvent googleEvent,
         Instant? occurrenceStart)
     {
         var start = occurrenceStart ?? ParseGoogleDateTime(googleEvent.Start) ?? default;
@@ -297,7 +295,7 @@ public class GoogleCalendarProvider(
         }
     }
 
-    private static ProviderEvent? ConvertGoogleEvent(Event evt)
+    private static ProviderEvent? ConvertGoogleEvent(GoogleEvent evt)
     {
         var isOverride = !string.IsNullOrEmpty(evt.RecurringEventId);
 
@@ -599,9 +597,8 @@ public class GoogleCalendarProvider(
         string calendarId,
         string title,
         ModelExtensions extensions,
-        Instant startTime,
-        Instant endTime,
-        string? rawEventData = null,
+        LocalDateTime startTime,
+        LocalDateTime endTime,
         CancellationToken cancellationToken = default)
     {
         var googleCredentials = credentialManager.GetGoogleCredentials(accountId);
@@ -618,26 +615,28 @@ public class GoogleCalendarProvider(
         };
 
         var isFullDay = extensions.Get(CalendarEventExtensions.FullDay);
-        if (isFullDay == true)
+        if (isFullDay)
         {
             googleEvent.Start = new EventDateTime
             {
-                Date = startTime.ToDateTimeUtc().ToString("yyyy-MM-dd")
+                Date = LocalDatePattern.Iso.Format(startTime.Date)
             };
             googleEvent.End = new EventDateTime
             {
-                Date = endTime.ToDateTimeUtc().ToString("yyyy-MM-dd")
+                Date = LocalDatePattern.Iso.Format(endTime.Date)
             };
         }
         else
         {
             googleEvent.Start = new EventDateTime
             {
-                DateTimeRaw = Iso8601Pattern.Format(startTime)
+                DateTimeDateTimeOffset = startTime.ToDateTimeUnspecified(),
+                TimeZone = TimeZoneInfo.Local.Id
             };
             googleEvent.End = new EventDateTime
             {
-                DateTimeRaw = Iso8601Pattern.Format(endTime)
+                DateTimeDateTimeOffset = endTime.ToDateTimeUnspecified(),
+                TimeZone = TimeZoneInfo.Local.Id
             };
         }
 
@@ -655,7 +654,8 @@ public class GoogleCalendarProvider(
         if (location != null)
             googleEvent.Location = location;
 
-        var externalId = await googleCalendarService.CreateEventAsync(service, calendarId, googleEvent, cancellationToken);
+        var externalId =
+            await googleCalendarService.CreateEventAsync(service, calendarId, googleEvent, cancellationToken);
 
         var rawData = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
 
@@ -664,54 +664,51 @@ public class GoogleCalendarProvider(
 
     /// <inheritdoc/>
     public async Task<string> UpdateEventAsync(
-        string accountId,
-        string calendarId,
-        string eventId,
-        string title,
-        ModelExtensions extensions,
-        Instant startTime,
-        Instant endTime,
-        string? rawEventData = null,
+        CalendarEvent calendarEvent,
         CancellationToken cancellationToken = default)
     {
+        var accountId = calendarEvent.Reference.Calendar.Account.Id.ToString();
         var googleCredentials = credentialManager.GetGoogleCredentials(accountId);
         if (googleCredentials == null)
         {
-            throw new InvalidOperationException($"No Google credentials found for account {accountId}");
+            throw new InvalidOperationException($"No Google credentials found for account {calendarEvent.Reference.Calendar.Account.Name}");
         }
 
         var service = await googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
 
-        var googleEvent = new Event
-        {
-            Summary = title
-        };
+        var googleEvent = calendarEvent.Extensions.Get(GoogleEventExtension) ??
+                          throw new InvalidOperationException("Event without data");
 
-        var isFullDay = extensions.Get(CalendarEventExtensions.FullDay);
-        if (isFullDay == true)
+        var startTime = calendarEvent.StartTime;
+        var endTime = calendarEvent.EndTime;
+
+        var isFullDay = calendarEvent.Extensions.Get(CalendarEventExtensions.FullDay);
+        if (isFullDay)
         {
             googleEvent.Start = new EventDateTime
             {
-                Date = startTime.ToDateTimeUtc().ToString("yyyy-MM-dd")
+                Date = LocalDatePattern.Iso.Format(startTime.Date)
             };
             googleEvent.End = new EventDateTime
             {
-                Date = endTime.ToDateTimeUtc().ToString("yyyy-MM-dd")
+                Date = LocalDatePattern.Iso.Format(endTime.Date)
             };
         }
         else
         {
             googleEvent.Start = new EventDateTime
             {
-                DateTimeRaw = Iso8601Pattern.Format(startTime)
+                DateTimeDateTimeOffset = startTime.ToDateTimeUnspecified(),
+                TimeZone = TimeZoneInfo.Local.Id
             };
             googleEvent.End = new EventDateTime
             {
-                DateTimeRaw = Iso8601Pattern.Format(endTime)
+                DateTimeDateTimeOffset = endTime.ToDateTimeUnspecified(),
+                TimeZone = TimeZoneInfo.Local.Id
             };
         }
 
-        var description = extensions.Get(CalendarEventExtensions.Description) switch
+        var description = calendarEvent.Extensions.Get(CalendarEventExtensions.Description) switch
         {
             RichText.HTML html => html.value,
             RichText.SimpleText st => st.value,
@@ -721,9 +718,12 @@ public class GoogleCalendarProvider(
         if (description != null)
             googleEvent.Description = description;
 
-        var location = extensions.Get(CalendarEventExtensions.Location);
+        var location = calendarEvent.Extensions.Get(CalendarEventExtensions.Location);
         if (location != null)
             googleEvent.Location = location;
+
+        var calendarId = calendarEvent.Reference.Calendar.ExternalId ?? throw new InvalidOperationException("Calendar ExternalId is null");
+        var eventId = calendarEvent.Reference.ExternalId ?? throw new InvalidOperationException("Event ExternalId is null");
 
         await googleCalendarService.UpdateEventAsync(service, calendarId, eventId, googleEvent, cancellationToken);
 

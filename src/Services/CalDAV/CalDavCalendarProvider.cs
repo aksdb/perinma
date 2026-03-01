@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
 using NodaTime;
 using NodaTime.Extensions;
@@ -24,6 +23,8 @@ public class CalDavCalendarProvider(
     CredentialManagerService credentialManager)
     : ICalendarProvider
 {
+    private static ModelExtension<ICalEvent> ICalEventExtension = new();
+    
     /// <inheritdoc/>
     public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange) =>
         rawEvents
@@ -76,6 +77,8 @@ public class CalDavCalendarProvider(
         var localEndTime = endTime.ToLocalDateTime();
         
         var extensions = new ModelExtensions();
+        extensions.Set(ICalEventExtension, evt);
+        // TODO we might need the full calendar as well
         if (evt.Start?.HasTime == false)
         {
             extensions.Set(CalendarEventExtensions.FullDay, true);
@@ -449,9 +452,8 @@ public class CalDavCalendarProvider(
         string calendarId,
         string title,
         ModelExtensions extensions,
-        Instant startTime,
-        Instant endTime,
-        string? rawEventData = null,
+        LocalDateTime startTime,
+        LocalDateTime endTime,
         CancellationToken cancellationToken = default)
     {
         var calDavCredentials = credentialManager.GetCalDavCredentials(accountId);
@@ -469,23 +471,21 @@ public class CalDavCalendarProvider(
 
         var location = extensions.Get(CalendarEventExtensions.Location);
 
-        var calendar = new Ical.Net.Calendar();
+        var calendar = new Calendar();
         var isFullDay = extensions.Get(CalendarEventExtensions.FullDay);
 
-        var calendarEvent = new Ical.Net.CalendarComponents.CalendarEvent
+        var calendarEvent = new ICalEvent
         {
             Summary = title,
             Description = description,
             Location = location,
-            Start = new CalDateTime(startTime.ToDateTimeUtc().Date, !isFullDay),
-            End = new CalDateTime(endTime.ToDateTimeUtc().Date, !isFullDay),
+            Start = new CalDateTime(startTime.ToDateTimeUnspecified(), !isFullDay),
+            End = new CalDateTime(endTime.ToDateTimeUnspecified(), !isFullDay),
             Uid = Guid.NewGuid().ToString()
         };
 
-        if (!isFullDay && ShouldAddTimezone(startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc()))
-        {
-            calendar.AddTimeZone(TimeZoneInfo.Local.Id);
-        }
+        // TODO honor the timezone extension when available? Might have to convert the localtime then first.
+        calendar.AddTimeZone(TimeZoneInfo.Local.Id);
 
         calendar.Events.Add(calendarEvent);
 
@@ -504,59 +504,52 @@ public class CalDavCalendarProvider(
 
     /// <inheritdoc/>
     public async Task<string> UpdateEventAsync(
-        string accountId,
-        string calendarId,
-        string eventId,
-        string title,
-        ModelExtensions extensions,
-        Instant startTime,
-        Instant endTime,
-        string? rawEventData = null,
+        CalendarEvent calendarEvent,
         CancellationToken cancellationToken = default)
     {
-        var calDavCredentials = credentialManager.GetCalDavCredentials(accountId);
+        // TODO this isn't as easy as it first looked like. We need to consider recurring
+        //   events and that we might be editing just a single occurrence. This also means
+        //   that we have to attach the original calendar, which can already contain multiple
+        //   events that override individual occurrences and we either have to pick the
+        //   right one or add a new one (and set an exclusion rule to the base event).
+        
+        var calDavCredentials = credentialManager.GetCalDavCredentials(calendarEvent.Reference.Calendar.Account.Id.ToString());
         if (calDavCredentials == null)
         {
-            throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
+            throw new InvalidOperationException($"No CalDAV credentials found for account {calendarEvent.Reference.Calendar.Account.Name}");
         }
 
-        var description = extensions.Get(CalendarEventExtensions.Description) switch
+        var description = calendarEvent.Extensions.Get(CalendarEventExtensions.Description) switch
         {
             RichText.HTML html => html.value,
             RichText.SimpleText st => st.value,
             _ => null
         };
 
-        var location = extensions.Get(CalendarEventExtensions.Location);
+        var location = calendarEvent.Extensions.Get(CalendarEventExtensions.Location);
 
-        var calendar = Ical.Net.Calendar.Load(rawEventData ?? string.Empty);
-        var calendarEvent = calendar?.Events.FirstOrDefault();
+        var iCalEvent = calendarEvent.Extensions.Get(ICalEventExtension) ?? throw new InvalidOperationException("Not a CalDAV calendar event");
+        var isFullDay = calendarEvent.Extensions.Get(CalendarEventExtensions.FullDay);
 
-        if (calendarEvent == null)
-        {
-            throw new InvalidOperationException("Could not parse event from iCalendar data");
-        }
+        var startTime = calendarEvent.StartTime;
+        var endTime = calendarEvent.EndTime;
 
-        var isFullDay = extensions.Get(CalendarEventExtensions.FullDay);
+        iCalEvent.Summary = calendarEvent.Title;
+        iCalEvent.Description = description;
+        iCalEvent.Location = location;
+        iCalEvent.Start = new CalDateTime(startTime.ToDateTimeUnspecified(), !isFullDay);
+        iCalEvent.End = new CalDateTime(endTime.ToDateTimeUnspecified(), !isFullDay);
 
-        calendarEvent.Summary = title;
-        calendarEvent.Description = description;
-        calendarEvent.Location = location;
-        calendarEvent.Start = new CalDateTime(startTime.ToDateTimeUtc().Date, !isFullDay);
-        calendarEvent.End = new CalDateTime(endTime.ToDateTimeUtc().Date, !isFullDay);
-
-        if (!isFullDay && ShouldAddTimezone(startTime.ToDateTimeUtc(), endTime.ToDateTimeUtc()))
-        {
-            if (calendar != null && !calendar.TimeZones.Select(vtz => vtz.TzId).Contains(TimeZoneInfo.Local.Id))
-            {
-                calendar.AddTimeZone(TimeZoneInfo.Local.Id);
-            }
-        }
+        // TODO see above: that's too simple and might lose information
+        // TODO possibly honor timezone extension; see above as well
+        var calendar =  new Calendar();
+        calendar.AddTimeZone(TimeZoneInfo.Local.Id);
+        calendar.Events.Add(iCalEvent);
 
         await calDavService.UpdateEventAsync(
             calDavCredentials,
-            eventId,
-            calendar!,
+            calendarEvent.Reference.ExternalId!,
+            calendar,
             cancellationToken);
 
         var serializer = new CalendarSerializer();
