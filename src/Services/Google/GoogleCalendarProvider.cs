@@ -139,8 +139,8 @@ public class GoogleCalendarProvider(
                 }).ToList());
 
         var selfAttendee = googleEvent.Attendees?.FirstOrDefault(a => a.Self == true);
-        var canRespond = selfAttendee != null && !(selfAttendee.Organizer ?? false);
-        if (canRespond)
+        var canRespond = selfAttendee is { ResponseStatus: not null } && !(selfAttendee.Organizer ?? false);
+        if (canRespond && selfAttendee != null)
         {
             var responseStatus = MapResponseStatus(selfAttendee.ResponseStatus ?? "needsAction");
             var accountId = reference.Calendar.Account.Id.ToString();

@@ -217,7 +217,6 @@ public partial class CalendarWeekView : UserControl
         private Point _dragStart;
         private int _dragStartDay;
         private int _dragStartSlot;
-        private bool _dragStarted;
         private Rectangle? _dragRectangle;
         private const double DragThreshold = 3.0; // Minimum pixels to move before it's considered a drag
 
@@ -233,15 +232,14 @@ public partial class CalendarWeekView : UserControl
         protected override void OnPointerPressed(PointerPressedEventArgs e)
         {
             // Only handle for drag creation if left-click
-            if (e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
+            if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
                 return;
 
             // If already dragging, don't reset
             if (_isDragging)
                 return;
 
-            // Let's event bubble through to EventItems
-            // We'll track drag creation in OnPointerMoved/Released
+            _dragStart = e.GetPosition(_canvas);
         }
 
         protected override void OnPointerMoved(PointerEventArgs e)
@@ -281,7 +279,6 @@ public partial class CalendarWeekView : UserControl
             if (distance > DragThreshold)
             {
                 _isDragging = true;
-                _dragStarted = true;
                 _dragStartDay = dragDayColumn;
                 _dragStartSlot = dragSlot;
                 CreateDragRectangle(_dragStartDay, _dragStartSlot, _dragStartDay, _dragStartSlot);

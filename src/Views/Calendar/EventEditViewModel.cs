@@ -177,7 +177,7 @@ public partial class EventEditViewModel : ViewModelBase
         if (IsSaving)
             return;
 
-        if (_titleField == null || string.IsNullOrWhiteSpace(_titleField.Title))
+        if (_titleField == null || _timeRangeField == null || string.IsNullOrWhiteSpace(_titleField.Title))
         {
             ErrorMessage = "Please enter a title";
             return;
