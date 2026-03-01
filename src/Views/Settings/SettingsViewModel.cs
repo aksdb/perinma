@@ -47,7 +47,7 @@ public partial class SettingsViewModel : ObservableRecipient,
         // Define available settings pages
         Pages = new List<SettingsPage>
         {
-            new SettingsPage { Name = "General", ViewModel = new GeneralSettingsViewModel() },
+            new SettingsPage { Name = "General", ViewModel = new GeneralSettingsViewModel(settingsService) },
             new SettingsPage { Name = "Calendar", ViewModel = new CalendarSettingsViewModel(settingsService) },
             new SettingsPage { Name = "Accounts", ViewModel = new AccountListViewModel(_storage, credentialManager, oauthService, calDavService, cardDavService, syncService, parentWindow) }
         };

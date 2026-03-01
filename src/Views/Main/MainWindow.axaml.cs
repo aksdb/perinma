@@ -47,6 +47,7 @@ public partial class MainWindow : Window
                 : 250;
             await viewModel.SaveWindowSettingsAsync(Position.X, Position.Y, (int)Width, (int)Height, sidebarWidth);
             await viewModel.SaveViewStateAsync();
+            viewModel.Cleanup();
         }
     }
 

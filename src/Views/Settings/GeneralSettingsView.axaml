@@ -7,11 +7,25 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="perinma.Views.Settings.GeneralSettingsView">
 
-    <StackPanel Margin="20">
-        <TextBlock Text="General Settings" FontSize="24" FontWeight="Bold" Margin="0,0,0,20" />
+    <StackPanel Margin="20" Spacing="20">
+        <TextBlock Text="General Settings" FontSize="24" FontWeight="Bold" />
 
-        <!-- Add general settings controls here -->
-        <TextBlock Text="General settings will go here" />
+        <!-- Auto Sync Interval -->
+        <StackPanel Spacing="10">
+            <TextBlock Text="Auto Sync" FontSize="16" FontWeight="SemiBold" />
+            <TextBlock Text="Automatically sync your calendars and contacts at regular intervals" 
+                       Foreground="Gray" FontSize="12" />
+            
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
+                <NumericUpDown Value="{Binding AutoSyncInterval}" 
+                              Minimum="1" 
+                              Maximum="60" 
+                              Increment="1"
+                              FormatString="0"
+                              Width="100" />
+                <TextBlock Text="minutes" VerticalAlignment="Center" />
+            </StackPanel>
+        </StackPanel>
     </StackPanel>
 
 </UserControl>

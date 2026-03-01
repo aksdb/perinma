@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -49,6 +50,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private readonly SettingsService _settingsService;
     private readonly SqliteStorage _storage;
     private DebugWindow? _debugWindow;
+    private System.Threading.Timer? _autoSyncTimer;
 
     [ObservableProperty]
     private bool _isSyncing;
@@ -526,6 +528,45 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
         // Load and restore last view state
         await LoadViewStateAsync();
+
+        // Start auto sync timer
+        StartAutoSyncTimer();
+    }
+
+    private async void StartAutoSyncTimer()
+    {
+        try
+        {
+            var intervalMinutes = await _settingsService.GetAutoSyncIntervalAsync();
+            var intervalMs = intervalMinutes * 60 * 1000;
+
+            _autoSyncTimer = new System.Threading.Timer(
+                _ => 
+                {
+                    if (!IsSyncing)
+                    {
+                        Dispatcher.UIThread.InvokeAsync(async () => 
+                        {
+                            try
+                            {
+                                Console.WriteLine("Auto sync triggered");
+                                await Sync(CancellationToken.None);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Auto sync failed: {ex.Message}");
+                            }
+                        });
+                    }
+                },
+                null,
+                intervalMs,
+                intervalMs);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to start auto sync timer: {ex.Message}");
+        }
     }
 
     private async Task LoadViewStateAsync()
@@ -603,6 +644,11 @@ public partial class MainWindowViewModel : ObservableRecipient,
         var height = await _settingsService.GetMainWindowHeightAsync();
         var sidebarWidth = await _settingsService.GetSidebarWidthAsync();
         return (x, y, width, height, sidebarWidth);
+    }
+
+    public void Cleanup()
+    {
+        _autoSyncTimer?.Dispose();
     }
 
     #endregion

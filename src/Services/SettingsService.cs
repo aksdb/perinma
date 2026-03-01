@@ -26,6 +26,7 @@ public class SettingsService(SqliteStorage storage)
         public const string LastActiveView = "mainWindow.view.lastActive";
         public const string LastCalendarViewMode = "mainWindow.view.lastCalendarViewMode";
         public const string LastCalendarDayColumns = "mainWindow.view.lastCalendarDayColumns";
+        public const string AutoSyncInterval = "sync.autoSyncIntervalMinutes";
     }
 
     // Default values
@@ -48,6 +49,7 @@ public class SettingsService(SqliteStorage storage)
         public const string LastActiveView = "calendar";
         public const string LastCalendarViewMode = "Week";
         public const int LastCalendarDayColumns = 7;
+        public const int AutoSyncInterval = 5;
     }
 
     // Generic accessors
@@ -124,4 +126,8 @@ public class SettingsService(SqliteStorage storage)
 
     public Task<int> GetLastCalendarDayColumnsAsync() => GetIntAsync(Keys.LastCalendarDayColumns, Defaults.LastCalendarDayColumns);
     public Task SetLastCalendarDayColumnsAsync(int value) => SetIntAsync(Keys.LastCalendarDayColumns, value);
+
+    // Sync settings accessors
+    public Task<int> GetAutoSyncIntervalAsync() => GetIntAsync(Keys.AutoSyncInterval, Defaults.AutoSyncInterval);
+    public Task SetAutoSyncIntervalAsync(int value) => SetIntAsync(Keys.AutoSyncInterval, value);
 }
