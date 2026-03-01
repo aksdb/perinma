@@ -479,8 +479,8 @@ public class CalDavCalendarProvider(
             Summary = title,
             Description = description,
             Location = location,
-            Start = new CalDateTime(startTime.ToDateTimeUnspecified(), !isFullDay),
-            End = new CalDateTime(endTime.ToDateTimeUnspecified(), !isFullDay),
+            Start = new CalDateTime(startTime.ToZonedDateTime().ToDateTimeUtc(), !isFullDay),
+            End = new CalDateTime(endTime.ToZonedDateTime().ToDateTimeUtc(), !isFullDay),
             Uid = Guid.NewGuid().ToString()
         };
 
@@ -537,8 +537,8 @@ public class CalDavCalendarProvider(
         iCalEvent.Summary = calendarEvent.Title;
         iCalEvent.Description = description;
         iCalEvent.Location = location;
-        iCalEvent.Start = new CalDateTime(startTime.ToDateTimeUnspecified(), !isFullDay);
-        iCalEvent.End = new CalDateTime(endTime.ToDateTimeUnspecified(), !isFullDay);
+        iCalEvent.Start = new CalDateTime(startTime.ToZonedDateTime().ToDateTimeUtc(), !isFullDay);
+        iCalEvent.End = new CalDateTime(endTime.ToZonedDateTime().ToDateTimeUtc(), !isFullDay);
 
         // TODO see above: that's too simple and might lose information
         // TODO possibly honor timezone extension; see above as well
@@ -591,11 +591,6 @@ public class CalDavCalendarProvider(
             calDavCredentials,
             eventUrl,
             cancellationToken);
-    }
-
-    private static bool ShouldAddTimezone(DateTime startTime, DateTime endTime)
-    {
-        return startTime.Kind == DateTimeKind.Local || endTime.Kind == DateTimeKind.Local;
     }
 
     private static string TrimTrailingSlash(string url)

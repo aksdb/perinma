@@ -630,12 +630,12 @@ public class GoogleCalendarProvider(
         {
             googleEvent.Start = new EventDateTime
             {
-                DateTimeDateTimeOffset = startTime.ToDateTimeUnspecified(),
+                DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(startTime.ToZonedDateTime().ToOffsetDateTime()),
                 TimeZone = TimeZoneInfo.Local.Id
             };
             googleEvent.End = new EventDateTime
             {
-                DateTimeDateTimeOffset = endTime.ToDateTimeUnspecified(),
+                DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(endTime.ToZonedDateTime().ToOffsetDateTime()),
                 TimeZone = TimeZoneInfo.Local.Id
             };
         }
@@ -698,12 +698,12 @@ public class GoogleCalendarProvider(
         {
             googleEvent.Start = new EventDateTime
             {
-                DateTimeDateTimeOffset = startTime.ToDateTimeUnspecified(),
+                DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(startTime.ToZonedDateTime().ToOffsetDateTime()),
                 TimeZone = TimeZoneInfo.Local.Id
             };
             googleEvent.End = new EventDateTime
             {
-                DateTimeDateTimeOffset = endTime.ToDateTimeUnspecified(),
+                DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(endTime.ToZonedDateTime().ToOffsetDateTime()),
                 TimeZone = TimeZoneInfo.Local.Id
             };
         }
