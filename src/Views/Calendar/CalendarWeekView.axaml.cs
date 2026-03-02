@@ -3,12 +3,14 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Timers;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Threading;
+using perinma.Models;
 using perinma.Services;
 using perinma.Views.MessageBox;
 
@@ -23,7 +25,7 @@ public partial class CalendarWeekView : UserControl
     private CalendarWeekViewModel? _viewModel;
     private ScrollViewer? _centerView;
     private bool _hasScrolledToWorkingHours;
-    
+
     public CalendarWeekView()
     {
         InitializeComponent();
@@ -38,7 +40,7 @@ public partial class CalendarWeekView : UserControl
 
         var timeRowContainer = this.FindControl<ScrollViewer>("TimeRows")!;
         timeRowContainer.Content = _timeRowGrid;
-        _timeRowGrid.ColumnDefinitions.Add(new ColumnDefinition(1.0,  GridUnitType.Star));
+        _timeRowGrid.ColumnDefinitions.Add(new ColumnDefinition(1.0, GridUnitType.Star));
         _timeRowGrid.SetValue(Grid.IsSharedSizeScopeProperty, true);
 
         RowDefinition NewRow()
@@ -68,6 +70,7 @@ public partial class CalendarWeekView : UserControl
             _timeRowGrid.Children.Add(timeElement2);
             timeElement2.SetValue(Grid.RowProperty, _timeRowGrid.RowDefinitions.Count - 1);
         }
+
         _timeRowGrid.RowDefinitions.Add(new RowDefinition(1.0, GridUnitType.Star));
 
         _centerView = this.FindControl<ScrollViewer>("CenterView")!;
@@ -76,14 +79,14 @@ public partial class CalendarWeekView : UserControl
         var topView = this.FindControl<ScrollViewer>("TopView")!;
         topView.Content = _topBarView;
         topView.MaxHeight = _topBarView.RowHeight * 3;
-        
+
         _mainView.EventDoubleTapped += OnEventDoubleTapped;
         _mainView.SettingsService = _viewModel.SettingsService;
         _mainView.ViewModel = _viewModel;
         _mainView.SettingsLoaded += OnSettingsLoaded;
         _topBarView.SetEvents(_viewModel.FullDayEvents);
         _topBarView.EventDoubleTapped += OnEventDoubleTapped;
-        
+
         _mainView.SetEvents(_viewModel.Events);
 
         _viewModel.PropertyChanged += (sender, args) =>
@@ -115,27 +118,27 @@ public partial class CalendarWeekView : UserControl
     private void TryScrollToWorkingHours()
     {
         if (_hasScrolledToWorkingHours || _centerView == null || _mainView.RowHeight <= 0) return;
-        
+
         // Check if content is actually laid out
         if (_mainView.Height <= 0)
         {
             return;
         }
-        
+
         _hasScrolledToWorkingHours = true;
-        
+
         // Scroll to show working hours at the top, with one hour of context above
         var slotsToShow = Math.Max(0, _mainView.WorkingHoursStartSlot - 4); // 4 slots = 1 hour before
         var scrollOffset = slotsToShow * _mainView.RowHeight;
-        
+
         // Defer the scroll to next layout pass to ensure content is ready
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        Dispatcher.UIThread.Post(() =>
         {
             if (_centerView != null)
             {
                 _centerView.Offset = new Vector(0, scrollOffset);
             }
-        }, Avalonia.Threading.DispatcherPriority.Render);
+        }, DispatcherPriority.Render);
     }
 
     private void OnSettingsLoaded(object? sender, EventArgs e)
@@ -154,7 +157,7 @@ public partial class CalendarWeekView : UserControl
         TryScrollToWorkingHours();
     }
 
-    private void OnEventDoubleTapped(object? sender, Models.CalendarEvent? calendarEvent)
+    private void OnEventDoubleTapped(object? sender, CalendarEvent? calendarEvent)
     {
         if (_viewModel == null || calendarEvent == null) return;
 
@@ -196,21 +199,28 @@ public partial class CalendarWeekView : UserControl
         // Cached working hours settings
         private bool[] _workingDays = [false, true, true, true, true, true, false]; // Sun-Sat, default Mon-Fri
         public int WorkingHoursStartSlot { get; private set; } = 9 * 4; // 09:00 = slot 36
-        private int _workingHoursEndSlot = 17 * 4;  // 17:00 = slot 68
+        private int _workingHoursEndSlot = 17 * 4; // 17:00 = slot 68
 
-        public event EventHandler<Models.CalendarEvent?>? EventDoubleTapped;
+        // Cached theme-aware brushes
+        private IBrush _gridLineBrush = Brushes.LightGray;
+        private IBrush _gridLineThickBrush = Brushes.LightGray;
+        private IBrush _nonWorkingHourBrush = new SolidColorBrush(Color.FromArgb(20, 0, 0, 0));
+
+        public event EventHandler<CalendarEvent?>? EventDoubleTapped;
         public event EventHandler? SettingsLoaded;
 
         private readonly Canvas _canvas = new()
         {
             Background = Brushes.Transparent
         };
+
         private readonly Canvas _overlayCanvas = new()
         {
             IsHitTestVisible = false
         };
+
         private readonly Grid _contentGrid = new();
-        private System.Timers.Timer? _currentTimeUpdateTimer;
+        private Timer? _currentTimeUpdateTimer;
 
         // Drag and drop state
         private bool _isDragging;
@@ -227,6 +237,30 @@ public partial class CalendarWeekView : UserControl
             _contentGrid.Children.Add(_overlayCanvas);
             Content = _contentGrid;
             StartCurrentTimeTimer();
+            ActualThemeVariantChanged += OnThemeVariantChanged;
+            UpdateThemeBrushes();
+        }
+
+        private void OnThemeVariantChanged(object? sender, EventArgs e)
+        {
+            UpdateThemeBrushes();
+            InvalidateVisual();
+        }
+
+        private void UpdateThemeBrushes()
+        {
+            if (TryGetResource("SystemChromeLowColor", null, out var lineColorObj)
+                && lineColorObj is Color lineColor)
+            {
+                _gridLineBrush = new SolidColorBrush(lineColor);
+                _gridLineThickBrush = new SolidColorBrush(lineColor);
+            }
+
+            if (TryGetResource("SystemBaseLowColor", null, out var bgColorObj)
+                && bgColorObj is Color bgColor)
+            {
+                _nonWorkingHourBrush = new SolidColorBrush(Color.FromArgb(20, bgColor.R, bgColor.G, bgColor.B));
+            }
         }
 
         protected override void OnPointerPressed(PointerPressedEventArgs e)
@@ -309,7 +343,7 @@ public partial class CalendarWeekView : UserControl
 
             if (ViewModel != null)
             {
-                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     ViewModel.CreateNewEventInternal(startTime, endTime);
                 });
@@ -318,10 +352,10 @@ public partial class CalendarWeekView : UserControl
 
         private void StartCurrentTimeTimer()
         {
-            _currentTimeUpdateTimer = new System.Timers.Timer(60000); // Update every minute
+            _currentTimeUpdateTimer = new Timer(60000); // Update every minute
             _currentTimeUpdateTimer.Elapsed += (sender, e) =>
             {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                Dispatcher.UIThread.Post(() =>
                 {
                     _currentTimeIndicator.Update(WeekStart, DayColumns, RowHeight);
                 });
@@ -332,6 +366,7 @@ public partial class CalendarWeekView : UserControl
         protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
         {
             base.OnDetachedFromVisualTree(e);
+            ActualThemeVariantChanged -= OnThemeVariantChanged;
             _currentTimeUpdateTimer?.Stop();
             _currentTimeUpdateTimer?.Dispose();
         }
@@ -361,12 +396,14 @@ public partial class CalendarWeekView : UserControl
         }
 
         private ObservableCollection<EventItem>? _items;
+
         public void SetEvents(ObservableCollection<EventItem> items)
         {
             if (_items != null)
             {
                 _items.CollectionChanged -= ItemsOnCollectionChanged;
             }
+
             _items = items;
             _items.CollectionChanged += ItemsOnCollectionChanged;
             RebuildFromItems();
@@ -387,6 +424,7 @@ public partial class CalendarWeekView : UserControl
                 vm.EventDoubleTapped -= EventDoubleTapped;
                 vm.EventDoubleTapped += EventDoubleTapped;
             }
+
             RefreshContent();
         }
 
@@ -500,7 +538,7 @@ public partial class CalendarWeekView : UserControl
                 hours = 0;
                 minutes = 0;
             }
-            
+
             return new DateTime(date.Year, date.Month, date.Day, hours, minutes, 0, DateTimeKind.Local);
         }
 
@@ -513,8 +551,6 @@ public partial class CalendarWeekView : UserControl
             var columnWidth = width / DayColumns;
 
             // Draw non-working area backgrounds
-            var nonWorkingBrush = new SolidColorBrush(Color.FromArgb(20, 0, 0, 0)); // Semi-transparent dark overlay
-
             for (var dayIndex = 0; dayIndex < DayColumns; dayIndex++)
             {
                 var dayDate = WeekStart.AddDays(dayIndex);
@@ -526,7 +562,7 @@ public partial class CalendarWeekView : UserControl
                 if (!isWorkingDay)
                 {
                     // Entire day is non-working
-                    context.FillRectangle(nonWorkingBrush, new Rect(left, 0, columnWidth, height));
+                    context.FillRectangle(_nonWorkingHourBrush, new Rect(left, 0, columnWidth, height));
                 }
                 else
                 {
@@ -534,28 +570,32 @@ public partial class CalendarWeekView : UserControl
                     if (WorkingHoursStartSlot > 0)
                     {
                         var beforeHeight = WorkingHoursStartSlot * RowHeight;
-                        context.FillRectangle(nonWorkingBrush, new Rect(left, 0, columnWidth, beforeHeight));
+                        context.FillRectangle(_nonWorkingHourBrush, new Rect(left, 0, columnWidth, beforeHeight));
                     }
 
                     if (_workingHoursEndSlot < 24 * 4)
                     {
                         var afterTop = _workingHoursEndSlot * RowHeight;
                         var afterHeight = height - afterTop;
-                        context.FillRectangle(nonWorkingBrush, new Rect(left, afterTop, columnWidth, afterHeight));
+                        context.FillRectangle(_nonWorkingHourBrush, new Rect(left, afterTop, columnWidth, afterHeight));
                     }
                 }
             }
 
             // Draw grid lines
-            var thinPen = new Pen(Brushes.LightGray, 1);
-            var thickPen = new Pen(Brushes.LightGray, 2);
+            var thinPen = new Pen(_gridLineBrush, 1);
+            var thickPen = new Pen(_gridLineThickBrush, 2);
 
             for (var i = 0; i < 24; i++)
             {
-                context.DrawLine(thinPen, new Point(0, (i*4+1)*RowHeight), new Point(width, (i*4+1)*RowHeight));
-                context.DrawLine(thinPen, new Point(0, (i*4+2)*RowHeight), new Point(width, (i*4+2)*RowHeight));
-                context.DrawLine(thinPen, new Point(0, (i*4+3)*RowHeight), new Point(width, (i*4+3)*RowHeight));
-                context.DrawLine(thickPen, new Point(0, (i*4+4)*RowHeight), new Point(width, (i*4+4)*RowHeight));
+                context.DrawLine(thinPen, new Point(0, (i * 4 + 1) * RowHeight),
+                    new Point(width, (i * 4 + 1) * RowHeight));
+                context.DrawLine(thinPen, new Point(0, (i * 4 + 2) * RowHeight),
+                    new Point(width, (i * 4 + 2) * RowHeight));
+                context.DrawLine(thinPen, new Point(0, (i * 4 + 3) * RowHeight),
+                    new Point(width, (i * 4 + 3) * RowHeight));
+                context.DrawLine(thickPen, new Point(0, (i * 4 + 4) * RowHeight),
+                    new Point(width, (i * 4 + 4) * RowHeight));
             }
 
             for (var i = 1; i < DayColumns; i++)
@@ -623,7 +663,8 @@ public partial class CalendarWeekView : UserControl
                 context.DrawLine(new Pen(glowBrush, 6), new Point(leftX, yPosition), new Point(rightX, yPosition));
 
                 // Draw main line
-                context.DrawLine(new Pen(indicatorBrush, 2.5), new Point(leftX, yPosition), new Point(rightX, yPosition));
+                context.DrawLine(new Pen(indicatorBrush, 2.5), new Point(leftX, yPosition),
+                    new Point(rightX, yPosition));
 
                 // Draw left indicator circle
                 const double circleRadius = 4;
@@ -645,20 +686,46 @@ public partial class CalendarWeekView : UserControl
         public double RowHeight = 24; // height for each full-day event row
 
         private readonly Canvas _canvas = new();
-        public event EventHandler<Models.CalendarEvent?>? EventDoubleTapped;
+        private IBrush _gridLineBrush = Brushes.LightGray;
+        public event EventHandler<CalendarEvent?>? EventDoubleTapped;
 
         public TopBarView()
         {
             Content = _canvas;
+            ActualThemeVariantChanged += OnThemeVariantChanged;
+            UpdateThemeBrushes();
+        }
+
+        protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            base.OnDetachedFromVisualTree(e);
+            ActualThemeVariantChanged -= OnThemeVariantChanged;
+        }
+
+        private void OnThemeVariantChanged(object? sender, EventArgs e)
+        {
+            UpdateThemeBrushes();
+            InvalidateVisual();
+        }
+
+        private void UpdateThemeBrushes()
+        {
+            if (TryGetResource("SystemChromeLowColor", null, out var colorObj)
+                && colorObj is Color color)
+            {
+                _gridLineBrush = new SolidColorBrush(color);
+            }
         }
 
         private ObservableCollection<EventItem>? _items;
+
         public void SetEvents(ObservableCollection<EventItem> items)
         {
             if (_items != null)
             {
                 _items.CollectionChanged -= ItemsOnCollectionChanged;
             }
+
             _items = items;
             _items.CollectionChanged += ItemsOnCollectionChanged;
             RebuildFromItems();
@@ -680,10 +747,11 @@ public partial class CalendarWeekView : UserControl
                 vm.EventDoubleTapped -= OnEventItemDoubleTapped;
                 vm.EventDoubleTapped += OnEventItemDoubleTapped;
             }
+
             RefreshContent();
         }
 
-        private void OnEventItemDoubleTapped(object? sender, Models.CalendarEvent? calendarEvent)
+        private void OnEventItemDoubleTapped(object? sender, CalendarEvent? calendarEvent)
         {
             EventDoubleTapped?.Invoke(sender, calendarEvent);
         }
@@ -722,7 +790,7 @@ public partial class CalendarWeekView : UserControl
         {
             base.Render(context);
 
-            var thickPen = new Pen(Brushes.LightGray, 2);
+            var thickPen = new Pen(_gridLineBrush, 2);
             var height = Bounds.Height;
             var width = Bounds.Width;
             var columnWidth = width / Math.Max(1, DayColumns);

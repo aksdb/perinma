@@ -2,12 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Threading.Tasks;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NodaTime.Extensions;
 using perinma.Messaging;
@@ -21,8 +19,7 @@ namespace perinma.Views.Calendar;
 
 public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<EventsChangedMessage>
 {
-    [ObservableProperty]
-    private CalendarEvent? _selectedEvent;
+    [ObservableProperty] private CalendarEvent? _selectedEvent;
 
     public ObservableCollection<EventItem> Events { get; } = [];
 
@@ -34,15 +31,7 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
     [NotifyPropertyChangedFor(nameof(DateRangeDisplay))]
     private DateTime _viewStart;
 
-
-
-    public string DateRangeDisplay
-    {
-        get
-        {
-            return FormatDateRange(ViewStart, ViewStart.AddDays(DayColumns - 1));
-        }
-    }
+    public string DateRangeDisplay => FormatDateRange(ViewStart, ViewStart.AddDays(DayColumns - 1));
 
     private static string FormatDateRange(DateTime start, DateTime end)
     {
@@ -78,11 +67,9 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         set => ViewStartOffset = value;
     }
 
-    [ObservableProperty]
-    private int _dayColumns;
+    [ObservableProperty] private int _dayColumns;
 
-    [ObservableProperty]
-    private List<WeekDayHeaderViewModel> _weekDayHeaders = [];
+    [ObservableProperty] private List<WeekDayHeaderViewModel> _weekDayHeaders = [];
 
     public CalendarWeekViewModel(
         ICalendarSource calendarSource,
@@ -93,7 +80,6 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         ViewStart = DateTime.Now;
         WeakReferenceMessenger.Default.Register<EventsChangedMessage>(this);
     }
-
 
 
     partial void OnViewStartChanged(DateTime value)
@@ -171,7 +157,7 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
             endTime = endTime?.Date.AddDays(-1);
             isFullDay = true;
         }
-        
+
         var editor = new EventEditView
         {
             DataContext = new EventEditViewModel(
@@ -205,7 +191,7 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         var start = ViewStart.ToLocalDateTime();
         var end = start.PlusDays(DayColumns);
         var interval = new Interval(start.ToInstant(), end.ToInstant());
-        
+
         var tieBreaker = 0;
 
         // Build items
@@ -264,7 +250,7 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
 
                     // Detect all-day events: modeled as midnight-to-midnight spans
                     var isFullDay = e.Extensions.Get(CalendarEventExtensions.FullDay);
-                    
+
                     // Determine if this event needs a response (not yet accepted, tentative, or declined)
                     var needsResponse = e.ResponseStatus is EventResponseStatus.NeedsAction
                         or EventResponseStatus.Tentative or EventResponseStatus.Declined;
@@ -419,12 +405,10 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
 
 public partial class WeekDayHeaderViewModel : ObservableObject
 {
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(EffectiveDate))]
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(EffectiveDate))]
     private DateTime _referenceDate;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(EffectiveDate))]
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(EffectiveDate))]
     private int _offset;
 
     public DateTime EffectiveDate => ReferenceDate.AddDays(Offset);

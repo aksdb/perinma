@@ -8,8 +8,27 @@
              x:Class="perinma.Views.Calendar.CalendarWeekView">
 
     <UserControl.Resources>
-        <x:Double x:Key="CalendarTimeHourFontSize">12</x:Double>
-        <x:Double x:Key="CalendarTimeMinuteFontSize">9</x:Double>
+        <ResourceDictionary>
+            <x:Double x:Key="CalendarTimeHourFontSize">12</x:Double>
+            <x:Double x:Key="CalendarTimeMinuteFontSize">9</x:Double>
+
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <LinearGradientBrush x:Key="HeaderDropShadow" StartPoint="50%,0%" EndPoint="50%,100%">
+                        <GradientStop Color="White" Offset="0" />
+                        <GradientStop Color="DarkGray" Offset="0.2" />
+                        <GradientStop Color="White" Offset="1" />
+                    </LinearGradientBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <LinearGradientBrush x:Key="HeaderDropShadow" StartPoint="50%,0%" EndPoint="50%,100%">
+                        <GradientStop Color="#2B2B2B" Offset="0" />
+                        <GradientStop Color="#1A1A1A" Offset="0.2" />
+                        <GradientStop Color="#2B2B2B" Offset="1" />
+                    </LinearGradientBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -32,69 +51,73 @@
             </Setter>
         </Style>
 
-         <!-- Template for EventChip templated control -->
-         <Style Selector="cal|EventItem">
-             <Setter Property="Template">
-                 <ControlTemplate>
-                     <Grid>
-                         <!-- Dashed border rectangle (only visible when needsResponse class is present) -->
-                         <Rectangle Name="DashedBorder"
-                                    RadiusX="10" RadiusY="10"
-                                    StrokeThickness="2"
-                                    Stroke="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                                    StrokeDashArray="4,2" />
+        <!-- Template for EventChip templated control -->
+        <Style Selector="cal|EventItem">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid>
+                        <!-- Dashed border rectangle (only visible when needsResponse class is present) -->
+                        <Rectangle Name="DashedBorder"
+                                   RadiusX="10" RadiusY="10"
+                                   StrokeThickness="2"
+                                   Stroke="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                                   StrokeDashArray="4,2" />
 
-                          <Border Name="Border"
-                                  CornerRadius="10"
-                                  Background="{Binding BackgroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                                  Margin="1"
-                                  Bounds="{Binding AvailableBounds, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}">
-                              <Border.ContextMenu>
-                                  <ContextMenu>
-                                      <MenuItem Header="Edit" Command="{ReflectionBinding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}"/>
-                                      <MenuItem Header="Delete" Command="{ReflectionBinding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}"/>
-                                  </ContextMenu>
-                              </Border.ContextMenu>
-                               <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">
-                                  <TextBlock Name="TitleTextBlock"
-                                             Text="{Binding Title, RelativeSource={RelativeSource TemplatedParent}}"
-                                             FontWeight="Bold"
-                                             TextTrimming="CharacterEllipsis"
-                                             FontSize="{DynamicResource CalendarTimeHourFontSize}"
-                                             Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
+                        <Border Name="Border"
+                                CornerRadius="10"
+                                Background="{Binding BackgroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                                Margin="1"
+                                Bounds="{Binding AvailableBounds, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}">
+                            <Border.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Edit"
+                                              Command="{ReflectionBinding $parent[UserControl].DataContext.EditEventCommand}"
+                                              CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}" />
+                                    <MenuItem Header="Delete"
+                                              Command="{ReflectionBinding $parent[UserControl].DataContext.DeleteEventCommand}"
+                                              CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}" />
+                                </ContextMenu>
+                            </Border.ContextMenu>
+                            <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">
+                                <TextBlock Name="TitleTextBlock"
+                                           Text="{Binding Title, RelativeSource={RelativeSource TemplatedParent}}"
+                                           FontWeight="Bold"
+                                           TextTrimming="CharacterEllipsis"
+                                           FontSize="{DynamicResource CalendarTimeHourFontSize}"
+                                           Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
 
-                                 <!-- Inline variant: single line with emoji and range -->
-                                 <TextBlock
-                                     IsVisible="{Binding ShowInlineTimes, RelativeSource={RelativeSource TemplatedParent}}"
-                                     Text="{Binding InlineTimeText, RelativeSource={RelativeSource TemplatedParent}}"
-                                     FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
-                                     Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                                     TextTrimming="None" />
+                                <!-- Inline variant: single line with emoji and range -->
+                                <TextBlock
+                                    IsVisible="{Binding ShowInlineTimes, RelativeSource={RelativeSource TemplatedParent}}"
+                                    Text="{Binding InlineTimeText, RelativeSource={RelativeSource TemplatedParent}}"
+                                    FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
+                                    Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                                    TextTrimming="None" />
 
-                                 <!-- Stacked variant: start and end on separate lines -->
-                                 <StackPanel Orientation="Vertical"
-                                             IsVisible="{Binding ShowStackedTimes, RelativeSource={RelativeSource TemplatedParent}}"
-                                             Spacing="0">
-                                     <TextBlock
-                                         Text="{Binding StartTimeText, RelativeSource={RelativeSource TemplatedParent}}"
-                                         FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
-                                         Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
-                                     <TextBlock
-                                         Text="{Binding EndTimeText, RelativeSource={RelativeSource TemplatedParent}}"
-                                         FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
-                                         Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
-                                 </StackPanel>
-                             </StackPanel>
-                             <FlyoutBase.AttachedFlyout>
-                                 <Flyout Placement="Right">
-                                     <ContentControl Name="EventFlyoutContent" />
-                                 </Flyout>
-                             </FlyoutBase.AttachedFlyout>
-                         </Border>
-                     </Grid>
-                 </ControlTemplate>
-             </Setter>
-         </Style>
+                                <!-- Stacked variant: start and end on separate lines -->
+                                <StackPanel Orientation="Vertical"
+                                            IsVisible="{Binding ShowStackedTimes, RelativeSource={RelativeSource TemplatedParent}}"
+                                            Spacing="0">
+                                    <TextBlock
+                                        Text="{Binding StartTimeText, RelativeSource={RelativeSource TemplatedParent}}"
+                                        FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
+                                        Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
+                                    <TextBlock
+                                        Text="{Binding EndTimeText, RelativeSource={RelativeSource TemplatedParent}}"
+                                        FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
+                                        Foreground="{Binding ForegroundBrush, RelativeSource={RelativeSource TemplatedParent}}" />
+                                </StackPanel>
+                            </StackPanel>
+                            <FlyoutBase.AttachedFlyout>
+                                <Flyout Placement="Right">
+                                    <ContentControl Name="EventFlyoutContent" />
+                                </Flyout>
+                            </FlyoutBase.AttachedFlyout>
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
 
         <!-- Style to show dashed border for events needing response (pending or declined) -->
         <Style Selector="cal|EventItem.needsResponse /template/ Rectangle#DashedBorder">
@@ -118,24 +141,24 @@
                    Foreground="Gray"
                    VerticalAlignment="Center"
                    Text="All-day"
-                   Margin="4, 0, 4, 0"/>
+                   Margin="4, 0, 4, 0" />
         <StackPanel Grid.Column="1" Grid.Row="0">
             <!-- Weekday headers -->
             <!--<Grid Name="WeekdayNames" />-->
             <ItemsControl ItemsSource="{Binding WeekDayHeaders}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <UniformGrid Columns="{Binding WeekDayHeaders.Count}"/>
+                        <UniformGrid Columns="{Binding WeekDayHeaders.Count}" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0, 0, 0, 8">
-                            <TextBlock 
+                            <TextBlock
                                 Text="{Binding EffectiveDate.Day}"
                                 Margin="0, 0, 4, 0"
-                                FontWeight="Bold"/>
-                            <TextBlock Text="{Binding EffectiveDate.DayOfWeek}"/>
+                                FontWeight="Bold" />
+                            <TextBlock Text="{Binding EffectiveDate.DayOfWeek}" />
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -144,15 +167,8 @@
                           MinHeight="0"
                           VerticalScrollBarVisibility="Auto">
             </ScrollViewer>
-            <Border Height="10" CornerRadius="0, 0, 10, 10">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
-                        <GradientStop Color="White" Offset="0" />
-                        <GradientStop Color="DarkGray" Offset="0.2" />
-                        <GradientStop Color="White" Offset="1" />
-                    </LinearGradientBrush>
-                </Border.Background>
-            </Border>
+            <Border Height="10" CornerRadius="0, 0, 10, 10"
+                    Background="{DynamicResource HeaderDropShadow}" />
         </StackPanel>
         <ScrollViewer Name="TimeRows" Grid.Column="0" Grid.Row="1"
                       VerticalScrollBarVisibility="Hidden"
