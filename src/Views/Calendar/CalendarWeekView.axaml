@@ -19,6 +19,8 @@
                         <GradientStop Color="DarkGray" Offset="0.2" />
                         <GradientStop Color="White" Offset="1" />
                     </LinearGradientBrush>
+                    <SolidColorBrush x:Key="NonWorkingHourBrush" Color="#20000000" />
+                    <SolidColorBrush x:Key="GridLineColor" Color="#FFD3D3D3" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <LinearGradientBrush x:Key="HeaderDropShadow" StartPoint="50%,0%" EndPoint="50%,100%">
@@ -26,6 +28,8 @@
                         <GradientStop Color="#1A1A1A" Offset="0.2" />
                         <GradientStop Color="#2B2B2B" Offset="1" />
                     </LinearGradientBrush>
+                    <SolidColorBrush x:Key="NonWorkingHourBrush" Color="#90CCCCCC" />
+                    <SolidColorBrush x:Key="GridLineColor" Color="#FF404040" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>

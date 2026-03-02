@@ -9,6 +9,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using perinma.Models;
 using perinma.Services;
@@ -20,8 +21,8 @@ public partial class CalendarWeekView : UserControl
 {
     private readonly Grid _timeRowGrid;
     private readonly Grid _weekdayNamesGrid;
-    private readonly MainView _mainView = new();
-    private readonly TopBarView _topBarView = new();
+    private MainView _mainView;
+    private TopBarView _topBarView;
     private CalendarWeekViewModel? _viewModel;
     private ScrollViewer? _centerView;
     private bool _hasScrolledToWorkingHours;
@@ -31,6 +32,7 @@ public partial class CalendarWeekView : UserControl
         InitializeComponent();
         _weekdayNamesGrid = this.FindControl<Grid>("WeekdayNames")!;
         _timeRowGrid = new Grid();
+        _mainView = new MainView(this);
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -77,6 +79,7 @@ public partial class CalendarWeekView : UserControl
         _centerView.Content = _mainView;
 
         var topView = this.FindControl<ScrollViewer>("TopView")!;
+        _topBarView = new TopBarView(this);
         topView.Content = _topBarView;
         topView.MaxHeight = _topBarView.RowHeight * 3;
 
@@ -190,6 +193,7 @@ public partial class CalendarWeekView : UserControl
 
     private class MainView : ContentControl
     {
+        private readonly CalendarWeekView _parent;
         public int DayColumns = 5;
         public double RowHeight = 0;
         public DateTime WeekStart;
@@ -230,8 +234,9 @@ public partial class CalendarWeekView : UserControl
         private Rectangle? _dragRectangle;
         private const double DragThreshold = 3.0; // Minimum pixels to move before it's considered a drag
 
-        public MainView()
+        public MainView(CalendarWeekView parent)
         {
+            _parent = parent;
             _contentGrid.Children.Add(_canvas);
             _overlayCanvas.Children.Add(_currentTimeIndicator);
             _contentGrid.Children.Add(_overlayCanvas);
@@ -249,17 +254,17 @@ public partial class CalendarWeekView : UserControl
 
         private void UpdateThemeBrushes()
         {
-            if (TryGetResource("SystemChromeLowColor", null, out var lineColorObj)
-                && lineColorObj is Color lineColor)
+            if (_parent.TryGetResource("GridLineColor", ActualThemeVariant, out var lineColorObj)
+                && lineColorObj is IBrush lineBrush)
             {
-                _gridLineBrush = new SolidColorBrush(lineColor);
-                _gridLineThickBrush = new SolidColorBrush(lineColor);
+                _gridLineBrush = lineBrush;
+                _gridLineThickBrush = lineBrush;
             }
 
-            if (TryGetResource("SystemBaseLowColor", null, out var bgColorObj)
-                && bgColorObj is Color bgColor)
+            if (_parent.TryGetResource("NonWorkingHourBrush", ActualThemeVariant, out var brushObj)
+                && brushObj is IBrush brush)
             {
-                _nonWorkingHourBrush = new SolidColorBrush(Color.FromArgb(20, bgColor.R, bgColor.G, bgColor.B));
+                _nonWorkingHourBrush = brush;
             }
         }
 
@@ -682,6 +687,7 @@ public partial class CalendarWeekView : UserControl
 
     private class TopBarView : ContentControl
     {
+        private readonly CalendarWeekView _parent;
         public int DayColumns = 5;
         public double RowHeight = 24; // height for each full-day event row
 
@@ -689,8 +695,9 @@ public partial class CalendarWeekView : UserControl
         private IBrush _gridLineBrush = Brushes.LightGray;
         public event EventHandler<CalendarEvent?>? EventDoubleTapped;
 
-        public TopBarView()
+        public TopBarView(CalendarWeekView parent)
         {
+            _parent = parent;
             Content = _canvas;
             ActualThemeVariantChanged += OnThemeVariantChanged;
             UpdateThemeBrushes();
@@ -710,7 +717,7 @@ public partial class CalendarWeekView : UserControl
 
         private void UpdateThemeBrushes()
         {
-            if (TryGetResource("SystemChromeLowColor", null, out var colorObj)
+            if (_parent.TryGetResource("SystemChromeLowColor", ActualThemeVariant, out var colorObj)
                 && colorObj is Color color)
             {
                 _gridLineBrush = new SolidColorBrush(color);
