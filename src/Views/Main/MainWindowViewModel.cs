@@ -314,6 +314,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
         IsLightTheme = false;
         IsDarkTheme = true;
     }
+
+    public Task SaveThemeAsync() => _themeService.SaveThemeAsync();
     #endregion
 
     #region Sync
@@ -525,6 +527,11 @@ public partial class MainWindowViewModel : ObservableRecipient,
     {
         // Enable message registration
         IsActive = true;
+
+        // Load and restore theme
+        await _themeService.LoadThemeAsync();
+        IsLightTheme = _themeService.IsLightTheme;
+        IsDarkTheme = _themeService.IsDarkTheme;
 
         // Load and restore last view state
         await LoadViewStateAsync();

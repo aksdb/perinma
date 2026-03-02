@@ -27,6 +27,7 @@ public class SettingsService(SqliteStorage storage)
         public const string LastCalendarViewMode = "mainWindow.view.lastCalendarViewMode";
         public const string LastCalendarDayColumns = "mainWindow.view.lastCalendarDayColumns";
         public const string AutoSyncInterval = "sync.autoSyncIntervalMinutes";
+        public const string Theme = "appearance.theme";
     }
 
     // Default values
@@ -50,6 +51,7 @@ public class SettingsService(SqliteStorage storage)
         public const string LastCalendarViewMode = "Week";
         public const int LastCalendarDayColumns = 7;
         public const int AutoSyncInterval = 5;
+        public const string Theme = "Light";
     }
 
     // Generic accessors
@@ -130,4 +132,8 @@ public class SettingsService(SqliteStorage storage)
     // Sync settings accessors
     public Task<int> GetAutoSyncIntervalAsync() => GetIntAsync(Keys.AutoSyncInterval, Defaults.AutoSyncInterval);
     public Task SetAutoSyncIntervalAsync(int value) => SetIntAsync(Keys.AutoSyncInterval, value);
+
+    // Theme accessors
+    public Task<string> GetThemeAsync() => GetAsync(Keys.Theme, Defaults.Theme);
+    public Task SetThemeAsync(string value) => SetAsync(Keys.Theme, value);
 }
