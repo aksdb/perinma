@@ -1,0 +1,69 @@
+steps:
+  build-all:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    environment:
+      GOOGLE_CLIENT_ID:
+        from_secret: GOOGLE_CLIENT_ID
+      GOOGLE_CLIENT_SECRET:
+        from_secret: GOOGLE_CLIENT_SECRET
+    commands:
+      - apt-get update && apt-get install -y --no-install-recommends wget file fuse zip curl
+      - wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/local/bin/appimagetool
+      - chmod +x /usr/local/bin/appimagetool
+      - curl https://mise.jdx.dev/install.sh | sh
+      - export PATH="$HOME/.local/bin:$PATH"
+      - mise install
+      - mise prepare-secrets
+      
+      - echo "Building Linux x64..."
+      - dotnet publish -r linux-x64 -c Release --self-contained true -p:PublishTrimmed=true -p:TrimMode=partial -o publish/linux-x64
+      - cd publish/linux-x64
+      - chmod +x perinma
+      - |
+        cat > perinma.desktop <<EOF
+        [Desktop Entry]
+        Type=Application
+        Name=Perinma
+        Exec=perinma
+        Icon=perinma
+        Categories=Utility;
+        EOF
+      - wget -q https://raw.githubusercontent.com/AvaloniaUI/Avalonia/main/src/Avalonia.Skia/Assets/avalonia-logo.png -O perinma.png || echo "Icon download failed"
+      - /usr/local/bin/appimagetool --appimage-extract-and-run . ../../perinma-${CI_COMMIT_TAG}-linux-x64.AppImage
+      - cd ../..
+      
+      - echo "Building Windows x64..."
+      - dotnet publish -r win-x64 -c Release --self-contained true -p:PublishTrimmed=true -p:TrimMode=partial -o publish/windows-x64
+      - cd publish/windows-x64
+      - zip -r ../../perinma-${CI_COMMIT_TAG}-windows-x64.zip .
+      - cd ../..
+      
+      - echo "Building macOS x64..."
+      - dotnet publish -r osx-x64 -c Release --self-contained true -p:PublishTrimmed=true -p:TrimMode=partial -o publish/osx-x64
+      - cd publish/osx-x64
+      - zip -r ../../perinma-${CI_COMMIT_TAG}-osx-x64.zip .
+      - cd ../..
+      
+      - echo "Building macOS ARM64..."
+      - dotnet publish -r osx-arm64 -c Release --self-contained true -p:PublishTrimmed=true -p:TrimMode=partial -o publish/osx-arm64
+      - cd publish/osx-arm64
+      - zip -r ../../perinma-${CI_COMMIT_TAG}-osx-arm64.zip .
+      - cd ../..
+    when:
+      - event: tag
+        ref: refs/tags/v*
+
+  release:
+    image: plugins/github-release
+    settings:
+      api_key:
+        from_secret: github_token
+      files:
+        - perinma-${CI_COMMIT_TAG}-linux-x64.AppImage
+        - perinma-${CI_COMMIT_TAG}-windows-x64.zip
+        - perinma-${CI_COMMIT_TAG}-osx-x64.zip
+        - perinma-${CI_COMMIT_TAG}-osx-arm64.zip
+      title: Release ${CI_COMMIT_TAG}
+    when:
+      - event: tag
+        ref: refs/tags/v*
