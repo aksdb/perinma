@@ -1,4 +1,20 @@
 steps:
+  test:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    environment:
+      GOOGLE_CLIENT_ID: dummy_client_id
+      GOOGLE_CLIENT_SECRET: dummy_client_secret
+    commands:
+      - curl https://mise.jdx.dev/install.sh | sh
+      - export PATH="$HOME/.local/bin:$PATH"
+      - mise install
+      - mise prepare-secrets
+      - dotnet test
+    when:
+      - event: push
+        branch: main
+      - event: pull_request
+
   build-all:
     image: mcr.microsoft.com/dotnet/sdk:10.0
     environment:
