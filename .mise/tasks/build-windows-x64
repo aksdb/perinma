@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#MISE description="Build and package for Windows x64 with ZIP archive"
+
+set -e
+
+# Configuration
+APP_NAME="perinma"
+APP_VERSION="${APP_VERSION:-0.1.0}"
+RID="win-x64"
+OUTPUT_DIR="build/$RID"
+
+# Clean previous builds
+rm -rf "$OUTPUT_DIR"
+mkdir -p "$OUTPUT_DIR"
+
+# Publish .NET application
+echo "Publishing .NET application for Windows x64..."
+dotnet publish src/perinma.csproj \
+  -c Release \
+  -r "$RID" \
+  -o "$OUTPUT_DIR"
+
+# Create ZIP archive
+echo "Creating ZIP archive..."
+cd "$OUTPUT_DIR"
+zip -r "${APP_NAME}-${APP_VERSION}-${RID}.zip" *
+cd -
+
+echo "✓ Distribution archive created: $OUTPUT_DIR/${APP_NAME}-${APP_VERSION}-${RID}.zip"

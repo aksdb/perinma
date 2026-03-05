@@ -6,7 +6,7 @@ set -e
 
 # Configuration
 APP_NAME="perinma"
-APP_VERSION="0.1.0"
+APP_VERSION="${APP_VERSION:-0.1.0}"
 RID="linux-x64"
 OUTPUT_DIR="build/AppImage"
 
