@@ -97,7 +97,7 @@ fi
 
 # Step 9: Build AppImage (appimagetool is now available in PATH via mise)
 echo "Building AppImage..."
-VERSION="$APP_VERSION" ARCH="x86_64" appimagetool.AppImage "$APPDIR" "$OUTPUT_DIR/${APP_NAME}-${APP_VERSION}-${RID}.AppImage"
+VERSION="$APP_VERSION" ARCH="x86_64" appimagetool.AppImage --appimage-extract-and-run "$APPDIR" "$OUTPUT_DIR/${APP_NAME}-${APP_VERSION}-${RID}.AppImage"
 
 # Step 10: Set executable
 chmod +x "$OUTPUT_DIR/${APP_NAME}-${APP_VERSION}-${RID}.AppImage"
