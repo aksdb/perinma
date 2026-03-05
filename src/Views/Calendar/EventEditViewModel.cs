@@ -284,6 +284,8 @@ public partial class EventEditViewModel : ViewModelBase
 
                 WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
 
+                _onCompleted(eventId);
+                
                 RequestClose?.Invoke(this, EventArgs.Empty);
             }
             else

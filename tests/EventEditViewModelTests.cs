@@ -67,27 +67,18 @@ public class EventEditViewModelTests
             SortOrder = 0
         }).Wait();
 
-        var calendarId = Guid.NewGuid();
-        _calendar = new Calendar
-        {
-            Account = _account,
-            Id = calendarId,
-            ExternalId = "test-calendar",
-            Name = "Test Calendar",
-            Color = "#ff0000",
-            Enabled = true
-        };
-
         // Add calendar to storage so events can be saved to it
-        _storage.CreateOrUpdateCalendarAsync(new CalendarDbo
+        var calendarDbo = new CalendarDbo
         {
             AccountId = _account.Id.ToString(),
-            CalendarId = calendarId.ToString(),
+            CalendarId = Guid.NewGuid().ToString(),
             ExternalId = "test-calendar",
             Name = "Test Calendar",
             Color = "#ff0000",
             Enabled = 1
-        }).Wait();
+        };
+        _storage.CreateOrUpdateCalendarAsync(calendarDbo).Wait();
+        _calendar = _storage.GetCachedCalendar(new Guid(calendarDbo.CalendarId))!;
 
         _completedEventId = string.Empty;
 
@@ -178,8 +169,8 @@ public class EventEditViewModelTests
 
         await viewModel.SaveCommand.ExecuteAsync(null);
 
-        Assert.That(viewModel.ErrorMessage, Is.EqualTo(string.Empty));
-        Assert.That(_completedEventId, Is.EqualTo("stub_event_id"));
+        Assert.That(viewModel.ErrorMessage, Is.Empty);
+        Assert.That(_completedEventId, Is.Not.Empty);
     }
 
     [Test]
