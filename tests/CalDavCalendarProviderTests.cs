@@ -286,7 +286,7 @@ public class CalDavCalendarProviderTests
         Assert.That(result.Events, Has.Count.EqualTo(1));
         Assert.Multiple(() =>
         {
-            Assert.That(result.Events[0].ExternalId, Is.EqualTo("event-uid-1"));
+            Assert.That(result.Events[0].ExternalId, Is.EqualTo("https://caldav.example.com/calendars/work/event1.ics"));
             Assert.That(result.Events[0].Title, Is.EqualTo("Team Meeting"));
             Assert.That(result.Events[0].StartTime!.Value.ToDateTimeUtc(), Is.EqualTo(start.ToDateTimeUtc()));
             Assert.That(result.Events[0].EndTime!.Value.ToDateTimeUtc(), Is.EqualTo(end.ToDateTimeUtc()));
