@@ -7,6 +7,8 @@
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <NoWarn>AVLN3001</NoWarn>
+        <Product>perinma</Product>
+        <Company>perinma</Company>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -20,6 +22,9 @@
 
     <ItemGroup>
         <EmbeddedResource Include="Storage\Migrations\*.sql" />
+        <EmbeddedResource Include="..\LICENSE">
+            <Link>LICENSE.txt</Link>
+        </EmbeddedResource>
     </ItemGroup>
 
     <ItemGroup>

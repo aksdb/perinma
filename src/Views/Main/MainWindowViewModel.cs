@@ -273,6 +273,26 @@ public partial class MainWindowViewModel : ObservableRecipient,
     }
     #endregion
 
+    #region About
+    private AboutDialogWindow? _aboutWindow;
+
+    [RelayCommand]
+    private void ShowAbout()
+    {
+        if (_aboutWindow != null)
+        {
+            _aboutWindow.Activate();
+            return;
+        }
+
+        var viewModel = new AboutDialogViewModel();
+        _aboutWindow = new AboutDialogWindow();
+        _aboutWindow.SetViewModel(viewModel);
+        _aboutWindow.Closed += (_, _) => _aboutWindow = null;
+        _aboutWindow.Show();
+    }
+    #endregion
+
     #region Debug
     [RelayCommand]
     private void ShowDebugWindow()

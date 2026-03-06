@@ -1,0 +1,21 @@
+<Project>
+  <Target Name="GetGitVersion" BeforeTargets="GenerateAssemblyInfo">
+    <Exec Command="git describe --tags --always &gt; $(MSBuildProjectDirectory)/.version.tmp 2&gt;/dev/null || echo 0.0.0-local &gt; $(MSBuildProjectDirectory)/.version.tmp"
+          IgnoreExitCode="true"
+          ContinueOnError="true" />
+    <ReadLinesFromFile File="$(MSBuildProjectDirectory)/.version.tmp">
+      <Output TaskParameter="Lines" ItemName="GitVersionOutput" />
+    </ReadLinesFromFile>
+    <Delete Files="$(MSBuildProjectDirectory)/.version.tmp" ContinueOnError="true" />
+    <PropertyGroup>
+      <GitVersion>@(GitVersionOutput)</GitVersion>
+      <Version Condition="'$(GitVersion)' != ''">$(GitVersion)</Version>
+      <Version Condition="'$(GitVersion)' == ''">0.0.0-local</Version>
+      <AssemblyVersion Condition="'$(GitVersion)' != ''">$(GitVersion.Replace('v', '').Split('-')[0])</AssemblyVersion>
+      <FileVersion Condition="'$(GitVersion)' != ''">$(GitVersion.Replace('v', ''))</FileVersion>
+      <InformationalVersion Condition="'$(GitVersion)' != ''">$(GitVersion)</InformationalVersion>
+    </PropertyGroup>
+    <Message Text="Build Version: $(Version)" Importance="high" />
+    <Message Text="Assembly Version: $(AssemblyVersion), File Version: $(FileVersion), Informational Version: $(InformationalVersion)" Importance="high" />
+  </Target>
+</Project>

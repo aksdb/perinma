@@ -58,6 +58,9 @@
                 <MenuItem Header="_Tools">
                     <MenuItem Header="_Debug" Command="{Binding ShowDebugWindowCommand}"/>
                 </MenuItem>
+                <MenuItem Header="_Help">
+                    <MenuItem Header="_About" Command="{Binding ShowAboutCommand}"/>
+                </MenuItem>
             </Menu>
 
             <!-- View Switcher Buttons -->
