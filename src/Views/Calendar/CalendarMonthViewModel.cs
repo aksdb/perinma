@@ -56,37 +56,7 @@ public partial class CalendarMonthViewModel : CalendarViewModelBase, IRecipient<
         Load();
     }
 
-    [RelayCommand]
-    private void CreateNewEvent()
-    {
-        var onCompleted = new Action<string>(async (errorMessage) =>
-        {
-            if (!string.IsNullOrEmpty(errorMessage))
-            {
-                await MessageBoxWindow.ShowAsync(
-                    null,
-                    "Error",
-                    errorMessage,
-                    MessageBoxType.Error,
-                    MessageBoxButtons.Ok);
-            }
-            else
-            {
-                Load();
-            }
-        });
-
-        var editor = new EventEditView
-        {
-            DataContext = new EventEditViewModel(
-                null,
-                null,
-                onCompleted)
-        };
-        editor.Show();
-    }
-
-    public void Load()
+    public override void Load()
     {
         MonthDays.Clear();
 

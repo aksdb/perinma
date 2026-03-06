@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -23,7 +24,7 @@ namespace perinma.Views.Calendar;
 public partial class EventEditViewModel : ViewModelBase
 {
     private readonly SqliteStorage _storage;
-    private readonly Action<string> _onCompleted;
+    private readonly Action<EventEditResult> _onCompleted;
     private readonly CalendarEvent? _existingEvent;
     private readonly CalendarModel? _calendar;
     private readonly string? _existingRawEventData;
@@ -88,7 +89,7 @@ public partial class EventEditViewModel : ViewModelBase
     public EventEditViewModel(
         CalendarEvent? existingEvent,
         CalendarModel? calendar,
-        Action<string> onCompleted,
+        Action<EventEditResult> onCompleted,
         DateTime? initialStartTime = null,
         DateTime? initialEndTime = null,
         bool isFullDay = false)
@@ -284,8 +285,8 @@ public partial class EventEditViewModel : ViewModelBase
 
                 WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
 
-                _onCompleted(eventId);
-                
+                _onCompleted(new EventEditResult.Success(eventId));
+
                 RequestClose?.Invoke(this, EventArgs.Empty);
             }
             else
@@ -295,8 +296,8 @@ public partial class EventEditViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Failed to save event: {ex.Message}";
             Console.WriteLine(ex);
+            _onCompleted(new EventEditResult.Error(ex));
         }
         finally
         {
@@ -307,7 +308,7 @@ public partial class EventEditViewModel : ViewModelBase
     [RelayCommand]
     private void Cancel()
     {
-        _onCompleted(string.Empty);
+        _onCompleted(new EventEditResult.Cancelled());
         RequestClose?.Invoke(this, EventArgs.Empty);
     }
 }

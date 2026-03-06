@@ -164,31 +164,7 @@ public partial class CalendarWeekView : UserControl
     {
         if (_viewModel == null || calendarEvent == null) return;
 
-        var onCompleted = new Action<string>(async (errorMessage) =>
-        {
-            if (!string.IsNullOrEmpty(errorMessage))
-            {
-                await MessageBoxWindow.ShowAsync(
-                    null,
-                    "Error",
-                    errorMessage,
-                    MessageBoxType.Error,
-                    MessageBoxButtons.Ok);
-            }
-            else
-            {
-                _viewModel.Load();
-            }
-        });
-
-        var editor = new EventEditView
-        {
-            DataContext = new EventEditViewModel(
-                calendarEvent,
-                calendarEvent.Reference.Calendar,
-                onCompleted)
-        };
-        editor.Show();
+        _viewModel.OpenEventEditor(calendarEvent);
     }
 
     private class MainView : ContentControl

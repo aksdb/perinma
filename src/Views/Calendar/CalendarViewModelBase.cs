@@ -34,10 +34,10 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task EditEventAsync(CalendarEvent? eventToEdit)
+    private void EditEventAsync(CalendarEvent? eventToEdit)
     {
         if (eventToEdit == null) return;
-        await OpenEventEditorAsync(eventToEdit);
+        OpenEventEditor(eventToEdit);
     }
 
     [RelayCommand]
@@ -73,7 +73,8 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
 
             if (!syncService.Providers.TryGetValue(eventToDelete.Reference.Calendar.Account.Type, out var provider))
             {
-                throw new InvalidOperationException($"No provider found for account type {eventToDelete.Reference.Calendar.Account.Type}");
+                throw new InvalidOperationException(
+                    $"No provider found for account type {eventToDelete.Reference.Calendar.Account.Type}");
             }
 
             await provider.DeleteEventAsync(accountId, calendarId, eventId);
@@ -87,23 +88,50 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
         }
     }
 
-    protected async Task OpenEventEditorAsync(CalendarEvent calendarEvent)
+    public void OpenEventEditor(CalendarEvent? existingEvent = null, 
+        DateTime? initialStartTime = null, 
+        DateTime? initialEndTime = null,
+        bool isFullDay = false)
     {
-        var onCompleted = new Action<string>(async (errorMessage) =>
+        var onCompleted = new Action<EventEditResult>(result =>
         {
-            if (!string.IsNullOrEmpty(errorMessage))
+            switch (result)
             {
-                Console.WriteLine($"Event edit failed: {errorMessage}");
+                case EventEditResult.Error error:
+                    Console.WriteLine($"Event saving failed: {error.Exception}");
+
+                    MessageBoxWindow.ShowAsync(
+                        null,
+                        "Error",
+                        $"Failed to save event: {error.Exception.Message}",
+                        MessageBoxType.Error,
+                        MessageBoxButtons.Ok).GetAwaiter().GetResult();
+                    break;
+                case EventEditResult.Success:
+                    Load();
+                    break;
             }
         });
 
         var editor = new EventEditView
         {
             DataContext = new EventEditViewModel(
-                calendarEvent,
-                calendarEvent.Reference.Calendar,
-                onCompleted)
+                existingEvent: existingEvent,
+                calendar: existingEvent?.Reference.Calendar,
+                onCompleted: onCompleted,
+                initialStartTime: initialStartTime,
+                initialEndTime: initialEndTime,
+                isFullDay: isFullDay
+            )
         };
         editor.Show();
     }
+    
+    [RelayCommand]
+    private void CreateNewEvent()
+    {
+        OpenEventEditor();
+    }
+
+    public abstract void Load();
 }

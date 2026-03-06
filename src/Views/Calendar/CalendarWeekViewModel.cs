@@ -19,7 +19,8 @@ namespace perinma.Views.Calendar;
 
 public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<EventsChangedMessage>
 {
-    [ObservableProperty] private CalendarEvent? _selectedEvent;
+    [ObservableProperty]
+    private CalendarEvent? _selectedEvent;
 
     public ObservableCollection<EventItem> Events { get; } = [];
 
@@ -67,9 +68,11 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         set => ViewStartOffset = value;
     }
 
-    [ObservableProperty] private int _dayColumns;
+    [ObservableProperty]
+    private int _dayColumns;
 
-    [ObservableProperty] private List<WeekDayHeaderViewModel> _weekDayHeaders = [];
+    [ObservableProperty]
+    private List<WeekDayHeaderViewModel> _weekDayHeaders = [];
 
     public CalendarWeekViewModel(
         ICalendarSource calendarSource,
@@ -126,31 +129,8 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         Load();
     }
 
-    [RelayCommand]
-    private void CreateNewEvent()
-    {
-        CreateNewEventInternal(null, null);
-    }
-
     public void CreateNewEventInternal(DateTime? startTime, DateTime? endTime)
     {
-        var onCompleted = new Action<string>(async (errorMessage) =>
-        {
-            if (!string.IsNullOrEmpty(errorMessage))
-            {
-                await MessageBoxWindow.ShowAsync(
-                    null,
-                    "Error",
-                    errorMessage,
-                    MessageBoxType.Error,
-                    MessageBoxButtons.Ok);
-            }
-            else
-            {
-                Load();
-            }
-        });
-
         var isFullDay = false;
         if (startTime?.Date != endTime?.Date)
         {
@@ -158,20 +138,14 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
             isFullDay = true;
         }
 
-        var editor = new EventEditView
-        {
-            DataContext = new EventEditViewModel(
-                null,
-                null,
-                onCompleted,
-                startTime,
-                endTime,
-                isFullDay)
-        };
-        editor.Show();
+        OpenEventEditor(
+            initialStartTime: startTime,
+            initialEndTime: endTime,
+            isFullDay: isFullDay
+        );
     }
 
-    public void Load()
+    public override void Load()
     {
         // Clear collections
         Events.Clear();
@@ -405,10 +379,12 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
 
 public partial class WeekDayHeaderViewModel : ObservableObject
 {
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(EffectiveDate))]
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EffectiveDate))]
     private DateTime _referenceDate;
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(EffectiveDate))]
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EffectiveDate))]
     private int _offset;
 
     public DateTime EffectiveDate => ReferenceDate.AddDays(Offset);

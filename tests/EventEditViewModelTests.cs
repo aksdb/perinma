@@ -27,7 +27,7 @@ public class EventEditViewModelTests
     private Dictionary<AccountType, ICalendarProvider> _providers = null!;
     private Account _account = null!;
     private Calendar _calendar = null!;
-    private string _completedEventId = string.Empty;
+    private EventEditResult? _completedResult = null;
 
     [SetUp]
     public void Setup()
@@ -79,8 +79,8 @@ public class EventEditViewModelTests
         };
         _storage.CreateOrUpdateCalendarAsync(calendarDbo).Wait();
         _calendar = _storage.GetCachedCalendar(new Guid(calendarDbo.CalendarId))!;
-
-        _completedEventId = string.Empty;
+ 
+        _completedResult = null;
 
         // Add mock Google credentials for the test account
         _credentialManager.StoreGoogleCredentials(accountId.ToString(), new GoogleCredentials
@@ -106,7 +106,7 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            id => _completedEventId = id);
+            result => _completedResult = result);
 
         Assert.That(viewModel.IsEditMode, Is.False);
         Assert.That(viewModel.WindowTitle, Is.EqualTo("New Event"));
@@ -137,13 +137,13 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            id => _completedEventId = id);
+            result => _completedResult = result);
 
         var task = viewModel.SaveCommand.ExecuteAsync(null);
         task.Wait();
 
         Assert.That(viewModel.ErrorMessage, Is.EqualTo("Please enter a title"));
-        Assert.That(_completedEventId, Is.Empty);
+        Assert.That(_completedResult, Is.Null);
     }
 
     [Test]
@@ -152,7 +152,7 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            id => _completedEventId = id);
+            result => _completedResult = result);
 
         var titleField = viewModel.EditFields.OfType<TitleEditViewModel>().First();
         titleField.Title = "New Meeting";
@@ -170,7 +170,8 @@ public class EventEditViewModelTests
         await viewModel.SaveCommand.ExecuteAsync(null);
 
         Assert.That(viewModel.ErrorMessage, Is.Empty);
-        Assert.That(_completedEventId, Is.Not.Empty);
+        Assert.That(_completedResult, Is.InstanceOf<EventEditResult.Success>());
+        Assert.That(((EventEditResult.Success)_completedResult!).EventId, Is.Not.Empty);
     }
 
     [Test]
@@ -179,7 +180,7 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            id => _completedEventId = id);
+            result => _completedResult = result);
 
         var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
         var originalDuration = timeRangeField.Duration;
@@ -197,7 +198,7 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            id => _completedEventId = id);
+            result => _completedResult = result);
 
         var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
         var startTime = timeRangeField.StartTime;
@@ -214,7 +215,7 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            id => _completedEventId = id);
+            result => _completedResult = result);
 
         var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
         var startTime = timeRangeField.StartTime;
@@ -232,7 +233,7 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            id => _completedEventId = id);
+            result => _completedResult = result);
 
         var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
         var startTime = timeRangeField.StartTime;
@@ -244,16 +245,16 @@ public class EventEditViewModelTests
     }
 
     [Test]
-    public void Cancel_InvokesOnCompletedWithEmptyString()
+    public void Cancel_InvokesOnCompletedWithCancelled()
     {
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            id => _completedEventId = id);
+            result => _completedResult = result);
 
         viewModel.CancelCommand.Execute(null);
 
-        Assert.That(_completedEventId, Is.Empty);
+        Assert.That(_completedResult, Is.InstanceOf<EventEditResult.Cancelled>());
     }
 
     [Test]
@@ -262,7 +263,7 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            id => _completedEventId = id);
+            result => _completedResult = result);
 
         var closeInvoked = false;
         viewModel.RequestClose += (s, e) => closeInvoked = true;
@@ -318,7 +319,7 @@ public class EventEditViewModelTests
         var viewModel = new EventEditViewModel(
             null,
             _calendar,
-            id => _completedEventId = id);
+            result => _completedResult = result);
 
         Assert.That(viewModel.EditFields.OfType<DescriptionEditViewModel>().FirstOrDefault(), Is.Not.Null, "Google provider should have Description");
         Assert.That(viewModel.EditFields.OfType<LocationEditViewModel>().FirstOrDefault(), Is.Not.Null, "Google provider should have Location");
