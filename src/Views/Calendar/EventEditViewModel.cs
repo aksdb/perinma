@@ -226,13 +226,28 @@ public partial class EventEditViewModel : ViewModelBase
 
             if (IsEditMode && _existingEvent != null && provider != null)
             {
+                var updatedExtensions = _existingEvent.Extensions;
+
+                updatedExtensions.Set(CalendarEventExtensions.FullDay, _timeRangeField.IsFullDay);
+
+                if (_descriptionField != null)
+                {
+                    var richText = _descriptionField.GetRichText();
+                    updatedExtensions.Set(CalendarEventExtensions.Description, richText);
+                }
+
+                if (_locationField != null)
+                {
+                    updatedExtensions.Set(CalendarEventExtensions.Location, string.IsNullOrWhiteSpace(_locationField.Location) ? null : _locationField.Location);
+                }
+
                 var updatedEvent = new CalendarEvent
                 {
                     Reference = _existingEvent.Reference,
                     StartTime = eventStartTime,
                     EndTime = eventEndTime,
                     Title = _titleField.Title,
-                    Extensions = extensions
+                    Extensions = updatedExtensions
                 };
 
                 var rawData = await provider.UpdateEventAsync(updatedEvent);
