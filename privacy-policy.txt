@@ -1,0 +1,8 @@
+Perinma is a desktop application developed by Andreas Schneider (support -at- aksdb.de).
+
+All information it stores is stored locally on the user's device. It does not transmit
+any data that is not actively configured and therefore implicitly approved by the user.
+All data is transmitted only between the application and the configured provider (Google
+and/or any number of CalDAV/CardDAV servers). No data is transmitted to any other
+parties or to the author themself. The data transmitted is also confined to the data
+necessary to fulfill the purpose of the application and provide its core functionality.
