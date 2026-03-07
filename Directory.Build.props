@@ -1,21 +1,34 @@
 <Project>
-  <Target Name="GetGitVersion" BeforeTargets="GenerateAssemblyInfo">
-    <Exec Command="git describe --tags --always &gt; $(MSBuildProjectDirectory)/.version.tmp 2&gt;/dev/null || echo 0.0.0-local &gt; $(MSBuildProjectDirectory)/.version.tmp"
-          IgnoreExitCode="true"
-          ContinueOnError="true" />
-    <ReadLinesFromFile File="$(MSBuildProjectDirectory)/.version.tmp">
-      <Output TaskParameter="Lines" ItemName="GitVersionOutput" />
-    </ReadLinesFromFile>
-    <Delete Files="$(MSBuildProjectDirectory)/.version.tmp" ContinueOnError="true" />
     <PropertyGroup>
-      <GitVersion>@(GitVersionOutput)</GitVersion>
-      <Version Condition="'$(GitVersion)' != ''">$(GitVersion)</Version>
-      <Version Condition="'$(GitVersion)' == ''">0.0.0-local</Version>
-      <AssemblyVersion Condition="'$(GitVersion)' != ''">$(GitVersion.Replace('v', '').Split('-')[0])</AssemblyVersion>
-      <FileVersion Condition="'$(GitVersion)' != ''">$(GitVersion.Replace('v', ''))</FileVersion>
-      <InformationalVersion Condition="'$(GitVersion)' != ''">$(GitVersion)</InformationalVersion>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     </PropertyGroup>
-    <Message Text="Build Version: $(Version)" Importance="high" />
-    <Message Text="Assembly Version: $(AssemblyVersion), File Version: $(FileVersion), Informational Version: $(InformationalVersion)" Importance="high" />
-  </Target>
+    
+    <Target Name="GetGitVersionAndGenerateAssemblyInfo" BeforeTargets="CoreCompile">
+        <PropertyGroup>
+            <GitCommand>git describe --tags --always</GitCommand>
+            <GitVersionFile>$(IntermediateOutputPath)gitversion.txt</GitVersionFile>
+        </PropertyGroup>
+        <Exec Command="$(GitCommand) > &quot;$(GitVersionFile)&quot;" IgnoreExitCode="true" />
+        <ReadLinesFromFile File="$(GitVersionFile)" >
+            <Output TaskParameter="Lines" ItemName="GitVersionOutputLines" />
+        </ReadLinesFromFile>
+        <PropertyGroup>
+            <GitVersionRaw>@(GitVersionOutputLines)</GitVersionRaw>
+            <GitVersionRaw Condition="'$(GitVersionRaw)' == ''">0.0.0-dev</GitVersionRaw>
+            <GitVersionClean>$(GitVersionRaw.Replace('v', ''))</GitVersionClean>
+            <NumericVersion>0.0.0</NumericVersion>
+            <NumericVersion Condition="$(GitVersionClean.Contains('-'))">$([System.Text.RegularExpressions.Regex]::Match($(GitVersionClean), '^(\d+\.\d+\.\d+)').Groups[1].Value)</NumericVersion>
+            <NumericVersion Condition="!$(GitVersionClean.Contains('-'))">$(GitVersionClean)</NumericVersion>
+            <AssemblyVersion>$(NumericVersion)</AssemblyVersion>
+            <FileVersion>$(GitVersionClean)</FileVersion>
+            <InformationalVersion>$(GitVersionRaw)</InformationalVersion>
+            <Version>$(NumericVersion)</Version>
+        </PropertyGroup>
+        <WriteLinesToFile File="$(IntermediateOutputPath)AssemblyInfo.GitVersion.cs" Lines="using System.Reflection%3B&#xD;&#xA;&#xD;&#xA;[assembly: AssemblyConfiguration(&quot;$(Configuration)&quot;)]&#xD;&#xA;[assembly: AssemblyCompany(&quot;$(Company)&quot;)]&#xD;&#xA;[assembly: AssemblyProduct(&quot;$(Product)&quot;)]&#xD;&#xA;[assembly: AssemblyVersion(&quot;$(AssemblyVersion)&quot;)]&#xD;&#xA;[assembly: AssemblyFileVersion(&quot;$(FileVersion)&quot;)]&#xD;&#xA;[assembly: AssemblyInformationalVersion(&quot;$(InformationalVersion)&quot;)]&#xD;&#xA;[assembly: AssemblyTitle(&quot;$(AssemblyTitle)&quot;)]" Overwrite="true" />
+        <ItemGroup>
+            <Compile Include="$(IntermediateOutputPath)AssemblyInfo.GitVersion.cs" />
+        </ItemGroup>
+        <Message Text="GitVersionRaw: $(GitVersionRaw)" Importance="high" />
+        <Message Text="AssemblyVersion: $(AssemblyVersion)" Importance="high" />
+    </Target>
 </Project>
