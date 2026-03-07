@@ -237,6 +237,28 @@ public static class TestDataHelpers
         return NewtonsoftJsonSerializer.Instance.Serialize(cal);
     }
 
+    /// <summary>
+    /// Creates a Google full-day event that spans multiple days.
+    /// Note: Google Calendar represents full-day events with Date fields instead of DateTime fields,
+    /// and End.Date is the day AFTER the event's last day.
+    /// </summary>
+    public static string CreateMultiDayFullDayEvent(
+        string id,
+        string summary,
+        DateTime startDate,
+        int daysSpan)
+    {
+        var evt = new Event
+        {
+            Id = id,
+            Summary = summary,
+            Status = "confirmed",
+            Start = new EventDateTime { Date = startDate.ToString("yyyy-MM-dd") },
+            End = new EventDateTime { Date = startDate.AddDays(daysSpan).ToString("yyyy-MM-dd") }
+        };
+        return NewtonsoftJsonSerializer.Instance.Serialize(evt);
+    }
+
     #endregion
 
     #region CalDAV/iCalendar Helpers

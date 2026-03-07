@@ -318,6 +318,121 @@ public class GoogleCalendarProviderTests
 
     #endregion
 
+    #region Full-Day Event Tests
+
+    [Test]
+    public void ParseCalendarEvents_MultiDayFullDayEvent_CalculatesCorrectEndTimes()
+    {
+        // Arrange - Create a 3-day full-day event (March 7-9, 2025)
+        // Google sends End.Date as day after the event's last day
+        var startDate = new DateTime(2025, 3, 7);
+        var eventData = TestDataHelpers.CreateMultiDayFullDayEvent(
+            "fullday1",
+            "Conference",
+            startDate,
+            daysSpan: 3 // Means March 7, 8, 9 (Google sends End.Date = "2025-03-10")
+        );
+
+        var timeRange = new Interval(
+            Instant.FromUtc(startDate.Year, startDate.Month, startDate.Day, 0, 0),
+            Instant.FromUtc(startDate.Year, startDate.Month, startDate.Day + 10, 0, 0)
+        );
+
+        var calendar = new perinma.Models.Calendar
+        {
+            Account = new Account { Id = Guid.NewGuid(), Name = "Test Account", Type = AccountType.Google },
+            Id = Guid.NewGuid(),
+            ExternalId = "cal1",
+            Name = "Test Calendar"
+        };
+
+        var rawEvent = new RawEvent
+        {
+            Reference = new EventReference
+            {
+                Calendar = calendar,
+                Id = Guid.NewGuid(),
+                ExternalId = "fullday1"
+            },
+            RawData = eventData
+        };
+
+        // Act
+        var calendarEvents = _provider.ParseCalendarEvents(
+            new List<RawEvent> { rawEvent },
+            timeRange
+        );
+
+        // Assert
+        Assert.That(calendarEvents, Has.Count.EqualTo(1));
+        var evt = calendarEvents[0];
+        using (Assert.EnterMultipleScope())
+        {
+            // Event should be marked as full-day
+            Assert.That(evt.Extensions.Get(CalendarEventExtensions.FullDay), Is.True);
+            // Start should be at midnight of the first day
+            Assert.That(evt.StartTime, Is.EqualTo(new LocalDateTime(2025, 3, 7, 0, 0)));
+            // End should be at midnight of the day after the last day (Google convention)
+            // For a March 7-9 event, Google sends End.Date = "2025-03-10"
+            Assert.That(evt.EndTime, Is.EqualTo(new LocalDateTime(2025, 3, 10, 0, 0)));
+        }
+    }
+
+    [Test]
+    public void ParseCalendarEvents_SingleDayFullDayEvent_CalculatesCorrectEndTimes()
+    {
+        // Arrange - Create a single-day full-day event (March 7, 2025)
+        var startDate = new DateTime(2025, 3, 7);
+        var eventData = TestDataHelpers.CreateMultiDayFullDayEvent(
+            "fullday1",
+            "Birthday",
+            startDate,
+            daysSpan: 1 // Means March 7 only (Google sends End.Date = "2025-03-08")
+        );
+
+        var timeRange = new Interval(
+            Instant.FromUtc(startDate.Year, startDate.Month, startDate.Day, 0, 0),
+            Instant.FromUtc(startDate.Year, startDate.Month, startDate.Day + 2, 0, 0)
+        );
+
+        var calendar = new perinma.Models.Calendar
+        {
+            Account = new Account { Id = Guid.NewGuid(), Name = "Test Account", Type = AccountType.Google },
+            Id = Guid.NewGuid(),
+            ExternalId = "cal1",
+            Name = "Test Calendar"
+        };
+
+        var rawEvent = new RawEvent
+        {
+            Reference = new EventReference
+            {
+                Calendar = calendar,
+                Id = Guid.NewGuid(),
+                ExternalId = "fullday1"
+            },
+            RawData = eventData
+        };
+
+        // Act
+        var calendarEvents = _provider.ParseCalendarEvents(
+            new List<RawEvent> { rawEvent },
+            timeRange
+        );
+
+        // Assert
+        Assert.That(calendarEvents, Has.Count.EqualTo(1));
+        var evt = calendarEvents[0];
+        Assert.Multiple(() =>
+        {
+            Assert.That(evt.Extensions.Get(CalendarEventExtensions.FullDay), Is.True);
+            Assert.That(evt.StartTime, Is.EqualTo(new LocalDateTime(2025, 3, 7, 0, 0)));
+            Assert.That(evt.EndTime, Is.EqualTo(new LocalDateTime(2025, 3, 8, 0, 0)));
+        });
+    }
+
+    #endregion
+
     #region TestConnectionAsync Tests
 
     [Test]

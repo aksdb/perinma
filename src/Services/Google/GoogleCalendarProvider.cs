@@ -69,27 +69,24 @@ public class GoogleCalendarProvider(
     private CalendarEvent MapToCalendarEvent(EventReference reference, GoogleEvent googleEvent,
         Instant? occurrenceStart)
     {
-        var start = occurrenceStart ?? ParseGoogleDateTime(googleEvent.Start) ?? default;
+        var start = ParseGoogleDateTime(googleEvent.Start) ?? throw new InvalidOperationException("event without start time");;
+        var end = ParseGoogleDateTime(googleEvent.End) ?? throw new InvalidOperationException("event without end time");;
+
+        if (occurrenceStart.HasValue)
+        {
+            // This is a bit more complicated since we can't rely on the end time anymore.
+            // We have to calculate the original duration and shift the whole event timeframe.
+
+            var duration = end.Minus(start);
+            start = occurrenceStart.Value;
+            end = start.Plus(duration);
+        }
+        
         string? timeZone = null;
         if (!string.IsNullOrEmpty(googleEvent.Start.TimeZone))
             timeZone = googleEvent.Start.TimeZone;
         // If the start is represented as a date instead of a datetime, it's apparently full-day.
         bool fullDay = !string.IsNullOrEmpty(googleEvent.Start.Date);
-
-        // Calculate duration if it's an occurrence
-        var duration = TimeSpan.Zero;
-        if (googleEvent is { Start: not null, End: not null })
-            duration = googleEvent.End.DateTimeDateTimeOffset - googleEvent.Start.DateTimeDateTimeOffset ??
-                       TimeSpan.Zero;
-        var end = start.Plus(Duration.FromTimeSpan(duration));
-
-        if (fullDay)
-        {
-            // If we convert a date to a time, we end up at midnight. That would mean the start of
-            // the day, which for full-day events would mean they are 24h too short. We correct
-            // that here.
-            end = end.Plus(Duration.FromDays(1));
-        }
 
         var relevantStatus = googleEvent.Attendees
             ?.FirstOrDefault(a => a.Self == true)
