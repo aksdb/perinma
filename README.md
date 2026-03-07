@@ -9,7 +9,23 @@ It is being developed in C# using Avalonia as UI framework, making it cross plat
 
 Just download one of the artifacts from the releases section; preferably for the platform you want to use it on.
 
-## Development
+## Known issues / todos / future features
+
+- [ ] Allow creating and editing recurring events
+  - Override individual occurrences
+  - Remove individual occurrences
+  - Undo individual overrides/removals
+  - Edit "parent" events
+  > ⚠️ Beware with editing recurring events currently. This will likely not behave properly and might ruin the event you edit.
+- [ ] Contact editing/creation
+- [ ] Calendar management (create and edit calendars)
+- [ ] Contact group management (create and edit contact groups)
+- [ ] Emails
+  > ℹ️ Yes, that's a big one. It will also likely require including a WebView to render HTML mails.
+  >
+  > A full features richtext editor will also be quite an effort. 
+
+## Development [![status-badge](https://ci.aksdb.de/api/badges/2/status.svg)](https://ci.aksdb.de/repos/2)
 
 ### Prerequisites
 
