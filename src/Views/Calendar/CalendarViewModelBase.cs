@@ -34,7 +34,7 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
     }
 
     [RelayCommand]
-    private void EditEventAsync(CalendarEvent? eventToEdit)
+    private void EditEvent(CalendarEvent? eventToEdit)
     {
         if (eventToEdit == null) return;
         OpenEventEditor(eventToEdit);
