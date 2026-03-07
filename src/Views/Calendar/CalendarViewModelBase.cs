@@ -93,19 +93,19 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
         DateTime? initialEndTime = null,
         bool isFullDay = false)
     {
-        var onCompleted = new Action<EventEditResult>(result =>
+        var onCompleted = new Action<EventEditResult>(async result =>
         {
             switch (result)
             {
                 case EventEditResult.Error error:
                     Console.WriteLine($"Event saving failed: {error.Exception}");
 
-                    MessageBoxWindow.ShowAsync(
+                    await MessageBoxWindow.ShowAsync(
                         null,
                         "Error",
                         $"Failed to save event: {error.Exception.Message}",
                         MessageBoxType.Error,
-                        MessageBoxButtons.Ok).GetAwaiter().GetResult();
+                        MessageBoxButtons.Ok);
                     break;
                 case EventEditResult.Success:
                     Load();
