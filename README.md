@@ -11,15 +11,19 @@ Just download one of the artifacts from the releases section; preferably for the
 
 ## Known issues / todos / future features
 
+- [ ] Fix reminder calculation for recurring events with overrides
 - [ ] Allow creating and editing recurring events
   - Override individual occurrences
   - Remove individual occurrences
   - Undo individual overrides/removals
   - Edit "parent" events
   > ⚠️ Beware with editing recurring events currently. This will likely not behave properly and might ruin the event you edit.
+- [ ] Tasks
 - [ ] Contact editing/creation
 - [ ] Calendar management (create and edit calendars)
 - [ ] Contact group management (create and edit contact groups)
+- [ ] Multiple languages
+- [ ] More customizations (for example 12h instead of 24h)
 - [ ] Emails
   > ℹ️ Yes, that's a big one. It will also likely require including a WebView to render HTML mails.
   >
