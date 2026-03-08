@@ -267,7 +267,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         }
 
         _settingsWindow = new SettingsWindow();
-        _settingsWindow.DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService, _calDavService, _cardDavService, _syncService, _settingsWindow);
+        _settingsWindow.DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService, _calDavService, _cardDavService, _syncService, _settingsWindow, _storage);
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
     }

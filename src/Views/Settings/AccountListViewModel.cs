@@ -5,6 +5,8 @@ using Avalonia.Collections;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using perinma.Messaging;
 using perinma.Models;
 using perinma.Services;
 using perinma.Services.CalDAV;
@@ -130,6 +132,9 @@ public partial class AccountListViewModel : ViewModelBase
             if (success)
             {
                 Accounts.Remove(account);
+                
+                WeakReferenceMessenger.Default.Send(new AccountsChangedMessage());
+                WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
             }
             else
             {

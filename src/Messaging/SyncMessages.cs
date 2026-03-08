@@ -118,3 +118,10 @@ public class ContactSyncEndedMessage
 public class EventsChangedMessage
 {
 }
+
+/// <summary>
+/// Message sent when accounts are changed (added or deleted)
+/// </summary>
+public class AccountsChangedMessage
+{
+}

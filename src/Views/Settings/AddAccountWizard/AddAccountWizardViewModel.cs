@@ -3,6 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using perinma.Messaging;
 using perinma.Models;
 using perinma.Services;
 using perinma.Services.CalDAV;
@@ -184,6 +186,9 @@ public partial class AddAccountWizardViewModel : ViewModelBase
             {
                 // Raise event to notify AccountListViewModel
                 AccountAdded?.Invoke(this, EventArgs.Empty);
+                
+                // Send message to notify CalendarListViewModel and other subscribers
+                WeakReferenceMessenger.Default.Send(new AccountsChangedMessage());
 
                 // Close window (will be handled by window code-behind)
                 CloseRequested?.Invoke(this, EventArgs.Empty);

@@ -3,7 +3,10 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
+using perinma.Messaging;
 using perinma.Models;
 using perinma.Services;
 using perinma.Services.Google;
@@ -12,7 +15,7 @@ using perinma.Views.Calendar;
 
 namespace perinma.Views.CalendarList;
 
-public partial class CalendarListViewModel : ViewModelBase
+public partial class CalendarListViewModel : ViewModelBase, IRecipient<AccountsChangedMessage>
 {
     private readonly SqliteStorage _storage;
     private readonly IGoogleCalendarService _googleCalendarService;
@@ -35,6 +38,7 @@ public partial class CalendarListViewModel : ViewModelBase
         _credentialManager = credentialManager;
         _calendarWeekViewModel = calendarWeekViewModel;
         AccountGroups.CollectionChanged += OnAccountGroupsCollectionChanged;
+        WeakReferenceMessenger.Default.Register<AccountsChangedMessage>(this);
         _ = LoadCalendarsAsync();
     }
 
@@ -214,5 +218,10 @@ public partial class CalendarListViewModel : ViewModelBase
             Console.WriteLine($"Error updating calendar enabled state: {ex.Message}");
             calendar.Enabled = !enabled;
         }
+    }
+
+    public void Receive(AccountsChangedMessage message)
+    {
+        Dispatcher.UIThread.Post(() => _ = LoadCalendarsAsync());
     }
 }

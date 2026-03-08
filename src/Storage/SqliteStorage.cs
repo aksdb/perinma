@@ -156,6 +156,7 @@ public class SqliteStorage : IDisposable
 
     public async Task<bool> DeleteAccountAsync(string accountId)
     {
+        var accountIdGuid = Guid.Parse(accountId);
         var rowsAffected = await _connection.ExecuteAsync(
             "DELETE FROM account WHERE account_id = @AccountId",
             new { AccountId = accountId },
@@ -166,10 +167,8 @@ public class SqliteStorage : IDisposable
         {
             _credentialManager.DeleteCredentials(accountId);
 
-            if (_cacheInitialized)
-            {
-                InvalidateAccountCache(Guid.Parse(accountId));
-            }
+            // Always invalidate cache, regardless of whether it's initialized
+            InvalidateAccountCache(accountIdGuid);
         }
 
         return rowsAffected > 0;
@@ -891,7 +890,9 @@ public class SqliteStorage : IDisposable
                 return;
             }
 
-            Task.Run(async () => await LoadCacheAsync()).Wait();
+            // Load cache synchronously to avoid race conditions
+            var loadTask = LoadCacheAsync();
+            loadTask.GetAwaiter().GetResult();
             _cacheInitialized = true;
         }
     }

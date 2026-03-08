@@ -39,9 +39,9 @@ public partial class SettingsViewModel : ObservableRecipient,
     [ObservableProperty]
     private string _syncStatusText = string.Empty;
 
-    public SettingsViewModel(DatabaseService databaseService, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService, SyncService syncService, Window parentWindow)
+    public SettingsViewModel(DatabaseService databaseService, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService, SyncService syncService, Window parentWindow, SqliteStorage storage)
     {
-        _storage = new SqliteStorage(databaseService, credentialManager);
+        _storage = storage;
         var settingsService = new SettingsService(_storage);
 
         // Define available settings pages
