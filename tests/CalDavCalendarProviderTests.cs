@@ -846,7 +846,21 @@ public class CalDavCalendarProviderTests
             Instant.FromUtc(2026, 1, 1, 0, 0, 0),
             Instant.FromUtc(2026, 5, 1, 0, 0, 0)
         ));
-        Assert.That(parsedEvents, Has.Count.EqualTo(8));
+
+        var startDates = parsedEvents.Select(it => it.StartTime.Date).ToList();
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(startDates, Has.Count.EqualTo(7));
+            Assert.That(startDates, Does.Contain(new LocalDate(2026, 1, 22)));
+            Assert.That(startDates, Does.Contain(new LocalDate(2026, 1, 29)));
+            Assert.That(startDates, Does.Contain(new LocalDate(2026, 2, 5)));
+            Assert.That(startDates, Does.Contain(new LocalDate(2026, 2, 12)));
+            Assert.That(startDates, Does.Contain(new LocalDate(2026, 2, 26)));
+            Assert.That(startDates, Does.Contain(new LocalDate(2026, 3, 5)));
+            Assert.That(startDates, Does.Contain(new LocalDate(2026, 3, 26)));
+            Assert.That(startDates, Does.Not.Contain(new LocalDate(2026, 2, 19)));
+            Assert.That(startDates, Does.Not.Contain(new LocalDate(2026, 3, 12)));
+        }
     }
 
     #endregion
