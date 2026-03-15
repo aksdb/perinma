@@ -358,7 +358,11 @@ public class SyncService
         // Use account type for reminders
         var reminderAccountType = accountType;
 
-        var syncedEventIds = new List<string>();
+        // Collect event ids that might need a (reminder-) refresh.
+        // This would and should only affect "master" ids not subsequent
+        // occurrences.
+        var affectedEventIds = new HashSet<string>();
+        var unresolvedAffectedEventIds = new HashSet<string>();
 
         // Save events to database
         foreach (var evt in result.Events)
@@ -382,7 +386,6 @@ public class SyncService
             };
 
             var eventId = await _storage.CreateOrUpdateEventAsync(eventDbo);
-            syncedEventIds.Add(eventId);
 
             // Store raw provider data
             if (!string.IsNullOrEmpty(evt.RawData))
@@ -390,8 +393,12 @@ public class SyncService
                 await _storage.SetEventData(eventId, "rawData", evt.RawData);
             }
 
-            // Handle override relationship (Google-specific)
-            if (!string.IsNullOrEmpty(evt.RecurringEventId))
+            // Handle override relationship
+            if (string.IsNullOrEmpty(evt.RecurringEventId))
+            {
+                affectedEventIds.Add(eventId);
+            }
+            else
             {
                 var parentEventId =
                     await _storage.GetEventIdByExternalIdAsync(calendar.CalendarId, evt.RecurringEventId);
@@ -399,20 +406,28 @@ public class SyncService
                 if (parentEventId != null)
                 {
                     await _storage.CreateEventRelationAsync(parentEventId, eventId);
+                    affectedEventIds.Add(parentEventId);
                 }
                 else
                 {
-                    await _storage.AddEventRelationToBacklogAsync(calendar.CalendarId, evt.RecurringEventId ?? string.Empty,
-                        evt.ExternalId ?? string.Empty);
+                    await _storage.AddEventRelationToBacklogAsync(calendar.CalendarId, evt.RecurringEventId!,
+                        evt.ExternalId);
+                    
+                    unresolvedAffectedEventIds.Add(evt.RecurringEventId!);
                 }
             }
         }
 
         // Process backlog - check if any parents now exist
         await _storage.ProcessEventRelationBacklogAsync(calendar.CalendarId);
-
+        
+        affectedEventIds.UnionWith(unresolvedAffectedEventIds.Select(id =>
+            _storage.GetEventIdByExternalIdAsync(calendar.CalendarId, id))
+            .Select(t => t.Result)
+            .OfType<string>()
+            .ToHashSet());
         // Populate reminders for all synced events now that relationships are established
-        foreach (var eventId in syncedEventIds)
+        foreach (var eventId in affectedEventIds)
         {
             await _reminderService.PopulateRemindersForEventAsync(eventId, calendar.CalendarId, reminderAccountType,
                 cancellationToken);
