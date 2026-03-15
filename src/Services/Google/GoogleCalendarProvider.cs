@@ -473,14 +473,15 @@ public class GoogleCalendarProvider(
     }
 
     /// <inheritdoc/>
-    public IList<(Instant Occurrence, Instant TriggerTime)> GetNextReminderOccurrences(
+    public IList<(Instant Occurrence, Instant TriggerTime, string? TargetEventId)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        Instant referenceTime = default)
+        Instant referenceTime = default,
+        IList<string>? overrides = null)
     {
         try
         {
-            var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<Event>(rawEventData);
+            var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<GoogleEvent>(rawEventData);
             if (googleEvent == null)
                 return [];
 
@@ -496,22 +497,72 @@ public class GoogleCalendarProvider(
             var refTime = referenceTime == default
                 ? _clock.GetCurrentInstant()
                 : referenceTime;
-            var result = new List<(Instant Occurrence, Instant TriggerTime)>();
+            var result = new List<(Instant Occurrence, Instant TriggerTime, string? TargetEventId)>();
 
             if (isRecurring)
             {
-                var nextOccurrence = DetermineOccurrences(googleEvent, new Interval(refTime, null), max: 1)
-                    .FirstOrDefault();
-                if (nextOccurrence == default)
-                    return [];
-
-                foreach (var minutes in reminderMinutes)
+                // Parse overrides
+                var parsedOverrides = new List<GoogleEvent>();
+                if (overrides != null)
                 {
-                    var triggerTime = nextOccurrence.Plus(Duration.FromMinutes(-minutes));
-                    if (triggerTime >= refTime)
+                    foreach (var overrideData in overrides)
                     {
-                        result.Add((nextOccurrence, triggerTime));
-                        break;
+                        var overrideEvent = NewtonsoftJsonSerializer.Instance.Deserialize<GoogleEvent>(overrideData);
+                        if (overrideEvent != null)
+                        {
+                            parsedOverrides.Add(overrideEvent);
+                        }
+                    }
+                }
+
+                // Get more occurrences to ensure we find one that is not overridden or we can handle overrides
+                var occurrences = DetermineOccurrences(googleEvent, new Interval(refTime, null), max: 5);
+
+                foreach (var occurrence in occurrences)
+                {
+                    // Check if this occurrence is overridden
+                    var overrideEvent = parsedOverrides.FirstOrDefault(o =>
+                        ParseGoogleDateTime(o.OriginalStartTime) == occurrence);
+
+                    if (overrideEvent != null)
+                    {
+                        if (overrideEvent.Status == "cancelled")
+                        {
+                            continue; // This occurrence is cancelled, skip it
+                        }
+
+                        // Use override's start time and reminder settings
+                        var overrideStartTime = ParseGoogleDateTime(overrideEvent.Start);
+                        if (!overrideStartTime.HasValue) continue;
+
+                        var overrideReminderMinutes = GetReminderMinutes(
+                            NewtonsoftJsonSerializer.Instance.Serialize(overrideEvent),
+                            rawCalendarData);
+
+                        if (overrideReminderMinutes.Count == 0) continue;
+
+                        foreach (var minutes in overrideReminderMinutes)
+                        {
+                            var triggerTime = overrideStartTime.Value.Plus(Duration.FromMinutes(-minutes));
+                            if (triggerTime >= refTime)
+                            {
+                                result.Add((overrideStartTime.Value, triggerTime, overrideEvent.Id));
+                                return result; // Found the next reminder
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Use master's occurrence and reminder settings
+                        foreach (var minutes in reminderMinutes)
+                        {
+                            var triggerTime = occurrence.Plus(Duration.FromMinutes(-minutes));
+                            if (triggerTime >= refTime)
+                            {
+                                result.Add((occurrence, triggerTime, null));
+                                return result; // Found the next reminder
+                            }
+                        }
                     }
                 }
             }
@@ -521,7 +572,7 @@ public class GoogleCalendarProvider(
                 {
                     var triggerTime = eventStartTime.Value.Plus(Duration.FromMinutes(-minutes));
                     if (triggerTime > refTime)
-                        result.Add((eventStartTime.Value, triggerTime));
+                        result.Add((eventStartTime.Value, triggerTime, null));
                 }
             }
 

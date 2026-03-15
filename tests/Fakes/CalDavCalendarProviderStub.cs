@@ -54,10 +54,11 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         return [];
     }
 
-    public IList<(Instant Occurrence, Instant TriggerTime)> GetNextReminderOccurrences(
+    public IList<(Instant Occurrence, Instant TriggerTime, string? TargetEventId)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        Instant referenceTime = default)
+        Instant referenceTime = default,
+        IList<string>? overrides = null)
     {
         return [];
     }

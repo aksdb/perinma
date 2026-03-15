@@ -364,10 +364,11 @@ public class CalDavCalendarProvider(
     }
 
     /// <inheritdoc/>
-    public IList<(Instant Occurrence, Instant TriggerTime)> GetNextReminderOccurrences(
+    public IList<(Instant Occurrence, Instant TriggerTime, string? TargetEventId)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        Instant referenceTime = default)
+        Instant referenceTime = default,
+        IList<string>? overrides = null)
     {
         var calendar = Calendar.Load(rawEventData);
         var evt = calendar?.Events.FirstOrDefault();
@@ -387,7 +388,7 @@ public class CalDavCalendarProvider(
             ? SystemClock.Instance.GetCurrentInstant()
             : referenceTime;
         var startTime = refTime;
-        var result = new List<(Instant Occurrence, Instant TriggerTime)>();
+        var result = new List<(Instant Occurrence, Instant TriggerTime, string? TargetEventId)>();
 
         if (isRecurring)
         {
@@ -405,7 +406,7 @@ public class CalDavCalendarProvider(
                 var triggerTime = occurrenceTime.Plus(Duration.FromMinutes(-minutes));
                 if (triggerTime > startTime)
                 {
-                    result.Add((occurrenceTime, triggerTime));
+                    result.Add((occurrenceTime, triggerTime, null));
                     break;
                 }
             }
@@ -417,7 +418,7 @@ public class CalDavCalendarProvider(
                 var triggerTime = eventStartTime.Value.Plus(Duration.FromMinutes(-minutes));
                 if (triggerTime > startTime)
                 {
-                    result.Add((eventStartTime.Value, triggerTime));
+                    result.Add((eventStartTime.Value, triggerTime, null));
                 }
             }
         }

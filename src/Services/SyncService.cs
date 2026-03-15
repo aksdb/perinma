@@ -358,6 +358,8 @@ public class SyncService
         // Use account type for reminders
         var reminderAccountType = accountType;
 
+        var syncedEventIds = new List<string>();
+
         // Save events to database
         foreach (var evt in result.Events)
         {
@@ -380,16 +382,13 @@ public class SyncService
             };
 
             var eventId = await _storage.CreateOrUpdateEventAsync(eventDbo);
+            syncedEventIds.Add(eventId);
 
             // Store raw provider data
             if (!string.IsNullOrEmpty(evt.RawData))
             {
                 await _storage.SetEventData(eventId, "rawData", evt.RawData);
             }
-
-            // Populate reminders for this event
-            await _reminderService.PopulateRemindersForEventAsync(eventId, calendar.CalendarId, reminderAccountType,
-                cancellationToken);
 
             // Handle override relationship (Google-specific)
             if (!string.IsNullOrEmpty(evt.RecurringEventId))
@@ -411,6 +410,13 @@ public class SyncService
 
         // Process backlog - check if any parents now exist
         await _storage.ProcessEventRelationBacklogAsync(calendar.CalendarId);
+
+        // Populate reminders for all synced events now that relationships are established
+        foreach (var eventId in syncedEventIds)
+        {
+            await _reminderService.PopulateRemindersForEventAsync(eventId, calendar.CalendarId, reminderAccountType,
+                cancellationToken);
+        }
 
         // If this was a full sync, clean up events that weren't updated
         // Only delete if we actually synced some events - this prevents

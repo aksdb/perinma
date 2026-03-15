@@ -20,6 +20,15 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         CancellationToken cancellationToken = default,
         Instant referenceTime = default)
     {
+        // Check if this is an override
+        var parentId = await storage.GetParentEventIdAsync(eventId);
+        if (parentId != null)
+        {
+            // Redirect to parent (master) event for coordination
+            await PopulateRemindersForEventAsync(parentId, calendarId, accountType, cancellationToken, referenceTime);
+            return;
+        }
+
         var rawData = await storage.GetEventData(eventId, "rawData");
 
         if (string.IsNullOrEmpty(rawData))
@@ -32,6 +41,9 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         {
             return;
         }
+
+        // Fetch overrides for this master event
+        var overrides = (await storage.GetOverridesAsync(eventId)).ToList();
 
         // Get raw calendar data for default reminders (Google uses this)
         string? rawCalendarData = null;
@@ -47,14 +59,18 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
         // Get reminder occurrences from provider
         var reminderOccurrences =
-            provider.GetNextReminderOccurrences(rawData, rawCalendarData, refTime);
+            provider.GetNextReminderOccurrences(rawData, rawCalendarData, refTime,
+                overrides.Select(o => o.RawData).ToList());
 
-        if (reminderOccurrences.Count == 0)
+        // Get existing reminders for the master and all its overrides
+        var allInvolvedEventIds = new List<string> { eventId };
+        allInvolvedEventIds.AddRange(overrides.Select(o => o.EventId));
+
+        var existingReminders = new List<ReminderDbo>();
+        foreach (var id in allInvolvedEventIds)
         {
-            return;
+            existingReminders.AddRange(await storage.GetRemindersByEventAsync(id));
         }
-
-        var existingReminders = await storage.GetRemindersByEventAsync(eventId);
 
         var remindersToDelete = existingReminders
             .Where(r => reminderOccurrences.All(o =>
@@ -64,11 +80,22 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
         await storage.DeleteRemindersAsync(remindersToDelete);
 
-        foreach ((Instant occurrence, Instant triggerTime) in reminderOccurrences)
+        foreach ((Instant occurrence, Instant triggerTime, string? targetExternalId) in reminderOccurrences)
         {
+            // Map external target ID back to internal event ID if provided
+            var targetEventId = eventId;
+            if (!string.IsNullOrEmpty(targetExternalId))
+            {
+                var overrideInternalId = await storage.GetEventIdByExternalIdAsync(calendarId, targetExternalId);
+                if (overrideInternalId != null)
+                {
+                    targetEventId = overrideInternalId;
+                }
+            }
+
             if (existingReminders.All(r => r.TriggerTime != triggerTime.ToUnixTimeSeconds()))
             {
-                await storage.CreateReminderAsync(eventId, occurrence.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+                await storage.CreateReminderAsync(targetEventId, occurrence.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
             }
         }
     }

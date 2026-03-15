@@ -75,11 +75,13 @@ public interface ICalendarProvider
     /// <param name="rawEventData">Raw event data (JSON for Google, iCalendar for CalDAV)</param>
     /// <param name="rawCalendarData">Optional raw calendar data for default reminders (JSON for Google)</param>
     /// <param name="referenceTime">Reference time for filtering (defaults to UTC now)</param>
-    /// <returns>List of tuples containing occurrence time and trigger time for each reminder</returns>
-    IList<(Instant Occurrence, Instant TriggerTime)> GetNextReminderOccurrences(
+    /// <param name="overrides">Optional list of raw event data for overrides</param>
+    /// <returns>List of tuples containing occurrence time, trigger time, and optional specific target event ID for each reminder</returns>
+    IList<(Instant Occurrence, Instant TriggerTime, string? TargetEventId)> GetNextReminderOccurrences(
         string rawEventData,
         string? rawCalendarData = null,
-        Instant referenceTime = default);
+        Instant referenceTime = default,
+        IList<string>? overrides = null);
 
     /// <summary>
     /// Get the actual matching event start time to recover timezone information.

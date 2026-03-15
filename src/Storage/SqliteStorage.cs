@@ -619,6 +619,38 @@ public class SqliteStorage : IDisposable
         }
     }
 
+    public async Task<string?> GetParentEventIdAsync(string childEventId)
+    {
+        return await _connection.QuerySingleOrDefaultAsync<string?>(
+            "SELECT parent_event_id FROM calendar_event_relation WHERE child_event_id = @ChildEventId",
+            new { ChildEventId = childEventId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<IEnumerable<(string EventId, string RawData)>> GetOverridesAsync(string parentEventId)
+    {
+        return await _connection.QueryAsync<(string EventId, string RawData)>(
+            """
+            SELECT e.event_id, e.data ->> '$.rawData' as RawData
+            FROM calendar_event e
+            JOIN calendar_event_relation r ON e.event_id = r.child_event_id
+            WHERE r.parent_event_id = @ParentEventId
+            """,
+            new { ParentEventId = parentEventId },
+            commandTimeout: 30
+        );
+    }
+
+    public async Task<string?> GetEventExternalIdAsync(string eventId)
+    {
+        return await _connection.QuerySingleOrDefaultAsync<string?>(
+            "SELECT external_id FROM calendar_event WHERE event_id = @EventId",
+            new { EventId = eventId },
+            commandTimeout: 30
+        );
+    }
+
     #endregion
 
     #region Settings

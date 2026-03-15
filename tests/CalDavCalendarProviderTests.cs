@@ -661,7 +661,7 @@ public class CalDavCalendarProviderTests
 
         // Assert
         Assert.That(result, Has.Count.EqualTo(1));
-        var (occurrence, triggerTime) = result[0];
+        var (occurrence, triggerTime, _) = result[0];
         Assert.Multiple(() =>
         {
             Assert.That(occurrence.ToDateTimeUtc().Date, Is.EqualTo(futureStart.Date));
