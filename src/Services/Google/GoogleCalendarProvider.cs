@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,9 +22,11 @@ namespace perinma.Services.Google;
 /// </summary>
 public class GoogleCalendarProvider(
     IGoogleCalendarService googleCalendarService,
-    CredentialManagerService credentialManager)
+    CredentialManagerService credentialManager,
+    IClock? clock = null)
     : ICalendarProvider
 {
+    private readonly IClock _clock = clock ?? SystemClock.Instance;
     private static ModelExtension<GoogleEvent> GoogleEventExtension = new();
 
     /// <inheritdoc/>
@@ -493,7 +494,7 @@ public class GoogleCalendarProvider(
 
             var isRecurring = googleEvent.Recurrence is { Count: > 0 };
             var refTime = referenceTime == default
-                ? SystemClock.Instance.GetCurrentInstant()
+                ? _clock.GetCurrentInstant()
                 : referenceTime;
             var result = new List<(Instant Occurrence, Instant TriggerTime)>();
 
@@ -507,7 +508,7 @@ public class GoogleCalendarProvider(
                 foreach (var minutes in reminderMinutes)
                 {
                     var triggerTime = nextOccurrence.Plus(Duration.FromMinutes(-minutes));
-                    if (triggerTime > refTime)
+                    if (triggerTime >= refTime)
                     {
                         result.Add((nextOccurrence, triggerTime));
                         break;
@@ -606,7 +607,7 @@ public class GoogleCalendarProvider(
 
         var service = await googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
 
-        var googleEvent = new Event
+        var googleEvent = new GoogleEvent
         {
             Summary = title
         };

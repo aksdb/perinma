@@ -11,8 +11,9 @@ using perinma.Utils;
 
 namespace perinma.Services;
 
-public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountType, ICalendarProvider> providers)
+public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountType, ICalendarProvider> providers, IClock? clock = null)
 {
+    private readonly IClock _clock = clock ?? SystemClock.Instance;
     private readonly HashSet<string> _firedReminders = new();
 
     public async Task PopulateRemindersForEventAsync(string eventId, string calendarId, AccountType accountType,
@@ -26,7 +27,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
             return;
         }
 
-        // Get the appropriate provider
+        // Get appropriate provider
         if (!providers.TryGetValue(accountType, out var provider))
         {
             return;
@@ -40,11 +41,11 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
             rawCalendarData = await storage.GetCalendarDataAsync(calendar.CalendarId, "rawData");
         }
 
-        var refTime = referenceTime == default 
-            ? SystemClock.Instance.GetCurrentInstant() 
+        var refTime = referenceTime == default
+            ? _clock.GetCurrentInstant()
             : referenceTime;
 
-        // Get reminder occurrences from the provider
+        // Get reminder occurrences from provider
         var reminderOccurrences =
             provider.GetNextReminderOccurrences(rawData, rawCalendarData, refTime);
 
@@ -74,7 +75,8 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
     public async Task<List<ReminderWithEvent>> GetDueRemindersAsync(CancellationToken cancellationToken = default)
     {
-        var reminders = await storage.GetDueRemindersAsync(_firedReminders);
+        var referenceTime = _clock.GetCurrentInstant().ToUnixTimeSeconds();
+        var reminders = await storage.GetDueRemindersAsync(_firedReminders, referenceTime);
 
         foreach (var reminder in reminders)
         {
@@ -163,17 +165,17 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
     {
         return interval switch
         {
-            SnoozeInterval.OneMinute => SystemClock.Instance.GetCurrentInstant() + Duration.FromMinutes(1),
-            SnoozeInterval.FiveMinutes => SystemClock.Instance.GetCurrentInstant() + Duration.FromMinutes(5),
-            SnoozeInterval.TenMinutes => SystemClock.Instance.GetCurrentInstant() + Duration.FromMinutes(10),
-            SnoozeInterval.FifteenMinutes => SystemClock.Instance.GetCurrentInstant() + Duration.FromMinutes(15),
-            SnoozeInterval.ThirtyMinutes => SystemClock.Instance.GetCurrentInstant() + Duration.FromMinutes(30),
-            SnoozeInterval.OneHour => SystemClock.Instance.GetCurrentInstant() + Duration.FromHours(1),
-            SnoozeInterval.TwoHours => SystemClock.Instance.GetCurrentInstant() + Duration.FromHours(2),
-            SnoozeInterval.Tomorrow => SystemClock.Instance.GetCurrentInstant().InUtc().Date.PlusDays(1).AtStartOfDayInZone(DateTimeZone.Utc).ToInstant(),
+            SnoozeInterval.OneMinute => _clock.GetCurrentInstant() + Duration.FromMinutes(1),
+            SnoozeInterval.FiveMinutes => _clock.GetCurrentInstant() + Duration.FromMinutes(5),
+            SnoozeInterval.TenMinutes => _clock.GetCurrentInstant() + Duration.FromMinutes(10),
+            SnoozeInterval.FifteenMinutes => _clock.GetCurrentInstant() + Duration.FromMinutes(15),
+            SnoozeInterval.ThirtyMinutes => _clock.GetCurrentInstant() + Duration.FromMinutes(30),
+            SnoozeInterval.OneHour => _clock.GetCurrentInstant() + Duration.FromHours(1),
+            SnoozeInterval.TwoHours => _clock.GetCurrentInstant() + Duration.FromHours(2),
+            SnoozeInterval.Tomorrow => _clock.GetCurrentInstant().InUtc().Date.PlusDays(1).AtStartOfDayInZone(DateTimeZone.Utc).ToInstant(),
             SnoozeInterval.OneMinuteBeforeStart => targetTime - Duration.FromMinutes(1),
             SnoozeInterval.WhenItStarts => targetTime,
-            _ => SystemClock.Instance.GetCurrentInstant() + Duration.FromMinutes(5)
+            _ => _clock.GetCurrentInstant() + Duration.FromMinutes(5)
         };
     }
 

@@ -745,9 +745,9 @@ public class SqliteStorage : IDisposable
         );
     }
 
-    public async Task<List<ReminderWithEvent>> GetDueRemindersAsync(HashSet<string> firedReminderIds)
+    public async Task<List<ReminderWithEvent>> GetDueRemindersAsync(HashSet<string> firedReminderIds, long? referenceTime = null)
     {
-        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var now = referenceTime ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var firedReminderIdsList = firedReminderIds.ToList();
 
         var query = @"
