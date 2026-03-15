@@ -30,44 +30,51 @@ public class CalDavCalendarProvider(
         rawEvents
             .Select(t => (t.Reference, Calendar: Calendar.Load(t.RawData)))
             .Where(t => t.Calendar is { Events.Count: > 0 })
-            .SelectMany(t => t.Calendar!.Events.Select(evt => (t.Reference, evt)))
-            .SelectMany(t =>
+            .SelectMany(t => t.Calendar!.Events.Select(evt => (t.Reference, Calendar: t.Calendar, evt)))
+            .GroupBy(t => t.evt.Uid)
+            .SelectMany(group =>
             {
-                if (t.evt.RecurrenceRules.Count > 0)
+                var hasRecurrenceId = group.Any(t => t.evt.RecurrenceIdentifier != null);
+                
+                if (hasRecurrenceId || group.Any(t => t.evt.RecurrenceRules.Count > 0))
                 {
-                    return t.evt.GetOccurrences(new CalDateTime(timeRange.Start.ToDateTimeUtc()))
+                    var reference = group.First().Reference;
+                    var calendar = group.First().Calendar;
+                    var hasBaseEvent = group.Any(t => t.evt.RecurrenceRules.Count > 0);
+                    var baseEvent = hasBaseEvent ? group.First(t => t.evt.RecurrenceRules.Count > 0).evt : group.First(t => t.evt.RecurrenceIdentifier == null).evt;
+                    
+                    return calendar.GetOccurrences(new CalDateTime(timeRange.Start.ToDateTimeUtc()))
                         .TakeWhile(o => o.Period.StartTime.Value <= timeRange.End.ToDateTimeUtc())
                         .Select(occurrence =>
                         {
                             var startTime = Instant.FromDateTimeOffset(occurrence.Period.StartTime.AsUtc);
-                            string? timeZone = occurrence.Period.StartTime.TzId ??
-                                               t.evt.Start?.TzId;
+                            var tzId = occurrence.Period.StartTime.TzId;
+                            string? timeZone = tzId ?? (baseEvent.Start != null ? baseEvent.Start.TzId : null);
                             
                             Instant endTime;
                             if (occurrence.Period.EndTime is {} occurrenceEndTime)
                                 endTime = Instant.FromDateTimeOffset(occurrenceEndTime.AsUtc);
-                            else if (t.evt.Duration is {} eventDuration)
+                            else if (baseEvent.Duration is {} eventDuration)
                                 endTime = startTime.Plus(Duration.FromTimeSpan(eventDuration.ToTimeSpan(occurrence.Period.StartTime!)));
-                            else if (t.evt is { Start: {} eventStart, End: {} eventEnd })
+                            else if (baseEvent is { Start: {} eventStart, End: {} eventEnd })
                                 endTime = startTime.Plus(Duration.FromTimeSpan(eventEnd.Value - eventStart.Value));
                             else
                                 endTime = startTime;
 
-                            return (t.Reference, t.evt, startTime, endTime, timeZone);
+                            return (reference, baseEvent, startTime, endTime, timeZone);
                         });
                 }
 
-                if (t.evt.Start != null && t.evt.End != null)
-                {
-                    var startTime = Instant.FromDateTimeOffset(t.evt.Start.AsUtc);
-                    var endTime = Instant.FromDateTimeOffset(t.evt.End.AsUtc);
-                    return [(t.Reference, t.evt, startTime, endTime, t.evt.Start.TzId)];
-                }
-
-                return [];
+                return group.Where(t => t.evt.Start != null && t.evt.End != null)
+                    .Select(t =>
+                    {
+                        var startTime = Instant.FromDateTimeOffset(t.evt.Start!.AsUtc);
+                        var endTime = Instant.FromDateTimeOffset(t.evt.End!.AsUtc);
+                        return (reference: t.Reference, baseEvent: t.evt, startTime, endTime, timeZone: t.evt.Start.TzId);
+                    });
             })
             .Where(t => t.startTime <= timeRange.End && t.endTime >= timeRange.Start)
-            .Select(t => MapToCalendarEvent(t.Reference, t.evt, t.startTime, t.endTime, t.timeZone))
+             .Select(t => MapToCalendarEvent(t.reference, t.baseEvent, t.startTime, t.endTime, t.timeZone))
             .ToList();
 
     private static CalendarEvent MapToCalendarEvent(EventReference reference, ICalEvent evt,
