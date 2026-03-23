@@ -93,11 +93,11 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         return Task.FromResult((Guid.NewGuid().ToString(), string.Empty));
     }
 
-    public Task<string> UpdateEventAsync(
+    public Task<DataAttribute> UpdateEventAsync(
         CalendarEvent calendarEvent,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(string.Empty);
+        return Task.FromResult<DataAttribute>(new DataAttribute.Text(string.Empty));
     }
 
     public Task DeleteEventAsync(

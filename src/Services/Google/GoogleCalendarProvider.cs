@@ -718,7 +718,7 @@ public class GoogleCalendarProvider(
     }
 
     /// <inheritdoc/>
-    public async Task<string> UpdateEventAsync(
+    public async Task<DataAttribute> UpdateEventAsync(
         CalendarEvent calendarEvent,
         CancellationToken cancellationToken = default)
     {
@@ -784,7 +784,7 @@ public class GoogleCalendarProvider(
 
         var rawData = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
 
-        return rawData;
+        return new DataAttribute.JsonText(rawData);
     }
 
     /// <inheritdoc/>

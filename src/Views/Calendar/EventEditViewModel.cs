@@ -266,7 +266,17 @@ public partial class EventEditViewModel : ViewModelBase
                 };
 
                 var eventId = await _storage.CreateOrUpdateEventAsync(eventDbo);
-                await _storage.SetEventData(eventId, "rawData", rawData);
+                switch (rawData)
+                {
+                    case DataAttribute.Text text:
+                        await _storage.SetEventData(eventId, "rawData", text.value);
+                        break;
+                    case DataAttribute.JsonText jsonText:
+                        await _storage.SetEventDataJson(eventId, "rawData", jsonText.value);
+                        break;
+                    default:
+                        throw new InvalidOperationException("Unknown rawData type.");
+                }
 
                 WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
 

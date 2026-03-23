@@ -517,7 +517,7 @@ public class CalDavCalendarProvider(
     }
 
     /// <inheritdoc/>
-    public async Task<string> UpdateEventAsync(
+    public async Task<DataAttribute> UpdateEventAsync(
         CalendarEvent calendarEvent,
         CancellationToken cancellationToken = default)
     {
@@ -570,7 +570,7 @@ public class CalDavCalendarProvider(
         var rawData = serializer.SerializeToString(calendar)
             ?? throw new InvalidOperationException("Failed to serialize calendar");
 
-        return rawData;
+        return new DataAttribute.Text(rawData);
     }
 
     /// <inheritdoc/>

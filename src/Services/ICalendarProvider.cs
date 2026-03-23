@@ -135,7 +135,8 @@ public interface ICalendarProvider
     /// </summary>
     /// <param name="calendarEvent">The event to update</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task<string> UpdateEventAsync(
+    /// <returns>The rawData of the updated event.</returns>
+    Task<DataAttribute> UpdateEventAsync(
         CalendarEvent calendarEvent,
         CancellationToken cancellationToken = default);
 
