@@ -234,7 +234,10 @@ public class CalDavCalendarProvider(
                 Title = evt.Summary,
                 Status = evt.Status,
                 Deleted = true,
-                RawData = evt.RawICalendar
+                Data = new Dictionary<string, DataAttribute>
+                {
+                    { "rawData", new DataAttribute.Text(evt.RawICalendar) },
+                }
             };
         }
         
@@ -273,7 +276,10 @@ public class CalDavCalendarProvider(
             Deleted = false,
             RecurringEventId = null, // CalDAV handles recurrence differently
             OriginalStartTime = null,
-            RawData = evt.RawICalendar
+            Data = new Dictionary<string, DataAttribute>
+            {
+                { "rawData", new DataAttribute.Text(evt.RawICalendar) },
+            }
         };
     }
 

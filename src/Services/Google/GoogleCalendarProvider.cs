@@ -306,7 +306,10 @@ public class GoogleCalendarProvider(
                 Title = evt.Summary,
                 Status = evt.Status,
                 Deleted = true,
-                RawData = NewtonsoftJsonSerializer.Instance.Serialize(evt)
+                Data = new Dictionary<string, DataAttribute>
+                {
+                    { "rawData", new DataAttribute.JsonText(NewtonsoftJsonSerializer.Instance.Serialize(evt)) }, 
+                }
             };
         }
 
@@ -382,7 +385,10 @@ public class GoogleCalendarProvider(
             Deleted = false,
             RecurringEventId = evt.RecurringEventId,
             OriginalStartTime = originalStartTime,
-            RawData = NewtonsoftJsonSerializer.Instance.Serialize(evt)
+            Data = new Dictionary<string, DataAttribute>
+            {
+                { "rawData", new DataAttribute.JsonText(NewtonsoftJsonSerializer.Instance.Serialize(evt)) }, 
+            }
         };
     }
 

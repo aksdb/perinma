@@ -387,10 +387,20 @@ public class SyncService
 
             var eventId = await _storage.CreateOrUpdateEventAsync(eventDbo);
 
-            // Store raw provider data
-            if (!string.IsNullOrEmpty(evt.RawData))
+            // Store raw provider data if available
+            foreach (var dataPair in evt.Data)
             {
-                await _storage.SetEventData(eventId, "rawData", evt.RawData);
+                switch (dataPair.Value)
+                {
+                    case DataAttribute.Text text:
+                        await _storage.SetEventData(eventId, dataPair.Key, text.value);
+                        break;
+                    case DataAttribute.JsonText jsonText:
+                        await _storage.SetEventDataJson(eventId, dataPair.Key, jsonText.value);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unknown data type ${dataPair.Value.GetType()}");
+                }
             }
 
             // Handle override relationship

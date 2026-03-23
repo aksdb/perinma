@@ -281,7 +281,7 @@ public class ProviderEvent
     public Instant? OriginalStartTime { get; init; }
 
     /// <summary>
-    /// Raw provider data serialized as string for later use (JSON or iCalendar).
+    /// Provider specific data.
     /// </summary>
-    public string? RawData { get; init; }
+    public Dictionary<string, DataAttribute> Data { get; init; } = new();
 }
