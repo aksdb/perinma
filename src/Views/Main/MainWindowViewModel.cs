@@ -128,12 +128,31 @@ public partial class MainWindowViewModel : ObservableRecipient,
         CalendarListViewModel = new CalendarListViewModel(_storage, _googleCalendarService, _credentialManager, CalendarWeekViewModel);
         ContactsViewModel = new ContactsViewModel(_storage);
 
-        // Subscribe to DayColumns property changes to update navigation bar
         CalendarWeekViewModel.PropertyChanged += (sender, args) =>
         {
             if (args.PropertyName == nameof(CalendarWeekViewModel.DayColumns))
             {
                 SetupNavigationBar();
+            }
+            else if (args.PropertyName == nameof(CalendarWeekViewModel.DateRangeDisplay) && IsWeekView)
+            {
+                CalendarNavigationBarViewModel.DateRangeDisplay = CalendarWeekViewModel.DateRangeDisplay;
+            }
+        };
+
+        CalendarMonthViewModel.PropertyChanged += (sender, args) =>
+        {
+            if (args.PropertyName == nameof(CalendarMonthViewModel.DateRangeDisplay) && IsMonthView)
+            {
+                CalendarNavigationBarViewModel.DateRangeDisplay = CalendarMonthViewModel.DateRangeDisplay;
+            }
+        };
+
+        CalendarAgendaViewModel.PropertyChanged += (sender, args) =>
+        {
+            if (args.PropertyName == nameof(CalendarAgendaViewModel.DateRangeDisplay) && IsAgendaView)
+            {
+                CalendarNavigationBarViewModel.DateRangeDisplay = CalendarAgendaViewModel.DateRangeDisplay;
             }
         };
 
