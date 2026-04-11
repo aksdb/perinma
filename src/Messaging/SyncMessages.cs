@@ -125,3 +125,10 @@ public class EventsChangedMessage
 public class AccountsChangedMessage
 {
 }
+
+/// <summary>
+/// Message sent when working days or hours settings are changed
+/// </summary>
+public class WorkingDaysChangedMessage
+{
+}

@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -26,6 +27,14 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
 
     // Full-day events are kept separate so they don't interfere with timed event column calculations
     public ObservableCollection<EventItem> FullDayEvents { get; } = [];
+
+    // Working days array: index 0=Sunday through 6=Saturday
+    private bool[] _workingDays = [false, true, true, true, true, true, false];
+
+    // The DayOfWeek (0=Sunday) of the first and last working day in the configured range.
+    // Used to compute the work week span.
+    private int _firstWorkDay;
+    private int _lastWorkDay;
 
     public override string DateRangeDisplay => DayColumns == 1
         ? ViewStart.ToString("dddd, MMM d, yyyy")
@@ -62,6 +71,48 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         DayColumns = 7;
         ViewStart = DateTime.Now;
         WeakReferenceMessenger.Default.Register<EventsChangedMessage>(this);
+        WeakReferenceMessenger.Default.Register<WorkingDaysChangedMessage>(this, (r, m) => ((CalendarWeekViewModel)r).OnWorkingDaysChanged());
+        _ = InitializeWorkingDaysAsync();
+    }
+
+    private async Task InitializeWorkingDaysAsync()
+    {
+        _workingDays = SettingsService != null
+            ? await SettingsService.GetWorkingDaysAsync()
+            : [false, true, true, true, true, true, false];
+        ComputeWorkWeekRange();
+    }
+
+    private void ComputeWorkWeekRange()
+    {
+        var first = -1;
+        var last = -1;
+        for (var i = 0; i < 7; i++)
+        {
+            if (_workingDays[i])
+            {
+                if (first < 0) first = i;
+                last = i;
+            }
+        }
+
+        // Fallback to Mon-Fri if no working days are selected
+        if (first < 0)
+        {
+            first = 1;
+            last = 5;
+        }
+
+        _firstWorkDay = first;
+        _lastWorkDay = last;
+    }
+
+    public int WorkWeekDayCount => _lastWorkDay - _firstWorkDay + 1;
+
+    private async void OnWorkingDaysChanged()
+    {
+        await InitializeWorkingDaysAsync();
+        AdjustViewStartForMode(ViewStart);
     }
 
     protected override void OnViewStartDateChanged(DateTime value)
@@ -74,16 +125,26 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
     {
         DateTime adjustedStart;
 
-        // Only snap to Monday for multi-day views (week/work week).
-        // Day view should show the exact selected date.
-        if (DayColumns > 1)
+        // Day view: show the exact selected date.
+        if (DayColumns == 1)
+        {
+            adjustedStart = value.Date;
+        }
+        // Work week (5 days): snap to the first configured working day of the week.
+        else if (DayColumns < 7)
+        {
+            // Convert to DayOfWeek (0=Sunday) and find the Monday of the containing week
+            var currentDow = (int)value.DayOfWeek;
+            var mondayOffset = ((currentDow + 6) % 7);
+            var monday = value.Date.AddDays(-mondayOffset);
+            // _firstWorkDay is a DayOfWeek index (0=Sun, 1=Mon, ...). Offset from Monday is _firstWorkDay - 1.
+            adjustedStart = monday.AddDays(_firstWorkDay - 1);
+        }
+        // Full week: snap to Monday.
+        else
         {
             var weekDiff = ((int)value.DayOfWeek + 6) % 7;
             adjustedStart = value.Date.AddDays(-weekDiff);
-        }
-        else
-        {
-            adjustedStart = value.Date;
         }
 
         if (ViewStart != adjustedStart)

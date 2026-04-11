@@ -88,6 +88,9 @@ public partial class MainWindowViewModel : ObservableRecipient,
     public bool IsWeekView => CalendarViewMode == CalendarView.Week;
     public bool IsAgendaView => CalendarViewMode == CalendarView.Agenda;
 
+    public bool IsWorkWeekView { get; private set; }
+    public bool IsDayView { get; private set; }
+
     public CalendarMonthViewModel CalendarMonthViewModel { get; }
     public CalendarWeekViewModel CalendarWeekViewModel { get; }
     public CalendarAgendaViewModel CalendarAgendaViewModel { get; }
@@ -162,6 +165,15 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
         SetupNavigationBar();
         Initialize();
+
+        WeakReferenceMessenger.Default.Register<WorkingDaysChangedMessage>(this, (r, m) =>
+        {
+            if (IsWorkWeekView)
+            {
+                CalendarWeekViewModel.DayColumns = CalendarWeekViewModel.WorkWeekDayCount;
+                LoadCurrentCalendarView();
+            }
+        });
     }
 
     [RelayCommand]
@@ -190,9 +202,9 @@ public partial class MainWindowViewModel : ObservableRecipient,
         CalendarListViewModel.ActiveCalendarViewModel = ActiveCalendarViewModel;
 
         CalendarNavigationBarViewModel.IsMonthView = IsMonthView;
-        CalendarNavigationBarViewModel.IsFiveDaysView = IsWeekView && CalendarWeekViewModel.DayColumns == 5;
-        CalendarNavigationBarViewModel.IsDayView = IsWeekView && CalendarWeekViewModel.DayColumns == 1;
-        CalendarNavigationBarViewModel.IsWeekView = IsWeekView && CalendarWeekViewModel.DayColumns == 7;
+        CalendarNavigationBarViewModel.IsFiveDaysView = IsWorkWeekView;
+        CalendarNavigationBarViewModel.IsDayView = IsDayView;
+        CalendarNavigationBarViewModel.IsWeekView = IsWeekView && !IsWorkWeekView && !IsDayView;
         CalendarNavigationBarViewModel.IsAgendaView = IsAgendaView;
 
         CalendarNavigationBarViewModel.ShowMonthViewCommand = ShowMonthViewCommand;
@@ -235,6 +247,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private void ShowWeekView()
     {
         CalendarViewMode = CalendarView.Week;
+        IsWorkWeekView = false;
+        IsDayView = false;
         CalendarWeekViewModel.DayColumns = 7;
         LoadCurrentCalendarView();
     }
@@ -243,7 +257,9 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private void ShowFiveDaysView()
     {
         CalendarViewMode = CalendarView.Week;
-        CalendarWeekViewModel.DayColumns = 5;
+        IsWorkWeekView = true;
+        IsDayView = false;
+        CalendarWeekViewModel.DayColumns = CalendarWeekViewModel.WorkWeekDayCount;
         LoadCurrentCalendarView();
     }
 
@@ -251,6 +267,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private void ShowDayView()
     {
         CalendarViewMode = CalendarView.Week;
+        IsWorkWeekView = false;
+        IsDayView = true;
         CalendarWeekViewModel.DayColumns = 1;
         LoadCurrentCalendarView();
     }

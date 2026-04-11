@@ -103,6 +103,21 @@ public class SettingsService(SqliteStorage storage)
     public Task<TimeSpan> GetWorkingHoursEndAsync() => GetTimeSpanAsync(Keys.WorkingHoursEnd, Defaults.WorkingHoursEnd);
     public Task SetWorkingHoursEndAsync(TimeSpan value) => SetTimeSpanAsync(Keys.WorkingHoursEnd, value);
 
+    // Returns working days as bool[7], index 0=Sunday through 6=Saturday
+    public async Task<bool[]> GetWorkingDaysAsync()
+    {
+        return
+        [
+            await GetWorkingDaySundayAsync(),
+            await GetWorkingDayMondayAsync(),
+            await GetWorkingDayTuesdayAsync(),
+            await GetWorkingDayWednesdayAsync(),
+            await GetWorkingDayThursdayAsync(),
+            await GetWorkingDayFridayAsync(),
+            await GetWorkingDaySaturdayAsync()
+        ];
+    }
+
     // MainWindow settings accessors
     public Task<int> GetMainWindowXAsync() => GetIntAsync(Keys.MainWindowX, Defaults.MainWindowX);
     public Task SetMainWindowXAsync(int value) => SetIntAsync(Keys.MainWindowX, value);

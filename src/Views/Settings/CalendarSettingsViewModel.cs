@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
+using perinma.Messaging;
 using perinma.Services;
 
 namespace perinma.Views.Settings;
@@ -74,37 +76,42 @@ public partial class CalendarSettingsViewModel : ViewModelBase
     // Property change handlers - save individual settings when changed
     partial void OnMondayChanged(bool value)
     {
-        if (!_isLoading) _ = _settingsService.SetWorkingDayMondayAsync(value);
+        if (!_isLoading) { _ = _settingsService.SetWorkingDayMondayAsync(value); NotifyWorkingDaysChanged(); }
     }
 
     partial void OnTuesdayChanged(bool value)
     {
-        if (!_isLoading) _ = _settingsService.SetWorkingDayTuesdayAsync(value);
+        if (!_isLoading) { _ = _settingsService.SetWorkingDayTuesdayAsync(value); NotifyWorkingDaysChanged(); }
     }
 
     partial void OnWednesdayChanged(bool value)
     {
-        if (!_isLoading) _ = _settingsService.SetWorkingDayWednesdayAsync(value);
+        if (!_isLoading) { _ = _settingsService.SetWorkingDayWednesdayAsync(value); NotifyWorkingDaysChanged(); }
     }
 
     partial void OnThursdayChanged(bool value)
     {
-        if (!_isLoading) _ = _settingsService.SetWorkingDayThursdayAsync(value);
+        if (!_isLoading) { _ = _settingsService.SetWorkingDayThursdayAsync(value); NotifyWorkingDaysChanged(); }
     }
 
     partial void OnFridayChanged(bool value)
     {
-        if (!_isLoading) _ = _settingsService.SetWorkingDayFridayAsync(value);
+        if (!_isLoading) { _ = _settingsService.SetWorkingDayFridayAsync(value); NotifyWorkingDaysChanged(); }
     }
 
     partial void OnSaturdayChanged(bool value)
     {
-        if (!_isLoading) _ = _settingsService.SetWorkingDaySaturdayAsync(value);
+        if (!_isLoading) { _ = _settingsService.SetWorkingDaySaturdayAsync(value); NotifyWorkingDaysChanged(); }
     }
 
     partial void OnSundayChanged(bool value)
     {
-        if (!_isLoading) _ = _settingsService.SetWorkingDaySundayAsync(value);
+        if (!_isLoading) { _ = _settingsService.SetWorkingDaySundayAsync(value); NotifyWorkingDaysChanged(); }
+    }
+
+    private void NotifyWorkingDaysChanged()
+    {
+        WeakReferenceMessenger.Default.Send(new WorkingDaysChangedMessage());
     }
 
     partial void OnWorkingHoursStartChanged(TimeSpan value)
