@@ -138,8 +138,11 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
         if (calendar != null)
         {
             var previousTargetTime = Instant.FromUnixTimeSeconds(reminder.TargetTime);
+            // Make sure we pick an event that is in the future but also not the same event we already had
+            // (which could happen if we dismiss the event before its target time was up).
+            var refTime = Instant.Max(_clock.GetCurrentInstant(), previousTargetTime.Plus(Duration.FromSeconds(1)));
             await PopulateRemindersForEventAsync(reminder.TargetId, calendarId!, calendar.Account.Type,
-                cancellationToken, previousTargetTime.Plus(Duration.FromSeconds(1)));
+                cancellationToken, refTime);
         }
 
         await storage.DeleteReminderAsync(reminderId);

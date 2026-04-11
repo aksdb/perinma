@@ -456,6 +456,46 @@ public class ReminderServiceTests
         Assert.That(async () => await _reminderService!.DismissReminderAsync(reminderId), Throws.Nothing);
     }
 
+    [Test]
+    public async Task DismissReminderAsync_FarPastRecurring_CreatesFutureReminder()
+    {
+        // Arrange - Create recurring Google event (weekly), first occurrence 3 months ago
+        // Clock is at 2026-04-11 (from SetUp)
+        var meetingStartTime = Instant.FromUtc(2026, 1, 11, 10, 0);
+        var googleEvent = new GoogleEvent
+        {
+            Id = "test-event",
+            Summary = "Test Event",
+            Start = new GoogleEventDateTime { DateTimeDateTimeOffset = meetingStartTime.ToDateTimeUtc(), TimeZone = "UTC" },
+            End = new GoogleEventDateTime { DateTimeDateTimeOffset = meetingStartTime.Plus(Duration.FromHours(1)).ToDateTimeUtc(), TimeZone = "UTC" },
+            Recurrence = new List<string> { "RRULE:FREQ=WEEKLY;COUNT=52" },
+            Reminders = new Event.RemindersData
+            {
+                UseDefault = false,
+                Overrides = [new EventReminder { Method = "popup", Minutes = 30 }]
+            }
+        };
+        var rawEventJson = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
+        await _storage!.SetEventData(_eventId, "rawData", rawEventJson);
+
+        // Create reminder for the far-past first occurrence
+        var triggerTime = meetingStartTime.Minus(Duration.FromMinutes(30));
+        await _storage!.CreateReminderAsync(_eventId, meetingStartTime.ToDateTimeUtc(), triggerTime.ToDateTimeUtc());
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
+        var reminderId = reminders[0].ReminderId;
+
+        // Act - dismiss the far-past reminder
+        await _reminderService!.DismissReminderAsync(reminderId);
+
+        // Assert - should create only one reminder, for a future occurrence
+        var updatedReminders = await _storage!.GetRemindersByEventAsync(_eventId);
+        Assert.That(updatedReminders.Count, Is.EqualTo(1));
+
+        var actualTriggerTime = Instant.FromUnixTimeSeconds(updatedReminders[0].TriggerTime);
+        Assert.That(actualTriggerTime, Is.GreaterThan(_clock.GetCurrentInstant()),
+            "Dismissed a far-past reminder but next reminder is still in the past");
+    }
+
     #endregion
 
     #region SnoozeReminderAsync Tests
