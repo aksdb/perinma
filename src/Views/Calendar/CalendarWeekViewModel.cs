@@ -30,6 +30,7 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ViewStartOffset))]
     [NotifyPropertyChangedFor(nameof(DateRangeDisplay))]
+    [NotifyPropertyChangedFor(nameof(WeekStart))]
     private DateTime _viewStart;
 
     public string DateRangeDisplay => FormatDateRange(ViewStart, ViewStart.AddDays(DayColumns - 1));
