@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,12 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
 
     public SettingsService? SettingsService { get; }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DateRangeDisplay))]
+    private DateTime _viewStart = DateTime.Today;
+
+    public abstract string DateRangeDisplay { get; }
+
     protected CalendarViewModelBase(ICalendarSource calendarSource, SettingsService? settingsService = null)
     {
         _calendarSource = calendarSource;
@@ -32,6 +39,26 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
 
         _storage = storage;
     }
+
+    partial void OnViewStartChanged(DateTime value)
+    {
+        OnViewStartDateChanged(value);
+    }
+
+    protected virtual void OnViewStartDateChanged(DateTime value) { }
+
+    protected abstract void PerformNavigationNext();
+    protected abstract void PerformNavigationPrevious();
+    protected abstract void PerformNavigationToday();
+
+    [RelayCommand]
+    private void Next() => PerformNavigationNext();
+
+    [RelayCommand]
+    private void Previous() => PerformNavigationPrevious();
+
+    [RelayCommand]
+    private void Today() => PerformNavigationToday();
 
     [RelayCommand]
     private void EditEvent(CalendarEvent? eventToEdit)

@@ -21,11 +21,7 @@ public partial class CalendarMonthViewModel : CalendarViewModelBase, IRecipient<
 {
     public ObservableCollection<MonthDayViewModel> MonthDays { get; } = [];
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DateRangeDisplay))]
-    private DateTime _viewStart = DateTime.Now;
-
-    public string DateRangeDisplay => ViewStart.ToString("MMMM yyyy");
+    public override string DateRangeDisplay => ViewStart.ToString("MMMM yyyy");
 
     public CalendarMonthViewModel(
         ICalendarSource calendarSource,
@@ -35,22 +31,19 @@ public partial class CalendarMonthViewModel : CalendarViewModelBase, IRecipient<
         WeakReferenceMessenger.Default.Register<EventsChangedMessage>(this);
     }
 
-    [RelayCommand]
-    private void Next()
+    protected override void PerformNavigationNext()
     {
         ViewStart = ViewStart.AddMonths(1);
         Load();
     }
 
-    [RelayCommand]
-    private void Previous()
+    protected override void PerformNavigationPrevious()
     {
         ViewStart = ViewStart.AddMonths(-1);
         Load();
     }
 
-    [RelayCommand]
-    private void Today()
+    protected override void PerformNavigationToday()
     {
         ViewStart = DateTime.Today;
         Load();

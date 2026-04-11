@@ -95,6 +95,30 @@ public partial class MainWindowViewModel : ObservableRecipient,
     public CalendarListViewModel CalendarListViewModel { get; }
     public ContactsViewModel ContactsViewModel { get; }
 
+    [ObservableProperty]
+    private CalendarViewModelBase _activeCalendarViewModel = null!;
+
+    private CalendarViewModelBase? _dateRangeSubscriptionTarget;
+
+    partial void OnActiveCalendarViewModelChanged(CalendarViewModelBase value)
+    {
+        if (_dateRangeSubscriptionTarget != null)
+        {
+            _dateRangeSubscriptionTarget.PropertyChanged -= OnActiveVmPropertyChanged;
+        }
+
+        _dateRangeSubscriptionTarget = value;
+        value.PropertyChanged += OnActiveVmPropertyChanged;
+    }
+
+    private void OnActiveVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(CalendarViewModelBase.DateRangeDisplay))
+        {
+            CalendarNavigationBarViewModel.DateRangeDisplay = ActiveCalendarViewModel.DateRangeDisplay;
+        }
+    }
+
     public MainWindowViewModel(
         DatabaseService databaseService,
         CredentialManagerService credentialManager,
@@ -125,7 +149,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, _settingsService);
         CalendarAgendaViewModel = new CalendarAgendaViewModel(calendarSource, _settingsService);
         CalendarNavigationBarViewModel = new CalendarNavigationBarViewModel();
-        CalendarListViewModel = new CalendarListViewModel(_storage, _googleCalendarService, _credentialManager, CalendarWeekViewModel);
+        CalendarListViewModel = new CalendarListViewModel(_storage, _googleCalendarService, _credentialManager);
         ContactsViewModel = new ContactsViewModel(_storage);
 
         CalendarWeekViewModel.PropertyChanged += (sender, args) =>
@@ -133,26 +157,6 @@ public partial class MainWindowViewModel : ObservableRecipient,
             if (args.PropertyName == nameof(CalendarWeekViewModel.DayColumns))
             {
                 SetupNavigationBar();
-            }
-            else if (args.PropertyName == nameof(CalendarWeekViewModel.DateRangeDisplay) && IsWeekView)
-            {
-                CalendarNavigationBarViewModel.DateRangeDisplay = CalendarWeekViewModel.DateRangeDisplay;
-            }
-        };
-
-        CalendarMonthViewModel.PropertyChanged += (sender, args) =>
-        {
-            if (args.PropertyName == nameof(CalendarMonthViewModel.DateRangeDisplay) && IsMonthView)
-            {
-                CalendarNavigationBarViewModel.DateRangeDisplay = CalendarMonthViewModel.DateRangeDisplay;
-            }
-        };
-
-        CalendarAgendaViewModel.PropertyChanged += (sender, args) =>
-        {
-            if (args.PropertyName == nameof(CalendarAgendaViewModel.DateRangeDisplay) && IsAgendaView)
-            {
-                CalendarNavigationBarViewModel.DateRangeDisplay = CalendarAgendaViewModel.DateRangeDisplay;
             }
         };
 
@@ -172,8 +176,19 @@ public partial class MainWindowViewModel : ObservableRecipient,
         SetupNavigationBar();
     }
 
+    private CalendarViewModelBase ResolveActiveViewModel() => CalendarViewMode switch
+    {
+        CalendarView.Month => CalendarMonthViewModel,
+        CalendarView.Week => CalendarWeekViewModel,
+        CalendarView.Agenda => CalendarAgendaViewModel,
+        _ => CalendarWeekViewModel
+    };
+
     private void SetupNavigationBar()
     {
+        ActiveCalendarViewModel = ResolveActiveViewModel();
+        CalendarListViewModel.ActiveCalendarViewModel = ActiveCalendarViewModel;
+
         CalendarNavigationBarViewModel.IsMonthView = IsMonthView;
         CalendarNavigationBarViewModel.IsFiveDaysView = IsWeekView && CalendarWeekViewModel.DayColumns == 5;
         CalendarNavigationBarViewModel.IsDayView = IsWeekView && CalendarWeekViewModel.DayColumns == 1;
@@ -186,31 +201,11 @@ public partial class MainWindowViewModel : ObservableRecipient,
         CalendarNavigationBarViewModel.ShowDayViewCommand = ShowDayViewCommand;
         CalendarNavigationBarViewModel.ShowAgendaViewCommand = ShowAgendaViewCommand;
 
-        // Set navigation and create event commands based on current view
-        switch (CalendarViewMode)
-        {
-            case CalendarView.Month:
-                CalendarNavigationBarViewModel.PreviousCommand = CalendarMonthViewModel.PreviousCommand;
-                CalendarNavigationBarViewModel.NextCommand = CalendarMonthViewModel.NextCommand;
-                CalendarNavigationBarViewModel.TodayCommand = CalendarMonthViewModel.TodayCommand;
-                CalendarNavigationBarViewModel.CreateNewEventCommand = CalendarMonthViewModel.CreateNewEventCommand;
-                CalendarNavigationBarViewModel.DateRangeDisplay = CalendarMonthViewModel.DateRangeDisplay;
-                break;
-            case CalendarView.Week:
-                CalendarNavigationBarViewModel.PreviousCommand = CalendarWeekViewModel.PreviousCommand;
-                CalendarNavigationBarViewModel.NextCommand = CalendarWeekViewModel.NextCommand;
-                CalendarNavigationBarViewModel.TodayCommand = CalendarWeekViewModel.TodayCommand;
-                CalendarNavigationBarViewModel.CreateNewEventCommand = CalendarWeekViewModel.CreateNewEventCommand;
-                CalendarNavigationBarViewModel.DateRangeDisplay = CalendarWeekViewModel.DateRangeDisplay;
-                break;
-            case CalendarView.Agenda:
-                CalendarNavigationBarViewModel.PreviousCommand = CalendarAgendaViewModel.PreviousCommand;
-                CalendarNavigationBarViewModel.NextCommand = CalendarAgendaViewModel.NextCommand;
-                CalendarNavigationBarViewModel.TodayCommand = CalendarAgendaViewModel.TodayCommand;
-                CalendarNavigationBarViewModel.CreateNewEventCommand = CalendarAgendaViewModel.CreateNewEventCommand;
-                CalendarNavigationBarViewModel.DateRangeDisplay = CalendarAgendaViewModel.DateRangeDisplay;
-                break;
-        }
+        CalendarNavigationBarViewModel.PreviousCommand = ActiveCalendarViewModel.PreviousCommand;
+        CalendarNavigationBarViewModel.NextCommand = ActiveCalendarViewModel.NextCommand;
+        CalendarNavigationBarViewModel.TodayCommand = ActiveCalendarViewModel.TodayCommand;
+        CalendarNavigationBarViewModel.CreateNewEventCommand = ActiveCalendarViewModel.CreateNewEventCommand;
+        CalendarNavigationBarViewModel.DateRangeDisplay = ActiveCalendarViewModel.DateRangeDisplay;
     }
 
     private void LoadCurrentCalendarView()

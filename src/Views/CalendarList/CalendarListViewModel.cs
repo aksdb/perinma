@@ -20,23 +20,21 @@ public partial class CalendarListViewModel : ViewModelBase, IRecipient<AccountsC
     private readonly SqliteStorage _storage;
     private readonly IGoogleCalendarService _googleCalendarService;
     private readonly CredentialManagerService _credentialManager;
-    private readonly CalendarWeekViewModel _calendarWeekViewModel;
     private bool _isLoadingAccounts;
 
     public ObservableCollection<AccountGroupViewModel> AccountGroups { get; } = new();
 
-    public CalendarWeekViewModel CalendarWeekViewModel => _calendarWeekViewModel;
+    [ObservableProperty]
+    private CalendarViewModelBase _activeCalendarViewModel = null!;
 
     public CalendarListViewModel(
         SqliteStorage storage,
         IGoogleCalendarService googleCalendarService,
-        CredentialManagerService credentialManager,
-        CalendarWeekViewModel calendarWeekViewModel)
+        CredentialManagerService credentialManager)
     {
         _storage = storage;
         _googleCalendarService = googleCalendarService;
         _credentialManager = credentialManager;
-        _calendarWeekViewModel = calendarWeekViewModel;
         AccountGroups.CollectionChanged += OnAccountGroupsCollectionChanged;
         WeakReferenceMessenger.Default.Register<AccountsChangedMessage>(this);
         _ = LoadCalendarsAsync();
@@ -211,7 +209,7 @@ public partial class CalendarListViewModel : ViewModelBase, IRecipient<AccountsC
             }
 
             // Refresh the calendar view to show/hide events
-            _calendarWeekViewModel.Load();
+            ActiveCalendarViewModel.Load();
         }
         catch (Exception ex)
         {

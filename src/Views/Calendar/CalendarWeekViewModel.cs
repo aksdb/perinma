@@ -27,13 +27,7 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
     // Full-day events are kept separate so they don't interfere with timed event column calculations
     public ObservableCollection<EventItem> FullDayEvents { get; } = [];
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ViewStartOffset))]
-    [NotifyPropertyChangedFor(nameof(DateRangeDisplay))]
-    [NotifyPropertyChangedFor(nameof(WeekStart))]
-    private DateTime _viewStart;
-
-    public string DateRangeDisplay => FormatDateRange(ViewStart, ViewStart.AddDays(DayColumns - 1));
+    public override string DateRangeDisplay => FormatDateRange(ViewStart, ViewStart.AddDays(DayColumns - 1));
 
     private static string FormatDateRange(DateTime start, DateTime end)
     {
@@ -46,27 +40,10 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         return $"{start.ToString(startFormat)} - {end.ToString(endFormat)}";
     }
 
-    // Legacy property for backward compatibility with CalendarListView's CalendarPicker
-    public DateTime WeekStart
-    {
-        get => ViewStart;
-        set => ViewStart = value;
-    }
-
-    // Legacy property for backward compatibility
-    public string WeekDisplay => DateRangeDisplay;
-
     public DateTimeOffset ViewStartOffset
     {
         get => new(ViewStart);
         set => ViewStart = value.Date;
-    }
-
-    // Legacy property for backward compatibility
-    public DateTimeOffset WeekStartOffset
-    {
-        get => ViewStartOffset;
-        set => ViewStartOffset = value;
     }
 
     [ObservableProperty]
@@ -85,9 +62,9 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         WeakReferenceMessenger.Default.Register<EventsChangedMessage>(this);
     }
 
-
-    partial void OnViewStartChanged(DateTime value)
+    protected override void OnViewStartDateChanged(DateTime value)
     {
+        OnPropertyChanged(nameof(ViewStartOffset));
         AdjustViewStartForMode(value);
     }
 
@@ -109,22 +86,19 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         }
     }
 
-    [RelayCommand]
-    private void Next()
+    protected override void PerformNavigationNext()
     {
         ViewStart = ViewStart.AddDays(7);
         Load();
     }
 
-    [RelayCommand]
-    private void Previous()
+    protected override void PerformNavigationPrevious()
     {
         ViewStart = ViewStart.AddDays(-7);
         Load();
     }
 
-    [RelayCommand]
-    private void Today()
+    protected override void PerformNavigationToday()
     {
         ViewStart = DateTime.Today;
         Load();

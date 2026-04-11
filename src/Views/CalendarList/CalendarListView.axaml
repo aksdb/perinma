@@ -11,7 +11,7 @@
         <!-- Calendar Navigation -->
         <StackPanel DockPanel.Dock="Top">
             <Viewbox MaxHeight="250" Stretch="Uniform" HorizontalAlignment="Center" Margin="0, 0, 0, 10">
-                <Calendar SelectedDate="{Binding CalendarWeekViewModel.WeekStart}" />
+                <Calendar SelectedDate="{Binding ActiveCalendarViewModel.ViewStart}" />
             </Viewbox>
 
             <TextBlock Text="Calendars"

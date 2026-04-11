@@ -8,16 +8,32 @@ public partial class CalendarNavigationBarViewModel : ViewModelBase
     [ObservableProperty]
     private string _dateRangeDisplay = string.Empty;
 
-    public IRelayCommand? PreviousCommand { get; set; }
-    public IRelayCommand? NextCommand { get; set; }
-    public IRelayCommand? TodayCommand { get; set; }
-    public IRelayCommand? CreateNewEventCommand { get; set; }
+    [ObservableProperty]
+    private IRelayCommand? _previousCommand;
 
-    public IRelayCommand? ShowMonthViewCommand { get; set; }
-    public IRelayCommand? ShowWeekViewCommand { get; set; }
-    public IRelayCommand? ShowFiveDaysViewCommand { get; set; }
-    public IRelayCommand? ShowDayViewCommand { get; set; }
-    public IRelayCommand? ShowAgendaViewCommand { get; set; }
+    [ObservableProperty]
+    private IRelayCommand? _nextCommand;
+
+    [ObservableProperty]
+    private IRelayCommand? _todayCommand;
+
+    [ObservableProperty]
+    private IRelayCommand? _createNewEventCommand;
+
+    [ObservableProperty]
+    private IRelayCommand? _showMonthViewCommand;
+
+    [ObservableProperty]
+    private IRelayCommand? _showWeekViewCommand;
+
+    [ObservableProperty]
+    private IRelayCommand? _showFiveDaysViewCommand;
+
+    [ObservableProperty]
+    private IRelayCommand? _showDayViewCommand;
+
+    [ObservableProperty]
+    private IRelayCommand? _showAgendaViewCommand;
 
     [ObservableProperty]
     private bool _isMonthView;

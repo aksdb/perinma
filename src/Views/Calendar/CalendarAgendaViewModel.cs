@@ -21,11 +21,7 @@ public partial class CalendarAgendaViewModel : CalendarViewModelBase, IRecipient
 {
     public ObservableCollection<AgendaDayViewModel> AgendaDays { get; } = [];
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(DateRangeDisplay))]
-    private DateTime _viewStart = DateTime.Today;
-
-    public string DateRangeDisplay => FormatDateRange(ViewStart);
+    public override string DateRangeDisplay => FormatDateRange(ViewStart);
 
     private static string FormatDateRange(DateTime start)
     {
@@ -41,22 +37,19 @@ public partial class CalendarAgendaViewModel : CalendarViewModelBase, IRecipient
         WeakReferenceMessenger.Default.Register<EventsChangedMessage>(this);
     }
 
-    [RelayCommand]
-    private void Next()
+    protected override void PerformNavigationNext()
     {
         ViewStart = ViewStart.AddDays(30);
         Load();
     }
 
-    [RelayCommand]
-    private void Previous()
+    protected override void PerformNavigationPrevious()
     {
         ViewStart = ViewStart.AddDays(-30);
         Load();
     }
 
-    [RelayCommand]
-    private void Today()
+    protected override void PerformNavigationToday()
     {
         ViewStart = DateTime.Today;
         Load();
