@@ -30,7 +30,7 @@
                           Command="{Binding ShowWeekViewCommand}"
                           Padding="8, 4"
                           FontSize="12"/>
-            <ToggleButton Content="5 Days"
+            <ToggleButton Content="Work Week"
                           IsChecked="{Binding IsFiveDaysView}"
                           Command="{Binding ShowFiveDaysViewCommand}"
                           Padding="8, 4"

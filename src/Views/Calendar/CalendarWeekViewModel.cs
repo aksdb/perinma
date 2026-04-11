@@ -27,7 +27,9 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
     // Full-day events are kept separate so they don't interfere with timed event column calculations
     public ObservableCollection<EventItem> FullDayEvents { get; } = [];
 
-    public override string DateRangeDisplay => FormatDateRange(ViewStart, ViewStart.AddDays(DayColumns - 1));
+    public override string DateRangeDisplay => DayColumns == 1
+        ? ViewStart.ToString("dddd, MMM d, yyyy")
+        : FormatDateRange(ViewStart, ViewStart.AddDays(DayColumns - 1));
 
     private static string FormatDateRange(DateTime start, DateTime end)
     {
@@ -70,9 +72,19 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
 
     private void AdjustViewStartForMode(DateTime value)
     {
-        // Start at Monday of the week
-        var weekDiff = ((int)value.DayOfWeek + 6) % 7;
-        var adjustedStart = value.Date.AddDays(-weekDiff);
+        DateTime adjustedStart;
+
+        // Only snap to Monday for multi-day views (week/work week).
+        // Day view should show the exact selected date.
+        if (DayColumns > 1)
+        {
+            var weekDiff = ((int)value.DayOfWeek + 6) % 7;
+            adjustedStart = value.Date.AddDays(-weekDiff);
+        }
+        else
+        {
+            adjustedStart = value.Date;
+        }
 
         if (ViewStart != adjustedStart)
         {
@@ -88,13 +100,18 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
 
     protected override void PerformNavigationNext()
     {
-        ViewStart = ViewStart.AddDays(7);
+        // Advance by 1 day in day view, otherwise by a full week.
+        // Work week (5 days) advances by 7 to jump to the next work week,
+        // matching the conventional calendar behavior.
+        var step = DayColumns == 1 ? 1 : 7;
+        ViewStart = ViewStart.AddDays(step);
         Load();
     }
 
     protected override void PerformNavigationPrevious()
     {
-        ViewStart = ViewStart.AddDays(-7);
+        var step = DayColumns == 1 ? 1 : 7;
+        ViewStart = ViewStart.AddDays(-step);
         Load();
     }
 
