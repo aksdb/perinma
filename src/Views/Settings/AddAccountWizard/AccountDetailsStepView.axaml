@@ -14,7 +14,7 @@
 
         <StackPanel Spacing="5">
             <TextBlock Text="Account Name" />
-            <TextBox Text="{Binding AccountName}" Watermark="My Calendar Account" />
+            <TextBox Text="{Binding AccountName}" PlaceholderText="My Calendar Account" />
             <TextBlock Text="{Binding NameValidationError}"
                        Foreground="Red"
                        IsVisible="{Binding !!NameValidationError}" />

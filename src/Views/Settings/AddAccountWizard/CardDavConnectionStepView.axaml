@@ -12,12 +12,12 @@
 
         <StackPanel Spacing="5">
             <TextBlock Text="Server URL" />
-            <TextBox Text="{Binding ServerUrl}" Watermark="https://carddav.example.com" />
+            <TextBox Text="{Binding ServerUrl}" PlaceholderText="https://carddav.example.com" />
         </StackPanel>
 
         <StackPanel Spacing="5">
             <TextBlock Text="Username" />
-            <TextBox Text="{Binding Username}" Watermark="user@example.com" />
+            <TextBox Text="{Binding Username}" PlaceholderText="user@example.com" />
         </StackPanel>
 
         <StackPanel Spacing="5">

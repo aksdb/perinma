@@ -10,6 +10,9 @@ public static class ExtensionFunctions
     public static TResult Let<T, TResult>(this T value, Func<T, TResult> func) =>
         func(value);
     
+    public static void Let<T>(this T value, Action<T> action) =>
+        action(value);
+    
     public static LocalDateTime ToLocalDateTime(this Instant instant) =>
         instant.InZone(LocalTimeZone).LocalDateTime;
 

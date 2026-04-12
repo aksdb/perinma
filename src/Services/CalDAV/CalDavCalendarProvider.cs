@@ -236,7 +236,7 @@ public class CalDavCalendarProvider(
                 Deleted = true,
                 Data = new Dictionary<string, DataAttribute>
                 {
-                    { "rawData", new DataAttribute.Text(evt.RawICalendar) },
+                    { "rawData", new DataAttribute.Text(evt.RawICalendar!) },
                 }
             };
         }
@@ -278,7 +278,7 @@ public class CalDavCalendarProvider(
             OriginalStartTime = null,
             Data = new Dictionary<string, DataAttribute>
             {
-                { "rawData", new DataAttribute.Text(evt.RawICalendar) },
+                { "rawData", new DataAttribute.Text(evt.RawICalendar!) },
             }
         };
     }

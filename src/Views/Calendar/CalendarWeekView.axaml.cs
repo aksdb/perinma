@@ -22,7 +22,7 @@ public partial class CalendarWeekView : UserControl
     private readonly Grid _timeRowGrid;
     private readonly Grid _weekdayNamesGrid;
     private MainView _mainView;
-    private TopBarView _topBarView;
+    private TopBarView? _topBarView;
     private CalendarWeekViewModel? _viewModel;
     private ScrollViewer? _centerView;
     private bool _hasScrolledToWorkingHours;
@@ -113,9 +113,9 @@ public partial class CalendarWeekView : UserControl
     {
         if (_viewModel == null) return;
         _mainView.DayColumns = _viewModel.DayColumns;
-        _topBarView.DayColumns = _viewModel.DayColumns;
+        _topBarView?.DayColumns = _viewModel.DayColumns;
         _mainView.RefreshContent();
-        _topBarView.RefreshContent();
+        _topBarView?.RefreshContent();
     }
 
     private void TryScrollToWorkingHours()
@@ -156,7 +156,7 @@ public partial class CalendarWeekView : UserControl
         _timeRowGrid.RowDefinitions.Last().Height = new GridLength(_timeRowGrid.RowDefinitions[1].ActualHeight * 1.5);
         _mainView.RowHeight = _timeRowGrid.RowDefinitions[1].ActualHeight;
         _mainView.RefreshContent();
-        _topBarView.RefreshContent();
+        _topBarView?.RefreshContent();
         TryScrollToWorkingHours();
     }
 

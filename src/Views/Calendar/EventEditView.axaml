@@ -46,7 +46,7 @@
                                     <StackPanel Spacing="4">
                                         <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
                                         <TextBox Text="{Binding Title}"
-                                                 Watermark="Event title"
+                                                 PlaceholderText="Event title"
                                                  HorizontalAlignment="Stretch"/>
                                     </StackPanel>
                                 </DataTemplate>
@@ -101,7 +101,7 @@
                                     <StackPanel Spacing="4">
                                         <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
                                         <TextBox Text="{Binding Description}"
-                                                 Watermark="Description (optional)"
+                                                 PlaceholderText="Description (optional)"
                                                  AcceptsReturn="True"
                                                  TextWrapping="Wrap"
                                                  HorizontalAlignment="Stretch"
@@ -114,7 +114,7 @@
                                     <StackPanel Spacing="4">
                                         <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
                                         <TextBox Text="{Binding Location}"
-                                                 Watermark="Location (optional)"
+                                                 PlaceholderText="Location (optional)"
                                                  HorizontalAlignment="Stretch"/>
                                     </StackPanel>
                                 </DataTemplate>

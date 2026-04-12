@@ -421,7 +421,7 @@ public class SyncService
                 else
                 {
                     await _storage.AddEventRelationToBacklogAsync(calendar.CalendarId, evt.RecurringEventId!,
-                        evt.ExternalId);
+                        evt.ExternalId!);
                     
                     unresolvedAffectedEventIds.Add(evt.RecurringEventId!);
                 }

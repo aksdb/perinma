@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -157,6 +156,7 @@ public partial class EventEditViewModel : ViewModelBase
             _timeRangeField.EndTime = _initialEndTime.Value;
             _timeRangeField.IsFullDay = _initialFullDay;
         }
+
         EditFields.Add(_timeRangeField);
 
         if (supportedExtensions.Contains(CalendarEventExtensions.Description))
@@ -200,7 +200,8 @@ public partial class EventEditViewModel : ViewModelBase
 
             var accountId = targetCalendar.Account.Id.ToString();
             var calendarExternalId = targetCalendar.ExternalId ?? string.Empty;
-            var provider = App.Services?.GetRequiredService<SyncService>()?.Providers?.GetValueOrDefault(targetCalendar.Account.Type);
+            var provider = App.Services?.GetRequiredService<SyncService>()?.Providers
+                ?.GetValueOrDefault(targetCalendar.Account.Type);
 
             var extensions = new ModelExtensions();
 
@@ -230,16 +231,14 @@ public partial class EventEditViewModel : ViewModelBase
 
                 updatedExtensions.Set(CalendarEventExtensions.FullDay, _timeRangeField.IsFullDay);
 
-                if (_descriptionField != null)
-                {
-                    var richText = _descriptionField.GetRichText();
-                    updatedExtensions.Set(CalendarEventExtensions.Description, richText);
-                }
+                _descriptionField?.GetRichText()?.Let(richText =>
+                    updatedExtensions.Set(CalendarEventExtensions.Description, richText));
 
-                if (_locationField != null)
+                _locationField?.Let(location =>
                 {
-                    updatedExtensions.Set(CalendarEventExtensions.Location, string.IsNullOrWhiteSpace(_locationField.Location) ? null : _locationField.Location);
-                }
+                    if (!string.IsNullOrWhiteSpace(location.Location))
+                        updatedExtensions.Set(CalendarEventExtensions.Location, location.Location);
+                });
 
                 var updatedEvent = new CalendarEvent
                 {

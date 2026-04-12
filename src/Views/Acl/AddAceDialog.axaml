@@ -42,7 +42,7 @@
                         <TextBlock Text="Search for users/groups:" FontSize="12" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBox Text="{Binding SearchTerm, UpdateSourceTrigger=PropertyChanged}"
-                                     Watermark="Search by name..."
+                                     PlaceholderText="Search by name..."
                                      Width="300" />
                             <TextBlock Text="Searching..."
                                        IsVisible="{Binding IsSearching}"
@@ -110,7 +110,7 @@
                 <StackPanel Spacing="4" Margin="0,8,0,0">
                     <TextBlock Text="Or enter URL manually:" FontSize="12" Foreground="Gray" />
                     <TextBox Text="{Binding PrincipalUrl, UpdateSourceTrigger=PropertyChanged}"
-                             Watermark="https://server.com/principals/users/username" />
+                             PlaceholderText="https://server.com/principals/users/username" />
                 </StackPanel>
             </StackPanel>
         </StackPanel>
