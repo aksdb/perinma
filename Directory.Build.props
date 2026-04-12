@@ -17,10 +17,10 @@
             <GitVersionRaw Condition="'$(GitVersionRaw)' == ''">0.0.0-dev</GitVersionRaw>
             <GitVersionClean>$(GitVersionRaw.Replace('v', ''))</GitVersionClean>
             <NumericVersion>0.0.0</NumericVersion>
-            <NumericVersion Condition="$(GitVersionClean.Contains('-'))">$([System.Text.RegularExpressions.Regex]::Match($(GitVersionClean), '^(\d+\.\d+\.\d+)').Groups[1].Value)</NumericVersion>
-            <NumericVersion Condition="!$(GitVersionClean.Contains('-'))">$(GitVersionClean)</NumericVersion>
+            <NumericVersion Condition="$(GitVersionClean.Contains('-')) and $(GitVersionClean.Contains('.'))">$([System.Text.RegularExpressions.Regex]::Match($(GitVersionClean), '^(\d+\.\d+\.\d+)').Groups[1].Value)</NumericVersion>
+            <NumericVersion Condition="!$(GitVersionClean.Contains('-')) and $(GitVersionClean.Contains('.'))">$(GitVersionClean)</NumericVersion>
             <AssemblyVersion>$(NumericVersion)</AssemblyVersion>
-            <FileVersion>$(GitVersionClean)</FileVersion>
+            <FileVersion>$(NumericVersion)</FileVersion>
             <InformationalVersion>$(GitVersionRaw)</InformationalVersion>
             <Version>$(NumericVersion)</Version>
         </PropertyGroup>
