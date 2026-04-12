@@ -1,10 +1,10 @@
 using System;
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
 using Avalonia;
+using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
@@ -376,9 +376,9 @@ public partial class CalendarWeekView : UserControl
             InvalidateVisual();
         }
 
-        private ObservableCollection<EventItem>? _items;
+        private AvaloniaList<EventItem>? _items;
 
-        public void SetEvents(ObservableCollection<EventItem> items)
+        public void SetEvents(AvaloniaList<EventItem> items)
         {
             if (_items != null)
             {
@@ -700,9 +700,9 @@ public partial class CalendarWeekView : UserControl
             }
         }
 
-        private ObservableCollection<EventItem>? _items;
+        private AvaloniaList<EventItem>? _items;
 
-        public void SetEvents(ObservableCollection<EventItem> items)
+        public void SetEvents(AvaloniaList<EventItem> items)
         {
             if (_items != null)
             {

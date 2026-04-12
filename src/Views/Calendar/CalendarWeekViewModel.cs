@@ -1,8 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
+using Avalonia.Collections;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -23,10 +23,10 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
     [ObservableProperty]
     private CalendarEvent? _selectedEvent;
 
-    public ObservableCollection<EventItem> Events { get; } = [];
+    public AvaloniaList<EventItem> Events { get; } = [];
 
     // Full-day events are kept separate so they don't interfere with timed event column calculations
-    public ObservableCollection<EventItem> FullDayEvents { get; } = [];
+    public AvaloniaList<EventItem> FullDayEvents { get; } = [];
 
     // Working days array: index 0=Sunday through 6=Saturday
     private bool[] _workingDays = [false, true, true, true, true, true, false];
@@ -342,8 +342,8 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         // Assign columns only for timed events
         AssignEventColumns(timed);
 
-        timed.ForEach(Events.Add);
-        fullDay.ForEach(FullDayEvents.Add);
+        Events.AddRange(timed);
+        FullDayEvents.AddRange(fullDay);
     }
 
     private static void AssignEventColumns(List<EventItem> items)
