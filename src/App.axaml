@@ -3,16 +3,22 @@
              x:Class="perinma.App"
              xmlns:local="using:perinma"
              RequestedThemeVariant="Light">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+    <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.DataTemplates>
-        <local:ViewLocator/>
+        <local:ViewLocator />
     </Application.DataTemplates>
-  
+
     <Application.Styles>
         <FluentTheme />
-        <Style Selector="CalendarDayButton.highlighted">
+        <Style Selector="CalendarDayButton.highlighted /template/ Border#Root">
             <Setter Property="Background" Value="#330078D4" />
+        </Style>
+        <Style Selector="CalendarDayButton.highlighted:inactive /template/ Border#Root">
+            <Setter Property="Background" Value="#330078D4" />
+        </Style>
+        <Style Selector="CalendarDayButton.highlighted:inactive /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Foreground" Value="{DynamicResource CalendarViewCalendarItemForeground}" />
         </Style>
     </Application.Styles>
 </Application>
