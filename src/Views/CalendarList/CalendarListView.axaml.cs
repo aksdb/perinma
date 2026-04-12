@@ -13,6 +13,7 @@ public partial class CalendarListView : UserControl
 {
     private int _draggedItemIndex = -1;
     private bool _isDragging;
+    private PointerPressedEventArgs? _dragPressedEventArgs;
 
     public CalendarListView()
     {
@@ -131,18 +132,20 @@ public partial class CalendarListView : UserControl
 
         _draggedItemIndex = viewModel.AccountGroups.IndexOf(accountGroup);
         _isDragging = false;
+        _dragPressedEventArgs = e;
         e.Handled = true;
     }
 
     private async void AccountGroup_PointerMoved(object? sender, PointerEventArgs e)
     {
-        if (_draggedItemIndex < 0 || _isDragging)
+        if (_draggedItemIndex < 0 || _isDragging || _dragPressedEventArgs == null)
             return;
 
         var point = e.GetCurrentPoint(this);
         if (!point.Properties.IsLeftButtonPressed)
         {
             _draggedItemIndex = -1;
+            _dragPressedEventArgs = null;
             return;
         }
 
@@ -153,12 +156,13 @@ public partial class CalendarListView : UserControl
 
         try
         {
-            await DragDrop.DoDragDropAsync(e, dragData, DragDropEffects.Move);
+            await DragDrop.DoDragDropAsync(_dragPressedEventArgs, dragData, DragDropEffects.Move);
         }
         finally
         {
             _draggedItemIndex = -1;
             _isDragging = false;
+            _dragPressedEventArgs = null;
         }
     }
 

@@ -4,7 +4,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input.Platform;
-using Avalonia.VisualTree;
 
 namespace perinma.Utils;
 
@@ -54,8 +53,8 @@ public static class PlatformUtil
 
         if (Application.Current?.ApplicationLifetime is ISingleViewApplicationLifetime { MainView: { } mainView })
         {
-            var visualRoot = mainView.GetVisualRoot();
-            if (visualRoot is TopLevel topLevel)
+            var topLevel = TopLevel.GetTopLevel(mainView);
+            if (topLevel != null)
             {
                 return topLevel.Clipboard!;
             }
