@@ -24,9 +24,9 @@ public partial class CalendarListView : UserControl
         SidebarCalendar.DisplayDateChanged += (_, _) => InvalidateHighlight();
     }
 
-    private void OnSidebarLayoutUpdated(object? sender, System.EventArgs e) => UpdateHighlight();
+    private void OnSidebarLayoutUpdated(object? sender, EventArgs e) => UpdateHighlight();
 
-    private void OnDataContextChanged(object? sender, System.EventArgs e)
+    private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (DataContext is CalendarListViewModel oldVm)
             oldVm.PropertyChanged -= OnViewModelPropertyChanged;
@@ -41,7 +41,7 @@ public partial class CalendarListView : UserControl
     {
         if (e.PropertyName == nameof(CalendarListViewModel.ActiveCalendarViewModel))
         {
-            if (sender is CalendarListViewModel vm && vm.ActiveCalendarViewModel is CalendarViewModelBase newBase)
+            if (sender is CalendarListViewModel { ActiveCalendarViewModel: { } newBase })
                 newBase.PropertyChanged += OnActiveCalendarPropertyChanged;
             UpdateHighlight();
         }
@@ -67,14 +67,15 @@ public partial class CalendarListView : UserControl
 
     private void UpdateHighlight()
     {
-        if (DataContext is not CalendarListViewModel vm || vm.ActiveCalendarViewModel is not CalendarViewModelBase activeVm)
+        if (DataContext is not CalendarListViewModel { ActiveCalendarViewModel: { } activeVm })
             return;
 
         var highlightStart = activeVm.HighlightStart;
         var highlightEnd = activeVm.HighlightEnd;
         var displayMonth = new DateTime(SidebarCalendar.DisplayDate.Year, SidebarCalendar.DisplayDate.Month, 1);
 
-        if (highlightStart == _lastHighlight.Start && highlightEnd == _lastHighlight.End && displayMonth == _lastDisplayMonth)
+        if (highlightStart == _lastHighlight.Start && highlightEnd == _lastHighlight.End &&
+            displayMonth == _lastDisplayMonth)
             return;
 
         _lastHighlight = (highlightStart, highlightEnd);
@@ -87,6 +88,7 @@ public partial class CalendarListView : UserControl
                 if (child is CalendarDayButton dayButton)
                     dayButton.Classes.Remove("highlighted");
             }
+
             return;
         }
 
@@ -187,7 +189,7 @@ public partial class CalendarListView : UserControl
     {
         if (DataContext is not CalendarListViewModel viewModel)
             return;
-        
+
         if (!e.DataTransfer.Contains(DataFormat.Text))
             return;
 
@@ -198,9 +200,9 @@ public partial class CalendarListView : UserControl
         var targetBorder = FindAccountGroupBorder(e.Source as Visual);
         if (targetBorder?.DataContext is not AccountGroupViewModel targetItem)
             return;
-        
+
         var targetIndex = viewModel.AccountGroups.IndexOf(targetItem);
-        
+
         if (sourceIndex == targetIndex || sourceIndex < 0 || targetIndex < 0)
             return;
 
@@ -222,6 +224,7 @@ public partial class CalendarListView : UserControl
 
             visual = visual.GetVisualParent();
         }
+
         return null;
     }
 
