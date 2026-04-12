@@ -92,24 +92,16 @@ public partial class CalendarListView : UserControl
             return;
         }
 
-        var displayDate = SidebarCalendar.DisplayDate;
-        var firstOfMonth = displayDate.Date.AddDays(1 - displayDate.Day);
-        var firstDayOfWeek = (int)firstOfMonth.DayOfWeek;
-        var calendarFirstDayOfWeek = (int)SidebarCalendar.FirstDayOfWeek;
-        var offset = (firstDayOfWeek - calendarFirstDayOfWeek + 7) % 7;
-        var gridStart = firstOfMonth.AddDays(-offset);
-
         var start = highlightStart.Value.Date;
         var end = highlightEnd.Value.Date;
         var buttonIndex = 0;
 
         foreach (var child in SidebarCalendar.GetVisualDescendants())
         {
-            if (child is not CalendarDayButton dayButton)
+            if (child is not CalendarDayButton { DataContext: DateTime buttonDateTime } dayButton)
                 continue;
 
-            var dayDate = gridStart.AddDays(buttonIndex);
-            if (dayDate >= start && dayDate <= end)
+            if (buttonDateTime >= start && buttonDateTime <= end)
                 dayButton.Classes.Add("highlighted");
             else
                 dayButton.Classes.Remove("highlighted");
