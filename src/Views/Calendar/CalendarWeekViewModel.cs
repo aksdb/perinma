@@ -118,7 +118,19 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
     protected override void OnViewStartDateChanged(DateTime value)
     {
         OnPropertyChanged(nameof(ViewStartOffset));
+        UpdateHighlightRange();
         AdjustViewStartForMode(value);
+    }
+
+    private void UpdateHighlightRange()
+    {
+        if (ViewStart.Year < 1900)
+            return;
+
+        HighlightStart = ViewStart;
+        HighlightEnd = ViewStart.AddDays(DayColumns - 1);
+        OnPropertyChanged(nameof(HighlightStart));
+        OnPropertyChanged(nameof(HighlightEnd));
     }
 
     private void AdjustViewStartForMode(DateTime value)
@@ -421,6 +433,7 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         }
 
         WeekDayHeaders = newHeaders;
+        UpdateHighlightRange();
         Load();
     }
 

@@ -24,6 +24,9 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
     [NotifyPropertyChangedFor(nameof(DateRangeDisplay))]
     private DateTime _viewStart = DateTime.Today;
 
+    public DateTime? HighlightStart { get; protected set; }
+    public DateTime? HighlightEnd { get; protected set; }
+
     public abstract string DateRangeDisplay { get; }
 
     protected CalendarViewModelBase(ICalendarSource calendarSource, SettingsService? settingsService = null)

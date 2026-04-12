@@ -11,5 +11,8 @@
   
     <Application.Styles>
         <FluentTheme />
+        <Style Selector="CalendarDayButton.highlighted">
+            <Setter Property="Background" Value="#330078D4" />
+        </Style>
     </Application.Styles>
 </Application>
