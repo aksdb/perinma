@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Ical.Net;
+using Ical.Net.CalendarComponents;
+using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
 using NodaTime;
 using NodaTime.Extensions;
@@ -12,6 +15,7 @@ using Calendar = Ical.Net.Calendar;
 using Duration = NodaTime.Duration;
 using ICalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 using CalDateTime = Ical.Net.DataTypes.CalDateTime;
+using CalendarEvent = perinma.Models.CalendarEvent;
 
 namespace perinma.Services.CalDAV;
 
@@ -24,7 +28,7 @@ public class CalDavCalendarProvider(
     : ICalendarProvider
 {
     private static ModelExtension<ICalEvent> ICalEventExtension = new();
-    
+
     /// <inheritdoc/>
     public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange) =>
         rawEvents
@@ -35,14 +39,16 @@ public class CalDavCalendarProvider(
             .SelectMany(group =>
             {
                 var hasRecurrenceId = group.Any(t => t.evt.RecurrenceIdentifier != null);
-                
+
                 if (hasRecurrenceId || group.Any(t => t.evt.RecurrenceRules.Count > 0))
                 {
                     var reference = group.First().Reference;
                     var calendar = group.First().Calendar;
                     var hasBaseEvent = group.Any(t => t.evt.RecurrenceRules.Count > 0);
-                    var baseEvent = hasBaseEvent ? group.First(t => t.evt.RecurrenceRules.Count > 0).evt : group.First(t => t.evt.RecurrenceIdentifier == null).evt;
-                    
+                    var baseEvent = hasBaseEvent
+                        ? group.First(t => t.evt.RecurrenceRules.Count > 0).evt
+                        : group.First(t => t.evt.RecurrenceIdentifier == null).evt;
+
                     return calendar.GetOccurrences(new CalDateTime(timeRange.Start.ToDateTimeUtc()))
                         .TakeWhile(o => o.Period.StartTime.Value <= timeRange.End.ToDateTimeUtc())
                         .Select(occurrence =>
@@ -50,13 +56,14 @@ public class CalDavCalendarProvider(
                             var startTime = Instant.FromDateTimeOffset(occurrence.Period.StartTime.AsUtc);
                             var tzId = occurrence.Period.StartTime.TzId;
                             string? timeZone = tzId ?? (baseEvent.Start != null ? baseEvent.Start.TzId : null);
-                            
+
                             Instant endTime;
-                            if (occurrence.Period.EndTime is {} occurrenceEndTime)
+                            if (occurrence.Period.EndTime is { } occurrenceEndTime)
                                 endTime = Instant.FromDateTimeOffset(occurrenceEndTime.AsUtc);
-                            else if (baseEvent.Duration is {} eventDuration)
-                                endTime = startTime.Plus(Duration.FromTimeSpan(eventDuration.ToTimeSpan(occurrence.Period.StartTime!)));
-                            else if (baseEvent is { Start: {} eventStart, End: {} eventEnd })
+                            else if (baseEvent.Duration is { } eventDuration)
+                                endTime = startTime.Plus(
+                                    Duration.FromTimeSpan(eventDuration.ToTimeSpan(occurrence.Period.StartTime!)));
+                            else if (baseEvent is { Start: { } eventStart, End: { } eventEnd })
                                 endTime = startTime.Plus(Duration.FromTimeSpan(eventEnd.Value - eventStart.Value));
                             else
                                 endTime = startTime;
@@ -70,11 +77,12 @@ public class CalDavCalendarProvider(
                     {
                         var startTime = Instant.FromDateTimeOffset(t.evt.Start!.AsUtc);
                         var endTime = Instant.FromDateTimeOffset(t.evt.End!.AsUtc);
-                        return (reference: t.Reference, baseEvent: t.evt, startTime, endTime, timeZone: t.evt.Start.TzId);
+                        return (reference: t.Reference, baseEvent: t.evt, startTime, endTime,
+                            timeZone: t.evt.Start.TzId);
                     });
             })
             .Where(t => t.startTime <= timeRange.End && t.endTime >= timeRange.Start)
-             .Select(t => MapToCalendarEvent(t.reference, t.baseEvent, t.startTime, t.endTime, t.timeZone))
+            .Select(t => MapToCalendarEvent(t.reference, t.baseEvent, t.startTime, t.endTime, t.timeZone))
             .ToList();
 
     private static CalendarEvent MapToCalendarEvent(EventReference reference, ICalEvent evt,
@@ -82,7 +90,7 @@ public class CalDavCalendarProvider(
     {
         var localStartTime = startTime.ToLocalDateTime();
         var localEndTime = endTime.ToLocalDateTime();
-        
+
         var extensions = new ModelExtensions();
         extensions.Set(ICalEventExtension, evt);
         // TODO we might need the full calendar as well
@@ -95,13 +103,13 @@ public class CalDavCalendarProvider(
 
         if (timeZone != null)
             extensions.Set(CalendarEventExtensions.TimeZone, timeZone);
-        
+
         if (evt.Location != null)
             extensions.Set(CalendarEventExtensions.Location, evt.Location);
-        
+
         if (evt.Description != null)
             extensions.Set(CalendarEventExtensions.Description, new RichText.SimpleText(evt.Description));
-        
+
         if (evt.Url != null)
             extensions.Set(CalendarEventExtensions.Attachments, [
                 new CalendarEventAttachment
@@ -110,7 +118,7 @@ public class CalDavCalendarProvider(
                     Url = evt.Url.ToString(),
                 }
             ]);
-        
+
         return new CalendarEvent
         {
             Reference = reference,
@@ -240,7 +248,7 @@ public class CalDavCalendarProvider(
                 }
             };
         }
-        
+
         var iCalendar = evt.ICalendar ?? evt.RawICalendar?.Let(Calendar.Load);
         if (iCalendar == null)
             return null;
@@ -254,12 +262,13 @@ public class CalDavCalendarProvider(
                 continue;
 
             var eventStart = iCalEvent.Start?.AsUtc.ToInstant();
-            var eventEnd  = iCalEvent.End?.AsUtc.ToInstant();
-            
+            var eventEnd = iCalEvent.End?.AsUtc.ToInstant();
+
             if (eventStart != null && (startTime == null || eventStart < startTime))
                 startTime = eventStart;
-            
-            var recurrenceEndTime = RecurrenceParser.CalculateRecurrenceEndTime(iCalEvent)?.ToUniversalTime().ToInstant();
+
+            var recurrenceEndTime =
+                RecurrenceParser.CalculateRecurrenceEndTime(iCalEvent)?.ToUniversalTime().ToInstant();
             if (recurrenceEndTime != null && (endTime == null || recurrenceEndTime > endTime))
                 endTime = recurrenceEndTime;
             if (recurrenceEndTime == null && eventEnd != null && (endTime == null || eventEnd > endTime))
@@ -498,14 +507,27 @@ public class CalDavCalendarProvider(
             Uid = Guid.NewGuid().ToString()
         };
 
-        // TODO honor the timezone extension when available? Might have to convert the localtime then first.
-        calendar.AddTimeZone(TimeZoneInfo.Local.Id);
+        // Handle reminder
+        var reminderMinutes = extensions.Get(CalendarEventExtensions.ReminderMinutesBefore);
+        if (reminderMinutes >= 0)
+        {
+            calendarEvent.Alarms.Add(new Alarm
+            {
+                Action = AlarmAction.Display,
+                Trigger = new Trigger
+                {
+                    Duration = new Ical.Net.DataTypes.Duration(minutes: -reminderMinutes)
+                }
+            });
+        }
+
+        // TODO honor timezone extension when available? Might have to convert to localtime then first.
 
         calendar.Events.Add(calendarEvent);
 
         var serializer = new CalendarSerializer();
         var rawData = serializer.SerializeToString(calendar)
-            ?? throw new InvalidOperationException("Failed to serialize calendar");
+                      ?? throw new InvalidOperationException("Failed to serialize calendar");
 
         var externalId = await calDavService.CreateEventAsync(
             calDavCredentials,
@@ -526,11 +548,13 @@ public class CalDavCalendarProvider(
         //   that we have to attach the original calendar, which can already contain multiple
         //   events that override individual occurrences and we either have to pick the
         //   right one or add a new one (and set an exclusion rule to the base event).
-        
-        var calDavCredentials = credentialManager.GetCalDavCredentials(calendarEvent.Reference.Calendar.Account.Id.ToString());
+
+        var calDavCredentials =
+            credentialManager.GetCalDavCredentials(calendarEvent.Reference.Calendar.Account.Id.ToString());
         if (calDavCredentials == null)
         {
-            throw new InvalidOperationException($"No CalDAV credentials found for account {calendarEvent.Reference.Calendar.Account.Name}");
+            throw new InvalidOperationException(
+                $"No CalDAV credentials found for account {calendarEvent.Reference.Calendar.Account.Name}");
         }
 
         var description = calendarEvent.Extensions.Get(CalendarEventExtensions.Description) switch
@@ -542,7 +566,8 @@ public class CalDavCalendarProvider(
 
         var location = calendarEvent.Extensions.Get(CalendarEventExtensions.Location);
 
-        var iCalEvent = calendarEvent.Extensions.Get(ICalEventExtension) ?? throw new InvalidOperationException("Not a CalDAV calendar event");
+        var iCalEvent = calendarEvent.Extensions.Get(ICalEventExtension) ??
+                        throw new InvalidOperationException("Not a CalDAV calendar event");
         var isFullDay = calendarEvent.Extensions.Get(CalendarEventExtensions.FullDay);
 
         var startTime = calendarEvent.StartTime;
@@ -554,9 +579,24 @@ public class CalDavCalendarProvider(
         iCalEvent.Start = new CalDateTime(startTime.ToZonedDateTime().ToDateTimeUtc(), !isFullDay);
         iCalEvent.End = new CalDateTime(endTime.ToZonedDateTime().ToDateTimeUtc(), !isFullDay);
 
+        // Handle reminder - clear existing alarms and add new one if specified
+        iCalEvent.Alarms.Clear();
+        var reminderMinutes = calendarEvent.Extensions.Get<int>(CalendarEventExtensions.ReminderMinutesBefore);
+        if (reminderMinutes >= 0)
+        {
+            iCalEvent.Alarms.Add(new Alarm
+            {
+                Action = AlarmAction.Display,
+                Trigger = new Trigger
+                {
+                    Duration = new Ical.Net.DataTypes.Duration(minutes: -reminderMinutes)
+                }
+            });
+        }
+
         // TODO see above: that's too simple and might lose information
         // TODO possibly honor timezone extension; see above as well
-        var calendar =  new Calendar();
+        var calendar = new Calendar();
         calendar.AddTimeZone(TimeZoneInfo.Local.Id);
         calendar.Events.Add(iCalEvent);
 
@@ -568,7 +608,7 @@ public class CalDavCalendarProvider(
 
         var serializer = new CalendarSerializer();
         var rawData = serializer.SerializeToString(calendar)
-            ?? throw new InvalidOperationException("Failed to serialize calendar");
+                      ?? throw new InvalidOperationException("Failed to serialize calendar");
 
         return new DataAttribute.Text(rawData);
     }

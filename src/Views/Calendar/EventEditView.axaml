@@ -118,6 +118,26 @@
                                                  HorizontalAlignment="Stretch"/>
                                     </StackPanel>
                                 </DataTemplate>
+
+                                <!-- Reminder Edit -->
+                                <DataTemplate DataType="edit:ReminderEditViewModel">
+                                    <StackPanel Spacing="8">
+                                        <CheckBox Content="Reminder"
+                                                 IsChecked="{Binding HasReminder}"
+                                                 Margin="0,4,0,0"/>
+
+                                        <ComboBox ItemsSource="{Binding ReminderOptions}"
+                                                  SelectedItem="{Binding SelectedReminderOption}"
+                                                  HorizontalAlignment="Stretch"
+                                                  IsVisible="{Binding HasReminder}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </DataTemplate>
                             </ContentControl.DataTemplates>
                         </ContentControl>
                     </DataTemplate>

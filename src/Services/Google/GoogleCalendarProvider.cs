@@ -709,6 +709,20 @@ public class GoogleCalendarProvider(
         if (location != null)
             googleEvent.Location = location;
 
+        // Handle reminder
+        var reminderMinutes = extensions.Get(CalendarEventExtensions.ReminderMinutesBefore);
+        if (reminderMinutes >= 0)
+        {
+            googleEvent.Reminders = new GoogleEvent.RemindersData
+            {
+                UseDefault = false,
+                Overrides = new List<EventReminder>
+                {
+                    new() { Method = "popup", Minutes = reminderMinutes }
+                }
+            };
+        }
+
         var externalId =
             await googleCalendarService.CreateEventAsync(service, calendarId, googleEvent, cancellationToken);
 
@@ -776,6 +790,20 @@ public class GoogleCalendarProvider(
         var location = calendarEvent.Extensions.Get(CalendarEventExtensions.Location);
         if (location != null)
             googleEvent.Location = location;
+
+        // Handle reminder
+        var reminderMinutes = calendarEvent.Extensions.Get(CalendarEventExtensions.ReminderMinutesBefore);
+        if (reminderMinutes >= 0)
+        {
+            googleEvent.Reminders = new GoogleEvent.RemindersData
+            {
+                UseDefault = false,
+                Overrides = new List<EventReminder>
+                {
+                    new() { Method = "popup", Minutes = reminderMinutes }
+                }
+            };
+        }
 
         var calendarId = calendarEvent.Reference.Calendar.ExternalId ?? throw new InvalidOperationException("Calendar ExternalId is null");
         var eventId = calendarEvent.Reference.ExternalId ?? throw new InvalidOperationException("Event ExternalId is null");

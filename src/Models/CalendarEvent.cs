@@ -113,4 +113,5 @@ public static class CalendarEventExtensions
     public static ModelExtension<List<CalendarEventAttachment>> Attachments = new();
     public static ModelExtension<CalendarEventConference> Conference = new();
     public static ModelExtension<Participation> Participation = new();
+    public static ModelExtension<int> ReminderMinutesBefore = new();
 }

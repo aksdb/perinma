@@ -43,6 +43,7 @@ public partial class EventEditViewModel : ViewModelBase
     private TimeRangeEditViewModel? _timeRangeField;
     private DescriptionEditViewModel? _descriptionField;
     private LocationEditViewModel? _locationField;
+    private ReminderEditViewModel? _reminderField;
 
     partial void OnSelectedCalendarChanged(CalendarModel? value)
     {
@@ -159,6 +160,18 @@ public partial class EventEditViewModel : ViewModelBase
 
         EditFields.Add(_timeRangeField);
 
+        // Add reminder field
+        _reminderField = new ReminderEditViewModel();
+        if (_existingEvent != null && _existingRawEventData != null)
+        {
+            var existingReminders = provider.GetReminderMinutes(_existingRawEventData);
+            if (existingReminders.Count > 0)
+            {
+                _reminderField = new ReminderEditViewModel(existingReminders[0]);
+            }
+        }
+        EditFields.Add(_reminderField);
+
         if (supportedExtensions.Contains(CalendarEventExtensions.Description))
         {
             var existingDescription = _existingEvent?.Extensions.Get(CalendarEventExtensions.Description);
@@ -180,7 +193,7 @@ public partial class EventEditViewModel : ViewModelBase
         if (IsSaving)
             return;
 
-        if (_titleField == null || _timeRangeField == null || string.IsNullOrWhiteSpace(_titleField.Title))
+        if (_titleField == null || _timeRangeField == null || _reminderField == null || string.IsNullOrWhiteSpace(_titleField.Title))
         {
             ErrorMessage = "Please enter a title";
             return;
@@ -225,6 +238,12 @@ public partial class EventEditViewModel : ViewModelBase
             if (_locationField != null && !string.IsNullOrWhiteSpace(_locationField.Location))
                 extensions.Set(CalendarEventExtensions.Location, _locationField.Location);
 
+            // Add reminder to extensions if enabled
+            if (_reminderField != null && _reminderField.HasReminder && _reminderField.ReminderMinutes >= 0)
+            {
+                extensions.Set(CalendarEventExtensions.ReminderMinutesBefore, _reminderField.ReminderMinutes);
+            }
+
             if (IsEditMode && _existingEvent != null && provider != null)
             {
                 var updatedExtensions = _existingEvent.Extensions;
@@ -238,6 +257,13 @@ public partial class EventEditViewModel : ViewModelBase
                 {
                     if (!string.IsNullOrWhiteSpace(location.Location))
                         updatedExtensions.Set(CalendarEventExtensions.Location, location.Location);
+                });
+
+                // Add reminder to extensions if enabled
+                _reminderField?.Let(reminder =>
+                {
+                    if (reminder.HasReminder && reminder.ReminderMinutes >= 0)
+                        updatedExtensions.Set(CalendarEventExtensions.ReminderMinutesBefore, reminder.ReminderMinutes);
                 });
 
                 var updatedEvent = new CalendarEvent
@@ -277,6 +303,13 @@ public partial class EventEditViewModel : ViewModelBase
                         throw new InvalidOperationException("Unknown rawData type.");
                 }
 
+                // Populate reminders for the updated event
+                var reminderService = App.Services?.GetRequiredService<ReminderService>();
+                if (reminderService != null)
+                {
+                    await reminderService.PopulateRemindersForEventAsync(eventId, calendarId, targetCalendar.Account.Type);
+                }
+
                 WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
 
                 RequestClose?.Invoke(this, EventArgs.Empty);
@@ -306,6 +339,13 @@ public partial class EventEditViewModel : ViewModelBase
 
                 var eventId = await _storage.CreateOrUpdateEventAsync(eventDbo);
                 await _storage.SetEventData(eventId, "rawData", rawData);
+
+                // Populate reminders for the newly created event
+                var reminderService = App.Services?.GetRequiredService<ReminderService>();
+                if (reminderService != null)
+                {
+                    await reminderService.PopulateRemindersForEventAsync(eventId, calendarId, targetCalendar.Account.Type);
+                }
 
                 WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
 
