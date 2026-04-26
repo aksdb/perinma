@@ -502,8 +502,12 @@ public class CalDavCalendarProvider(
             Summary = title,
             Description = description,
             Location = location,
-            Start = new CalDateTime(startTime.ToZonedDateTime().ToDateTimeUtc(), !isFullDay),
-            End = new CalDateTime(endTime.ToZonedDateTime().ToDateTimeUtc(), !isFullDay),
+            Start = isFullDay
+                ? new CalDateTime(startTime.Year, startTime.Month, startTime.Day)
+                : new CalDateTime(startTime.ToZonedDateTime().ToDateTimeUtc(), true),
+            End = isFullDay
+                ? new CalDateTime(endTime.Year, endTime.Month, endTime.Day)
+                : new CalDateTime(endTime.ToZonedDateTime().ToDateTimeUtc(), true),
             Uid = Guid.NewGuid().ToString()
         };
 
@@ -576,8 +580,12 @@ public class CalDavCalendarProvider(
         iCalEvent.Summary = calendarEvent.Title;
         iCalEvent.Description = description;
         iCalEvent.Location = location;
-        iCalEvent.Start = new CalDateTime(startTime.ToZonedDateTime().ToDateTimeUtc(), !isFullDay);
-        iCalEvent.End = new CalDateTime(endTime.ToZonedDateTime().ToDateTimeUtc(), !isFullDay);
+        iCalEvent.Start = isFullDay
+            ? new CalDateTime(startTime.Year, startTime.Month, startTime.Day)
+            : new CalDateTime(startTime.ToZonedDateTime().ToDateTimeUtc(), true);
+        iCalEvent.End = isFullDay
+            ? new CalDateTime(endTime.Year, endTime.Month, endTime.Day)
+            : new CalDateTime(endTime.ToZonedDateTime().ToDateTimeUtc(), true);
 
         // Handle reminder - clear existing alarms and add new one if specified
         iCalEvent.Alarms.Clear();
