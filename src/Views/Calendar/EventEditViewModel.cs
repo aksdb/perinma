@@ -136,7 +136,7 @@ public partial class EventEditViewModel : ViewModelBase
         var supportedExtensions = provider.GetSupportedExtensions();
 
         _titleField = new TitleEditViewModel();
-        if (_existingEvent != null && _existingEvent.Title != null)
+        if (_existingEvent is { Title: not null })
             _titleField.Title = _existingEvent.Title;
         EditFields.Add(_titleField);
 
@@ -150,6 +150,8 @@ public partial class EventEditViewModel : ViewModelBase
             _timeRangeField.EndTime = _existingEvent.EndTime.ToDateTimeUnspecified();
             var isFullDay = _existingEvent.Extensions.Get(CalendarEventExtensions.FullDay);
             _timeRangeField.IsFullDay = isFullDay;
+            if (isFullDay)
+                _timeRangeField.EndDate = _timeRangeField.EndDate.AddDays(-1);
         }
         else if (_initialStartTime.HasValue && _initialEndTime.HasValue)
         {
@@ -341,7 +343,7 @@ public partial class EventEditViewModel : ViewModelBase
                 await _storage.SetEventData(eventId, "rawData", rawData);
 
                 // Populate reminders for the newly created event
-                var reminderService = App.Services?.GetRequiredService<ReminderService>();
+                var reminderService = App.Services?.GetService<ReminderService>();
                 if (reminderService != null)
                 {
                     await reminderService.PopulateRemindersForEventAsync(eventId, calendarId, targetCalendar.Account.Type);
