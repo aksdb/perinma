@@ -43,6 +43,7 @@ public partial class EventEditViewModel : ViewModelBase
     private TimeRangeEditViewModel? _timeRangeField;
     private DescriptionEditViewModel? _descriptionField;
     private LocationEditViewModel? _locationField;
+    private ParticipantsEditViewModel? _participantsField;
     private ReminderEditViewModel? _reminderField;
 
     partial void OnSelectedCalendarChanged(CalendarModel? value)
@@ -187,6 +188,21 @@ public partial class EventEditViewModel : ViewModelBase
             _locationField = new LocationEditViewModel(existingLocation);
             EditFields.Add(_locationField);
         }
+
+        // Add participants field if supported
+        if (supportedExtensions.Contains(CalendarEventExtensions.Participants))
+        {
+            var existingParticipants = _existingEvent?.Extensions.Get(CalendarEventExtensions.Participants);
+            if (existingParticipants != null && existingParticipants.Count > 0)
+            {
+                _participantsField = new ParticipantsEditViewModel(_storage, existingParticipants);
+            }
+            else
+            {
+                _participantsField = new ParticipantsEditViewModel(_storage);
+            }
+            EditFields.Add(_participantsField);
+        }
     }
 
     [RelayCommand]
@@ -240,6 +256,15 @@ public partial class EventEditViewModel : ViewModelBase
             if (_locationField != null && !string.IsNullOrWhiteSpace(_locationField.Location))
                 extensions.Set(CalendarEventExtensions.Location, _locationField.Location);
 
+            if (_participantsField != null)
+            {
+                var participants = _participantsField.GetParticipants();
+                if (participants.Count > 0)
+                {
+                    extensions.Set(CalendarEventExtensions.Participants, participants);
+                }
+            }
+
             // Add reminder to extensions if enabled
             if (_reminderField != null && _reminderField.HasReminder && _reminderField.ReminderMinutes >= 0)
             {
@@ -259,6 +284,15 @@ public partial class EventEditViewModel : ViewModelBase
                 {
                     if (!string.IsNullOrWhiteSpace(location.Location))
                         updatedExtensions.Set(CalendarEventExtensions.Location, location.Location);
+                });
+
+                _participantsField?.Let(participants =>
+                {
+                    var participantList = participants.GetParticipants();
+                    if (participantList.Count > 0)
+                    {
+                        updatedExtensions.Set(CalendarEventExtensions.Participants, participantList);
+                    }
                 });
 
                 // Add reminder to extensions if enabled

@@ -2,6 +2,8 @@ using System;
 using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Data.Converters;
+using Avalonia.Input;
+using perinma.Views.Calendar.EventEdit;
 
 namespace perinma.Views.Calendar;
 
@@ -39,6 +41,25 @@ public partial class EventEditView : Window
         if (DataContext is EventEditViewModel viewModel)
         {
             viewModel.RequestClose += (s, args) => Close();
+        }
+    }
+
+    private void OnSearchTextBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            if (DataContext is EventEditViewModel viewModel)
+            {
+                foreach (var editField in viewModel.EditFields)
+                {
+                    if (editField is ParticipantsEditViewModel participantsVm)
+                    {
+                        participantsVm.AddCustomParticipantCommand.Execute(null);
+                        e.Handled = true;
+                        return;
+                    }
+                }
+            }
         }
     }
 }

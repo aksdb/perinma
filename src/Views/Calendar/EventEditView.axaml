@@ -13,6 +13,17 @@
 
     <Window.Resources>
         <cal:DateTimeToTimeSpanConverter x:Key="DateTimeToTimeSpanConverter"/>
+        
+        <Style Selector="Button.SmallButton">
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="MinWidth" Value="20"/>
+            <Setter Property="MinHeight" Value="20"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.SmallButton:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}"/>
+        </Style>
     </Window.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="16">
@@ -116,6 +127,133 @@
                                         <TextBox Text="{Binding Location}"
                                                  PlaceholderText="Location (optional)"
                                                  HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+                                </DataTemplate>
+
+                                <!-- Participants Edit -->
+                                <DataTemplate DataType="edit:ParticipantsEditViewModel">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
+                                        
+                                        <!-- Selected Participants Chips -->
+                                        <ItemsControl ItemsSource="{Binding SelectedParticipants}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="edit:ParticipantEditItemViewModel">
+                                                    <Border Background="{DynamicResource SystemControlHighlightAltBrush}"
+                                                            CornerRadius="16"
+                                                            Padding="6,4"
+                                                            Margin="0,0,4,4">
+                                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                                            <Border Width="24" Height="24" CornerRadius="12"
+                                                                    Background="{DynamicResource SystemAccentColorLight2}">
+                                                                <Panel>
+                                                                    <Image Source="{Binding PhotoBitmap}" 
+                                                                           Stretch="UniformToFill"
+                                                                           IsVisible="{Binding HasPhoto}" />
+                                                                    <TextBlock Text="{Binding Initials}" 
+                                                                               FontSize="10" FontWeight="SemiBold"
+                                                                               Foreground="White" 
+                                                                               HorizontalAlignment="Center"
+                                                                               VerticalAlignment="Center" 
+                                                                               IsVisible="{Binding !HasPhoto}" />
+                                                                </Panel>
+                                                            </Border>
+                                                            
+                                                            <TextBlock Grid.Column="1" 
+                                                                       Text="{Binding DisplayName}"
+                                                                       FontSize="13"
+                                                                       VerticalAlignment="Center"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       Margin="6,0,0,0"/>
+                                                            
+                                                            <Border Grid.Column="2" 
+                                                                    Background="{DynamicResource SystemControlHyperlinkBrush}"
+                                                                    CornerRadius="8"
+                                                                    Padding="4,2"
+                                                                    Margin="6,0,0,0"
+                                                                    IsVisible="{Binding IsOptional}">
+                                                                <TextBlock Text="Optional" 
+                                                                           FontSize="10" 
+                                                                           Foreground="White"/>
+                                                            </Border>
+                                                            
+                                                            <Button Grid.Column="3" 
+                                                                    Classes="SmallButton"
+                                                                    Padding="4"
+                                                                    Command="{Binding RemoveCommand}">
+                                                                <TextBlock Text="✕" FontSize="12"/>
+                                                            </Button>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- Search Input with Dropdown -->
+                                        <Grid>
+                                            <TextBox Text="{Binding SearchText}"
+                                                     PlaceholderText="Add participants"
+                                                     HorizontalAlignment="Stretch"
+                                                     KeyDown="OnSearchTextBoxKeyDown"/>
+                                            
+                                            <Popup IsOpen="{Binding IsDropdownOpen}"
+                                                    PlacementTarget="{Binding RelativeSource={RelativeSource PreviousData}}"
+                                                    Placement="Bottom"
+                                                    MaxHeight="250">
+                                                <Border Background="{DynamicResource SystemChromeMediumColor}"
+                                                        BorderBrush="{DynamicResource SystemChromeHighColor}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4"
+                                                        Padding="4">
+                                                    <ItemsControl ItemsSource="{Binding SearchResults}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Button Background="Transparent"
+                                                                        BorderThickness="0"
+                                                                        Padding="0"
+                                                                        HorizontalAlignment="Stretch"
+                                                                        HorizontalContentAlignment="Stretch"
+                                                                        Command="{Binding $parent[DataContext].AddFromContactCommand}"
+                                                                        CommandParameter="{Binding}">
+                                                                    <Border Padding="8,4" CornerRadius="4">
+                                                                        <Border.Styles>
+                                                                            <Style Selector="Border:pointerover">
+                                                                                <Setter Property="Background" 
+                                                                                        Value="{DynamicResource SystemControlBackgroundListLowBrush}" />
+                                                                            </Style>
+                                                                        </Border.Styles>
+                                                                        <Grid ColumnDefinitions="Auto,*">
+                                                                            <Border Width="32" Height="32" CornerRadius="16"
+                                                                                    Background="{DynamicResource SystemAccentColorLight2}">
+                                                                                <Panel>
+                                                                                    <TextBlock Text="{Binding Initials}" 
+                                                                                               FontSize="12" 
+                                                                                               FontWeight="SemiBold"
+                                                                                               Foreground="White" 
+                                                                                               HorizontalAlignment="Center"
+                                                                                               VerticalAlignment="Center" />
+                                                                                </Panel>
+                                                                            </Border>
+                                                                        
+                                                                            <StackPanel Grid.Column="1" Spacing="2" Margin="8,0,0,0">
+                                                                                <TextBlock Text="{Binding DisplayName}"
+                                                                                           FontSize="13"
+                                                                                           FontWeight="SemiBold"
+                                                                                           TextTrimming="CharacterEllipsis"/>
+                                                                                <TextBlock Text="{Binding PrimaryEmail}"
+                                                                                           FontSize="11"
+                                                                                           Foreground="{DynamicResource SystemControlForegroundAltBrush}"
+                                                                                           TextTrimming="CharacterEllipsis"/>
+                                                                            </StackPanel>
+                                                                        </Grid>
+                                                                    </Border>
+                                                                </Button>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Border>
+                                            </Popup>
+                                        </Grid>
                                     </StackPanel>
                                 </DataTemplate>
 
