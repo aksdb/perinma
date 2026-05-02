@@ -11,9 +11,7 @@
         Width="500" Height="550"
         WindowStartupLocation="CenterOwner">
 
-    <Window.Resources>
-        <cal:DateTimeToTimeSpanConverter x:Key="DateTimeToTimeSpanConverter"/>
-        
+    <Window.Styles>
         <Style Selector="Button.SmallButton">
             <Setter Property="Padding" Value="4"/>
             <Setter Property="MinWidth" Value="20"/>
@@ -24,6 +22,10 @@
         <Style Selector="Button.SmallButton:pointerover">
             <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}"/>
         </Style>
+    </Window.Styles>
+    <Window.Resources>
+        <cal:DateTimeToTimeSpanConverter x:Key="DateTimeToTimeSpanConverter"/>
+        <cal:ContactQueryResultToInitialsConverter x:Key="ContactQueryResultToInitialsConverter"/>
     </Window.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="16">
@@ -191,13 +193,14 @@
 
                                         <!-- Search Input with Dropdown -->
                                         <Grid>
-                                            <TextBox Text="{Binding SearchText}"
+                                            <TextBox x:Name="SearchTextBox"
+                                                     Text="{Binding SearchText}"
                                                      PlaceholderText="Add participants"
                                                      HorizontalAlignment="Stretch"
                                                      KeyDown="OnSearchTextBoxKeyDown"/>
-                                            
+
                                             <Popup IsOpen="{Binding IsDropdownOpen}"
-                                                    PlacementTarget="{Binding RelativeSource={RelativeSource PreviousData}}"
+                                                    PlacementTarget="{Binding ElementName=SearchTextBox}"
                                                     Placement="Bottom"
                                                     MaxHeight="250">
                                                 <Border Background="{DynamicResource SystemChromeMediumColor}"
@@ -213,7 +216,7 @@
                                                                         Padding="0"
                                                                         HorizontalAlignment="Stretch"
                                                                         HorizontalContentAlignment="Stretch"
-                                                                        Command="{Binding $parent[DataContext].AddFromContactCommand}"
+                                                                        Command="{Binding $parent[ItemsControl].DataContext.AddFromContactCommand}"
                                                                         CommandParameter="{Binding}">
                                                                     <Border Padding="8,4" CornerRadius="4">
                                                                         <Border.Styles>
@@ -226,10 +229,10 @@
                                                                             <Border Width="32" Height="32" CornerRadius="16"
                                                                                     Background="{DynamicResource SystemAccentColorLight2}">
                                                                                 <Panel>
-                                                                                    <TextBlock Text="{Binding Initials}" 
-                                                                                               FontSize="12" 
+                                                                                    <TextBlock Text="{Binding Converter={StaticResource ContactQueryResultToInitialsConverter}}"
+                                                                                               FontSize="12"
                                                                                                FontWeight="SemiBold"
-                                                                                               Foreground="White" 
+                                                                                               Foreground="White"
                                                                                                HorizontalAlignment="Center"
                                                                                                VerticalAlignment="Center" />
                                                                                 </Panel>

@@ -88,6 +88,27 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         ModelExtensions extensions,
         LocalDateTime startTime,
         LocalDateTime endTime,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult((Guid.NewGuid().ToString(), string.Empty));
+    }
+
+    public Task<DataAttribute> UpdateEventAsync(
+        CalendarEvent calendarEvent,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<DataAttribute>(new DataAttribute.Text(string.Empty));
+    }
+
+    public Task<(string externalId, string rawData)> CreateEventAsync(
+        string accountId,
+        string calendarId,
+        string title,
+        ModelExtensions extensions,
+        LocalDateTime startTime,
+        LocalDateTime endTime,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult((Guid.NewGuid().ToString(), string.Empty));

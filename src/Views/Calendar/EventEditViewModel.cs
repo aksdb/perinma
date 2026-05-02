@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -27,6 +28,7 @@ public partial class EventEditViewModel : ViewModelBase
     private readonly CalendarEvent? _existingEvent;
     private readonly CalendarModel? _calendar;
     private readonly string? _existingRawEventData;
+    private readonly Window? _ownerWindow;
 
     [ObservableProperty]
     private bool _isSaving;
@@ -89,6 +91,7 @@ public partial class EventEditViewModel : ViewModelBase
     private readonly bool _initialFullDay;
 
     public EventEditViewModel(
+        Window? ownerWindow,
         CalendarEvent? existingEvent,
         CalendarModel? calendar,
         Action<EventEditResult> onCompleted,
@@ -96,6 +99,7 @@ public partial class EventEditViewModel : ViewModelBase
         DateTime? initialEndTime = null,
         bool isFullDay = false)
     {
+        _ownerWindow = ownerWindow ?? App.MainWindow;
         _existingEvent = existingEvent;
         _calendar = calendar;
         _onCompleted = onCompleted;
@@ -224,7 +228,7 @@ public partial class EventEditViewModel : ViewModelBase
             var dialogViewModel = new SendInvitesDialogViewModel();
             var dialog = new SendInvitesDialog { DataContext = dialogViewModel };
 
-            var result = await dialog.ShowDialog<SendInvitesResult>(this as Window);
+            var result = await dialog.ShowDialog<SendInvitesResult>(_ownerWindow);
             if (result == null)
                 return;
 

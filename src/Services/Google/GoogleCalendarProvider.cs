@@ -189,6 +189,15 @@ public class GoogleCalendarProvider(
         _ => EventResponseStatus.None
     };
 
+    private static string? MapResponseStatus(EventResponseStatus status) => status switch
+    {
+        EventResponseStatus.NeedsAction => "needsAction",
+        EventResponseStatus.Declined => "declined",
+        EventResponseStatus.Tentative => "tentative",
+        EventResponseStatus.Accepted => "accepted",
+        _ => null
+    };
+
     /// <inheritdoc/>
     public async Task<CalendarSyncResult> GetCalendarsAsync(
         string accountId,
@@ -728,7 +737,7 @@ public class GoogleCalendarProvider(
         var participants = extensions.Get(CalendarEventExtensions.Participants);
         if (participants != null && participants.Count > 0)
         {
-            googleEvent.Attendees = participants.Select(p => new EventAttendee
+            googleEvent.Attendees = participants.Select(p => new global::Google.Apis.Calendar.v3.Data.EventAttendee
             {
                 Email = p.Email,
                 DisplayName = p.Name,
@@ -824,7 +833,7 @@ public class GoogleCalendarProvider(
         var participants = calendarEvent.Extensions.Get(CalendarEventExtensions.Participants);
         if (participants != null && participants.Count > 0)
         {
-            googleEvent.Attendees = participants.Select(p => new EventAttendee
+            googleEvent.Attendees = participants.Select(p => new global::Google.Apis.Calendar.v3.Data.EventAttendee
             {
                 Email = p.Email,
                 DisplayName = p.Name,

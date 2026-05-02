@@ -44,7 +44,7 @@ public partial class ParticipantEditItemViewModel : ObservableObject
     {
         Email = email;
         DisplayName = displayName ?? email;
-        Initials = GenerateInitials(displayName, email);
+        Initials = GenerateInitials(null, null, displayName);
         HasContact = false;
     }
 

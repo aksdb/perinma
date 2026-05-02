@@ -146,6 +146,7 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
         var editor = new EventEditView
         {
             DataContext = new EventEditViewModel(
+                ownerWindow: App.MainWindow,
                 existingEvent: existingEvent,
                 calendar: existingEvent?.Reference.Calendar,
                 onCompleted: onCompleted,

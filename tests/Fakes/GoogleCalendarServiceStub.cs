@@ -182,6 +182,27 @@ public class GoogleCalendarServiceStub : IGoogleCalendarService
         CalendarService service,
         string calendarId,
         Event @event,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult("stub_event_id");
+    }
+
+    public Task UpdateEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        Event @event,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task<string> CreateEventAsync(
+        CalendarService service,
+        string calendarId,
+        Event @event,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult("stub_event_id");

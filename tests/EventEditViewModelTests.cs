@@ -105,6 +105,7 @@ public class EventEditViewModelTests
     {
         var viewModel = new EventEditViewModel(
             null,
+            null,
             _calendar,
             result => _completedResult = result);
 
@@ -136,6 +137,7 @@ public class EventEditViewModelTests
     {
         var viewModel = new EventEditViewModel(
             null,
+            null,
             _calendar,
             result => _completedResult = result);
 
@@ -150,6 +152,7 @@ public class EventEditViewModelTests
     public async Task SaveAsync_CreateMode_ValidData_CreatesEvent()
     {
         var viewModel = new EventEditViewModel(
+            null,
             null,
             _calendar,
             result => _completedResult = result);
@@ -179,6 +182,7 @@ public class EventEditViewModelTests
     {
         var viewModel = new EventEditViewModel(
             null,
+            null,
             _calendar,
             result => _completedResult = result);
 
@@ -197,6 +201,7 @@ public class EventEditViewModelTests
     {
         var viewModel = new EventEditViewModel(
             null,
+            null,
             _calendar,
             result => _completedResult = result);
 
@@ -213,6 +218,7 @@ public class EventEditViewModelTests
     public void EndTimeChanged_InvalidValue_ResetsToStartTimePlusDuration()
     {
         var viewModel = new EventEditViewModel(
+            null,
             null,
             _calendar,
             result => _completedResult = result);
@@ -232,6 +238,7 @@ public class EventEditViewModelTests
     {
         var viewModel = new EventEditViewModel(
             null,
+            null,
             _calendar,
             result => _completedResult = result);
 
@@ -249,6 +256,7 @@ public class EventEditViewModelTests
     {
         var viewModel = new EventEditViewModel(
             null,
+            null,
             _calendar,
             result => _completedResult = result);
 
@@ -261,6 +269,7 @@ public class EventEditViewModelTests
     public void Cancel_InvokesRequestClose()
     {
         var viewModel = new EventEditViewModel(
+            null,
             null,
             _calendar,
             result => _completedResult = result);
@@ -317,6 +326,7 @@ public class EventEditViewModelTests
         }).Wait();
 
         var viewModel = new EventEditViewModel(
+            null,
             null,
             _calendar,
             result => _completedResult = result);

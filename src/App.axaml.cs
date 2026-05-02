@@ -1,5 +1,6 @@
 using System;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +14,7 @@ namespace perinma;
 public partial class App : Application
 {
     public static IServiceProvider? Services { get; set; }
+    public static Window? MainWindow => (Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
     private ReminderSchedulerService? _reminderSchedulerService;
 
     public override void Initialize()

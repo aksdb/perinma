@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Markup.Xaml;
 using perinma.Services;
 
 namespace perinma.Views.Calendar.EventEdit;
@@ -22,7 +23,7 @@ public partial class SendInvitesDialog : Window
     {
         if (DataContext is SendInvitesDialogViewModel vm)
         {
-            vm.OkRequested += (s, result) =>
+            vm.OkRequested += result =>
             {
                 Result = result;
                 Close(result);

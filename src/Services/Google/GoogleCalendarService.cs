@@ -258,7 +258,7 @@ public class GoogleCalendarService : IGoogleCalendarService
     /// <param name="sendUpdates">Whether to send invitations to participants</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The external ID of the created event</returns>
-    Task<string> CreateEventAsync(
+    public async Task<string> CreateEventAsync(
         CalendarService service,
         string calendarId,
         Event @event,
@@ -269,10 +269,10 @@ public class GoogleCalendarService : IGoogleCalendarService
 
         var sendUpdatesValue = sendUpdates switch
         {
-            SendInvitesResult.SendToAll => "all",
-            SendInvitesResult.SendToExternalOnly => "externalOnly",
-            SendInvitesResult.SendToNone => "none",
-            _ => "all"
+            SendInvitesResult.SendToAll => EventsResource.InsertRequest.SendUpdatesEnum.All,
+            SendInvitesResult.SendToExternalOnly => EventsResource.InsertRequest.SendUpdatesEnum.ExternalOnly,
+            SendInvitesResult.SendToNone => EventsResource.InsertRequest.SendUpdatesEnum.None,
+            _ => EventsResource.InsertRequest.SendUpdatesEnum.All
         };
 
         request.SendUpdates = sendUpdatesValue;
@@ -290,7 +290,7 @@ public class GoogleCalendarService : IGoogleCalendarService
     /// <param name="event">Event data</param>
     /// <param name="sendUpdates">Whether to send invitations to participants</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task UpdateEventAsync(
+    public async Task UpdateEventAsync(
         CalendarService service,
         string calendarId,
         string eventId,
@@ -302,17 +302,36 @@ public class GoogleCalendarService : IGoogleCalendarService
 
         var sendUpdatesValue = sendUpdates switch
         {
-            SendInvitesResult.SendToAll => "all",
-            SendInvitesResult.SendToExternalOnly => "externalOnly",
-            SendInvitesResult.SendToNone => "none",
-            _ => "all"
+            SendInvitesResult.SendToAll => EventsResource.UpdateRequest.SendUpdatesEnum.All,
+            SendInvitesResult.SendToExternalOnly => EventsResource.UpdateRequest.SendUpdatesEnum.ExternalOnly,
+            SendInvitesResult.SendToNone => EventsResource.UpdateRequest.SendUpdatesEnum.None,
+            _ => EventsResource.UpdateRequest.SendUpdatesEnum.All
         };
 
         request.SendUpdates = sendUpdatesValue;
         await request.ExecuteAsync(cancellationToken);
     }
 
-            // Handle pagination
+    public async Task<EventSyncResult> GetEventsAsync(
+        CalendarService service,
+        string calendarId,
+        string? syncToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        var allEvents = new List<Event>();
+        string? pageToken = null;
+        string? newSyncToken = null;
+
+        do
+        {
+            var request = service.Events.List(calendarId);
+            request.MaxResults = 250;
+
+            if (!string.IsNullOrEmpty(syncToken))
+            {
+                request.SyncToken = syncToken;
+            }
+
             if (!string.IsNullOrEmpty(pageToken))
             {
                 request.PageToken = pageToken;
@@ -392,48 +411,14 @@ public class GoogleCalendarService : IGoogleCalendarService
         await service.Events.Patch(googleEvent, calendarId, eventId).ExecuteAsync(cancellationToken);
     }
 
-    public async Task<string> CreateEventAsync(
-        CalendarService service,
-        string calendarId,
-        Event @event,
-        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
-        CancellationToken cancellationToken = default)
-    {
-        var request = service.Events.Insert(@event, calendarId);
-
-        var sendUpdatesValue = sendUpdates switch
-        {
-            SendInvitesResult.SendToAll => "all",
-            SendInvitesResult.SendToExternalOnly => "externalOnly",
-            SendInvitesResult.SendToNone => "none",
-            _ => "all"
-        };
-
-        request.SendUpdates = sendUpdatesValue;
-        var createdEvent = await request.ExecuteAsync(cancellationToken);
-
-        return createdEvent.Id;
-    }
-
     public async Task UpdateEventAsync(
         CalendarService service,
         string calendarId,
         string eventId,
         Event @event,
-        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default)
     {
         var request = service.Events.Update(@event, calendarId, eventId);
-
-        var sendUpdatesValue = sendUpdates switch
-        {
-            SendInvitesResult.SendToAll => "all",
-            SendInvitesResult.SendToExternalOnly => "externalOnly",
-            SendInvitesResult.SendToNone => "none",
-            _ => "all"
-        };
-
-        request.SendUpdates = sendUpdatesValue;
         await request.ExecuteAsync(cancellationToken);
     }
 
