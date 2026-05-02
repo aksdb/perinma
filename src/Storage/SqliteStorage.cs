@@ -45,8 +45,9 @@ public class SqliteStorage : IDisposable
     /// </summary>
     /// <param name="query">Search query (name or email prefix)</param>
     /// <param name="limit">Maximum results to return</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of matching contacts</returns>
-    public async Task<IEnumerable<ContactQueryResult>> SearchContactsAsync(string query, int limit = 20)
+    public async Task<IEnumerable<ContactQueryResult>> SearchContactsAsync(string query, int limit = 20, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query))
             return [];
