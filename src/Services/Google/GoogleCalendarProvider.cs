@@ -654,6 +654,7 @@ public class GoogleCalendarProvider(
         ModelExtensions extensions,
         LocalDateTime startTime,
         LocalDateTime endTime,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default)
     {
         var googleCredentials = credentialManager.GetGoogleCredentials(accountId);
@@ -723,8 +724,21 @@ public class GoogleCalendarProvider(
             };
         }
 
+        // Handle participants
+        var participants = extensions.Get(CalendarEventExtensions.Participants);
+        if (participants != null && participants.Count > 0)
+        {
+            googleEvent.Attendees = participants.Select(p => new EventAttendee
+            {
+                Email = p.Email,
+                DisplayName = p.Name,
+                Optional = p.IsOptional,
+                ResponseStatus = MapResponseStatus(p.Status)
+            }).ToList();
+        }
+
         var externalId =
-            await googleCalendarService.CreateEventAsync(service, calendarId, googleEvent, cancellationToken);
+            await googleCalendarService.CreateEventAsync(service, calendarId, googleEvent, sendUpdates, cancellationToken);
 
         var rawData = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
 
@@ -734,6 +748,7 @@ public class GoogleCalendarProvider(
     /// <inheritdoc/>
     public async Task<DataAttribute> UpdateEventAsync(
         CalendarEvent calendarEvent,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default)
     {
         var accountId = calendarEvent.Reference.Calendar.Account.Id.ToString();
@@ -805,10 +820,22 @@ public class GoogleCalendarProvider(
             };
         }
 
+        // Handle participants
+        var participants = calendarEvent.Extensions.Get(CalendarEventExtensions.Participants);
+        if (participants != null && participants.Count > 0)
+        {
+            googleEvent.Attendees = participants.Select(p => new EventAttendee
+            {
+                Email = p.Email,
+                DisplayName = p.Name,
+                Optional = p.IsOptional,
+                ResponseStatus = MapResponseStatus(p.Status)
+            }).ToList();
+        }
+
         var calendarId = calendarEvent.Reference.Calendar.ExternalId ?? throw new InvalidOperationException("Calendar ExternalId is null");
         var eventId = calendarEvent.Reference.ExternalId ?? throw new InvalidOperationException("Event ExternalId is null");
-
-        await googleCalendarService.UpdateEventAsync(service, calendarId, eventId, googleEvent, cancellationToken);
+        await googleCalendarService.UpdateEventAsync(service, calendarId, eventId, googleEvent, sendUpdates, cancellationToken);
 
         var rawData = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
 

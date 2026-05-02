@@ -15,6 +15,7 @@ using perinma.Services;
 using perinma.Storage;
 using perinma.Storage.Models;
 using perinma.Utils;
+using perinma.Services;
 using perinma.Views.Calendar.EventEdit;
 using CalendarModel = perinma.Models.Calendar;
 
@@ -329,7 +330,7 @@ public partial class EventEditViewModel : ViewModelBase
                     Extensions = updatedExtensions
                 };
 
-                var rawData = await provider.UpdateEventAsync(updatedEvent);
+                var rawData = await provider.UpdateEventAsync(updatedEvent, _sendInvitesResult ?? SendInvitesResult.SendToNone);
 
                 var calendarId = targetCalendar.Id.ToString();
                 var changedAt = SystemClock.Instance.GetCurrentInstant().ToUnixTimeSeconds();
@@ -376,7 +377,8 @@ public partial class EventEditViewModel : ViewModelBase
                     _titleField.Title,
                     extensions,
                     eventStartTime,
-                    eventEndTime);
+                    eventEndTime,
+                    _sendInvitesResult ?? SendInvitesResult.SendToNone);
 
                 var calendarId = targetCalendar.Id.ToString();
                 var changedAt = SystemClock.Instance.GetCurrentInstant().ToUnixTimeSeconds();

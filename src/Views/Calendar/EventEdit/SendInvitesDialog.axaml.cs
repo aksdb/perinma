@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using perinma.Services;
 
 namespace perinma.Views.Calendar.EventEdit;
 
@@ -28,11 +29,4 @@ public partial class SendInvitesDialog : Window
             };
         }
     }
-}
-
-public enum SendInvitesResult
-{
-    SendToAll,
-    SendToExternalOnly,
-    SendToNone
 }

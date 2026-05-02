@@ -363,9 +363,20 @@ public class GoogleCalendarService : IGoogleCalendarService
         CalendarService service,
         string calendarId,
         Event @event,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default)
     {
         var request = service.Events.Insert(@event, calendarId);
+
+        var sendUpdatesValue = sendUpdates switch
+        {
+            SendInvitesResult.SendToAll => "all",
+            SendInvitesResult.SendToExternalOnly => "externalOnly",
+            SendInvitesResult.SendToNone => "none",
+            _ => "all"
+        };
+
+        request.SendUpdates = sendUpdatesValue;
         var createdEvent = await request.ExecuteAsync(cancellationToken);
 
         return createdEvent.Id;
@@ -376,9 +387,20 @@ public class GoogleCalendarService : IGoogleCalendarService
         string calendarId,
         string eventId,
         Event @event,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default)
     {
         var request = service.Events.Update(@event, calendarId, eventId);
+
+        var sendUpdatesValue = sendUpdates switch
+        {
+            SendInvitesResult.SendToAll => "all",
+            SendInvitesResult.SendToExternalOnly => "externalOnly",
+            SendInvitesResult.SendToNone => "none",
+            _ => "all"
+        };
+
+        request.SendUpdates = sendUpdatesValue;
         await request.ExecuteAsync(cancellationToken);
     }
 

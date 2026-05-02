@@ -7,6 +7,13 @@ using perinma.Models;
 
 namespace perinma.Services;
 
+public enum SendInvitesResult
+{
+    SendToAll,
+    SendToExternalOnly,
+    SendToNone
+}
+
 /// <summary>
 /// Interface for calendar providers (Google Calendar, CalDAV, etc.).
 /// Provides a unified abstraction for syncing calendars and events from different sources.
@@ -119,6 +126,7 @@ public interface ICalendarProvider
     /// <param name="extensions">Event extensions (description, location, etc.)</param>
     /// <param name="startTime">Event start time as UTC Instant</param>
     /// <param name="endTime">Event end time as UTC Instant</param>
+    /// <param name="sendUpdates">Whether to send invitations to participants</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The external ID and raw data of created event</returns>
     Task<(string externalId, string rawData)> CreateEventAsync(
@@ -128,16 +136,19 @@ public interface ICalendarProvider
         ModelExtensions extensions,
         LocalDateTime startTime,
         LocalDateTime endTime,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates an existing event.
     /// </summary>
     /// <param name="calendarEvent">The event to update</param>
+    /// <param name="sendUpdates">Whether to send invitations to participants</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The rawData of the updated event.</returns>
     Task<DataAttribute> UpdateEventAsync(
         CalendarEvent calendarEvent,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default);
 
     /// <summary>
