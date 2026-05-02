@@ -15,7 +15,6 @@ using perinma.Services;
 using perinma.Storage;
 using perinma.Storage.Models;
 using perinma.Utils;
-using perinma.Services;
 using perinma.Views.Calendar.EventEdit;
 using CalendarModel = perinma.Models.Calendar;
 

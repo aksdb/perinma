@@ -477,6 +477,7 @@ public class CalDavCalendarProvider(
         ModelExtensions extensions,
         LocalDateTime startTime,
         LocalDateTime endTime,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default)
     {
         var calDavCredentials = credentialManager.GetCalDavCredentials(accountId);
@@ -545,6 +546,7 @@ public class CalDavCalendarProvider(
     /// <inheritdoc/>
     public async Task<DataAttribute> UpdateEventAsync(
         CalendarEvent calendarEvent,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default)
     {
         // TODO this isn't as easy as it first looked like. We need to consider recurring

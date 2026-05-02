@@ -250,34 +250,67 @@ public class GoogleCalendarService : IGoogleCalendarService
     }
 
     /// <summary>
-    /// Fetches events for a specific calendar, optionally using incremental sync
+    /// Creates a new event in specified calendar.
     /// </summary>
     /// <param name="service">Authenticated CalendarService</param>
-    /// <param name="calendarId">Calendar ID to fetch events from</param>
-    /// <param name="syncToken">Optional sync token for incremental sync</param>
+    /// <param name="calendarId">Calendar ID to create event in</param>
+    /// <param name="event">Event data</param>
+    /// <param name="sendUpdates">Whether to send invitations to participants</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Result containing events and new sync token</returns>
-    public async Task<EventSyncResult> GetEventsAsync(
+    /// <returns>The external ID of the created event</returns>
+    Task<string> CreateEventAsync(
         CalendarService service,
         string calendarId,
-        string? syncToken = null,
+        Event @event,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default)
     {
-        var allEvents = new List<Event>();
-        string? pageToken = null;
-        string? newSyncToken = null;
+        var request = service.Events.Insert(@event, calendarId);
 
-        do
+        var sendUpdatesValue = sendUpdates switch
         {
-            var request = service.Events.List(calendarId);
-            request.MaxResults = 250; // Max allowed by Google API
-            request.SingleEvents = false; // Get master recurring events with RRULE data
+            SendInvitesResult.SendToAll => "all",
+            SendInvitesResult.SendToExternalOnly => "externalOnly",
+            SendInvitesResult.SendToNone => "none",
+            _ => "all"
+        };
 
-            // Use sync token for incremental sync if provided
-            if (!string.IsNullOrEmpty(syncToken))
-            {
-                request.SyncToken = syncToken;
-            }
+        request.SendUpdates = sendUpdatesValue;
+        var createdEvent = await request.ExecuteAsync(cancellationToken);
+
+        return createdEvent.Id;
+    }
+
+    /// <summary>
+    /// Updates an existing event.
+    /// </summary>
+    /// <param name="service">Authenticated CalendarService</param>
+    /// <param name="calendarId">Calendar ID containing event</param>
+    /// <param name="eventId">Event ID to update</param>
+    /// <param name="event">Event data</param>
+    /// <param name="sendUpdates">Whether to send invitations to participants</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task UpdateEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        Event @event,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
+        CancellationToken cancellationToken = default)
+    {
+        var request = service.Events.Update(@event, calendarId, eventId);
+
+        var sendUpdatesValue = sendUpdates switch
+        {
+            SendInvitesResult.SendToAll => "all",
+            SendInvitesResult.SendToExternalOnly => "externalOnly",
+            SendInvitesResult.SendToNone => "none",
+            _ => "all"
+        };
+
+        request.SendUpdates = sendUpdatesValue;
+        await request.ExecuteAsync(cancellationToken);
+    }
 
             // Handle pagination
             if (!string.IsNullOrEmpty(pageToken))

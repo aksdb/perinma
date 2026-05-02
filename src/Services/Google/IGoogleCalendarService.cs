@@ -67,17 +67,36 @@ public interface IGoogleCalendarService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Creates a new event in the specified calendar.
+    /// Creates a new event in specified calendar.
     /// </summary>
     /// <param name="service">Authenticated CalendarService</param>
     /// <param name="calendarId">Calendar ID to create event in</param>
     /// <param name="event">Event data</param>
+    /// <param name="sendUpdates">Whether to send invitations to participants</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The external ID of the created event</returns>
     Task<string> CreateEventAsync(
         CalendarService service,
         string calendarId,
         Event @event,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing event.
+    /// </summary>
+    /// <param name="service">Authenticated CalendarService</param>
+    /// <param name="calendarId">Calendar ID containing event</param>
+    /// <param name="eventId">Event ID to update</param>
+    /// <param name="event">Event data</param>
+    /// <param name="sendUpdates">Whether to send invitations to participants</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task UpdateEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        Event @event,
+        SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default);
 
     /// <summary>
