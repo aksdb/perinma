@@ -40,383 +40,54 @@ public class SqliteStorage : IDisposable
         );
     }
 
-    public async Task<AccountDbo?> GetAccountByIdAsync(string accountId)
-    {
-        return await _connection.QuerySingleOrDefaultAsync<AccountDbo>(
-            "SELECT account_id AS AccountId, name AS Name, type AS Type, sort_order AS SortOrder FROM account WHERE account_id = @AccountId",
-            new { AccountId = accountId },
-            commandTimeout: 30
-        );
-    }
-
-    public async Task<AccountDbo?> GetAccountByNameAsync(string name)
-    {
-        return await _connection.QuerySingleOrDefaultAsync<AccountDbo>(
-            "SELECT account_id AS AccountId, name AS Name, type AS Type, sort_order AS SortOrder FROM account WHERE name = @Name",
-            new { Name = name },
-            commandTimeout: 30
-        );
-    }
-
-    public async Task<bool> IsAccountNameUniqueAsync(string name, string? excludeAccountId = null)
-    {
-        var query = excludeAccountId == null
-            ? "SELECT COUNT(*) FROM account WHERE name = @Name"
-            : "SELECT COUNT(*) FROM account WHERE name = @Name AND account_id != @ExcludeAccountId";
-
-        var count = await _connection.ExecuteScalarAsync<int>(
-            query,
-            new { Name = name, ExcludeAccountId = excludeAccountId },
-            commandTimeout: 30
-        );
-
-        return count == 0;
-    }
-
-    public async Task<bool> CreateAccountAsync(AccountDbo account)
-    {
-        var rowsAffected = await _connection.ExecuteAsync(
-            "INSERT INTO account (account_id, name, type) VALUES (@AccountId, @Name, @Type)",
-            account,
-            commandTimeout: 30
-        );
-
-        if (rowsAffected > 0)
-        {
-            var accountModel = new Account
-            {
-                Id = Guid.Parse(account.AccountId),
-                Name = account.Name,
-                Type = Enum.Parse<AccountType>(account.Type)
-            };
-            _accountCache[accountModel.Id] = accountModel;
-        }
-
-        return rowsAffected > 0;
-    }
-
-    public async Task<bool> UpdateAccountAsync(AccountDbo account)
-    {
-        var rowsAffected = await _connection.ExecuteAsync(
-            "UPDATE account SET name = @Name, type = @Type WHERE account_id = @AccountId",
-            account,
-            commandTimeout: 30
-        );
-
-        if (rowsAffected > 0 && _cacheInitialized)
-        {
-            var accountId = Guid.Parse(account.AccountId);
-            if (_accountCache.TryGetValue(accountId, out var cachedAccount))
-            {
-                cachedAccount.Name = account.Name;
-                cachedAccount.Type = Enum.Parse<AccountType>(account.Type);
-            }
-        }
-
-        return rowsAffected > 0;
-    }
-
-    public async Task UpdateAccountSortOrdersAsync(IEnumerable<(string AccountId, int SortOrder)> sortOrders)
-    {
-        foreach (var (accountId, sortOrder) in sortOrders)
-        {
-            await _connection.ExecuteAsync(
-                "UPDATE account SET sort_order = @SortOrder WHERE account_id = @AccountId",
-                new { AccountId = accountId, SortOrder = sortOrder },
-                commandTimeout: 30
-            );
-        }
-    }
-
-    public async Task<bool> SetAccountData(AccountDbo account, string key, string value)
-    {
-        var rowsAffected = await _connection.ExecuteAsync(
-            """
-                UPDATE account 
-                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
-                WHERE account_id = @account_id
-            """,
-            param: new { key = $"$.{key}", value, account_id = account.AccountId },
-            commandTimeout: 30
-        );
-
-        return rowsAffected > 0;
-    }
-
-    public async Task<string?> GetAccountData(AccountDbo account, string key)
-    {
-        return await _connection.QuerySingleAsync<string?>(
-            """
-            SELECT coalesce(data ->> @key, '') as value
-            FROM account
-            WHERE account_id = @account_id
-            """,
-            param: new { key = $"$.{key}", account_id = account.AccountId });
-    }
-
-    public async Task<bool> DeleteAccountAsync(string accountId)
-    {
-        var accountIdGuid = Guid.Parse(accountId);
-        var rowsAffected = await _connection.ExecuteAsync(
-            "DELETE FROM account WHERE account_id = @AccountId",
-            new { AccountId = accountId },
-            commandTimeout: 30
-        );
-
-        if (rowsAffected > 0)
-        {
-            _credentialManager.DeleteCredentials(accountId);
-
-            // Always invalidate cache, regardless of whether it's initialized
-            InvalidateAccountCache(accountIdGuid);
-        }
-
-        return rowsAffected > 0;
-    }
-
     /// <summary>
-    /// Clears all sync data for an account, preparing it for a full resync.
-    /// Deletes all calendars (and their events via cascade) and clears the calendar sync token.
+    /// Searches contacts by name or email prefix for autocomplete.
     /// </summary>
-    public async Task ClearAccountSyncDataAsync(string accountId)
+    /// <param name="query">Search query (name or email prefix)</param>
+    /// <param name="limit">Maximum results to return</param>
+    /// <returns>List of matching contacts</returns>
+    public async Task<IEnumerable<ContactQueryResult>> SearchContactsAsync(string query, int limit = 20)
     {
-        await _connection.ExecuteAsync(
-            "DELETE FROM calendar WHERE account_id = @AccountId",
-            new { AccountId = accountId },
-            commandTimeout: 30
-        );
+        if (string.IsNullOrWhiteSpace(query))
+            return [];
 
-        await _connection.ExecuteAsync(
-            "UPDATE account SET data = jsonb_remove(coalesce(data, jsonb_object()), '$.calendarSyncToken') WHERE account_id = @AccountId",
-            new { AccountId = accountId },
-            commandTimeout: 30
-        );
-
-        if (_cacheInitialized)
-        {
-            var accountGuid = Guid.Parse(accountId);
-            var calendarsToRemove = _calendarCache
-                .Where(kvp => kvp.Value.Account.Id == accountGuid)
-                .Select(kvp => kvp.Key)
-                .ToList();
-
-            foreach (var calendarId in calendarsToRemove)
-            {
-                _calendarCache.TryRemove(calendarId, out _);
-            }
-        }
-    }
-
-    #region Calendar Methods
-
-    public async Task<IEnumerable<CalendarDbo>> GetCalendarsByAccountAsync(string accountId)
-    {
-        return await _connection.QueryAsync<CalendarDbo>(
-            "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
-            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
-            "FROM calendar WHERE account_id = @AccountId",
-            new { AccountId = accountId },
-            commandTimeout: 30
-        );
-    }
-
-    public async Task<CalendarDbo?> GetCalendarByExternalIdAsync(string accountId, string externalId)
-    {
-        return await _connection.QuerySingleOrDefaultAsync<CalendarDbo>(
-            "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
-            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
-            "FROM calendar WHERE account_id = @AccountId AND external_id = @ExternalId",
-            new { AccountId = accountId, ExternalId = externalId },
-            commandTimeout: 30
-        );
-    }
-
-    public async Task<CalendarDbo?> GetCalendarByIdAsync(string calendarId)
-    {
-        return await _connection.QuerySingleOrDefaultAsync<CalendarDbo>(
-            "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
-            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
-            "FROM calendar WHERE calendar_id = @CalendarId",
-            new { CalendarId = calendarId },
-            commandTimeout: 30
-        );
-    }
-
-    public async Task<bool> CreateOrUpdateCalendarAsync(CalendarDbo calendar)
-    {
-        var existing = await GetCalendarByExternalIdAsync(calendar.AccountId, calendar.ExternalId ?? string.Empty);
-
-        if (existing != null)
-        {
-            var rowsAffected = await _connection.ExecuteAsync(
-                "UPDATE calendar SET name = @Name, color = @Color, enabled = @Enabled, " +
-                "last_sync = @LastSync " +
-                "WHERE account_id = @AccountId AND external_id = @ExternalId",
-                new
-                {
-                    calendar.Name,
-                    calendar.Color,
-                    calendar.Enabled,
-                    calendar.LastSync,
-                    calendar.AccountId,
-                    calendar.ExternalId
-                },
-                commandTimeout: 30
-            );
-
-            calendar.CalendarId = existing.CalendarId;
-
-            if (rowsAffected > 0 && _cacheInitialized)
-            {
-                var calendarGuid = Guid.Parse(calendar.CalendarId);
-                if (_calendarCache.TryGetValue(calendarGuid, out var cachedCalendar))
-                {
-                    cachedCalendar.Name = calendar.Name;
-                    cachedCalendar.Color = calendar.Color;
-                    cachedCalendar.Enabled = calendar.Enabled != 0;
-                    cachedCalendar.LastSync = calendar.LastSync.HasValue
-                        ? DateTimeOffset.FromUnixTimeSeconds(calendar.LastSync.Value).DateTime
-                        : null;
-                }
-            }
-
-            return rowsAffected > 0;
-        }
-        else
-        {
-            var calendarId = Guid.NewGuid().ToString();
-            var rowsAffected = await _connection.ExecuteAsync(
-                "INSERT INTO calendar (account_id, calendar_id, external_id, name, color, enabled, last_sync) " +
-                "VALUES (@AccountId, @CalendarId, @ExternalId, @Name, @Color, @Enabled, @LastSync)",
-                new
-                {
-                    calendar.AccountId,
-                    CalendarId = calendarId,
-                    calendar.ExternalId,
-                    calendar.Name,
-                    calendar.Color,
-                    calendar.Enabled,
-                    calendar.LastSync,
-                },
-                commandTimeout: 30
-            );
-
-            calendar.CalendarId = calendarId;
-
-            if (rowsAffected > 0)
-            {
-                var accountGuid = Guid.Parse(calendar.AccountId);
-                if (!_accountCache.TryGetValue(accountGuid, out var account))
-                {
-                    account = new Account
-                    {
-                        Id = accountGuid,
-                        Name = await _connection.QuerySingleOrDefaultAsync<string>("SELECT name FROM account WHERE account_id = @AccountId", new { AccountId = calendar.AccountId }, commandTimeout: 30) ?? "Unknown Account",
-                        Type = Enum.TryParse<AccountType>(await _connection.QuerySingleOrDefaultAsync<string>("SELECT type FROM account WHERE account_id = @AccountId", new { AccountId = calendar.AccountId }, commandTimeout: 30) ?? "Google", ignoreCase: true, out var accountType) ? accountType : AccountType.Google
-                    };
-                    _accountCache[accountGuid] = account;
-                }
-                
-                var calendarModel = new Calendar
-                {
-                    Account = account,
-                    Id = Guid.Parse(calendarId),
-                    ExternalId = calendar.ExternalId,
-                    Name = calendar.Name,
-                    Color = calendar.Color,
-                    Enabled = calendar.Enabled != 0,
-                    LastSync = calendar.LastSync.HasValue
-                        ? DateTimeOffset.FromUnixTimeSeconds(calendar.LastSync.Value).DateTime
-                        : null
-                };
-                _calendarCache[calendarModel.Id] = calendarModel;
-            }
-
-            return rowsAffected > 0;
-        }
-    }
-
-    public async Task<bool> DeleteCalendarAsync(string calendarId)
-    {
-        var rowsAffected = await _connection.ExecuteAsync(
-            "DELETE FROM calendar WHERE calendar_id = @CalendarId",
-            new { CalendarId = calendarId },
-            commandTimeout: 30
-        );
-
-        return rowsAffected > 0;
-    }
-
-    public async Task<int> DeleteCalendarsNotSyncedAsync(string accountId, long currentSyncTime)
-    {
-        var rowsAffected = await _connection.ExecuteAsync(
-            "DELETE FROM calendar WHERE account_id = @AccountId AND last_sync < @CurrentSyncTime",
-            new { AccountId = accountId, CurrentSyncTime = currentSyncTime },
-            commandTimeout: 30
-        );
-
-        return rowsAffected;
-    }
-
-    public async Task<bool> SetCalendarDataAsync(string calendarId, string key, string value)
-    {
-        var rowsAffected = await _connection.ExecuteAsync(
+        return await _connection.QueryAsync<ContactQueryResult>(
             """
-                UPDATE calendar
-                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
-                WHERE calendar_id = @calendar_id
+            SELECT 
+                c.contact_id AS ContactId,
+                c.external_id AS ExternalId,
+                c.display_name AS DisplayName,
+                c.given_name AS GivenName,
+                c.family_name AS FamilyName,
+                c.primary_email AS PrimaryEmail,
+                c.primary_phone AS PrimaryPhone,
+                c.photo_url AS PhotoUrl,
+                c.changed_at AS ChangedAt,
+                c.data ->> '$.rawData' AS RawData,
+                ab.address_book_id AS AddressBookId,
+                ab.external_id AS AddressBookExternalId,
+                ab.name AS AddressBookName,
+                ab.enabled AS AddressBookEnabled,
+                ab.last_sync AS AddressBookLastSync,
+                a.account_id AS AccountId,
+                a.name AS AccountName,
+                a.type AS AccountType
+            FROM contact c
+            INNER JOIN address_book ab ON c.address_book_id = ab.address_book_id
+            INNER JOIN account a ON ab.account_id = a.account_id
+            WHERE ab.enabled = 1
+                AND (
+                    c.display_name LIKE @Query || '%'
+                    OR c.primary_email LIKE @Query || '%'
+                    OR c.given_name LIKE @Query || '%'
+                    OR c.family_name LIKE @Query || '%'
+                )
+            ORDER BY a.sort_order, a.name, ab.name, c.display_name
+            LIMIT @Limit
             """,
-            param: new { key = $"$.{key}", value, calendar_id = calendarId },
+            new { Query = query, Limit = limit },
             commandTimeout: 30
         );
-
-        return rowsAffected > 0;
-    }
-
-    public async Task<bool> SetCalendarDataJsonAsync(string calendarId, string key, string jsonValue)
-    {
-        var rowsAffected = await _connection.ExecuteAsync(
-            """
-                UPDATE calendar
-                    SET data = jsonb_set(coalesce(data, jsonb_object()), @key, jsonb(@jsonValue))
-                    WHERE calendar_id = @calendar_id
-            """,
-            param: new { key = $"$.{key}", jsonValue, calendar_id = calendarId },
-            commandTimeout: 30
-        );
-
-        return rowsAffected > 0;
-    }
-
-    public async Task<string?> GetCalendarDataAsync(string calendarId, string key)
-    {
-        return await _connection.QuerySingleAsync<string?>(
-            """
-            SELECT coalesce(data ->> @key, '') as value
-            FROM calendar
-            WHERE calendar_id = @calendar_id
-            """,
-            param: new { key = $"$.{key}", calendar_id = calendarId });
-    }
-
-    public async Task<bool> UpdateCalendarEnabledAsync(string calendarId, bool enabled)
-    {
-        var rowsAffected = await _connection.ExecuteAsync(
-            "UPDATE calendar SET enabled = @Enabled WHERE calendar_id = @CalendarId",
-            new { CalendarId = calendarId, Enabled = enabled ? 1 : 0 },
-            commandTimeout: 30
-        );
-
-        if (rowsAffected > 0 && _cacheInitialized)
-        {
-            var calendarGuid = Guid.Parse(calendarId);
-            if (_calendarCache.TryGetValue(calendarGuid, out var cachedCalendar))
-            {
-                cachedCalendar.Enabled = enabled;
-            }
-        }
-
-        return rowsAffected > 0;
     }
 
     #endregion

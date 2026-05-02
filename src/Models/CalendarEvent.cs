@@ -74,6 +74,7 @@ public record CalendarEventParticipant
     public string? Name { get; init; }
     public EventResponseStatus Status { get; init; } = EventResponseStatus.None;
     public bool IsOrganizer { get; init; }
+    public bool IsOptional { get; init; }
 }
 
 public record CalendarEventConference
