@@ -45,6 +45,7 @@ public partial class EventEditViewModel : ViewModelBase
     private LocationEditViewModel? _locationField;
     private ParticipantsEditViewModel? _participantsField;
     private ReminderEditViewModel? _reminderField;
+    private SendInvitesResult? _sendInvitesResult;
 
     partial void OnSelectedCalendarChanged(CalendarModel? value)
     {
@@ -215,6 +216,23 @@ public partial class EventEditViewModel : ViewModelBase
         {
             ErrorMessage = "Please enter a title";
             return;
+        }
+
+        // Show invite dialog if there are participants
+        if (_participantsField != null && _participantsField.SelectedParticipants.Count > 0)
+        {
+            var dialogViewModel = new SendInvitesDialogViewModel();
+            var dialog = new SendInvitesDialog { DataContext = dialogViewModel };
+
+            var result = await dialog.ShowDialog<SendInvitesResult>(this as Window);
+            if (result == null)
+                return;
+
+            _sendInvitesResult = result;
+        }
+        else
+        {
+            _sendInvitesResult = SendInvitesResult.SendToNone;
         }
 
         try
