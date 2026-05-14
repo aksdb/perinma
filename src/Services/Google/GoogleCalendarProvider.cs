@@ -11,6 +11,7 @@ using NodaTime;
 using NodaTime.Text;
 using perinma.Models;
 using perinma.Utils;
+using perinma.Services;
 using Calendar = Ical.Net.Calendar;
 using Duration = NodaTime.Duration;
 using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
@@ -880,4 +881,68 @@ public class GoogleCalendarProvider(
         CalendarEventExtensions.Participants,
         CalendarEventExtensions.Participation
     ];
+
+    /// <inheritdoc/>
+    public async Task<IList<AttendeeFreeBusy>> GetFreeBusyAsync(
+        string accountId,
+        IList<string> attendeeEmails,
+        Interval timeRange,
+        CancellationToken cancellationToken = default)
+    {
+        var googleCredentials = credentialManager.GetGoogleCredentials(accountId);
+        if (googleCredentials == null)
+            return attendeeEmails.Select(e => new AttendeeFreeBusy
+            {
+                Email = e,
+                Status = FreeBusyStatus.Unknown
+            }).ToList<AttendeeFreeBusy>();
+
+        var service = await googleCalendarService.CreateServiceAsync(
+            googleCredentials, cancellationToken, accountId);
+
+        var request = new FreeBusyRequest
+        {
+            TimeMinDateTimeOffset = timeRange.Start.ToDateTimeOffset(),
+            TimeMaxDateTimeOffset = timeRange.End.ToDateTimeOffset(),
+            Items = attendeeEmails
+                .Select(e => new FreeBusyRequestItem { Id = e })
+                .ToList()
+        };
+
+        var response = await googleCalendarService.GetFreeBusyAsync(
+            service, request, cancellationToken);
+
+        return attendeeEmails.Select(email =>
+        {
+            if (response.Calendars == null ||
+                !response.Calendars.TryGetValue(email, out var cal))
+                return new AttendeeFreeBusy
+                {
+                    Email = email,
+                    Status = FreeBusyStatus.Unknown
+                };
+
+            if (cal.Errors is { Count: > 0 })
+                return new AttendeeFreeBusy
+                {
+                    Email = email,
+                    Status = FreeBusyStatus.Unavailable
+                };
+
+            var slots = (cal.Busy ?? [])
+                .Where(p => p.StartDateTimeOffset.HasValue && p.EndDateTimeOffset.HasValue)
+                .Select(p => new TimeSlot(
+                    Instant.FromDateTimeOffset(p.StartDateTimeOffset!.Value),
+                    Instant.FromDateTimeOffset(p.EndDateTimeOffset!.Value)))
+                .OrderBy(s => s.Start)
+                .ToList();
+
+            return new AttendeeFreeBusy
+            {
+                Email = email,
+                Status = FreeBusyStatus.Ok,
+                BusySlots = slots
+            };
+        }).ToList<AttendeeFreeBusy>();
+    }
 }

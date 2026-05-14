@@ -126,4 +126,12 @@ public interface IGoogleCalendarService
         string calendarId,
         string eventId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Queries free/busy information for the given items within the time range.
+    /// </summary>
+    Task<FreeBusyResponse> GetFreeBusyAsync(
+        CalendarService service,
+        FreeBusyRequest request,
+        CancellationToken cancellationToken = default);
 }

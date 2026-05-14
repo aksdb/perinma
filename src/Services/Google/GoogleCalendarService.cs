@@ -432,6 +432,14 @@ public class GoogleCalendarService : IGoogleCalendarService
         await request.ExecuteAsync(cancellationToken);
     }
 
+    public async Task<FreeBusyResponse> GetFreeBusyAsync(
+        CalendarService service,
+        FreeBusyRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        return await service.Freebusy.Query(request).ExecuteAsync(cancellationToken);
+    }
+
     public class CalendarSyncResult
     {
         public required IList<CalendarListEntry> Calendars { get; init; }
