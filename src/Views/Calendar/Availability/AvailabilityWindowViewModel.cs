@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NodaTime;
-using NodaTime.Extensions;
 using perinma.Services;
 
 namespace perinma.Views.Calendar.Availability;
@@ -135,8 +134,8 @@ public partial class AvailabilityWindowViewModel : ObservableObject
 
         try
         {
-            var windowStart = DisplayWindowStart.ToInstant();
-            var windowEnd = DisplayWindowEnd.ToInstant();
+            var windowStart = Instant.FromDateTimeOffset(new DateTimeOffset(DisplayWindowStart));
+            var windowEnd   = Instant.FromDateTimeOffset(new DateTimeOffset(DisplayWindowEnd));
             var displayInterval = new Interval(windowStart, windowEnd);
             // Query a slightly wider range than the display window so edge-spanning events are included
             var queryInterval = new Interval(
@@ -169,6 +168,7 @@ public partial class AvailabilityWindowViewModel : ObservableObject
         catch (Exception ex)
         {
             ErrorMessage = $"Failed to load availability: {ex.Message}";
+            Console.WriteLine($"Failed to load availability: {ex}");
         }
         finally
         {
