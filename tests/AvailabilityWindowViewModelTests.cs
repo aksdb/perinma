@@ -331,4 +331,131 @@ public class AvailabilityWindowViewModelTests
         var vm = MakeVm();
         Assert.That(vm.ErrorMessage, Is.Null);
     }
+
+    // ── Day navigation ────────────────────────────────────────────────────────
+
+    [Test]
+    public void Constructor_DisplayDateEqualsEventDate()
+    {
+        var vm = MakeVm();
+        Assert.That(vm.DisplayDate, Is.EqualTo(new DateTime(2024, 5, 14)));
+    }
+
+    [Test]
+    public void Constructor_DisplayDateLabelContainsDate()
+    {
+        var vm = MakeVm();
+        // Just verify it includes the day number and year — locale-independent
+        Assert.That(vm.DisplayDateLabel, Does.Contain("14"));
+        Assert.That(vm.DisplayDateLabel, Does.Contain("2024"));
+    }
+
+    [Test]
+    public void NavigateDay_PreviousDay_DecrementsDisplayDate()
+    {
+        var vm = MakeVm();
+        var original = vm.DisplayDate;
+
+        vm.GoToPreviousDayCommand.Execute(null);
+
+        Assert.That(vm.DisplayDate, Is.EqualTo(original.AddDays(-1)));
+    }
+
+    [Test]
+    public void NavigateDay_NextDay_IncrementsDisplayDate()
+    {
+        var vm = MakeVm();
+        var original = vm.DisplayDate;
+
+        vm.GoToNextDayCommand.Execute(null);
+
+        Assert.That(vm.DisplayDate, Is.EqualTo(original.AddDays(1)));
+    }
+
+    [Test]
+    public void NavigateDay_UpdatesDisplayWindowBounds()
+    {
+        var vm = MakeVm();
+
+        vm.GoToNextDayCommand.Execute(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.DisplayWindowStart, Is.EqualTo(new DateTime(2024, 5, 15, 7, 0, 0)));
+            Assert.That(vm.DisplayWindowEnd,   Is.EqualTo(new DateTime(2024, 5, 15, 22, 0, 0)));
+        });
+    }
+
+    [Test]
+    public void NavigateDay_PreservesSlotTimeOfDay()
+    {
+        // Slot starts at 14:00 on 2024-05-14; after going to next day it should
+        // still start at 14:00, on 2024-05-15.
+        var vm = MakeVm(start: new DateTime(2024, 5, 14, 14, 0, 0),
+                        end:   new DateTime(2024, 5, 14, 15, 0, 0));
+
+        vm.GoToNextDayCommand.Execute(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.SelectedStart, Is.EqualTo(new DateTime(2024, 5, 15, 14, 0, 0)));
+            Assert.That(vm.SelectedEnd,   Is.EqualTo(new DateTime(2024, 5, 15, 15, 0, 0)));
+        });
+    }
+
+    [Test]
+    public void NavigateDay_PreservesSlotDuration()
+    {
+        var duration = TimeSpan.FromMinutes(90);
+        var vm = MakeVm(start: new DateTime(2024, 5, 14, 10, 0, 0),
+                        end:   new DateTime(2024, 5, 14, 11, 30, 0));
+
+        vm.GoToPreviousDayCommand.Execute(null);
+
+        Assert.That(vm.SelectedEnd - vm.SelectedStart, Is.EqualTo(duration));
+    }
+
+    [Test]
+    public void NavigateDay_ClampsSlotToNewWindowEnd()
+    {
+        // Slot is at 21:30–22:00 (already at window edge). After navigation the
+        // new window is identical in shape, so it must still fit.
+        var vm = MakeVm(start: new DateTime(2024, 5, 14, 21, 30, 0),
+                        end:   new DateTime(2024, 5, 14, 22, 0, 0));
+
+        vm.GoToNextDayCommand.Execute(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.SelectedStart, Is.GreaterThanOrEqualTo(vm.DisplayWindowStart));
+            Assert.That(vm.SelectedEnd,   Is.LessThanOrEqualTo(vm.DisplayWindowEnd));
+        });
+    }
+
+    [Test]
+    public void NavigateDay_ClearsRowBusyRanges()
+    {
+        var vm = MakeVm(emails: new List<string> { "alice@example.com" });
+        // Simulate pre-populated busy data
+        vm.Rows[0].BusyRanges.Add(new BusyRange(0.2, 0.1));
+
+        vm.GoToNextDayCommand.Execute(null);
+
+        Assert.That(vm.Rows[0].BusyRanges, Is.Empty);
+    }
+
+    [Test]
+    public void NavigateDay_UpdatesFractionsForNewWindow()
+    {
+        // SelectedStart at 14:00 → fraction 7/15 in the 07:00-22:00 window.
+        // After navigating, the window shifts but the hours are identical,
+        // so the fraction must be the same.
+        var vm = MakeVm(start: new DateTime(2024, 5, 14, 14, 0, 0),
+                        end:   new DateTime(2024, 5, 14, 15, 0, 0));
+        var fractionBefore = vm.SelectedSlotStartFraction;
+
+        vm.GoToNextDayCommand.Execute(null);
+
+        Assert.That(vm.SelectedSlotStartFraction, Is.EqualTo(fractionBefore).Within(1e-9));
+    }
 }

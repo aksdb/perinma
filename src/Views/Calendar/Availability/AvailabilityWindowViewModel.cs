@@ -24,12 +24,18 @@ public partial class AvailabilityWindowViewModel : ObservableObject
     // ── Display window ──────────────────────────────────────────────────────
 
     /// <summary>Local 07:00 on the event's date.</summary>
-    public DateTime DisplayWindowStart { get; }
+    public DateTime DisplayWindowStart { get; private set; }
     /// <summary>Local 22:00 on the event's date.</summary>
-    public DateTime DisplayWindowEnd { get; }
+    public DateTime DisplayWindowEnd { get; private set; }
 
     /// <summary>Span of the display window in minutes (900 = 15 h).</summary>
     public double DisplayWindowMinutes { get; }
+
+    /// <summary>The calendar date currently shown (changes with day navigation).</summary>
+    public DateTime DisplayDate { get; private set; }
+
+    /// <summary>Formatted date string bound to the navigation header label.</summary>
+    public string DisplayDateLabel => DisplayDate.ToString("dddd, d MMMM yyyy");
 
     /// <summary>Hour labels rendered along the top of the timeline (every 2 h).</summary>
     public IReadOnlyList<TimeLabel> TimeLabels { get; }
@@ -42,6 +48,8 @@ public partial class AvailabilityWindowViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
+    [NotifyCanExecuteChangedFor(nameof(GoToPreviousDayCommand))]
+    [NotifyCanExecuteChangedFor(nameof(GoToNextDayCommand))]
     private bool _isLoading;
 
     [ObservableProperty]
@@ -98,8 +106,9 @@ public partial class AvailabilityWindowViewModel : ObservableObject
         // Display window: event date 07:00–22:00 local
         var eventDate = initialStart.Date;
         DisplayWindowStart = eventDate.AddHours(7);
-        DisplayWindowEnd = eventDate.AddHours(22);
+        DisplayWindowEnd   = eventDate.AddHours(22);
         DisplayWindowMinutes = (DisplayWindowEnd - DisplayWindowStart).TotalMinutes;
+        DisplayDate = eventDate;
 
         // Clamp the initial slot to the display window
         _selectedStart = Clamp(initialStart, DisplayWindowStart, DisplayWindowEnd.AddMinutes(-30));
@@ -177,6 +186,52 @@ public partial class AvailabilityWindowViewModel : ObservableObject
     }
 
     private bool CanRefresh() => !IsLoading;
+
+    // ── Day navigation ────────────────────────────────────────────────────────
+
+    [RelayCommand(CanExecute = nameof(CanRefresh))]
+    private async Task GoToPreviousDayAsync(CancellationToken ct)
+    {
+        NavigateDay(-1);
+        await RefreshAsync(ct);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRefresh))]
+    private async Task GoToNextDayAsync(CancellationToken ct)
+    {
+        NavigateDay(1);
+        await RefreshAsync(ct);
+    }
+
+    /// <summary>
+    /// Shifts the display window by <paramref name="days"/> days, preserving the
+    /// slot's time-of-day and duration as closely as the new window allows.
+    /// </summary>
+    private void NavigateDay(int days)
+    {
+        var timeOfDayStart = SelectedStart.TimeOfDay;
+        var duration       = SelectedEnd - SelectedStart;
+
+        var newDate        = DisplayDate.AddDays(days);
+        DisplayWindowStart = newDate.AddHours(7);
+        DisplayWindowEnd   = newDate.AddHours(22);
+        DisplayDate        = newDate;
+
+        OnPropertyChanged(nameof(DisplayWindowStart));
+        OnPropertyChanged(nameof(DisplayWindowEnd));
+        OnPropertyChanged(nameof(DisplayDate));
+        OnPropertyChanged(nameof(DisplayDateLabel));
+
+        // Shift slot to same time-of-day on the new date, clamped to the new window.
+        // Update DisplayWindow* first so ToFraction() uses the correct bounds.
+        var rawStart  = newDate + timeOfDayStart;
+        SelectedStart = Clamp(rawStart, DisplayWindowStart, DisplayWindowEnd.AddMinutes(-30));
+        SelectedEnd   = Clamp(SelectedStart + duration, SelectedStart.AddMinutes(30), DisplayWindowEnd);
+
+        // Clear stale busy-slot data; the subsequent RefreshAsync will repopulate.
+        foreach (var row in Rows)
+            row.BusyRanges.Clear();
+    }
 
     // ── Slot movement (called from code-behind on pointer drag) ───────────────
 

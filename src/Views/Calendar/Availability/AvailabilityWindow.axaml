@@ -37,9 +37,35 @@
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
 
-        <!-- ── Row 0: status / refresh ──────────────────────────────────── -->
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-            <StackPanel Spacing="4">
+        <!-- ── Row 0: day navigation + status ───────────────────────────── -->
+        <Grid Grid.Row="0" RowDefinitions="Auto,Auto" Margin="0,0,0,8">
+
+            <!-- Navigation bar -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,6">
+                <Button Content="◀"
+                        Command="{Binding GoToPreviousDayCommand}"
+                        Width="30" Height="28" Padding="4,0"
+                        VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1"
+                           Text="{Binding DisplayDateLabel}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontSize="13" FontWeight="SemiBold"/>
+                <Button Grid.Column="2"
+                        Content="▶"
+                        Command="{Binding GoToNextDayCommand}"
+                        Width="30" Height="28" Padding="4,0"
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"/>
+                <Button Grid.Column="3"
+                        Content="↺ Refresh"
+                        Command="{Binding RefreshCommand}"
+                        IsEnabled="{Binding !IsLoading}"
+                        VerticalAlignment="Center"/>
+            </Grid>
+
+            <!-- Status messages -->
+            <StackPanel Grid.Row="1" Spacing="4">
                 <TextBlock Text="Loading availability…"
                            FontSize="12"
                            Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
@@ -49,11 +75,7 @@
                            Foreground="{DynamicResource SystemErrorTextColorBrush}"
                            IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             </StackPanel>
-            <Button Grid.Column="1"
-                    Content="↺ Refresh"
-                    Command="{Binding RefreshCommand}"
-                    IsEnabled="{Binding !IsLoading}"
-                    VerticalAlignment="Top"/>
+
         </Grid>
 
         <!-- ── Row 1: timeline ───────────────────────────────────────────── -->
