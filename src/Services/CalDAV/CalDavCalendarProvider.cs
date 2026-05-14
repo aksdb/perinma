@@ -11,6 +11,8 @@ using NodaTime;
 using NodaTime.Extensions;
 using perinma.Models;
 using perinma.Utils;
+using perinma.Storage;
+using perinma.Services;
 using Calendar = Ical.Net.Calendar;
 using Duration = NodaTime.Duration;
 using ICalEvent = Ical.Net.CalendarComponents.CalendarEvent;
@@ -24,7 +26,8 @@ namespace perinma.Services.CalDAV;
 /// </summary>
 public class CalDavCalendarProvider(
     ICalDavService calDavService,
-    CredentialManagerService credentialManager)
+    CredentialManagerService credentialManager,
+    SqliteStorage? storage = null)
     : ICalendarProvider
 {
     private static ModelExtension<ICalEvent> ICalEventExtension = new();
@@ -671,4 +674,48 @@ public class CalDavCalendarProvider(
         CalendarEventExtensions.Description,
         CalendarEventExtensions.Attachments
     ];
+
+    /// <inheritdoc/>
+    public async Task<IList<AttendeeFreeBusy>> GetFreeBusyAsync(
+        string accountId,
+        IList<string> attendeeEmails,
+        Interval timeRange,
+        CancellationToken cancellationToken = default)
+    {
+        var calDavCredentials = credentialManager.GetCalDavCredentials(accountId);
+        if (calDavCredentials == null)
+            return attendeeEmails
+                .Select(e => new AttendeeFreeBusy { Email = e, Status = FreeBusyStatus.Unknown })
+                .ToList<AttendeeFreeBusy>();
+
+        var organizerEmail = calDavCredentials.Username;
+
+        // Build organizer's own busy slots from the local SQLite cache
+        List<TimeSlot> organizerBusySlots;
+        if (storage != null)
+        {
+            var dbEvents = await storage.GetEventsByTimeRangeAsync(timeRange);
+            organizerBusySlots = dbEvents
+                .Where(e => e.AccountId == accountId &&
+                            e.StartTime.HasValue && e.EndTime.HasValue)
+                .Select(e => new TimeSlot(
+                    Instant.FromUnixTimeSeconds(e.StartTime!.Value),
+                    Instant.FromUnixTimeSeconds(e.EndTime!.Value)))
+                .OrderBy(s => s.Start)
+                .ToList();
+        }
+        else
+        {
+            organizerBusySlots = [];
+        }
+
+        return await calDavService.GetFreeBusyAsync(
+            calDavCredentials,
+            accountId,
+            organizerEmail,
+            attendeeEmails,
+            timeRange,
+            organizerBusySlots,
+            cancellationToken);
+    }
 }

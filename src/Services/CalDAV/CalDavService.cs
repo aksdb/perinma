@@ -1,3 +1,5 @@
+using NodaTime;
+using perinma.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -599,5 +601,114 @@ public class CalDavService : ICalDavService
     private static bool ShouldAddTimezone(DateTime startTime, DateTime endTime)
     {
         return startTime.Kind == DateTimeKind.Local || endTime.Kind == DateTimeKind.Local;
+    }
+
+    /// <inheritdoc/>
+    public async Task<IList<AttendeeFreeBusy>> GetFreeBusyAsync(
+        CalDavCredentials credentials,
+        string accountId,
+        string organizerEmail,
+        IList<string> attendeeEmails,
+        Interval timeRange,
+        IList<TimeSlot> organizerBusySlots,
+        CancellationToken cancellationToken = default)
+    {
+        var results = new List<AttendeeFreeBusy>();
+
+        // Own account (organizer): use pre-computed slots from SQLite
+        if (attendeeEmails.Contains(organizerEmail, StringComparer.OrdinalIgnoreCase))
+        {
+            results.Add(new AttendeeFreeBusy
+            {
+                Email = organizerEmail,
+                Status = FreeBusyStatus.Ok,
+                BusySlots = organizerBusySlots.ToList()
+            });
+        }
+
+        var externalAttendees = attendeeEmails
+            .Where(e => !e.Equals(organizerEmail, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (externalAttendees.Count == 0)
+            return results;
+
+        // Discover schedule-outbox and query freebusy for external attendees
+        var client = CreateClient(credentials);
+        var outboxUrl = await client.DiscoverScheduleOutboxAsync(credentials.ServerUrl, cancellationToken);
+
+        if (outboxUrl == null)
+        {
+            results.AddRange(externalAttendees.Select(e => new AttendeeFreeBusy
+            {
+                Email = e,
+                Status = FreeBusyStatus.Unknown
+            }));
+            return results;
+        }
+
+        var rawReply = await client.FreeBusyQueryAsync(
+            outboxUrl, organizerEmail, externalAttendees, timeRange, cancellationToken);
+
+        if (rawReply == null)
+        {
+            results.AddRange(externalAttendees.Select(e => new AttendeeFreeBusy
+            {
+                Email = e,
+                Status = FreeBusyStatus.Unknown
+            }));
+            return results;
+        }
+
+        // Parse VFREEBUSY REPLY — one VFREEBUSY component per attendee
+        Ical.Net.Calendar? calendar;
+        try { calendar = Ical.Net.Calendar.Load(rawReply); }
+        catch { calendar = null; }
+
+        var resolvedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (calendar != null)
+        {
+            foreach (var fb in calendar.FreeBusy)
+            {
+                // The ATTENDEE property identifies whose freebusy this is
+                var attendeeEmail = fb.Attendees
+                    .FirstOrDefault()
+                    ?.Value?.ToString()
+                    ?.Replace("mailto:", "", StringComparison.OrdinalIgnoreCase)
+                    .Trim();
+
+                if (string.IsNullOrEmpty(attendeeEmail))
+                    continue;
+
+                resolvedEmails.Add(attendeeEmail);
+
+                var slots = fb.Entries
+                    .Where(e => e.StartTime != null && e.EffectiveEndTime != null)
+                    .Select(e => new TimeSlot(
+                        Instant.FromDateTimeUtc(e.StartTime.AsUtc),
+                        Instant.FromDateTimeUtc(e.EffectiveEndTime!.AsUtc)))
+                    .OrderBy(s => s.Start)
+                    .ToList();
+
+                results.Add(new AttendeeFreeBusy
+                {
+                    Email = attendeeEmail,
+                    Status = FreeBusyStatus.Ok,
+                    BusySlots = slots
+                });
+            }
+        }
+
+        // Any attendee not in the reply is unknown
+        results.AddRange(externalAttendees
+            .Where(e => !resolvedEmails.Contains(e))
+            .Select(e => new AttendeeFreeBusy
+            {
+                Email = e,
+                Status = FreeBusyStatus.Unknown
+            }));
+
+        return results;
     }
 }

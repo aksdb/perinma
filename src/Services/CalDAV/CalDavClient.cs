@@ -1,4 +1,5 @@
 using System;
+using NodaTime;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -404,6 +405,87 @@ public class CalDavClient
             Items = items,
             SyncToken = newSyncToken
         };
+    }
+
+    /// <summary>
+    /// Discovers the schedule-outbox URL for the current principal (RFC 6638).
+    /// Returns null if the server does not advertise scheduling support.
+    /// </summary>
+    public async Task<string?> DiscoverScheduleOutboxAsync(
+        string principalUrl,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var xc = XNamespace.Get(CalDavNamespace);
+            var properties = new[] { new XElement(xc + "schedule-outbox-URL") };
+            var response = await PropfindAsync(principalUrl, 0, properties, cancellationToken);
+            var outboxHref = response.Items
+                .FirstOrDefault()?.RawXml
+                ?.Let(xml => XDocument.Parse(xml)
+                    .Descendants(xc + "schedule-outbox-URL")
+                    .Elements(XNamespace.Get(DavNamespace) + "href")
+                    .FirstOrDefault()?.Value);
+            if (string.IsNullOrEmpty(outboxHref))
+                return null;
+            if (!Uri.IsWellFormedUriString(outboxHref, UriKind.Absolute))
+            {
+                var baseUri = new Uri(principalUrl);
+                outboxHref = new Uri(baseUri, outboxHref).ToString();
+            }
+            return outboxHref;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// POSTs a VFREEBUSY REQUEST to the schedule-outbox (RFC 6638).
+    /// Returns the raw iCalendar reply body, or null if the server returns 4xx/5xx
+    /// or does not support scheduling.
+    /// </summary>
+    public async Task<string?> FreeBusyQueryAsync(
+        string scheduleOutboxUrl,
+        string organizerEmail,
+        IList<string> attendeeEmails,
+        Interval timeRange,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var uid = Guid.NewGuid().ToString();
+            var dtStart = timeRange.Start.ToDateTimeUtc().ToString("yyyyMMdd'T'HHmmss'Z'");
+            var dtEnd = timeRange.End.ToDateTimeUtc().ToString("yyyyMMdd'T'HHmmss'Z'");
+            var dtStamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("BEGIN:VCALENDAR");
+            sb.AppendLine("VERSION:2.0");
+            sb.AppendLine("PRODID:-//perinma//NONSGML v1.0//EN");
+            sb.AppendLine("METHOD:REQUEST");
+            sb.AppendLine("BEGIN:VFREEBUSY");
+            sb.AppendLine($"DTSTART:{dtStart}");
+            sb.AppendLine($"DTEND:{dtEnd}");
+            sb.AppendLine($"DTSTAMP:{dtStamp}");
+            sb.AppendLine($"UID:{uid}");
+            sb.AppendLine($"ORGANIZER:mailto:{organizerEmail}");
+            foreach (var email in attendeeEmails)
+                sb.AppendLine($"ATTENDEE:mailto:{email}");
+            sb.AppendLine("END:VFREEBUSY");
+            sb.Append("END:VCALENDAR");
+
+            var content = new StringContent(sb.ToString(), Encoding.UTF8, "text/calendar");
+            var response = await _httpClient.PostAsync(scheduleOutboxUrl, content, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return null;
+            return await response.Content.ReadAsStringAsync(cancellationToken);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
 

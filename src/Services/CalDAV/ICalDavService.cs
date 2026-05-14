@@ -1,3 +1,5 @@
+using NodaTime;
+using perinma.Services;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -90,4 +92,18 @@ public interface ICalDavService
         public required IList<CalDavEvent> Events { get; init; }
         public string? SyncToken { get; init; }
     }
+    /// <summary>
+    /// Returns free/busy information for the given attendees in the specified time range.
+    /// For the organizer's own account, queries locally cached events.
+    /// For external attendees, attempts CalDAV schedule-outbox freebusy (RFC 6638),
+    /// degrading to <see cref="FreeBusyStatus.Unknown"/> on unsupported servers.
+    /// </summary>
+    Task<IList<AttendeeFreeBusy>> GetFreeBusyAsync(
+        CalDavCredentials credentials,
+        string accountId,
+        string organizerEmail,
+        IList<string> attendeeEmails,
+        Interval timeRange,
+        IList<TimeSlot> organizerBusySlots,
+        CancellationToken cancellationToken = default);
 }
