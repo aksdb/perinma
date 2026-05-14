@@ -205,6 +205,8 @@ public partial class EventEditViewModel : ViewModelBase
                 ? new ParticipantsEditViewModel(_storage, existingParticipants)
                 : new ParticipantsEditViewModel(_storage);
             FieldRows.Add(new FieldRow(_participantsField, "👥", startExpanded: _participantsField.HasValue));
+            _participantsField.SelectedParticipants.CollectionChanged += (_, _) =>
+                CheckAvailabilityCommand.NotifyCanExecuteChanged();
         }
     }
 
@@ -425,6 +427,42 @@ public partial class EventEditViewModel : ViewModelBase
             IsSaving = false;
         }
     }
+
+    [RelayCommand(CanExecute = nameof(CanCheckAvailability))]
+    private async Task CheckAvailabilityAsync()
+    {
+        if (_participantsField == null || _timeRangeField == null || SelectedCalendar == null)
+            return;
+
+        var emails = _participantsField.SelectedParticipants
+            .Select(p => p.Email)
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .ToList<string>();
+
+        if (emails.Count == 0) return;
+
+        var provider = App.Services?.GetRequiredService<SyncService>()?.Providers
+            ?.GetValueOrDefault(SelectedCalendar.Account.Type);
+        if (provider == null) return;
+
+        var accountId = SelectedCalendar.Account.Id.ToString();
+        var vm = new Views.Calendar.Availability.AvailabilityWindowViewModel(
+            provider, accountId, emails,
+            _timeRangeField.StartTime, _timeRangeField.EndTime);
+
+        var dialog = new Views.Calendar.Availability.AvailabilityWindow { DataContext = vm };
+        var result = await dialog.ShowDialog<(DateTime, DateTime)?>(  _ownerWindow);
+
+        if (result is { } slot)
+        {
+            _timeRangeField.StartTime = slot.Item1;
+            _timeRangeField.EndTime = slot.Item2;
+        }
+    }
+
+    private bool CanCheckAvailability() =>
+        _participantsField is { SelectedParticipants.Count: > 0 } && SelectedCalendar != null;
+
 
     [RelayCommand]
     private void Cancel()

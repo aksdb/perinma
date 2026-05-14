@@ -338,6 +338,12 @@
                                                                 </Border>
                                                             </Popup>
                                                         </Grid>
+                                                        <Button Content="Check availability →"
+                                                                HorizontalAlignment="Right"
+                                                                Command="{Binding $parent[Window].DataContext.CheckAvailabilityCommand}"
+                                                                IsVisible="{Binding HasValue}"
+                                                                Padding="6,3"
+                                                                FontSize="12"/>
                                                     </StackPanel>
                                                 </DataTemplate>
 
