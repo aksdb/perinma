@@ -12,9 +12,18 @@ public partial class DescriptionEditViewModel : ViewModelBase, IEditableField
     [NotifyPropertyChangedFor(nameof(HasValue))]
     private string? _description;
 
-    public string Summary => string.IsNullOrWhiteSpace(Description)
-        ? "Add description"
-        : Description!.Length > 50 ? Description![..50] + "…" : Description!;
+    public string Summary
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(Description))
+                return "Add description";
+            var newlineIndex = Description!.IndexOf('\n');
+            if (newlineIndex < 0)
+                return Description!;
+            return Description![..newlineIndex].TrimEnd('\r') + "…";
+        }
+    }
 
     public bool HasValue => !string.IsNullOrWhiteSpace(Description);
 
