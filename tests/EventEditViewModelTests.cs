@@ -29,6 +29,9 @@ public class EventEditViewModelTests
     private Calendar _calendar = null!;
     private EventEditResult? _completedResult = null;
 
+    private static T? Field<T>(EventEditViewModel vm) where T : class, IEditableField
+        => vm.FieldRows.Select(r => r.Field).OfType<T>().FirstOrDefault();
+
     [SetUp]
     public void Setup()
     {
@@ -115,21 +118,21 @@ public class EventEditViewModelTests
         Assert.That(viewModel.ErrorMessage, Is.EqualTo(string.Empty));
         Assert.That(viewModel.IsSaving, Is.False);
 
-        var titleField = viewModel.EditFields.OfType<TitleEditViewModel>().FirstOrDefault();
+        var titleField = viewModel.TitleField;
         Assert.That(titleField, Is.Not.Null);
-        Assert.That(titleField.Title, Is.EqualTo(string.Empty));
+        Assert.That(titleField!.Title, Is.EqualTo(string.Empty));
 
-        var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().FirstOrDefault();
+        var timeRangeField = Field<TimeRangeEditViewModel>(viewModel);
         Assert.That(timeRangeField, Is.Not.Null);
-        Assert.That(timeRangeField.Duration, Is.EqualTo(TimeSpan.FromMinutes(30)));
+        Assert.That(timeRangeField!.Duration, Is.EqualTo(TimeSpan.FromMinutes(30)));
 
-        var descriptionField = viewModel.EditFields.OfType<DescriptionEditViewModel>().FirstOrDefault();
+        var descriptionField = Field<DescriptionEditViewModel>(viewModel);
         Assert.That(descriptionField, Is.Not.Null);
-        Assert.That(descriptionField.Description, Is.Null);
+        Assert.That(descriptionField!.Description, Is.Null);
 
-        var locationField = viewModel.EditFields.OfType<LocationEditViewModel>().FirstOrDefault();
+        var locationField = Field<LocationEditViewModel>(viewModel);
         Assert.That(locationField, Is.Not.Null);
-        Assert.That(locationField.Location, Is.Null);
+        Assert.That(locationField!.Location, Is.Null);
     }
 
     [Test]
@@ -157,16 +160,16 @@ public class EventEditViewModelTests
             _calendar,
             result => _completedResult = result);
 
-        var titleField = viewModel.EditFields.OfType<TitleEditViewModel>().First();
+        var titleField = viewModel.TitleField!;
         titleField.Title = "New Meeting";
 
-        var descriptionField = viewModel.EditFields.OfType<DescriptionEditViewModel>().First();
+        var descriptionField = Field<DescriptionEditViewModel>(viewModel)!;
         descriptionField.Description = "Team standup";
 
-        var locationField = viewModel.EditFields.OfType<LocationEditViewModel>().First();
+        var locationField = Field<LocationEditViewModel>(viewModel)!;
         locationField.Location = "Conference Room A";
 
-        var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
+        var timeRangeField = Field<TimeRangeEditViewModel>(viewModel)!;
         timeRangeField.StartTime = DateTime.Now.AddHours(2);
         timeRangeField.Duration = TimeSpan.FromHours(1);
 
@@ -186,7 +189,7 @@ public class EventEditViewModelTests
             _calendar,
             result => _completedResult = result);
 
-        var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
+        var timeRangeField = Field<TimeRangeEditViewModel>(viewModel)!;
         var originalDuration = timeRangeField.Duration;
         var newStartTime = DateTime.Now.AddHours(5);
 
@@ -205,7 +208,7 @@ public class EventEditViewModelTests
             _calendar,
             result => _completedResult = result);
 
-        var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
+        var timeRangeField = Field<TimeRangeEditViewModel>(viewModel)!;
         var startTime = timeRangeField.StartTime;
         var newEndTime = startTime.AddHours(2);
 
@@ -223,7 +226,7 @@ public class EventEditViewModelTests
             _calendar,
             result => _completedResult = result);
 
-        var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
+        var timeRangeField = Field<TimeRangeEditViewModel>(viewModel)!;
         var startTime = timeRangeField.StartTime;
         var duration = timeRangeField.Duration;
         var invalidEndTime = startTime.AddHours(-1);
@@ -242,7 +245,7 @@ public class EventEditViewModelTests
             _calendar,
             result => _completedResult = result);
 
-        var timeRangeField = viewModel.EditFields.OfType<TimeRangeEditViewModel>().First();
+        var timeRangeField = Field<TimeRangeEditViewModel>(viewModel)!;
         var startTime = timeRangeField.StartTime;
         var newDuration = TimeSpan.FromHours(2);
 
@@ -331,12 +334,12 @@ public class EventEditViewModelTests
             _calendar,
             result => _completedResult = result);
 
-        Assert.That(viewModel.EditFields.OfType<DescriptionEditViewModel>().FirstOrDefault(), Is.Not.Null, "Google provider should have Description");
-        Assert.That(viewModel.EditFields.OfType<LocationEditViewModel>().FirstOrDefault(), Is.Not.Null, "Google provider should have Location");
+        Assert.That(Field<DescriptionEditViewModel>(viewModel), Is.Not.Null, "Google provider should have Description");
+        Assert.That(Field<LocationEditViewModel>(viewModel), Is.Not.Null, "Google provider should have Location");
 
         viewModel.SelectedCalendar = calDavCalendar;
 
-        Assert.That(viewModel.EditFields.OfType<DescriptionEditViewModel>().FirstOrDefault(), Is.Not.Null, "CalDAV provider should have Description");
-        Assert.That(viewModel.EditFields.OfType<LocationEditViewModel>().FirstOrDefault(), Is.Not.Null, "CalDAV provider should have Location");
+        Assert.That(Field<DescriptionEditViewModel>(viewModel), Is.Not.Null, "CalDAV provider should have Description");
+        Assert.That(Field<LocationEditViewModel>(viewModel), Is.Not.Null, "CalDAV provider should have Location");
     }
 }

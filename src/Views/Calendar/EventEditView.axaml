@@ -4,11 +4,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:cal="using:perinma.Views.Calendar"
         xmlns:edit="using:perinma.Views.Calendar.EventEdit"
-        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="550"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="520"
         x:Class="perinma.Views.Calendar.EventEditView"
         x:DataType="cal:EventEditViewModel"
         Title="{Binding WindowTitle}"
-        Width="500" Height="550"
+        Width="500" Height="520"
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
@@ -22,295 +22,319 @@
         <Style Selector="Button.SmallButton:pointerover">
             <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}"/>
         </Style>
+        <Style Selector="Button.FieldRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Padding" Value="12,10,12,10"/>
+            <Setter Property="CornerRadius" Value="0"/>
+        </Style>
+        <Style Selector="Button.FieldRow:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+            <Setter Property="FontStyle" Value="Italic"/>
+        </Style>
     </Window.Styles>
+
     <Window.Resources>
         <cal:DateTimeToTimeSpanConverter x:Key="DateTimeToTimeSpanConverter"/>
         <cal:ContactQueryResultToInitialsConverter x:Key="ContactQueryResultToInitialsConverter"/>
     </Window.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="16">
-        <StackPanel Grid.Row="0" Spacing="12">
-            <!-- Calendar Selection -->
-            <StackPanel Spacing="4">
-                <TextBlock Text="Calendar" FontWeight="SemiBold" FontSize="12"/>
-                <ComboBox ItemsSource="{Binding Calendars}"
-                          SelectedItem="{Binding SelectedCalendar}"
-                          HorizontalAlignment="Stretch"
-                          PlaceholderText="Select Calendar">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Ellipse Width="12" Height="12" Fill="{Binding Color}" Stroke="{DynamicResource SystemControlForegroundBrush}"/>
-                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-            </StackPanel>
 
-            <!-- Dynamic Edit Fields -->
-            <ItemsControl ItemsSource="{Binding EditFields}">
-                <ItemsControl.ItemTemplate>
+        <!-- Calendar selector -->
+        <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,10">
+            <TextBlock Text="Calendar" FontWeight="SemiBold" FontSize="12"/>
+            <ComboBox ItemsSource="{Binding Calendars}"
+                      SelectedItem="{Binding SelectedCalendar}"
+                      HorizontalAlignment="Stretch"
+                      PlaceholderText="Select Calendar">
+                <ComboBox.ItemTemplate>
                     <DataTemplate>
-                        <ContentControl Content="{Binding}">
-                            <ContentControl.DataTemplates>
-                                <!-- Title Edit -->
-                                <DataTemplate DataType="edit:TitleEditViewModel">
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
-                                        <TextBox Text="{Binding Title}"
-                                                 PlaceholderText="Event title"
-                                                 HorizontalAlignment="Stretch"/>
-                                    </StackPanel>
-                                </DataTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Ellipse Width="12" Height="12" Fill="{Binding Color}"
+                                     Stroke="{DynamicResource SystemControlForegroundBrush}"/>
+                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </StackPanel>
 
-                                <!-- Time Range Edit -->
-                                <DataTemplate DataType="edit:TimeRangeEditViewModel">
-                                    <StackPanel Spacing="8">
-                                        <!-- Full Day Checkbox -->
-                                        <CheckBox Content="All-day event"
-                                                 IsChecked="{Binding IsFullDay}"
-                                                 Margin="0,4,0,0"
-                                                 IsVisible="{Binding IsFullDaySupported}"/>
-                                        
-                                        <!-- Start Date/Time -->
-                                        <StackPanel Spacing="4">
-                                            <TextBlock Text="Start" FontWeight="SemiBold" FontSize="12"/>
-                                            <Grid ColumnDefinitions="*,8,*">
-                                                <CalendarDatePicker Name="StartDatePicker"
-                                                                SelectedDate="{Binding StartDate}"
-                                                                HorizontalAlignment="Stretch"
-                                                                IsTodayHighlighted="True"/>
-                                                <TimePicker Name="StartTimePicker"
-                                                           Grid.Column="2"
-                                                           ClockIdentifier="24HourClock"
-                                                           SelectedTime="{Binding StartTimeOfDay}"
-                                                           HorizontalAlignment="Stretch"
-                                                           IsVisible="{Binding !IsFullDay}"/>
+        <!-- Field list -->
+        <ScrollViewer Grid.Row="1" Margin="0,0,0,10">
+            <Border BorderBrush="{DynamicResource SystemChromeLowColor}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <StackPanel>
+
+                    <!-- Title: always visible, outside the collapsible rows -->
+                    <TextBox Text="{Binding TitleField.Title}"
+                             PlaceholderText="Event title"
+                             FontSize="15"
+                             FontWeight="SemiBold"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             Padding="12,12,12,12"/>
+
+                    <!-- Collapsible field rows -->
+                    <ItemsControl ItemsSource="{Binding FieldRows}">
+                        <ItemsControl.ItemTemplate>
+                            <!-- Single template: header defined once here, body varies by field type -->
+                            <DataTemplate DataType="edit:FieldRow">
+                                <Border BorderThickness="0,1,0,0"
+                                        BorderBrush="{DynamicResource SystemChromeLowColor}">
+                                    <StackPanel>
+
+                                        <!-- Expand/collapse header -->
+                                        <Button Classes="FieldRow"
+                                                Command="{Binding ToggleExpandedCommand}">
+                                            <Grid ColumnDefinitions="20,*,20">
+                                                <TextBlock Text="{Binding Icon}" FontSize="13"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Field.Summary}"
+                                                           VerticalAlignment="Center"
+                                                           Margin="8,0,0,0"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Classes.muted="{Binding !Field.HasValue}"/>
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding Chevron}"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Center"
+                                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
                                             </Grid>
-                                        </StackPanel>
+                                        </Button>
 
-                                        <!-- End Date/Time -->
-                                        <StackPanel Spacing="4">
-                                            <TextBlock Text="End" FontWeight="SemiBold" FontSize="12"/>
-                                            <Grid ColumnDefinitions="*,8,*">
-                                                <CalendarDatePicker Name="EndDatePicker"
-                                                                SelectedDate="{Binding EndDate}"
-                                                                HorizontalAlignment="Stretch"
-                                                                IsTodayHighlighted="True"/>
-                                                <TimePicker Name="EndTimePicker"
-                                                           Grid.Column="2"
-                                                           ClockIdentifier="24HourClock"
-                                                           SelectedTime="{Binding EndTimeOfDay}"
-                                                           HorizontalAlignment="Stretch"
-                                                           IsVisible="{Binding !IsFullDay}"/>
-                                            </Grid>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </DataTemplate>
+                                        <!-- Type-specific editor body -->
+                                        <ContentControl IsVisible="{Binding IsExpanded}"
+                                                        Content="{Binding Field}"
+                                                        Margin="40,4,12,12">
+                                            <ContentControl.DataTemplates>
 
-                                <!-- Description Edit -->
-                                <DataTemplate DataType="edit:DescriptionEditViewModel">
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
-                                        <TextBox Text="{Binding Description}"
-                                                 PlaceholderText="Description (optional)"
-                                                 AcceptsReturn="True"
-                                                 TextWrapping="Wrap"
-                                                 HorizontalAlignment="Stretch"
-                                                 Height="80"/>
-                                    </StackPanel>
-                                </DataTemplate>
-
-                                <!-- Location Edit -->
-                                <DataTemplate DataType="edit:LocationEditViewModel">
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
-                                        <TextBox Text="{Binding Location}"
-                                                 PlaceholderText="Location (optional)"
-                                                 HorizontalAlignment="Stretch"/>
-                                    </StackPanel>
-                                </DataTemplate>
-
-                                <!-- Participants Edit -->
-                                <DataTemplate DataType="edit:ParticipantsEditViewModel">
-                                    <StackPanel Spacing="8">
-                                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
-                                        
-                                        <!-- Selected Participants Chips -->
-                                        <ItemsControl ItemsSource="{Binding SelectedParticipants}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate DataType="edit:ParticipantEditItemViewModel">
-                                                    <Border Background="{DynamicResource SystemControlHighlightAltBrush}"
-                                                            CornerRadius="16"
-                                                            Padding="6,4"
-                                                            Margin="0,0,4,4">
-                                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                                                            <Border Width="24" Height="24" CornerRadius="12"
-                                                                    Background="{DynamicResource SystemAccentColorLight2}">
-                                                                <Panel>
-                                                                    <Image Source="{Binding PhotoBitmap}" 
-                                                                           Stretch="UniformToFill"
-                                                                           IsVisible="{Binding HasPhoto}" />
-                                                                    <TextBlock Text="{Binding Initials}" 
-                                                                               FontSize="10" FontWeight="SemiBold"
-                                                                               Foreground="White" 
-                                                                               HorizontalAlignment="Center"
-                                                                               VerticalAlignment="Center" 
-                                                                               IsVisible="{Binding !HasPhoto}" />
-                                                                </Panel>
-                                                            </Border>
-                                                            
-                                                            <TextBlock Grid.Column="1" 
-                                                                       Text="{Binding DisplayName}"
-                                                                       FontSize="13"
-                                                                       VerticalAlignment="Center"
-                                                                       TextTrimming="CharacterEllipsis"
-                                                                       Margin="6,0,0,0"/>
-                                                            
-                                                            <Border Grid.Column="2" 
-                                                                    Background="{DynamicResource SystemControlHyperlinkBrush}"
-                                                                    CornerRadius="8"
-                                                                    Padding="4,2"
-                                                                    Margin="6,0,0,0"
-                                                                    IsVisible="{Binding IsOptional}">
-                                                                <TextBlock Text="Optional" 
-                                                                           FontSize="10" 
-                                                                           Foreground="White"/>
-                                                            </Border>
-                                                            
-                                                            <Button Grid.Column="3" 
-                                                                    Classes="SmallButton"
-                                                                    Padding="4"
-                                                                    Command="{Binding RemoveCommand}">
-                                                                <TextBlock Text="✕" FontSize="12"/>
-                                                            </Button>
-                                                        </Grid>
-                                                    </Border>
+                                                <DataTemplate DataType="edit:TimeRangeEditViewModel">
+                                                    <StackPanel Spacing="8">
+                                                        <CheckBox Content="All-day event"
+                                                                  IsChecked="{Binding IsFullDay}"
+                                                                  IsVisible="{Binding IsFullDaySupported}"/>
+                                                        <StackPanel Spacing="4">
+                                                            <TextBlock Text="Start" FontWeight="SemiBold" FontSize="12"/>
+                                                            <Grid ColumnDefinitions="*,8,*">
+                                                                <CalendarDatePicker SelectedDate="{Binding StartDate}"
+                                                                                    HorizontalAlignment="Stretch"
+                                                                                    IsTodayHighlighted="True"/>
+                                                                <TimePicker Grid.Column="2"
+                                                                            ClockIdentifier="24HourClock"
+                                                                            SelectedTime="{Binding StartTimeOfDay}"
+                                                                            HorizontalAlignment="Stretch"
+                                                                            IsVisible="{Binding !IsFullDay}"/>
+                                                            </Grid>
+                                                        </StackPanel>
+                                                        <StackPanel Spacing="4">
+                                                            <TextBlock Text="End" FontWeight="SemiBold" FontSize="12"/>
+                                                            <Grid ColumnDefinitions="*,8,*">
+                                                                <CalendarDatePicker SelectedDate="{Binding EndDate}"
+                                                                                    HorizontalAlignment="Stretch"
+                                                                                    IsTodayHighlighted="True"/>
+                                                                <TimePicker Grid.Column="2"
+                                                                            ClockIdentifier="24HourClock"
+                                                                            SelectedTime="{Binding EndTimeOfDay}"
+                                                                            HorizontalAlignment="Stretch"
+                                                                            IsVisible="{Binding !IsFullDay}"/>
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </StackPanel>
                                                 </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
 
-                                        <!-- Search Input with Dropdown -->
-                                        <Grid>
-                                            <TextBox x:Name="SearchTextBox"
-                                                     Text="{Binding SearchText}"
-                                                     PlaceholderText="Add participants"
-                                                     HorizontalAlignment="Stretch"
-                                                     KeyDown="OnSearchTextBoxKeyDown"/>
+                                                <DataTemplate DataType="edit:ReminderEditViewModel">
+                                                    <StackPanel Spacing="8">
+                                                        <CheckBox Content="Enable reminder"
+                                                                  IsChecked="{Binding HasReminder}"/>
+                                                        <ComboBox ItemsSource="{Binding ReminderOptions}"
+                                                                  SelectedItem="{Binding SelectedReminderOption}"
+                                                                  HorizontalAlignment="Stretch"
+                                                                  IsVisible="{Binding HasReminder}">
+                                                            <ComboBox.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Text="{Binding Label}"
+                                                                               VerticalAlignment="Center"/>
+                                                                </DataTemplate>
+                                                            </ComboBox.ItemTemplate>
+                                                        </ComboBox>
+                                                    </StackPanel>
+                                                </DataTemplate>
 
-                                            <Popup IsOpen="{Binding IsDropdownOpen}"
-                                                    PlacementTarget="{Binding ElementName=SearchTextBox}"
-                                                    Placement="Bottom"
-                                                    MaxHeight="250">
-                                                <Border Background="{DynamicResource SystemChromeMediumColor}"
-                                                        BorderBrush="{DynamicResource SystemChromeHighColor}"
-                                                        BorderThickness="1"
-                                                        CornerRadius="4"
-                                                        Padding="4">
-                                                    <ItemsControl ItemsSource="{Binding SearchResults}">
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate>
-                                                                <Button Background="Transparent"
-                                                                        BorderThickness="0"
-                                                                        Padding="0"
-                                                                        HorizontalAlignment="Stretch"
-                                                                        HorizontalContentAlignment="Stretch"
-                                                                        Command="{Binding $parent[ItemsControl].DataContext.AddFromContactCommand}"
-                                                                        CommandParameter="{Binding}">
-                                                                    <Border Padding="8,4" CornerRadius="4">
-                                                                        <Border.Styles>
-                                                                            <Style Selector="Border:pointerover">
-                                                                                <Setter Property="Background" 
-                                                                                        Value="{DynamicResource SystemControlBackgroundListLowBrush}" />
-                                                                            </Style>
-                                                                        </Border.Styles>
-                                                                        <Grid ColumnDefinitions="Auto,*">
-                                                                            <Border Width="32" Height="32" CornerRadius="16"
+                                                <DataTemplate DataType="edit:DescriptionEditViewModel">
+                                                    <TextBox Text="{Binding Description}"
+                                                             PlaceholderText="Description"
+                                                             AcceptsReturn="True"
+                                                             TextWrapping="Wrap"
+                                                             HorizontalAlignment="Stretch"
+                                                             Height="80"/>
+                                                </DataTemplate>
+
+                                                <DataTemplate DataType="edit:LocationEditViewModel">
+                                                    <TextBox Text="{Binding Location}"
+                                                             PlaceholderText="Location"
+                                                             HorizontalAlignment="Stretch"/>
+                                                </DataTemplate>
+
+                                                <DataTemplate DataType="edit:ParticipantsEditViewModel">
+                                                    <StackPanel Spacing="8">
+                                                        <ItemsControl ItemsSource="{Binding SelectedParticipants}">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <WrapPanel Orientation="Horizontal"/>
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate DataType="edit:ParticipantEditItemViewModel">
+                                                                    <Border Background="{DynamicResource SystemControlHighlightAltBrush}"
+                                                                            CornerRadius="16"
+                                                                            Padding="6,4"
+                                                                            Margin="0,0,4,4">
+                                                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                                                            <Border Width="24" Height="24" CornerRadius="12"
                                                                                     Background="{DynamicResource SystemAccentColorLight2}">
                                                                                 <Panel>
-                                                                                    <TextBlock Text="{Binding Converter={StaticResource ContactQueryResultToInitialsConverter}}"
-                                                                                               FontSize="12"
-                                                                                               FontWeight="SemiBold"
+                                                                                    <Image Source="{Binding PhotoBitmap}"
+                                                                                           Stretch="UniformToFill"
+                                                                                           IsVisible="{Binding HasPhoto}"/>
+                                                                                    <TextBlock Text="{Binding Initials}"
+                                                                                               FontSize="10" FontWeight="SemiBold"
                                                                                                Foreground="White"
                                                                                                HorizontalAlignment="Center"
-                                                                                               VerticalAlignment="Center" />
+                                                                                               VerticalAlignment="Center"
+                                                                                               IsVisible="{Binding !HasPhoto}"/>
                                                                                 </Panel>
                                                                             </Border>
-                                                                        
-                                                                            <StackPanel Grid.Column="1" Spacing="2" Margin="8,0,0,0">
-                                                                                <TextBlock Text="{Binding DisplayName}"
-                                                                                           FontSize="13"
-                                                                                           FontWeight="SemiBold"
-                                                                                           TextTrimming="CharacterEllipsis"/>
-                                                                                <TextBlock Text="{Binding PrimaryEmail}"
-                                                                                           FontSize="11"
-                                                                                           Foreground="{DynamicResource SystemControlForegroundAltBrush}"
-                                                                                           TextTrimming="CharacterEllipsis"/>
-                                                                            </StackPanel>
+                                                                            <TextBlock Grid.Column="1"
+                                                                                       Text="{Binding DisplayName}"
+                                                                                       FontSize="13"
+                                                                                       VerticalAlignment="Center"
+                                                                                       TextTrimming="CharacterEllipsis"
+                                                                                       Margin="6,0,0,0"/>
+                                                                            <Border Grid.Column="2"
+                                                                                    Background="{DynamicResource SystemControlHyperlinkBrush}"
+                                                                                    CornerRadius="8"
+                                                                                    Padding="4,2"
+                                                                                    Margin="6,0,0,0"
+                                                                                    IsVisible="{Binding IsOptional}">
+                                                                                <TextBlock Text="Optional"
+                                                                                           FontSize="10"
+                                                                                           Foreground="White"/>
+                                                                            </Border>
+                                                                            <Button Grid.Column="3"
+                                                                                    Classes="SmallButton"
+                                                                                    Padding="4"
+                                                                                    Command="{Binding RemoveCommand}">
+                                                                                <TextBlock Text="✕" FontSize="12"/>
+                                                                            </Button>
                                                                         </Grid>
                                                                     </Border>
-                                                                </Button>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                </Border>
-                                            </Popup>
-                                        </Grid>
-                                    </StackPanel>
-                                </DataTemplate>
-
-                                <!-- Reminder Edit -->
-                                <DataTemplate DataType="edit:ReminderEditViewModel">
-                                    <StackPanel Spacing="8">
-                                        <CheckBox Content="Reminder"
-                                                 IsChecked="{Binding HasReminder}"
-                                                 Margin="0,4,0,0"/>
-
-                                        <ComboBox ItemsSource="{Binding ReminderOptions}"
-                                                  SelectedItem="{Binding SelectedReminderOption}"
-                                                  HorizontalAlignment="Stretch"
-                                                  IsVisible="{Binding HasReminder}">
-                                            <ComboBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <Grid>
+                                                            <TextBox x:Name="SearchTextBox"
+                                                                     Text="{Binding SearchText}"
+                                                                     PlaceholderText="Add participants"
+                                                                     HorizontalAlignment="Stretch"
+                                                                     KeyDown="OnSearchTextBoxKeyDown"/>
+                                                            <Popup IsOpen="{Binding IsDropdownOpen}"
+                                                                   PlacementTarget="{Binding ElementName=SearchTextBox}"
+                                                                   Placement="Bottom"
+                                                                   MaxHeight="250">
+                                                                <Border Background="{DynamicResource SystemChromeMediumColor}"
+                                                                        BorderBrush="{DynamicResource SystemChromeHighColor}"
+                                                                        BorderThickness="1"
+                                                                        CornerRadius="4"
+                                                                        Padding="4">
+                                                                    <ItemsControl ItemsSource="{Binding SearchResults}">
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <Button Background="Transparent"
+                                                                                        BorderThickness="0"
+                                                                                        Padding="0"
+                                                                                        HorizontalAlignment="Stretch"
+                                                                                        HorizontalContentAlignment="Stretch"
+                                                                                        Command="{Binding $parent[ItemsControl].DataContext.AddFromContactCommand}"
+                                                                                        CommandParameter="{Binding}">
+                                                                                    <Border Padding="8,4" CornerRadius="4">
+                                                                                        <Border.Styles>
+                                                                                            <Style Selector="Border:pointerover">
+                                                                                                <Setter Property="Background"
+                                                                                                        Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+                                                                                            </Style>
+                                                                                        </Border.Styles>
+                                                                                        <Grid ColumnDefinitions="Auto,*">
+                                                                                            <Border Width="32" Height="32" CornerRadius="16"
+                                                                                                    Background="{DynamicResource SystemAccentColorLight2}">
+                                                                                                <Panel>
+                                                                                                    <TextBlock Text="{Binding Converter={StaticResource ContactQueryResultToInitialsConverter}}"
+                                                                                                               FontSize="12" FontWeight="SemiBold"
+                                                                                                               Foreground="White"
+                                                                                                               HorizontalAlignment="Center"
+                                                                                                               VerticalAlignment="Center"/>
+                                                                                                </Panel>
+                                                                                            </Border>
+                                                                                            <StackPanel Grid.Column="1" Spacing="2" Margin="8,0,0,0">
+                                                                                                <TextBlock Text="{Binding DisplayName}"
+                                                                                                           FontSize="13" FontWeight="SemiBold"
+                                                                                                           TextTrimming="CharacterEllipsis"/>
+                                                                                                <TextBlock Text="{Binding PrimaryEmail}"
+                                                                                                           FontSize="11"
+                                                                                                           Foreground="{DynamicResource SystemControlForegroundAltBrush}"
+                                                                                                           TextTrimming="CharacterEllipsis"/>
+                                                                                            </StackPanel>
+                                                                                        </Grid>
+                                                                                    </Border>
+                                                                                </Button>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                </Border>
+                                                            </Popup>
+                                                        </Grid>
+                                                    </StackPanel>
                                                 </DataTemplate>
-                                            </ComboBox.ItemTemplate>
-                                        </ComboBox>
+
+                                            </ContentControl.DataTemplates>
+                                        </ContentControl>
+
                                     </StackPanel>
-                                </DataTemplate>
-                            </ContentControl.DataTemplates>
-                        </ContentControl>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+
+        <!-- Error + Buttons -->
+        <StackPanel Grid.Row="2" Spacing="8">
+            <Border IsVisible="{Binding ErrorMessage}">
+                <TextBlock Text="{Binding ErrorMessage}"
+                           Foreground="{DynamicResource SystemErrorColorBrush}"
+                           FontSize="12"
+                           TextWrapping="Wrap"/>
+            </Border>
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Content="Save"
+                        Command="{Binding SaveCommand}"
+                        IsEnabled="{Binding !IsSaving}"
+                        MinWidth="100"/>
+                <Button Content="Cancel"
+                        Command="{Binding CancelCommand}"
+                        MinWidth="100"/>
+            </StackPanel>
         </StackPanel>
 
-        <!-- Error Message -->
-        <Border Grid.Row="2" 
-                BorderBrush="{DynamicResource SystemChromeLowColor}" 
-                BorderThickness="0,1,0,0" 
-                Padding="0,0,0,12" 
-                IsVisible="{Binding ErrorMessage}">
-            <TextBlock Text="{Binding ErrorMessage}" 
-                       Foreground="{DynamicResource SystemErrorColorBrush}" 
-                       FontSize="12" 
-                       TextWrapping="Wrap"/>
-        </Border>
-
-        <!-- Buttons -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-            <Button Content="Save" 
-                    Command="{Binding SaveCommand}" 
-                    IsEnabled="{Binding !IsSaving}"
-                    MinWidth="100"
-                    HorizontalAlignment="Right"
-                    Margin="0,0,0,12"/>
-            <Button Content="Cancel" 
-                    Command="{Binding CancelCommand}" 
-                    MinWidth="100"
-                    HorizontalAlignment="Right"
-                    Margin="0,0,0,12"/>
-        </StackPanel>
     </Grid>
 </Window>

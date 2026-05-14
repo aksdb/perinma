@@ -24,12 +24,15 @@ public partial class ReminderEditViewModel : ViewModelBase, IEditableField
     public ObservableCollection<ReminderOption> ReminderOptions => _reminderOptions;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Summary))]
+    [NotifyPropertyChangedFor(nameof(HasValue))]
     private bool _hasReminder = true;
 
     [ObservableProperty]
     private int _reminderMinutes = 10;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Summary))]
     private ReminderOption? _selectedReminderOption;
 
     public ReminderEditViewModel()
@@ -72,4 +75,10 @@ public partial class ReminderEditViewModel : ViewModelBase, IEditableField
         _reminderOptions.Add(new ReminderOption(120, "2 hours before"));
         _reminderOptions.Add(new ReminderOption(1440, "1 day before"));
     }
+
+    public string Summary => HasReminder
+        ? (SelectedReminderOption?.Label ?? "Reminder set")
+        : "No reminder";
+
+    public bool HasValue => HasReminder;
 }

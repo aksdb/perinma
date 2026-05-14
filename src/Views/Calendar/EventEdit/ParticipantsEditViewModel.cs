@@ -33,6 +33,11 @@ public partial class ParticipantsEditViewModel : ObservableObject, IEditableFiel
     public ParticipantsEditViewModel(SqliteStorage storage)
     {
         _storage = storage;
+        SelectedParticipants.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(Summary));
+            OnPropertyChanged(nameof(HasValue));
+        };
     }
 
     public ParticipantsEditViewModel(SqliteStorage storage, List<CalendarEventParticipant> existingParticipants)
@@ -159,4 +164,16 @@ public partial class ParticipantsEditViewModel : ObservableObject, IEditableFiel
             return false;
         }
     }
+
+    public string Summary
+    {
+        get
+        {
+            if (SelectedParticipants.Count == 0) return "Add participants";
+            if (SelectedParticipants.Count == 1) return SelectedParticipants[0].DisplayName;
+            return $"{SelectedParticipants[0].DisplayName} +{SelectedParticipants.Count - 1} more";
+        }
+    }
+
+    public bool HasValue => SelectedParticipants.Count > 0;
 }

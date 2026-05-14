@@ -69,6 +69,7 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
         _startTimeOfDay = value.TimeOfDay;
         OnPropertyChanged(nameof(StartDate));
         OnPropertyChanged(nameof(StartTimeOfDay));
+        OnPropertyChanged(nameof(Summary));
     }
 
     partial void OnEndTimeChanged(DateTime value)
@@ -88,6 +89,7 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
         _endTimeOfDay = value.TimeOfDay;
         OnPropertyChanged(nameof(EndDate));
         OnPropertyChanged(nameof(EndTimeOfDay));
+        OnPropertyChanged(nameof(Summary));
     }
 
     partial void OnStartDateChanged(DateTime value)
@@ -119,5 +121,22 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
             OnPropertyChanged(nameof(StartDate));
             OnPropertyChanged(nameof(EndDate));
         }
+        OnPropertyChanged(nameof(Summary));
     }
+
+    public string Summary
+    {
+        get
+        {
+            if (IsFullDay)
+            {
+                return StartDate.Date == EndDate.Date
+                    ? StartDate.ToString("MMM d")
+                    : $"{StartDate:MMM d} – {EndDate:MMM d}";
+            }
+            return $"{StartTime:MMM d, HH:mm} – {EndTime:HH:mm}";
+        }
+    }
+
+    public bool HasValue => true;
 }

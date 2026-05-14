@@ -7,16 +7,17 @@ public partial class LocationEditViewModel : ViewModelBase, IEditableField
     public string Label => "Location";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Summary))]
+    [NotifyPropertyChangedFor(nameof(HasValue))]
     private string? _location;
 
-    public LocationEditViewModel()
-    {
-    }
+    public string Summary => string.IsNullOrWhiteSpace(Location) ? "Add location" : Location!;
+    public bool HasValue => !string.IsNullOrWhiteSpace(Location);
+
+    public LocationEditViewModel() { }
 
     public LocationEditViewModel(string? location)
     {
         Location = location;
     }
-
-    public bool HasValue => !string.IsNullOrWhiteSpace(Location);
 }

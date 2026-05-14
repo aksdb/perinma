@@ -39,7 +39,8 @@ public partial class EventEditViewModel : ViewModelBase
     [ObservableProperty]
     private CalendarModel? _selectedCalendar;
 
-    public ObservableCollection<IEditableField> EditFields { get; } = [];
+    public TitleEditViewModel? TitleField { get; private set; }
+    public ObservableCollection<FieldRow> FieldRows { get; } = [];
 
     private TitleEditViewModel? _titleField;
     private TimeRangeEditViewModel? _timeRangeField;
@@ -128,7 +129,7 @@ public partial class EventEditViewModel : ViewModelBase
 
     private void PopulateEditFields()
     {
-        EditFields.Clear();
+        FieldRows.Clear();
 
         var targetCalendar = SelectedCalendar ?? _calendar;
         if (targetCalendar == null)
@@ -144,12 +145,14 @@ public partial class EventEditViewModel : ViewModelBase
         _titleField = new TitleEditViewModel();
         if (_existingEvent is { Title: not null })
             _titleField.Title = _existingEvent.Title;
-        EditFields.Add(_titleField);
+        TitleField = _titleField;
+        OnPropertyChanged(nameof(TitleField));
 
         _timeRangeField = new TimeRangeEditViewModel
         {
             IsFullDaySupported = supportedExtensions.Contains(CalendarEventExtensions.FullDay)
         };
+        bool timeExpanded = true;
         if (_existingEvent != null)
         {
             _timeRangeField.StartTime = _existingEvent.StartTime.ToDateTimeUnspecified();
@@ -158,6 +161,7 @@ public partial class EventEditViewModel : ViewModelBase
             _timeRangeField.IsFullDay = isFullDay;
             if (isFullDay)
                 _timeRangeField.EndDate = _timeRangeField.EndDate.AddDays(-1);
+            timeExpanded = false;
         }
         else if (_initialStartTime.HasValue && _initialEndTime.HasValue)
         {
@@ -165,48 +169,42 @@ public partial class EventEditViewModel : ViewModelBase
             _timeRangeField.EndTime = _initialEndTime.Value;
             _timeRangeField.IsFullDay = _initialFullDay;
         }
+        FieldRows.Add(new FieldRow(_timeRangeField, "📅", startExpanded: timeExpanded));
 
-        EditFields.Add(_timeRangeField);
-
-        // Add reminder field
         _reminderField = new ReminderEditViewModel();
+        bool reminderExpanded = false;
         if (_existingEvent != null && _existingRawEventData != null)
         {
             var existingReminders = provider.GetReminderMinutes(_existingRawEventData);
             if (existingReminders.Count > 0)
             {
                 _reminderField = new ReminderEditViewModel(existingReminders[0]);
+                reminderExpanded = true;
             }
         }
-        EditFields.Add(_reminderField);
+        FieldRows.Add(new FieldRow(_reminderField, "🔔", startExpanded: reminderExpanded));
 
         if (supportedExtensions.Contains(CalendarEventExtensions.Description))
         {
             var existingDescription = _existingEvent?.Extensions.Get(CalendarEventExtensions.Description);
             _descriptionField = new DescriptionEditViewModel(existingDescription);
-            EditFields.Add(_descriptionField);
+            FieldRows.Add(new FieldRow(_descriptionField, "📝", startExpanded: _descriptionField.HasValue));
         }
 
         if (supportedExtensions.Contains(CalendarEventExtensions.Location))
         {
             var existingLocation = _existingEvent?.Extensions.Get(CalendarEventExtensions.Location);
             _locationField = new LocationEditViewModel(existingLocation);
-            EditFields.Add(_locationField);
+            FieldRows.Add(new FieldRow(_locationField, "📍", startExpanded: _locationField.HasValue));
         }
 
-        // Add participants field if supported
         if (supportedExtensions.Contains(CalendarEventExtensions.Participants))
         {
             var existingParticipants = _existingEvent?.Extensions.Get(CalendarEventExtensions.Participants);
-            if (existingParticipants != null && existingParticipants.Count > 0)
-            {
-                _participantsField = new ParticipantsEditViewModel(_storage, existingParticipants);
-            }
-            else
-            {
-                _participantsField = new ParticipantsEditViewModel(_storage);
-            }
-            EditFields.Add(_participantsField);
+            _participantsField = existingParticipants is { Count: > 0 }
+                ? new ParticipantsEditViewModel(_storage, existingParticipants)
+                : new ParticipantsEditViewModel(_storage);
+            FieldRows.Add(new FieldRow(_participantsField, "👥", startExpanded: _participantsField.HasValue));
         }
     }
 

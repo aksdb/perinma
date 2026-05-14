@@ -84,9 +84,9 @@ public partial class EventEditView : Window
         {
             if (DataContext is EventEditViewModel viewModel)
             {
-                foreach (var editField in viewModel.EditFields)
+                foreach (var row in viewModel.FieldRows)
                 {
-                    if (editField is ParticipantsEditViewModel participantsVm)
+                    if (row.Field is ParticipantsEditViewModel participantsVm)
                     {
                         participantsVm.AddCustomParticipantCommand.Execute(null);
                         e.Handled = true;
