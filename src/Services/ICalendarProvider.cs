@@ -169,6 +169,17 @@ public interface ICalendarProvider
     /// </summary>
     /// <returns>List of supported ModelExtensions</returns>
     IList<object> GetSupportedExtensions();
+
+    /// <summary>
+    /// Returns blocked time intervals for the given attendee emails within the specified range.
+    /// Implementations return results for whichever attendees they can resolve; unresolvable
+    /// attendees are returned with <see cref="FreeBusyStatus.Unknown"/>.
+    /// </summary>
+    Task<IList<AttendeeFreeBusy>> GetFreeBusyAsync(
+        string accountId,
+        IList<string> attendeeEmails,
+        Interval timeRange,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
