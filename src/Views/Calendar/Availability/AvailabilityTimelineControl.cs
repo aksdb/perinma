@@ -66,9 +66,12 @@ public class AvailabilityTimelineControl : Control
     protected override Size MeasureOverride(Size availableSize)
     {
         var rowCount = Rows?.Count ?? 0;
-        var height = HeaderHeight
-                     + rowCount * (RowHeight + RowSpacing);
-        return new Size(availableSize.Width, height);
+        var height = HeaderHeight + rowCount * (RowHeight + RowSpacing);
+        // Inside a horizontal ScrollViewer the available width is PositiveInfinity.
+        // MeasureOverride must return a finite size; Render uses Bounds.Width which
+        // is assigned at arrange time and will reflect the actual allocated width.
+        var width = double.IsInfinity(availableSize.Width) ? 480.0 : availableSize.Width;
+        return new Size(width, height);
     }
 
     // ── Rendering ─────────────────────────────────────────────────────────────
