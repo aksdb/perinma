@@ -24,6 +24,9 @@ public class GoogleCalendarServiceStub : IGoogleCalendarService
     private readonly Dictionary<string, string?> _eventSyncTokens = new();
     private bool _invalidSyncTokenBehavior = false;
     private bool _firstCallMade = false;
+    private FreeBusyResponse? _freeBusyResponse;
+
+    public void SetFreeBusyResponse(FreeBusyResponse response) => _freeBusyResponse = response;
 
     /// <summary>
     /// Sets the raw JSON calendar data to return.
@@ -225,5 +228,14 @@ public class GoogleCalendarServiceStub : IGoogleCalendarService
         CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
+    }
+
+    public Task<Google.Apis.Calendar.v3.Data.FreeBusyResponse> GetFreeBusyAsync(
+        CalendarService service,
+        Google.Apis.Calendar.v3.Data.FreeBusyRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_freeBusyResponse
+            ?? new FreeBusyResponse { Calendars = new Dictionary<string, FreeBusyCalendar>() });
     }
 }

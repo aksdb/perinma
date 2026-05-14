@@ -1,9 +1,10 @@
 using System;
+using NodaTime;
+using perinma.Services;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using CredentialStore;
-using perinma.Services;
 using perinma.Services.CalDAV;
 using perinma.Storage.Models;
 
@@ -18,6 +19,9 @@ public class CalDavServiceStub : ICalDavService
     private readonly List<CalDavCalendar> _calendars = new();
     private readonly Dictionary<string, List<CalDavEvent>> _eventsByCalendar = new();
     private readonly List<Ical.Net.Calendar> _createdCalendars = new();
+    private IList<AttendeeFreeBusy>? _freeBusyResult;
+
+    public void SetFreeBusyResult(IList<AttendeeFreeBusy> result) => _freeBusyResult = result;
 
     /// <summary>
     /// Sets the calendars to return.
@@ -137,5 +141,21 @@ public class CalDavServiceStub : ICalDavService
     public void ClearCreatedCalendars()
     {
         _createdCalendars.Clear();
+    }
+
+    public Task<IList<AttendeeFreeBusy>> GetFreeBusyAsync(
+        CalDavCredentials credentials,
+        string accountId,
+        string organizerEmail,
+        IList<string> attendeeEmails,
+        Interval timeRange,
+        IList<TimeSlot> organizerBusySlots,
+        CancellationToken cancellationToken = default)
+    {
+        var result = _freeBusyResult
+            ?? attendeeEmails
+                .Select(e => new AttendeeFreeBusy { Email = e, Status = FreeBusyStatus.Unknown })
+                .ToList<AttendeeFreeBusy>();
+        return Task.FromResult(result);
     }
 }

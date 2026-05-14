@@ -138,4 +138,16 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         CalendarEventExtensions.Description,
         CalendarEventExtensions.Attachments
     ];
+
+    public Task<IList<AttendeeFreeBusy>> GetFreeBusyAsync(
+        string accountId,
+        IList<string> attendeeEmails,
+        Interval timeRange,
+        CancellationToken cancellationToken = default)
+    {
+        IList<AttendeeFreeBusy> result = attendeeEmails
+            .Select(e => new AttendeeFreeBusy { Email = e, Status = FreeBusyStatus.Unknown })
+            .ToList<AttendeeFreeBusy>();
+        return Task.FromResult(result);
+    }
 }
