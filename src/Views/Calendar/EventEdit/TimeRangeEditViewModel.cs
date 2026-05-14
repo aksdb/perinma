@@ -69,6 +69,8 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
         _startTimeOfDay = value.TimeOfDay;
         OnPropertyChanged(nameof(StartDate));
         OnPropertyChanged(nameof(StartTimeOfDay));
+        OnPropertyChanged(nameof(StartHour));
+        OnPropertyChanged(nameof(StartMinute));
         OnPropertyChanged(nameof(Summary));
     }
 
@@ -89,6 +91,8 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
         _endTimeOfDay = value.TimeOfDay;
         OnPropertyChanged(nameof(EndDate));
         OnPropertyChanged(nameof(EndTimeOfDay));
+        OnPropertyChanged(nameof(EndHour));
+        OnPropertyChanged(nameof(EndMinute));
         OnPropertyChanged(nameof(Summary));
     }
 
@@ -105,11 +109,15 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
     partial void OnStartTimeOfDayChanged(TimeSpan value)
     {
         StartTime = StartTime.Date + value;
+        OnPropertyChanged(nameof(StartHour));
+        OnPropertyChanged(nameof(StartMinute));
     }
 
     partial void OnEndTimeOfDayChanged(TimeSpan value)
     {
         EndTime = EndTime.Date + value;
+        OnPropertyChanged(nameof(EndHour));
+        OnPropertyChanged(nameof(EndMinute));
     }
 
     partial void OnIsFullDayChanged(bool value)
@@ -139,4 +147,28 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
     }
 
     public bool HasValue => true;
+
+    public int StartHour
+    {
+        get => StartTimeOfDay.Hours;
+        set => StartTimeOfDay = new TimeSpan(Math.Clamp(value, 0, 23), StartTimeOfDay.Minutes, 0);
+    }
+
+    public int StartMinute
+    {
+        get => StartTimeOfDay.Minutes;
+        set => StartTimeOfDay = new TimeSpan(StartTimeOfDay.Hours, Math.Clamp(value, 0, 59), 0);
+    }
+
+    public int EndHour
+    {
+        get => EndTimeOfDay.Hours;
+        set => EndTimeOfDay = new TimeSpan(Math.Clamp(value, 0, 23), EndTimeOfDay.Minutes, 0);
+    }
+
+    public int EndMinute
+    {
+        get => EndTimeOfDay.Minutes;
+        set => EndTimeOfDay = new TimeSpan(EndTimeOfDay.Hours, Math.Clamp(value, 0, 59), 0);
+    }
 }

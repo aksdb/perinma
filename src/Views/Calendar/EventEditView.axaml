@@ -37,6 +37,16 @@
             <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
             <Setter Property="FontStyle" Value="Italic"/>
         </Style>
+        <Style Selector="NumericUpDown.TimeInput">
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="ShowButtonSpinner" Value="False"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="NumericUpDown.TimeInput /template/ TextBox">
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
     </Window.Styles>
 
     <Window.Resources>
@@ -124,28 +134,52 @@
                                                                   IsVisible="{Binding IsFullDaySupported}"/>
                                                         <StackPanel Spacing="4">
                                                             <TextBlock Text="Start" FontWeight="SemiBold" FontSize="12"/>
-                                                            <Grid ColumnDefinitions="*,8,*">
+                                                            <Grid ColumnDefinitions="*,8,Auto">
                                                                 <CalendarDatePicker SelectedDate="{Binding StartDate}"
                                                                                     HorizontalAlignment="Stretch"
                                                                                     IsTodayHighlighted="True"/>
-                                                                <TimePicker Grid.Column="2"
-                                                                            ClockIdentifier="24HourClock"
-                                                                            SelectedTime="{Binding StartTimeOfDay}"
-                                                                            HorizontalAlignment="Stretch"
-                                                                            IsVisible="{Binding !IsFullDay}"/>
+                                                                <StackPanel Grid.Column="2"
+                                                                            Orientation="Horizontal" Spacing="4"
+                                                                            VerticalAlignment="Center"
+                                                                            IsVisible="{Binding !IsFullDay}">
+                                                                    <NumericUpDown Classes="TimeInput" Width="52"
+                                                                                   Value="{Binding StartHour}"
+                                                                                   Minimum="0" Maximum="23"
+                                                                                   FormatString="00"
+                                                                                   Increment="1"/>
+                                                                    <TextBlock Text=":" FontSize="14" FontWeight="SemiBold"
+                                                                               VerticalAlignment="Center"/>
+                                                                    <NumericUpDown Classes="TimeInput" Width="52"
+                                                                                   Value="{Binding StartMinute}"
+                                                                                   Minimum="0" Maximum="59"
+                                                                                   FormatString="00"
+                                                                                   Increment="1"/>
+                                                                </StackPanel>
                                                             </Grid>
                                                         </StackPanel>
                                                         <StackPanel Spacing="4">
                                                             <TextBlock Text="End" FontWeight="SemiBold" FontSize="12"/>
-                                                            <Grid ColumnDefinitions="*,8,*">
+                                                            <Grid ColumnDefinitions="*,8,Auto">
                                                                 <CalendarDatePicker SelectedDate="{Binding EndDate}"
                                                                                     HorizontalAlignment="Stretch"
                                                                                     IsTodayHighlighted="True"/>
-                                                                <TimePicker Grid.Column="2"
-                                                                            ClockIdentifier="24HourClock"
-                                                                            SelectedTime="{Binding EndTimeOfDay}"
-                                                                            HorizontalAlignment="Stretch"
-                                                                            IsVisible="{Binding !IsFullDay}"/>
+                                                                <StackPanel Grid.Column="2"
+                                                                            Orientation="Horizontal" Spacing="4"
+                                                                            VerticalAlignment="Center"
+                                                                            IsVisible="{Binding !IsFullDay}">
+                                                                    <NumericUpDown Classes="TimeInput" Width="52"
+                                                                                   Value="{Binding EndHour}"
+                                                                                   Minimum="0" Maximum="23"
+                                                                                   FormatString="00"
+                                                                                   Increment="1"/>
+                                                                    <TextBlock Text=":" FontSize="14" FontWeight="SemiBold"
+                                                                               VerticalAlignment="Center"/>
+                                                                    <NumericUpDown Classes="TimeInput" Width="52"
+                                                                                   Value="{Binding EndMinute}"
+                                                                                   Minimum="0" Maximum="59"
+                                                                                   FormatString="00"
+                                                                                   Increment="1"/>
+                                                                </StackPanel>
                                                             </Grid>
                                                         </StackPanel>
                                                     </StackPanel>
