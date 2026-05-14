@@ -26,7 +26,7 @@ public partial class ParticipantsEditViewModel : ObservableObject, IEditableFiel
 
     public ObservableCollection<ParticipantEditItemViewModel> SelectedParticipants { get; } = [];
 
-    public ObservableCollection<ContactQueryResult> SearchResults { get; } = [];
+    public ObservableCollection<ParticipantEditItemViewModel> SearchResults { get; } = [];
 
     public string Label => "Participants";
 
@@ -79,7 +79,7 @@ public partial class ParticipantsEditViewModel : ObservableObject, IEditableFiel
 
             foreach (var contact in contacts.Take(20))
             {
-                SearchResults.Add(contact);
+                SearchResults.Add(new ParticipantEditItemViewModel(contact));
             }
 
             IsDropdownOpen = SearchResults.Count > 0;
@@ -94,17 +94,16 @@ public partial class ParticipantsEditViewModel : ObservableObject, IEditableFiel
     }
 
     [RelayCommand]
-    private void AddFromContact(ContactQueryResult? contact)
+    private void AddFromContact(ParticipantEditItemViewModel? searchResult)
     {
-        if (contact == null || string.IsNullOrWhiteSpace(contact.PrimaryEmail))
+        if (searchResult == null || string.IsNullOrWhiteSpace(searchResult.Email))
             return;
 
-        if (SelectedParticipants.Any(p => p.Email.Equals(contact.PrimaryEmail, StringComparison.OrdinalIgnoreCase)))
+        if (SelectedParticipants.Any(p => p.Email.Equals(searchResult.Email, StringComparison.OrdinalIgnoreCase)))
             return;
 
-        var participant = new ParticipantEditItemViewModel(contact);
-        participant.RemoveAction = () => RemoveParticipant(participant);
-        SelectedParticipants.Add(participant);
+        searchResult.RemoveAction = () => RemoveParticipant(searchResult);
+        SelectedParticipants.Add(searchResult);
 
         SearchText = string.Empty;
         SearchResults.Clear();

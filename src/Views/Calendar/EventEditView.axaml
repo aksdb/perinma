@@ -51,7 +51,6 @@
 
     <Window.Resources>
         <cal:DateTimeToTimeSpanConverter x:Key="DateTimeToTimeSpanConverter"/>
-        <cal:ContactQueryResultToInitialsConverter x:Key="ContactQueryResultToInitialsConverter"/>
     </Window.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="16">
@@ -310,18 +309,22 @@
                                                                                             <Border Width="32" Height="32" CornerRadius="16"
                                                                                                     Background="{DynamicResource SystemAccentColorLight2}">
                                                                                                 <Panel>
-                                                                                                    <TextBlock Text="{Binding Converter={StaticResource ContactQueryResultToInitialsConverter}}"
+                                                                                                    <Image Source="{Binding PhotoBitmap}"
+                                                                                                           Stretch="UniformToFill"
+                                                                                                           IsVisible="{Binding HasPhoto}"/>
+                                                                                                    <TextBlock Text="{Binding Initials}"
                                                                                                                FontSize="12" FontWeight="SemiBold"
                                                                                                                Foreground="White"
                                                                                                                HorizontalAlignment="Center"
-                                                                                                               VerticalAlignment="Center"/>
+                                                                                                               VerticalAlignment="Center"
+                                                                                                               IsVisible="{Binding !HasPhoto}"/>
                                                                                                 </Panel>
                                                                                             </Border>
                                                                                             <StackPanel Grid.Column="1" Spacing="2" Margin="8,0,0,0">
                                                                                                 <TextBlock Text="{Binding DisplayName}"
                                                                                                            FontSize="13" FontWeight="SemiBold"
                                                                                                            TextTrimming="CharacterEllipsis"/>
-                                                                                                <TextBlock Text="{Binding PrimaryEmail}"
+                                                                                                <TextBlock Text="{Binding Email}"
                                                                                                            FontSize="11"
                                                                                                            Foreground="{DynamicResource SystemControlForegroundAltBrush}"
                                                                                                            TextTrimming="CharacterEllipsis"/>
