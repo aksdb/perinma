@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -446,9 +447,37 @@ public partial class EventEditViewModel : ViewModelBase
         if (provider == null) return;
 
         var accountId = SelectedCalendar.Account.Id.ToString();
+
+        // Own-events delegate: queries the local SQLite cache for all enabled calendars
+        // on this account — available offline, includes every calendar, not just the target.
+        var storage = App.Services?.GetService<SqliteStorage>();
+        Func<Interval, CancellationToken, Task<IList<OwnCalendarEvent>>>? getOwnEvents = null;
+        if (storage != null)
+        {
+            getOwnEvents = async (interval, ct) =>
+            {
+                var dbEvents = await storage.GetEventsByTimeRangeAsync(interval);
+                return dbEvents
+                    .Where(e => e.AccountId == accountId
+                             && e.StartTime.HasValue
+                             && e.EndTime.HasValue)
+                    .Select(e => new OwnCalendarEvent
+                    {
+                        Title         = string.IsNullOrWhiteSpace(e.Title) ? "(No title)" : e.Title,
+                        Start         = Instant.FromUnixTimeSeconds(e.StartTime!.Value),
+                        End           = Instant.FromUnixTimeSeconds(e.EndTime!.Value),
+                        CalendarColor = e.CalendarColor,
+                        CalendarName  = e.CalendarName
+                    })
+                    .ToList<OwnCalendarEvent>();
+            };
+        }
+
         var vm = new Views.Calendar.Availability.AvailabilityWindowViewModel(
             provider, accountId, emails,
-            _timeRangeField.StartTime, _timeRangeField.EndTime);
+            _timeRangeField.StartTime, _timeRangeField.EndTime,
+            organizerDisplayName: SelectedCalendar.Account.Name,
+            getOwnEvents: getOwnEvents);
 
         var dialog = new Views.Calendar.Availability.AvailabilityWindow { DataContext = vm };
         var result = await dialog.ShowDialog<(DateTime, DateTime)?>(  _ownerWindow);

@@ -307,4 +307,130 @@ public class FreeBusyTests
 
         Assert.That(vm.BusyRanges, Is.Empty);
     }
+
+    // ── ParticipantAvailabilityViewModel.ApplyOwnEvents ───────────────────────
+
+    private static OwnCalendarEvent MakeEvent(
+        int startH, int endH, string title = "Meeting", string? color = null) =>
+        new()
+        {
+            Title         = title,
+            Start         = Instant.FromUtc(2024, 5, 14, startH, 0),
+            End           = Instant.FromUtc(2024, 5, 14, endH, 0),
+            CalendarColor = color
+        };
+
+    [Test]
+    public void ApplyOwnEvents_EmptyList_LeavesOwnEventsEmpty()
+    {
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent>(), DisplayWindow);
+        Assert.That(vm.OwnEvents, Is.Empty);
+    }
+
+    [Test]
+    public void ApplyOwnEvents_SetsStatusOkAndIsLoadingFalse()
+    {
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent> { MakeEvent(9, 10) }, DisplayWindow);
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.Status,    Is.EqualTo(FreeBusyStatus.Ok));
+            Assert.That(vm.IsLoading, Is.False);
+        });
+    }
+
+    [Test]
+    public void ApplyOwnEvents_EventWithinWindow_ProjectedCorrectly()
+    {
+        // 09:00–10:00 in a 07:00–22:00 window (15 h = 54000 s)
+        // start fraction = 2/15, width fraction = 1/15
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent> { MakeEvent(9, 10) }, DisplayWindow);
+
+        Assert.That(vm.OwnEvents, Has.Count.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.OwnEvents[0].Start, Is.EqualTo(2.0 / 15).Within(1e-9));
+            Assert.That(vm.OwnEvents[0].Width, Is.EqualTo(1.0 / 15).Within(1e-9));
+        });
+    }
+
+    [Test]
+    public void ApplyOwnEvents_PreservesTitleAndColor()
+    {
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent>
+        {
+            MakeEvent(9, 10, title: "Stand-up", color: "#4CAF50")
+        }, DisplayWindow);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.OwnEvents[0].Title,        Is.EqualTo("Stand-up"));
+            Assert.That(vm.OwnEvents[0].CalendarColor, Is.EqualTo("#4CAF50"));
+        });
+    }
+
+    [Test]
+    public void ApplyOwnEvents_EventBeforeWindow_IsDropped()
+    {
+        // Event ends before window start
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        var ev = new OwnCalendarEvent
+        {
+            Title = "Early",
+            Start = Instant.FromUtc(2024, 5, 14, 5, 0),
+            End   = Instant.FromUtc(2024, 5, 14, 6, 0)
+        };
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent> { ev }, DisplayWindow);
+        Assert.That(vm.OwnEvents, Is.Empty);
+    }
+
+    [Test]
+    public void ApplyOwnEvents_EventAfterWindow_IsDropped()
+    {
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        var ev = new OwnCalendarEvent
+        {
+            Title = "Late",
+            Start = Instant.FromUtc(2024, 5, 14, 22, 30),
+            End   = Instant.FromUtc(2024, 5, 14, 23, 0)
+        };
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent> { ev }, DisplayWindow);
+        Assert.That(vm.OwnEvents, Is.Empty);
+    }
+
+    [Test]
+    public void ApplyOwnEvents_EventStraddlingWindowStart_ClampedToStart()
+    {
+        // Event starts before 07:00, ends at 08:00
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        var ev = new OwnCalendarEvent
+        {
+            Title = "Straddle",
+            Start = Instant.FromUtc(2024, 5, 14, 6, 0),
+            End   = Instant.FromUtc(2024, 5, 14, 8, 0)
+        };
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent> { ev }, DisplayWindow);
+
+        Assert.That(vm.OwnEvents, Has.Count.EqualTo(1));
+        // Clamped start → fraction 0; clamped width = 1 h / 15 h
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.OwnEvents[0].Start, Is.EqualTo(0.0).Within(1e-9));
+            Assert.That(vm.OwnEvents[0].Width, Is.EqualTo(1.0 / 15).Within(1e-9));
+        });
+    }
+
+    [Test]
+    public void ApplyOwnEvents_CalledTwice_ReplacesOwnEvents()
+    {
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent> { MakeEvent(9, 10) }, DisplayWindow);
+        Assert.That(vm.OwnEvents, Has.Count.EqualTo(1));
+
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent>(), DisplayWindow);
+        Assert.That(vm.OwnEvents, Is.Empty);
+    }
 }

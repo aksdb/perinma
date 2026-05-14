@@ -45,3 +45,17 @@ public record AttendeeFreeBusy
     /// </summary>
     public IReadOnlyList<TimeSlot> BusySlots { get; init; } = [];
 }
+
+/// <summary>
+/// A single calendar event belonging to the organizer, sourced from the local SQLite cache.
+/// Used to show rich own-availability in the timeline (color, title) without an API round-trip.
+/// </summary>
+public record OwnCalendarEvent
+{
+    public required string Title { get; init; }
+    public required Instant Start { get; init; }
+    public required Instant End { get; init; }
+    /// <summary>Hex color string (e.g. "#4CAF50") of the originating calendar, or null.</summary>
+    public string? CalendarColor { get; init; }
+    public string? CalendarName { get; init; }
+}

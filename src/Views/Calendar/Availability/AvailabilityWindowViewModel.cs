@@ -90,6 +90,10 @@ public partial class AvailabilityWindowViewModel : ObservableObject
     private readonly IList<string> _attendeeEmails;
     private CancellationTokenSource? _cts;
 
+    /// <summary>The organizer's own row; null when no own-events source was supplied.</summary>
+    private ParticipantAvailabilityViewModel? _organizerRow;
+    private Func<Interval, CancellationToken, Task<IList<OwnCalendarEvent>>>? _getOwnEvents;
+
     // ─────────────────────────────────────────────────────────────────────────
 
     public AvailabilityWindowViewModel(
@@ -97,27 +101,38 @@ public partial class AvailabilityWindowViewModel : ObservableObject
         string accountId,
         IList<string> attendeeEmails,
         DateTime initialStart,
-        DateTime initialEnd)
+        DateTime initialEnd,
+        string? organizerDisplayName = null,
+        Func<Interval, CancellationToken, Task<IList<OwnCalendarEvent>>>? getOwnEvents = null)
     {
-        _provider = provider;
-        _accountId = accountId;
+        _provider      = provider;
+        _accountId     = accountId;
         _attendeeEmails = attendeeEmails;
+        _getOwnEvents  = getOwnEvents;
 
         // Display window: event date 07:00–22:00 local
         var eventDate = initialStart.Date;
-        DisplayWindowStart = eventDate.AddHours(7);
-        DisplayWindowEnd   = eventDate.AddHours(22);
+        DisplayWindowStart   = eventDate.AddHours(7);
+        DisplayWindowEnd     = eventDate.AddHours(22);
         DisplayWindowMinutes = (DisplayWindowEnd - DisplayWindowStart).TotalMinutes;
         DisplayDate = eventDate;
 
         // Clamp the initial slot to the display window
         _selectedStart = Clamp(initialStart, DisplayWindowStart, DisplayWindowEnd.AddMinutes(-30));
-        _selectedEnd = Clamp(initialEnd, _selectedStart.AddMinutes(30), DisplayWindowEnd);
+        _selectedEnd   = Clamp(initialEnd, _selectedStart.AddMinutes(30), DisplayWindowEnd);
 
         // Build time labels every 2 hours
         TimeLabels = BuildTimeLabels();
 
-        // Seed empty rows so the window is populated immediately
+        // Organizer row first (if a data source was provided)
+        if (organizerDisplayName != null || getOwnEvents != null)
+        {
+            var label = organizerDisplayName ?? "Me";
+            _organizerRow = new ParticipantAvailabilityViewModel(label, isOrganizerRow: true, displayName: label);
+            Rows.Add(_organizerRow);
+        }
+
+        // Attendee rows
         foreach (var email in attendeeEmails)
             Rows.Add(new ParticipantAvailabilityViewModel(email));
     }
@@ -134,11 +149,12 @@ public partial class AvailabilityWindowViewModel : ObservableObject
         IsLoading = true;
         ErrorMessage = null;
 
-        // Mark every row as loading
+        // Mark every row as loading; clear stale data
         foreach (var row in Rows)
         {
             row.IsLoading = true;
             row.BusyRanges.Clear();
+            row.OwnEvents.Clear();
         }
 
         try
@@ -151,15 +167,24 @@ public partial class AvailabilityWindowViewModel : ObservableObject
                 windowStart.Minus(Duration.FromHours(1)),
                 windowEnd.Plus(Duration.FromHours(1)));
 
+            // Organizer row: populate from the local event cache (offline, all calendars)
+            if (_organizerRow != null && _getOwnEvents != null)
+            {
+                var ownEvents = await _getOwnEvents(queryInterval, linkedCt);
+                _organizerRow.ApplyOwnEvents(ownEvents, displayInterval);
+            }
+
+            // Attendee rows: freebusy API
             var results = await _provider.GetFreeBusyAsync(
                 _accountId, _attendeeEmails, queryInterval, linkedCt);
 
-            // Merge into existing rows (preserving display-name from contacts)
             var lookup = results.ToDictionary(
                 r => r.Email, r => r, StringComparer.OrdinalIgnoreCase);
 
             foreach (var row in Rows)
             {
+                if (row.IsOrganizerRow) continue;
+
                 if (lookup.TryGetValue(row.Email, out var fb))
                     row.Apply(fb, displayInterval);
                 else
@@ -228,9 +253,12 @@ public partial class AvailabilityWindowViewModel : ObservableObject
         SelectedStart = Clamp(rawStart, DisplayWindowStart, DisplayWindowEnd.AddMinutes(-30));
         SelectedEnd   = Clamp(SelectedStart + duration, SelectedStart.AddMinutes(30), DisplayWindowEnd);
 
-        // Clear stale busy-slot data; the subsequent RefreshAsync will repopulate.
+        // Clear stale data; the subsequent RefreshAsync will repopulate.
         foreach (var row in Rows)
+        {
             row.BusyRanges.Clear();
+            row.OwnEvents.Clear();
+        }
     }
 
     // ── Slot movement (called from code-behind on pointer drag) ───────────────
