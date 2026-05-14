@@ -99,6 +99,8 @@
 
                     <!-- Draggable slot overlay — positioned in code-behind via Canvas.Left / Width -->
                     <Canvas x:Name="OverlayCanvas"
+                            VerticalAlignment="Top"
+                            Background="Transparent"
                             IsHitTestVisible="True"
                             PointerPressed="OnOverlayCanvasPointerPressed"
                             PointerMoved="OnOverlayCanvasPointerMoved"
