@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Ical.Net;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
@@ -31,6 +32,34 @@ public class CalDavCalendarProvider(
     : ICalendarProvider
 {
     private static ModelExtension<ICalEvent> ICalEventExtension = new();
+
+    /// <inheritdoc/>
+    public void EnrichCalendar(perinma.Models.Calendar calendar, Func<string, string?> getData)
+    {
+        try
+        {
+            var privilegeXml = getData("currentUserPrivilegeSet");
+            if (string.IsNullOrEmpty(privilegeXml)) return;
+            // server didn't return privilege info — safe default (not read-only)
+
+            var xml = XDocument.Parse(privilegeXml);
+            XNamespace dav = "DAV:";
+            var privileges = xml.Descendants(dav + "privilege")
+                .SelectMany(p => p.Elements())
+                .Select(e => e.Name)
+                .ToHashSet();
+
+            // {DAV:}write subsumes write-content; either means the calendar is writable.
+            // Absent write privilege → read-only subscription.
+            if (!privileges.Contains(dav + "write") && !privileges.Contains(dav + "write-content"))
+                calendar.Extensions.Set(perinma.Models.CalendarExtensions.IsReadOnly, true);
+        }
+        catch
+        {
+            // Malformed data — leave extension unset (safe default: not read-only).
+        }
+    }
+
 
     /// <inheritdoc/>
     public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange) =>

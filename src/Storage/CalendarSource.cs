@@ -218,6 +218,9 @@ public class DatabaseCalendarSource(
         foreach (var calendarDbo in calendarDbos)
         {
             var calendar = HydrateCalendar(calendarDbo, account);
+            if (providers.TryGetValue(account.Type, out var provider))
+                provider.EnrichCalendar(calendar,
+                    key => storage.GetCalendarDataAsync(calendarDbo.CalendarId, key).GetAwaiter().GetResult());
             calendars.Add(calendar);
             seenCalendarIds.Add(calendar.Id);
         }
@@ -238,7 +241,12 @@ public class DatabaseCalendarSource(
             return null;
         }
 
-        return HydrateCalendar(calendarDbo, ResolveAccount(calendarDbo));
+        var account = ResolveAccount(calendarDbo);
+        var calendar = HydrateCalendar(calendarDbo, account);
+        if (providers.TryGetValue(account.Type, out var provider))
+            provider.EnrichCalendar(calendar,
+                key => storage.GetCalendarDataAsync(calendarDbo.CalendarId, key).GetAwaiter().GetResult());
+        return calendar;
     }
 
     public List<CalendarEvent> GetCalendarEvents(Interval interval)

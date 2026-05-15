@@ -200,7 +200,7 @@ public class SqliteStorage : IDisposable
     {
         return await _connection.QueryAsync<CalendarDbo>(
             "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
-            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
+            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync " +
             "FROM calendar WHERE account_id = @AccountId",
             new { AccountId = accountId },
             commandTimeout: 30
@@ -211,7 +211,7 @@ public class SqliteStorage : IDisposable
     {
         return await _connection.QuerySingleOrDefaultAsync<CalendarDbo>(
             "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
-            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
+            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync " +
             "FROM calendar WHERE account_id = @AccountId AND external_id = @ExternalId",
             new { AccountId = accountId, ExternalId = externalId },
             commandTimeout: 30
@@ -222,7 +222,7 @@ public class SqliteStorage : IDisposable
     {
         return await _connection.QuerySingleOrDefaultAsync<CalendarDbo>(
             "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
-            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
+            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync " +
             "FROM calendar WHERE calendar_id = @CalendarId",
             new { CalendarId = calendarId },
             commandTimeout: 30

@@ -201,6 +201,27 @@ public class GoogleCalendarProvider(
         _ => null
     };
 
+
+    /// <inheritdoc/>
+    public void EnrichCalendar(perinma.Models.Calendar calendar, Func<string, string?> getData)
+    {
+        var rawData = getData("rawData");
+        if (rawData is null) return;
+        try
+        {
+            var entry = NewtonsoftJsonSerializer.Instance.Deserialize<CalendarListEntry>(rawData);
+            // "reader" and "freeBusyReader" are read-only access roles; "owner" and "writer"
+            // can create/edit events and are treated as owned calendars that block time.
+            var role = entry?.AccessRole;
+            if (role is "reader" or "freeBusyReader")
+                calendar.Extensions.Set(CalendarExtensions.IsReadOnly, true);
+        }
+        catch
+        {
+            // Malformed rawData — leave extension unset (safe default: not read-only).
+        }
+    }
+
     /// <inheritdoc/>
     public async Task<CalendarSyncResult> GetCalendarsAsync(
         string accountId,

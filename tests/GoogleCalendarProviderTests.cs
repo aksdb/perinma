@@ -822,4 +822,57 @@ public class GoogleCalendarProviderTests
     }
 
     #endregion
+
+    #region EnrichCalendar Tests
+
+    private static perinma.Models.Calendar MakeCalendar() => new()
+    {
+        Account = new Account { Id = Guid.NewGuid(), Name = "Test", Type = AccountType.Google },
+        Id = Guid.NewGuid(),
+        ExternalId = "cal1",
+        Name = "Test Calendar"
+    };
+
+    private static Func<string, string?> GoogleCalendarAccessor(string accessRole)
+    {
+        var rawData = Google.Apis.Json.NewtonsoftJsonSerializer.Instance.Serialize(
+            new Google.Apis.Calendar.v3.Data.CalendarListEntry { AccessRole = accessRole });
+        return key => key == "rawData" ? rawData : null;
+    }
+
+    [TestCase("owner")]
+    [TestCase("writer")]
+    public void EnrichCalendar_OwnerOrWriter_IsReadOnlyNotSet(string accessRole)
+    {
+        var calendar = MakeCalendar();
+        _provider.EnrichCalendar(calendar, GoogleCalendarAccessor(accessRole));
+        Assert.That(calendar.Extensions.Get(CalendarExtensions.IsReadOnly), Is.False);
+    }
+
+    [TestCase("reader")]
+    [TestCase("freeBusyReader")]
+    public void EnrichCalendar_ReaderOrFreeBusyReader_IsReadOnlyTrue(string accessRole)
+    {
+        var calendar = MakeCalendar();
+        _provider.EnrichCalendar(calendar, GoogleCalendarAccessor(accessRole));
+        Assert.That(calendar.Extensions.Get(CalendarExtensions.IsReadOnly), Is.True);
+    }
+
+    [Test]
+    public void EnrichCalendar_NoRawData_IsReadOnlyNotSet()
+    {
+        var calendar = MakeCalendar();
+        _provider.EnrichCalendar(calendar, _ => null);
+        Assert.That(calendar.Extensions.Get(CalendarExtensions.IsReadOnly), Is.False);
+    }
+
+    [Test]
+    public void EnrichCalendar_MalformedRawData_IsReadOnlyNotSet()
+    {
+        var calendar = MakeCalendar();
+        _provider.EnrichCalendar(calendar, key => key == "rawData" ? "not json at all" : null);
+        Assert.That(calendar.Extensions.Get(CalendarExtensions.IsReadOnly), Is.False);
+    }
+
+    #endregion
 }

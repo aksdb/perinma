@@ -462,7 +462,8 @@ public partial class EventEditViewModel : ViewModelBase
             getOwnEvents = (interval, ct) => Task.Run(() =>
                 (IList<OwnCalendarEvent>) calendarSource
                     .GetCalendarEvents(interval)
-                    .Where(e => !e.Extensions.Get(CalendarEventExtensions.NonBlocking))
+                    .Where(e => !e.Extensions.Get(CalendarEventExtensions.NonBlocking)
+                             && !e.Reference.Calendar.Extensions.Get(CalendarExtensions.IsReadOnly))
                     .Select(e => new OwnCalendarEvent
                     {
                         Title        = string.IsNullOrWhiteSpace(e.Title) ? "(No title)" : e.Title,

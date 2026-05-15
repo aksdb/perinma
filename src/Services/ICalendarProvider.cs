@@ -30,6 +30,15 @@ public interface ICalendarProvider
     List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange);
 
     /// <summary>
+    /// Enriches a <see cref="Calendar"/> object with provider-specific metadata read from
+    /// the data stored at sync time (e.g. access role, privilege set).
+    /// Called by <c>DatabaseCalendarSource</c> after hydrating each calendar from the DB.
+    /// <paramref name="getData"/> fetches a named data attribute for the calendar.
+    /// Default implementation is a no-op; override to set calendar extensions.
+    /// </summary>
+    void EnrichCalendar(Calendar calendar, Func<string, string?> getData) { }
+
+    /// <summary>
     /// Syncs calendars for an account, optionally using incremental sync.
     /// </summary>
     /// <param name="accountId">Account ID to sync calendars for</param>

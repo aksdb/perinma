@@ -957,4 +957,66 @@ public class CalDavCalendarProviderTests
     }
 
     #endregion
+
+    #region EnrichCalendar Tests
+
+    private static perinma.Models.Calendar MakeCalDavCalendar() => new()
+    {
+        Account = new Account { Id = Guid.NewGuid(), Name = "Test", Type = AccountType.CalDav },
+        Id = Guid.NewGuid(),
+        ExternalId = "/cal",
+        Name = "Test Calendar"
+    };
+
+    private static Func<string, string?> CalDavAccessor(string? privilegeSetXml) =>
+        key => key == "currentUserPrivilegeSet" ? privilegeSetXml : null;
+
+    private static string PrivilegeSetXml(params string[] privileges)
+    {
+        var inner = string.Concat(privileges.Select(p => $"<privilege><{p}/></privilege>"));
+        return $"<current-user-privilege-set xmlns=\"DAV:\">{inner}</current-user-privilege-set>";
+    }
+
+    [Test]
+    public void EnrichCalendar_CalDav_WritePrivilege_IsReadOnlyNotSet()
+    {
+        var calendar = MakeCalDavCalendar();
+        _provider.EnrichCalendar(calendar, CalDavAccessor(PrivilegeSetXml("write")));
+        Assert.That(calendar.Extensions.Get(CalendarExtensions.IsReadOnly), Is.False);
+    }
+
+    [Test]
+    public void EnrichCalendar_CalDav_WriteContentPrivilege_IsReadOnlyNotSet()
+    {
+        var calendar = MakeCalDavCalendar();
+        _provider.EnrichCalendar(calendar, CalDavAccessor(PrivilegeSetXml("read", "write-content")));
+        Assert.That(calendar.Extensions.Get(CalendarExtensions.IsReadOnly), Is.False);
+    }
+
+    [Test]
+    public void EnrichCalendar_CalDav_ReadOnlyPrivileges_IsReadOnlyTrue()
+    {
+        var calendar = MakeCalDavCalendar();
+        _provider.EnrichCalendar(calendar, CalDavAccessor(PrivilegeSetXml("read", "read-acl")));
+        Assert.That(calendar.Extensions.Get(CalendarExtensions.IsReadOnly), Is.True);
+    }
+
+    [Test]
+    public void EnrichCalendar_CalDav_NoPrivilegeSetInData_IsReadOnlyNotSet()
+    {
+        // Server didn't return currentUserPrivilegeSet — safe default
+        var calendar = MakeCalDavCalendar();
+        _provider.EnrichCalendar(calendar, CalDavAccessor(null));
+        Assert.That(calendar.Extensions.Get(CalendarExtensions.IsReadOnly), Is.False);
+    }
+
+    [Test]
+    public void EnrichCalendar_CalDav_NoDataAtAll_IsReadOnlyNotSet()
+    {
+        var calendar = MakeCalDavCalendar();
+        _provider.EnrichCalendar(calendar, _ => null);
+        Assert.That(calendar.Extensions.Get(CalendarExtensions.IsReadOnly), Is.False);
+    }
+
+    #endregion
 }
