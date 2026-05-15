@@ -377,7 +377,7 @@ public class DatabaseCalendarSourceTests
         {
             Assert.That(calendarEvent.StartTime, Is.EqualTo(startTime));
             Assert.That(calendarEvent.EndTime, Is.EqualTo(endTime));
-            Assert.That(calendarEvent.ChangedAt, Is.EqualTo(changedAt.ToDateTimeUnspecified()));
+            Assert.That(calendarEvent.ChangedAt, Is.EqualTo(changedAt.ToInstant().ToDateTimeUtc()));
         }
     }
 
