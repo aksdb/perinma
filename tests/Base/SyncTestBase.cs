@@ -47,7 +47,8 @@ public abstract class SyncTestBase
         };
 
         // Initialize sync services
-        ReminderService = new ReminderService(Storage, Providers);
+        var calendarSource = new DatabaseCalendarSource(Storage, Providers);
+        ReminderService = new ReminderService(Storage, calendarSource, Providers);
         SyncService = new SyncService(Storage, CredentialManager, Providers, ReminderService);
     }
 

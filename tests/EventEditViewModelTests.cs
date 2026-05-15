@@ -46,9 +46,11 @@ public class EventEditViewModelTests
         };
         
         var services = new ServiceCollection();
+        var calendarSource = new DatabaseCalendarSource(_storage, _providers);
         services.AddSingleton(_provider);
         services.AddSingleton(_providers);
         services.AddSingleton(_storage);
+        services.AddSingleton<ICalendarSource>(calendarSource);
         services.AddSingleton(new SyncService(_storage, _credentialManager, _providers, null!));
         perinma.App.Services = services.BuildServiceProvider();
 
@@ -81,7 +83,7 @@ public class EventEditViewModelTests
             Enabled = 1
         };
         _storage.CreateOrUpdateCalendarAsync(calendarDbo).Wait();
-        _calendar = _storage.GetCachedCalendar(new Guid(calendarDbo.CalendarId))!;
+        _calendar = calendarSource.GetCalendar(new Guid(calendarDbo.CalendarId))!;
  
         _completedResult = null;
 

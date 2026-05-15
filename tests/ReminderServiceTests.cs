@@ -55,7 +55,8 @@ public class ReminderServiceTests
             { AccountType.CalDav, calDavProvider }
         };
 
-        _reminderService = new ReminderService(_storage, _providers, _clock);
+        var calendarSource = new DatabaseCalendarSource(_storage, _providers);
+        _reminderService = new ReminderService(_storage, calendarSource, _providers, _clock);
         _syncService = new SyncService(_storage, _credentialManager, _providers, _reminderService);
 
         // Setup test account and calendar
