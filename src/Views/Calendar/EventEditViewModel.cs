@@ -32,10 +32,10 @@ public partial class EventEditViewModel : ViewModelBase
     private readonly Window? _ownerWindow;
 
     [ObservableProperty]
-    private bool _isSaving;
+    public partial bool IsSaving { get; set; }
 
     [ObservableProperty]
-    private string _errorMessage = string.Empty;
+    public partial string ErrorMessage { get; set; } = string.Empty;
 
     [ObservableProperty]
     private CalendarModel? _selectedCalendar;
@@ -174,6 +174,7 @@ public partial class EventEditViewModel : ViewModelBase
             _timeRangeField.EndTime = _initialEndTime.Value;
             _timeRangeField.IsFullDay = _initialFullDay;
         }
+
         FieldRows.Add(new FieldRow(_timeRangeField, "📅", startExpanded: timeExpanded));
 
         _reminderField = new ReminderEditViewModel();
@@ -187,6 +188,7 @@ public partial class EventEditViewModel : ViewModelBase
                 reminderExpanded = true;
             }
         }
+
         FieldRows.Add(new FieldRow(_reminderField, "🔔", startExpanded: reminderExpanded));
 
         if (supportedExtensions.Contains(CalendarEventExtensions.Description))
@@ -221,23 +223,20 @@ public partial class EventEditViewModel : ViewModelBase
         if (IsSaving)
             return;
 
-        if (_titleField == null || _timeRangeField == null || _reminderField == null || string.IsNullOrWhiteSpace(_titleField.Title))
+        if (_titleField == null || _timeRangeField == null || _reminderField == null ||
+            string.IsNullOrWhiteSpace(_titleField.Title))
         {
             ErrorMessage = "Please enter a title";
             return;
         }
 
         // Show invite dialog if there are participants
-        if (_participantsField != null && _participantsField.SelectedParticipants.Count > 0)
+        if (_participantsField is { SelectedParticipants.Count: > 0 })
         {
             var dialogViewModel = new SendInvitesDialogViewModel();
             var dialog = new SendInvitesDialog { DataContext = dialogViewModel };
 
-            var result = await dialog.ShowDialog<SendInvitesResult>(_ownerWindow);
-            if (result == null)
-                return;
-
-            _sendInvitesResult = result;
+            _sendInvitesResult = await dialog.ShowDialog<SendInvitesResult>(_ownerWindow);
         }
         else
         {
@@ -338,7 +337,8 @@ public partial class EventEditViewModel : ViewModelBase
                     Extensions = updatedExtensions
                 };
 
-                var rawData = await provider.UpdateEventAsync(updatedEvent, _sendInvitesResult ?? SendInvitesResult.SendToNone);
+                var rawData =
+                    await provider.UpdateEventAsync(updatedEvent, _sendInvitesResult ?? SendInvitesResult.SendToNone);
 
                 var calendarId = targetCalendar.Id.ToString();
                 var changedAt = SystemClock.Instance.GetCurrentInstant().ToUnixTimeSeconds();
@@ -370,7 +370,8 @@ public partial class EventEditViewModel : ViewModelBase
                 var reminderService = App.Services?.GetRequiredService<ReminderService>();
                 if (reminderService != null)
                 {
-                    await reminderService.PopulateRemindersForEventAsync(eventId, calendarId, targetCalendar.Account.Type);
+                    await reminderService.PopulateRemindersForEventAsync(eventId, calendarId,
+                        targetCalendar.Account.Type);
                 }
 
                 WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
@@ -408,7 +409,8 @@ public partial class EventEditViewModel : ViewModelBase
                 var reminderService = App.Services?.GetService<ReminderService>();
                 if (reminderService != null)
                 {
-                    await reminderService.PopulateRemindersForEventAsync(eventId, calendarId, targetCalendar.Account.Type);
+                    await reminderService.PopulateRemindersForEventAsync(eventId, calendarId,
+                        targetCalendar.Account.Type);
                 }
 
                 WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
@@ -442,7 +444,7 @@ public partial class EventEditViewModel : ViewModelBase
         var emails = _participantsField.SelectedParticipants
             .Select(p => p.Email)
             .Where(e => !string.IsNullOrWhiteSpace(e))
-            .ToList<string>();
+            .ToList();
 
         if (emails.Count == 0) return;
 
@@ -460,28 +462,28 @@ public partial class EventEditViewModel : ViewModelBase
         if (calendarSource != null)
         {
             getOwnEvents = (interval, ct) => Task.Run(() =>
-                (IList<OwnCalendarEvent>) calendarSource
+                (IList<OwnCalendarEvent>)calendarSource
                     .GetCalendarEvents(interval)
                     .Where(e => !e.Extensions.Get(CalendarEventExtensions.NonBlocking)
-                             && !e.Reference.Calendar.Extensions.Get(CalendarExtensions.IsReadOnly))
+                                && !e.Reference.Calendar.Extensions.Get(CalendarExtensions.IsReadOnly))
                     .Select(e => new OwnCalendarEvent
                     {
-                        Title        = string.IsNullOrWhiteSpace(e.Title) ? "(No title)" : e.Title,
-                        Start        = e.StartTime.ToInstant(),
-                        End          = e.EndTime.ToInstant(),
+                        Title = string.IsNullOrWhiteSpace(e.Title) ? "(No title)" : e.Title,
+                        Start = e.StartTime.ToInstant(),
+                        End = e.EndTime.ToInstant(),
                         CalendarColor = e.Reference.Calendar.Color,
-                        CalendarName  = e.Reference.Calendar.Name
+                        CalendarName = e.Reference.Calendar.Name
                     })
-                    .ToList<OwnCalendarEvent>(), ct);
+                    .ToList(), ct);
         }
 
-        var vm = new Views.Calendar.Availability.AvailabilityWindowViewModel(
+        var vm = new Availability.AvailabilityWindowViewModel(
             provider, accountId, emails,
             _timeRangeField.StartTime, _timeRangeField.EndTime,
             getOwnEvents: getOwnEvents);
 
-        var dialog = new Views.Calendar.Availability.AvailabilityWindow { DataContext = vm };
-        var result = await dialog.ShowDialog<(DateTime, DateTime)?>(  _ownerWindow);
+        var dialog = new Availability.AvailabilityWindow { DataContext = vm };
+        var result = await dialog.ShowDialog<(DateTime, DateTime)?>(_ownerWindow);
 
         if (result is { } slot)
         {

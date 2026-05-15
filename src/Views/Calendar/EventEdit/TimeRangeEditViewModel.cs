@@ -10,16 +10,16 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
     private TimeSpan _duration;
 
     [ObservableProperty]
-    private DateTime _startTime;
+    public partial DateTime StartTime { get; set; }
 
     [ObservableProperty]
-    private DateTime _endTime;
+    public partial DateTime EndTime { get; set; }
 
     [ObservableProperty]
-    private bool _isFullDay;
+    public partial bool IsFullDay { get; set; }
 
     [ObservableProperty]
-    private bool _isFullDaySupported;
+    public partial bool IsFullDaySupported { get; set; }
 
     public TimeSpan Duration
     {
@@ -36,13 +36,13 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
         var now = DateTime.Now;
         var rounded = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0, DateTimeKind.Local);
         _duration = TimeSpan.FromMinutes(30);
-        _startTime = rounded;
-        _endTime = rounded + _duration;
+        StartTime = rounded;
+        EndTime = rounded + _duration;
     }
 
     partial void OnStartTimeChanged(DateTime value)
     {
-        _endTime = value + _duration;
+        EndTime = value + _duration;
         OnPropertyChanged(nameof(EndTime));
         OnPropertyChanged(nameof(StartDate));
         OnPropertyChanged(nameof(StartTimeOfDay));
@@ -59,13 +59,14 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
     {
         if (value < StartTime)
         {
-            _endTime = StartTime + _duration;
+            EndTime = StartTime + _duration;
             OnPropertyChanged(nameof(EndTime));
         }
         else
         {
             _duration = value - StartTime;
         }
+
         OnPropertyChanged(nameof(EndDate));
         OnPropertyChanged(nameof(EndTimeOfDay));
         OnPropertyChanged(nameof(EndHour));
@@ -96,14 +97,14 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
     {
         get => StartTime.Hour;
         set => StartTime = new DateTime(StartTime.Year, StartTime.Month, StartTime.Day,
-                                        Math.Clamp(value, 0, 23), StartTime.Minute, 0, StartTime.Kind);
+            Math.Clamp(value, 0, 23), StartTime.Minute, 0, StartTime.Kind);
     }
 
     public int StartMinute
     {
         get => StartTime.Minute;
         set => StartTime = new DateTime(StartTime.Year, StartTime.Month, StartTime.Day,
-                                        StartTime.Hour, Math.Clamp(value, 0, 59), 0, StartTime.Kind);
+            StartTime.Hour, Math.Clamp(value, 0, 59), 0, StartTime.Kind);
     }
 
     // --- End computed properties (all write through to EndTime) ---
@@ -124,14 +125,14 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
     {
         get => EndTime.Hour;
         set => EndTime = new DateTime(EndTime.Year, EndTime.Month, EndTime.Day,
-                                      Math.Clamp(value, 0, 23), EndTime.Minute, 0, EndTime.Kind);
+            Math.Clamp(value, 0, 23), EndTime.Minute, 0, EndTime.Kind);
     }
 
     public int EndMinute
     {
         get => EndTime.Minute;
         set => EndTime = new DateTime(EndTime.Year, EndTime.Month, EndTime.Day,
-                                      EndTime.Hour, Math.Clamp(value, 0, 59), 0, EndTime.Kind);
+            EndTime.Hour, Math.Clamp(value, 0, 59), 0, EndTime.Kind);
     }
 
     // --- IEditableField ---
@@ -146,6 +147,7 @@ public partial class TimeRangeEditViewModel : ViewModelBase, IEditableField
                     ? StartTime.ToString("MMM d")
                     : $"{StartTime:MMM d} – {EndTime:MMM d}";
             }
+
             return $"{StartTime:MMM d, HH:mm} – {EndTime:HH:mm}";
         }
     }

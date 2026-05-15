@@ -50,10 +50,10 @@ public partial class AvailabilityWindowViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
     [NotifyCanExecuteChangedFor(nameof(GoToPreviousDayCommand))]
     [NotifyCanExecuteChangedFor(nameof(GoToNextDayCommand))]
-    private bool _isLoading;
+    public partial bool IsLoading { get; set; }
 
     [ObservableProperty]
-    private string? _errorMessage;
+    public partial string? ErrorMessage { get; set; }
 
     // ── Selected slot (draggable overlay) ────────────────────────────────────
 
@@ -62,14 +62,14 @@ public partial class AvailabilityWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(SelectedSlotLabel))]
     [NotifyPropertyChangedFor(nameof(SelectedSlotStartFraction))]
     [NotifyPropertyChangedFor(nameof(SelectedSlotWidthFraction))]
-    private DateTime _selectedStart;
+    public partial DateTime SelectedStart { get; set; }
 
     /// <summary>End of the proposed time slot (local).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedSlotLabel))]
     [NotifyPropertyChangedFor(nameof(SelectedSlotStartFraction))]
     [NotifyPropertyChangedFor(nameof(SelectedSlotWidthFraction))]
-    private DateTime _selectedEnd;
+    public partial DateTime SelectedEnd { get; set; }
 
     /// <summary>Fraction [0,1] of the slot start within the display window.</summary>
     public double SelectedSlotStartFraction =>
@@ -116,10 +116,8 @@ public partial class AvailabilityWindowViewModel : ObservableObject
         DisplayWindowEnd     = eventDate.AddHours(22);
         DisplayWindowMinutes = (DisplayWindowEnd - DisplayWindowStart).TotalMinutes;
         DisplayDate = eventDate;
-
-        // Clamp the initial slot to the display window
-        _selectedStart = Clamp(initialStart, DisplayWindowStart, DisplayWindowEnd.AddMinutes(-30));
-        _selectedEnd   = Clamp(initialEnd, _selectedStart.AddMinutes(30), DisplayWindowEnd);
+        SelectedStart = Clamp(initialStart, DisplayWindowStart, DisplayWindowEnd.AddMinutes(-30));
+        SelectedEnd = Clamp(initialEnd, SelectedStart.AddMinutes(30), DisplayWindowEnd);
 
         // Build time labels every 2 hours
         TimeLabels = BuildTimeLabels();
@@ -334,7 +332,7 @@ public partial class AvailabilityWindowViewModel : ObservableObject
         return value;
     }
 
-    private IReadOnlyList<TimeLabel> BuildTimeLabels()
+    private List<TimeLabel> BuildTimeLabels()
     {
         var labels = new List<TimeLabel>();
         var cursor = DisplayWindowStart;

@@ -16,21 +16,25 @@ namespace perinma.Views.Calendar.Availability;
 /// the local SQLite cache via <see cref="ApplyOwnEvents"/>; the richer
 /// <see cref="OwnEvents"/> collection is populated instead of <see cref="BusyRanges"/>.
 /// </summary>
-public partial class ParticipantAvailabilityViewModel : ObservableObject
+public partial class ParticipantAvailabilityViewModel(
+    string email,
+    bool isOrganizerRow = false,
+    string? displayName = null)
+    : ObservableObject
 {
-    public string Email { get; }
+    public string Email { get; } = email;
 
     /// <summary>True for the organizer's own row; renders with per-event calendar colours.</summary>
-    public bool IsOrganizerRow { get; }
+    public bool IsOrganizerRow { get; } = isOrganizerRow;
 
     [ObservableProperty]
-    private string _displayName;
+    public partial string DisplayName { get; set; } = displayName ?? email;
 
     [ObservableProperty]
-    private FreeBusyStatus _status = FreeBusyStatus.Unknown;
+    public partial FreeBusyStatus Status { get; set; } = FreeBusyStatus.Unknown;
 
     [ObservableProperty]
-    private bool _isLoading = true;
+    public partial bool IsLoading { get; set; } = true;
 
     /// <summary>
     /// Pre-computed busy ranges as (Start, Width) fractions in [0,1] within the display window.
@@ -45,13 +49,6 @@ public partial class ParticipantAvailabilityViewModel : ObservableObject
     public ObservableCollection<OwnEventSlot> OwnEvents { get; } = [];
 
     public bool IsUnknown => Status is FreeBusyStatus.Unknown or FreeBusyStatus.Unavailable;
-
-    public ParticipantAvailabilityViewModel(string email, bool isOrganizerRow = false, string? displayName = null)
-    {
-        Email = email;
-        IsOrganizerRow = isOrganizerRow;
-        _displayName = displayName ?? email;
-    }
 
     /// <summary>
     /// Applies freebusy data for an attendee row, projecting busy slots into fractional
@@ -78,12 +75,12 @@ public partial class ParticipantAvailabilityViewModel : ObservableObject
         foreach (var slot in freeBusy.BusySlots)
         {
             var clampedStart = slot.Start < displayWindow.Start ? displayWindow.Start : slot.Start;
-            var clampedEnd   = slot.End   > displayWindow.End   ? displayWindow.End   : slot.End;
+            var clampedEnd = slot.End > displayWindow.End ? displayWindow.End : slot.End;
 
             if (clampedStart >= clampedEnd) continue;
 
             var startFraction = (clampedStart - displayWindow.Start).TotalSeconds / windowDuration;
-            var widthFraction = (clampedEnd   - clampedStart).TotalSeconds / windowDuration;
+            var widthFraction = (clampedEnd - clampedStart).TotalSeconds / windowDuration;
 
             BusyRanges.Add(new BusyRange(startFraction, widthFraction));
         }
@@ -99,7 +96,7 @@ public partial class ParticipantAvailabilityViewModel : ObservableObject
     public void ApplyOwnEvents(IList<OwnCalendarEvent> events, Interval displayWindow)
     {
         OwnEvents.Clear();
-        Status    = FreeBusyStatus.Ok;
+        Status = FreeBusyStatus.Ok;
         IsLoading = false;
         OnPropertyChanged(nameof(IsUnknown));
 
@@ -111,7 +108,7 @@ public partial class ParticipantAvailabilityViewModel : ObservableObject
         var clamped = events
             .Select(ev => (
                 Start: ev.Start < displayWindow.Start ? displayWindow.Start : ev.Start,
-                End:   ev.End   > displayWindow.End   ? displayWindow.End   : ev.End,
+                End: ev.End > displayWindow.End ? displayWindow.End : ev.End,
                 ev.Title))
             .Where(e => e.Start < e.End)
             .OrderBy(e => e.Start)
@@ -121,8 +118,8 @@ public partial class ParticipantAvailabilityViewModel : ObservableObject
 
         // Merge overlapping / touching intervals; accumulate all titles per merged slot.
         var mergeStart = clamped[0].Start;
-        var mergeEnd   = clamped[0].End;
-        var titles     = new List<string> { clamped[0].Title };
+        var mergeEnd = clamped[0].End;
+        var titles = new List<string> { clamped[0].Title };
 
         for (var i = 1; i < clamped.Count; i++)
         {
@@ -136,10 +133,11 @@ public partial class ParticipantAvailabilityViewModel : ObservableObject
             {
                 EmitSlot(mergeStart, mergeEnd, titles, displayWindow.Start, windowDuration);
                 mergeStart = ev.Start;
-                mergeEnd   = ev.End;
-                titles     = [ev.Title];
+                mergeEnd = ev.End;
+                titles = [ev.Title];
             }
         }
+
         EmitSlot(mergeStart, mergeEnd, titles, displayWindow.Start, windowDuration);
     }
 
@@ -148,7 +146,7 @@ public partial class ParticipantAvailabilityViewModel : ObservableObject
         Instant windowStart, double windowDuration)
     {
         var sf = (start - windowStart).TotalSeconds / windowDuration;
-        var wf = (end   - start).TotalSeconds       / windowDuration;
+        var wf = (end - start).TotalSeconds / windowDuration;
         OwnEvents.Add(new OwnEventSlot(sf, wf, titles.AsReadOnly()));
     }
 }
