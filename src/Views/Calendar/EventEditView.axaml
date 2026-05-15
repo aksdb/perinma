@@ -50,7 +50,6 @@
     </Window.Styles>
 
     <Window.Resources>
-        <cal:DateTimeToTimeSpanConverter x:Key="DateTimeToTimeSpanConverter"/>
     </Window.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="16">
@@ -290,13 +289,13 @@
                                                                         Padding="4">
                                                                     <ItemsControl ItemsSource="{Binding SearchResults}">
                                                                         <ItemsControl.ItemTemplate>
-                                                                            <DataTemplate>
+                                                                            <DataTemplate DataType="edit:ParticipantEditItemViewModel">
                                                                                 <Button Background="Transparent"
                                                                                         BorderThickness="0"
                                                                                         Padding="0"
                                                                                         HorizontalAlignment="Stretch"
                                                                                         HorizontalContentAlignment="Stretch"
-                                                                                        Command="{Binding $parent[ItemsControl].DataContext.AddFromContactCommand}"
+                                                                                        Command="{Binding $parent[ItemsControl].((edit:ParticipantsEditViewModel)DataContext).AddFromContactCommand}"
                                                                                         CommandParameter="{Binding}">
                                                                                     <Border Padding="8,4" CornerRadius="4">
                                                                                         <Border.Styles>
@@ -340,7 +339,7 @@
                                                         </Grid>
                                                         <Button Content="Check availability →"
                                                                 HorizontalAlignment="Right"
-                                                                Command="{Binding $parent[Window].DataContext.CheckAvailabilityCommand}"
+                                                                Command="{Binding $parent[Window].((cal:EventEditViewModel)DataContext).CheckAvailabilityCommand}"
                                                                 IsVisible="{Binding HasValue}"
                                                                 Padding="6,3"
                                                                 FontSize="12"/>
