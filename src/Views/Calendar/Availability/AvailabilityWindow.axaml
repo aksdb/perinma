@@ -130,6 +130,7 @@
                             IsHitTestVisible="True"
                             PointerPressed="OnOverlayCanvasPointerPressed"
                             PointerMoved="OnOverlayCanvasPointerMoved"
+                            PointerExited="OnOverlayCanvasPointerExited"
                             PointerReleased="OnOverlayCanvasPointerReleased">
 
                         <Border x:Name="SlotBorder"

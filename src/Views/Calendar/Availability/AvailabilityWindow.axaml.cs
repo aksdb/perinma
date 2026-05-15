@@ -132,11 +132,19 @@ public partial class AvailabilityWindow : Window
 
     private void OnOverlayCanvasPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (_dragMode == DragMode.None || Vm == null) return;
-
-        var pos = e.GetPosition(OverlayCanvas);
+        var pos        = e.GetPosition(OverlayCanvas);
         var panelWidth = TimelinePanel.Bounds.Width;
-        if (panelWidth <= 0) return;
+
+        // Update hover tooltip whenever the pointer is idle (not mid-drag).
+        // The canvas sits on top of AvailabilityTimelineControl and absorbs all
+        // pointer events, so the control's own OnPointerMoved never fires.
+        if (_dragMode == DragMode.None)
+        {
+            var tip = TimelineControl.FindOwnEventTitleAtPosition(e.GetPosition(TimelineControl));
+            ToolTip.SetTip(OverlayCanvas, tip);
+        }
+
+        if (_dragMode == DragMode.None || Vm == null || panelWidth <= 0) return;
 
         var currentFraction = pos.X / panelWidth;
 
@@ -153,6 +161,11 @@ public partial class AvailabilityWindow : Window
 
         UpdateOverlayFromViewModel();
         e.Handled = true;
+    }
+
+    private void OnOverlayCanvasPointerExited(object? sender, PointerEventArgs e)
+    {
+        ToolTip.SetTip(OverlayCanvas, null);
     }
 
     private void OnOverlayCanvasPointerReleased(object? sender, PointerReleasedEventArgs e)

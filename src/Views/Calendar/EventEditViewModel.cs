@@ -475,7 +475,6 @@ public partial class EventEditViewModel : ViewModelBase
         var vm = new Views.Calendar.Availability.AvailabilityWindowViewModel(
             provider, accountId, emails,
             _timeRangeField.StartTime, _timeRangeField.EndTime,
-            organizerDisplayName: SelectedCalendar.Account.Name,
             getOwnEvents: getOwnEvents);
 
         var dialog = new Views.Calendar.Availability.AvailabilityWindow { DataContext = vm };

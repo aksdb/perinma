@@ -181,7 +181,7 @@ public class AvailabilityTimelineControl : Control
         ToolTip.SetTip(this, null);
     }
 
-    private string? FindOwnEventTitleAtPosition(Point pos)
+    internal string? FindOwnEventTitleAtPosition(Point pos)
     {
         var rows  = Rows;
         var width = Bounds.Width;
