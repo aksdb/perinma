@@ -448,28 +448,26 @@ public partial class EventEditViewModel : ViewModelBase
 
         var accountId = SelectedCalendar.Account.Id.ToString();
 
-        // Own-events delegate: queries the local SQLite cache for all enabled calendars
-        // across all accounts — the query already filters c.enabled = 1, so we get
-        // every calendar the user has enabled in the main view.
-        var storage = App.Services?.GetService<SqliteStorage>();
+        // Own-events delegate: uses ICalendarSource so recurrence expansion, all enabled
+        // calendars, and provider-specific parsing (including NonBlocking) are handled
+        // consistently with the calendar views.
+        var calendarSource = App.Services?.GetService<ICalendarSource>();
         Func<Interval, CancellationToken, Task<IList<OwnCalendarEvent>>>? getOwnEvents = null;
-        if (storage != null)
+        if (calendarSource != null)
         {
-            getOwnEvents = async (interval, ct) =>
-            {
-                var dbEvents = await storage.GetEventsByTimeRangeAsync(interval);
-                return dbEvents
-                    .Where(e => e.StartTime.HasValue && e.EndTime.HasValue)
+            getOwnEvents = (interval, ct) => Task.Run(() =>
+                (IList<OwnCalendarEvent>) calendarSource
+                    .GetCalendarEvents(interval)
+                    .Where(e => !e.Extensions.Get(CalendarEventExtensions.NonBlocking))
                     .Select(e => new OwnCalendarEvent
                     {
-                        Title         = string.IsNullOrWhiteSpace(e.Title) ? "(No title)" : e.Title,
-                        Start         = Instant.FromUnixTimeSeconds(e.StartTime!.Value),
-                        End           = Instant.FromUnixTimeSeconds(e.EndTime!.Value),
-                        CalendarColor = e.CalendarColor,
-                        CalendarName  = e.CalendarName
+                        Title        = string.IsNullOrWhiteSpace(e.Title) ? "(No title)" : e.Title,
+                        Start        = e.StartTime.ToInstant(),
+                        End          = e.EndTime.ToInstant(),
+                        CalendarColor = e.Reference.Calendar.Color,
+                        CalendarName  = e.Reference.Calendar.Name
                     })
-                    .ToList<OwnCalendarEvent>();
-            };
+                    .ToList<OwnCalendarEvent>(), ct);
         }
 
         var vm = new Views.Calendar.Availability.AvailabilityWindowViewModel(

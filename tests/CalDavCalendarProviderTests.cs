@@ -865,4 +865,96 @@ public class CalDavCalendarProviderTests
     }
 
     #endregion
+
+    #region Transparency / NonBlocking Tests
+
+    private static RawEvent MakeCalDavRawEvent(string uid, string iCalBody) => new()
+    {
+        RawData = iCalBody,
+        Reference = new EventReference
+        {
+            Calendar = new perinma.Models.Calendar
+            {
+                Account = new Account { Id = Guid.NewGuid(), Name = "Test", Type = AccountType.CalDav },
+                Id = Guid.NewGuid(), ExternalId = "/cal", Name = "Test Calendar"
+            },
+            Id = Guid.NewGuid(),
+            ExternalId = uid
+        }
+    };
+
+    private static readonly Interval June2025 = new(
+        Instant.FromUtc(2025, 6, 1, 0, 0),
+        Instant.FromUtc(2025, 6, 2, 0, 0));
+
+    [Test]
+    public void ParseCalendarEvents_OpaqueCalDavEvent_NonBlockingIsNotSet()
+    {
+        const string ical = """
+            BEGIN:VCALENDAR
+            VERSION:2.0
+            BEGIN:VEVENT
+            UID:opaque-caldav@test
+            SUMMARY:Opaque Meeting
+            DTSTART:20250601T090000Z
+            DTEND:20250601T100000Z
+            TRANSP:OPAQUE
+            END:VEVENT
+            END:VCALENDAR
+            """;
+
+        var events = _provider.ParseCalendarEvents(
+            [MakeCalDavRawEvent("opaque-caldav@test", ical)], June2025);
+
+        Assert.That(events, Has.Count.EqualTo(1));
+        Assert.That(events[0].Extensions.Get(CalendarEventExtensions.NonBlocking), Is.False);
+    }
+
+    [Test]
+    public void ParseCalendarEvents_TransparentCalDavEvent_NonBlockingIsTrue()
+    {
+        const string ical = """
+            BEGIN:VCALENDAR
+            VERSION:2.0
+            BEGIN:VEVENT
+            UID:transparent-caldav@test
+            SUMMARY:Out of Office
+            DTSTART:20250601T090000Z
+            DTEND:20250601T100000Z
+            TRANSP:TRANSPARENT
+            END:VEVENT
+            END:VCALENDAR
+            """;
+
+        var events = _provider.ParseCalendarEvents(
+            [MakeCalDavRawEvent("transparent-caldav@test", ical)], June2025);
+
+        Assert.That(events, Has.Count.EqualTo(1));
+        Assert.That(events[0].Extensions.Get(CalendarEventExtensions.NonBlocking), Is.True);
+    }
+
+    [Test]
+    public void ParseCalendarEvents_NoTranspField_NonBlockingIsNotSet()
+    {
+        // No TRANSP line — RFC 5545 default is OPAQUE
+        const string ical = """
+            BEGIN:VCALENDAR
+            VERSION:2.0
+            BEGIN:VEVENT
+            UID:notransp-caldav@test
+            SUMMARY:Regular Meeting
+            DTSTART:20250601T090000Z
+            DTEND:20250601T100000Z
+            END:VEVENT
+            END:VCALENDAR
+            """;
+
+        var events = _provider.ParseCalendarEvents(
+            [MakeCalDavRawEvent("notransp-caldav@test", ical)], June2025);
+
+        Assert.That(events, Has.Count.EqualTo(1));
+        Assert.That(events[0].Extensions.Get(CalendarEventExtensions.NonBlocking), Is.False);
+    }
+
+    #endregion
 }

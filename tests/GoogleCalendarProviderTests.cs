@@ -702,4 +702,124 @@ public class GoogleCalendarProviderTests
     }
 
     #endregion
+
+    #region Transparency / NonBlocking Tests
+
+    [Test]
+    public void ParseCalendarEvents_OpaqueEvent_NonBlockingIsNotSet()
+    {
+        // Arrange
+        var start = new DateTime(2025, 6, 1, 9, 0, 0, DateTimeKind.Utc);
+        var end   = new DateTime(2025, 6, 1, 10, 0, 0, DateTimeKind.Utc);
+        var evt = new Google.Apis.Calendar.v3.Data.Event
+        {
+            Id      = "opaque1",
+            Summary = "Opaque Meeting",
+            Status  = "confirmed",
+            Transparency = "opaque",
+            Start = new Google.Apis.Calendar.v3.Data.EventDateTime { DateTimeRaw = start.ToString("o"), TimeZone = "UTC" },
+            End   = new Google.Apis.Calendar.v3.Data.EventDateTime { DateTimeRaw = end.ToString("o"),   TimeZone = "UTC" },
+        };
+        var rawEvent = new RawEvent
+        {
+            Reference = new EventReference
+            {
+                Calendar = new perinma.Models.Calendar
+                {
+                    Account = new Account { Id = Guid.NewGuid(), Name = "Test", Type = AccountType.Google },
+                    Id = Guid.NewGuid(), ExternalId = "cal1", Name = "Test Calendar"
+                },
+                Id = Guid.NewGuid(),
+                ExternalId = "opaque1"
+            },
+            RawData = Google.Apis.Json.NewtonsoftJsonSerializer.Instance.Serialize(evt)
+        };
+        var interval = new Interval(Instant.FromUtc(2025, 6, 1, 0, 0), Instant.FromUtc(2025, 6, 2, 0, 0));
+
+        // Act
+        var events = _provider.ParseCalendarEvents([rawEvent], interval);
+
+        // Assert — absent extension means default false, i.e. blocking
+        Assert.That(events, Has.Count.EqualTo(1));
+        Assert.That(events[0].Extensions.Get(CalendarEventExtensions.NonBlocking), Is.False);
+    }
+
+    [Test]
+    public void ParseCalendarEvents_TransparentEvent_NonBlockingIsTrue()
+    {
+        // Arrange
+        var start = new DateTime(2025, 6, 1, 9, 0, 0, DateTimeKind.Utc);
+        var end   = new DateTime(2025, 6, 1, 10, 0, 0, DateTimeKind.Utc);
+        var evt = new Google.Apis.Calendar.v3.Data.Event
+        {
+            Id      = "transparent1",
+            Summary = "Out of Office",
+            Status  = "confirmed",
+            Transparency = "transparent",
+            Start = new Google.Apis.Calendar.v3.Data.EventDateTime { DateTimeRaw = start.ToString("o"), TimeZone = "UTC" },
+            End   = new Google.Apis.Calendar.v3.Data.EventDateTime { DateTimeRaw = end.ToString("o"),   TimeZone = "UTC" },
+        };
+        var rawEvent = new RawEvent
+        {
+            Reference = new EventReference
+            {
+                Calendar = new perinma.Models.Calendar
+                {
+                    Account = new Account { Id = Guid.NewGuid(), Name = "Test", Type = AccountType.Google },
+                    Id = Guid.NewGuid(), ExternalId = "cal1", Name = "Test Calendar"
+                },
+                Id = Guid.NewGuid(),
+                ExternalId = "transparent1"
+            },
+            RawData = Google.Apis.Json.NewtonsoftJsonSerializer.Instance.Serialize(evt)
+        };
+        var interval = new Interval(Instant.FromUtc(2025, 6, 1, 0, 0), Instant.FromUtc(2025, 6, 2, 0, 0));
+
+        // Act
+        var events = _provider.ParseCalendarEvents([rawEvent], interval);
+
+        // Assert
+        Assert.That(events, Has.Count.EqualTo(1));
+        Assert.That(events[0].Extensions.Get(CalendarEventExtensions.NonBlocking), Is.True);
+    }
+
+    [Test]
+    public void ParseCalendarEvents_NullTransparency_NonBlockingIsNotSet()
+    {
+        // Arrange — no Transparency field at all; API spec says null == opaque
+        var start = new DateTime(2025, 6, 1, 9, 0, 0, DateTimeKind.Utc);
+        var end   = new DateTime(2025, 6, 1, 10, 0, 0, DateTimeKind.Utc);
+        var evt = new Google.Apis.Calendar.v3.Data.Event
+        {
+            Id      = "notransparency1",
+            Summary = "Regular Event",
+            Status  = "confirmed",
+            Start = new Google.Apis.Calendar.v3.Data.EventDateTime { DateTimeRaw = start.ToString("o"), TimeZone = "UTC" },
+            End   = new Google.Apis.Calendar.v3.Data.EventDateTime { DateTimeRaw = end.ToString("o"),   TimeZone = "UTC" },
+        };
+        var rawEvent = new RawEvent
+        {
+            Reference = new EventReference
+            {
+                Calendar = new perinma.Models.Calendar
+                {
+                    Account = new Account { Id = Guid.NewGuid(), Name = "Test", Type = AccountType.Google },
+                    Id = Guid.NewGuid(), ExternalId = "cal1", Name = "Test Calendar"
+                },
+                Id = Guid.NewGuid(),
+                ExternalId = "notransparency1"
+            },
+            RawData = Google.Apis.Json.NewtonsoftJsonSerializer.Instance.Serialize(evt)
+        };
+        var interval = new Interval(Instant.FromUtc(2025, 6, 1, 0, 0), Instant.FromUtc(2025, 6, 2, 0, 0));
+
+        // Act
+        var events = _provider.ParseCalendarEvents([rawEvent], interval);
+
+        // Assert
+        Assert.That(events, Has.Count.EqualTo(1));
+        Assert.That(events[0].Extensions.Get(CalendarEventExtensions.NonBlocking), Is.False);
+    }
+
+    #endregion
 }

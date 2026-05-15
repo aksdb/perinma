@@ -122,6 +122,8 @@ public class CalDavCalendarProvider(
                 }
             ]);
 
+        if (evt.Transparency == TransparencyType.Transparent)
+            extensions.Set(CalendarEventExtensions.NonBlocking, true);
         return new CalendarEvent
         {
             Reference = reference,

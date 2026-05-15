@@ -115,4 +115,10 @@ public static class CalendarEventExtensions
     public static ModelExtension<CalendarEventConference> Conference = new();
     public static ModelExtension<Participation> Participation = new();
     public static ModelExtension<int> ReminderMinutesBefore = new();
+    /// <summary>
+    /// True when the event is transparent (free) and should not block the organizer's time.
+    /// Absent (default false) means blocking — the safe fallback for providers that do not set it.
+    /// </summary>
+    public static ModelExtension<bool> NonBlocking = new();
 }
+

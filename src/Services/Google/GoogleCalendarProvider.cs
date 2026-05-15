@@ -158,6 +158,8 @@ public class GoogleCalendarProvider(
             };
             extensions.Set(CalendarEventExtensions.Participation, participation);
         }
+        if (googleEvent.Transparency == "transparent")
+            extensions.Set(CalendarEventExtensions.NonBlocking, true);
 
         var localStartTime = start.ToLocalDateTime();
         var localEndTime = end.ToLocalDateTime();
