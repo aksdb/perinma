@@ -66,25 +66,29 @@ public partial class EventEditViewModel : ViewModelBase
     {
         get
         {
+            var calendarSource = App.Services?.GetRequiredService<ICalendarSource>();
+            if (calendarSource == null)
+            {
+                return Enumerable.Empty<CalendarModel>();
+            }
+
             if (_calendar != null)
             {
-                return _storage.GetCachedCalendars(_calendar.Account)
+                return calendarSource.GetCalendars(_calendar.Account)
                     .Where(c => c.Enabled)
                     .OrderBy(c => c.Name);
             }
-            else
+
+            var allCalendars = new List<CalendarModel>();
+            var accounts = _storage.GetCachedAccounts();
+
+            foreach (var account in accounts)
             {
-                var allCalendars = new List<CalendarModel>();
-                var accounts = _storage.GetCachedAccounts();
-
-                foreach (var account in accounts)
-                {
-                    allCalendars.AddRange(_storage.GetCachedCalendars(account)
-                        .Where(c => c.Enabled));
-                }
-
-                return allCalendars.OrderBy(c => c.Name);
+                allCalendars.AddRange(calendarSource.GetCalendars(account)
+                    .Where(c => c.Enabled));
             }
+
+            return allCalendars.OrderBy(c => c.Name);
         }
     }
 

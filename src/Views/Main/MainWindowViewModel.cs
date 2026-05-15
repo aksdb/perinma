@@ -49,6 +49,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private readonly ThemeService _themeService;
     private readonly SettingsService _settingsService;
     private readonly SqliteStorage _storage;
+    private readonly ICalendarSource _calendarSource;
     private DebugWindow? _debugWindow;
     private System.Threading.Timer? _autoSyncTimer;
 
@@ -145,6 +146,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _themeService = themeService;
         _settingsService = settingsService;
         _storage = storage;
+        _calendarSource = calendarSource;
         _googleCalendarService = googleCalendarService;
         _googleOAuthService = googleOAuthService;
 
@@ -152,7 +154,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, _settingsService);
         CalendarAgendaViewModel = new CalendarAgendaViewModel(calendarSource, _settingsService);
         CalendarNavigationBarViewModel = new CalendarNavigationBarViewModel();
-        CalendarListViewModel = new CalendarListViewModel(_storage, _googleCalendarService, _credentialManager);
+        CalendarListViewModel = new CalendarListViewModel(_storage, calendarSource, _googleCalendarService, _credentialManager);
         ContactsViewModel = new ContactsViewModel(_storage);
 
         CalendarWeekViewModel.PropertyChanged += (sender, args) =>
@@ -335,7 +337,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
             return;
         }
 
-        var reminderService = new ReminderService(_storage, _syncService.Providers);
+        var reminderService = new ReminderService(_storage, _calendarSource, _syncService.Providers);
 
         _debugWindow = new DebugWindow();
         _debugWindow.DataContext = new DebugWindowViewModel(reminderService);

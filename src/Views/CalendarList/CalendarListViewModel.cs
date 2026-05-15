@@ -18,6 +18,7 @@ namespace perinma.Views.CalendarList;
 public partial class CalendarListViewModel : ViewModelBase, IRecipient<AccountsChangedMessage>
 {
     private readonly SqliteStorage _storage;
+    private readonly ICalendarSource _calendarSource;
     private readonly IGoogleCalendarService _googleCalendarService;
     private readonly CredentialManagerService _credentialManager;
     private bool _isLoadingAccounts;
@@ -29,10 +30,12 @@ public partial class CalendarListViewModel : ViewModelBase, IRecipient<AccountsC
 
     public CalendarListViewModel(
         SqliteStorage storage,
+        ICalendarSource calendarSource,
         IGoogleCalendarService googleCalendarService,
         CredentialManagerService credentialManager)
     {
         _storage = storage;
+        _calendarSource = calendarSource;
         _googleCalendarService = googleCalendarService;
         _credentialManager = credentialManager;
         AccountGroups.CollectionChanged += OnAccountGroupsCollectionChanged;
@@ -86,7 +89,7 @@ public partial class CalendarListViewModel : ViewModelBase, IRecipient<AccountsC
                     AccountName = account.Name
                 };
 
-                var calendars = _storage.GetCachedCalendars(account).ToList();
+                var calendars = _calendarSource.GetCalendars(account).ToList();
                     
                 foreach (var calendar in calendars)
                 {

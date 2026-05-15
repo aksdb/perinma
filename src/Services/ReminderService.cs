@@ -11,7 +11,11 @@ using perinma.Utils;
 
 namespace perinma.Services;
 
-public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountType, ICalendarProvider> providers, IClock? clock = null)
+public class ReminderService(
+    SqliteStorage storage,
+    ICalendarSource calendarSource,
+    IReadOnlyDictionary<AccountType, ICalendarProvider> providers,
+    IClock? clock = null)
 {
     private readonly IClock _clock = clock ?? SystemClock.Instance;
     private readonly HashSet<string> _firedReminders = new();
@@ -134,7 +138,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
         // Prepare follow-up reminder using trigger time as reference to get next recurrence
         var calendarId = await storage.GetEventCalendarIdAsync(reminder.TargetId);
-        var calendar = calendarId?.Let(id =>storage.GetCachedCalendar(new Guid(calendarId)));
+        var calendar = calendarId == null ? null : calendarSource.GetCalendar(Guid.Parse(calendarId));
         if (calendar != null)
         {
             var previousTargetTime = Instant.FromUnixTimeSeconds(reminder.TargetTime);
@@ -173,7 +177,7 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
             var calendarId = await storage.GetEventCalendarIdAsync(reminder.TargetId);
             if (calendarId == null) return;
 
-            var calendar = storage.GetCachedCalendar(new Guid(calendarId));
+            var calendar = calendarSource.GetCalendar(Guid.Parse(calendarId));
             if (calendar == null) return;
 
             var occurrenceStartTimeInstant = await GetEventStartTimeAsync(reminder.TargetId,
@@ -242,12 +246,13 @@ public class ReminderService(SqliteStorage storage, IReadOnlyDictionary<AccountT
 
         foreach (var account in accounts)
         {
-            var calendars = storage.GetCachedCalendars(new Models.Account
+            var accountModel = storage.GetCachedAccount(Guid.Parse(account.AccountId));
+            if (accountModel == null)
             {
-                Id = Guid.Parse(account.AccountId),
-                Name = account.Name,
-                Type = account.AccountTypeEnum
-            }).Where(c => c.Enabled).ToList();
+                continue;
+            }
+
+            var calendars = calendarSource.GetCalendars(accountModel).Where(c => c.Enabled).ToList();
 
             result.TotalCalendars = calendars.Count;
 

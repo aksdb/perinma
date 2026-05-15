@@ -19,9 +19,8 @@ public class SqliteStorage : IDisposable
     private readonly CredentialManagerService _credentialManager;
     private readonly SqliteConnection _connection;
 
-    // In-memory cache for Account and Calendar models (low cardinality)
+    // In-memory cache for Account models (shared across domains)
     private readonly ConcurrentDictionary<Guid, Account> _accountCache = new();
-    private readonly ConcurrentDictionary<Guid, Calendar> _calendarCache = new();
     private bool _cacheInitialized = false;
     private readonly object _cacheLock = new();
 
@@ -82,7 +81,7 @@ public class SqliteStorage : IDisposable
             commandTimeout: 30
         );
 
-        if (rowsAffected > 0)
+        if (rowsAffected > 0 && _cacheInitialized)
         {
             var accountModel = new Account
             {
@@ -92,7 +91,6 @@ public class SqliteStorage : IDisposable
             };
             _accountCache[accountModel.Id] = accountModel;
         }
-
         return rowsAffected > 0;
     }
 
@@ -193,19 +191,7 @@ public class SqliteStorage : IDisposable
             commandTimeout: 30
         );
 
-        if (_cacheInitialized)
-        {
-            var accountGuid = Guid.Parse(accountId);
-            var calendarsToRemove = _calendarCache
-                .Where(kvp => kvp.Value.Account.Id == accountGuid)
-                .Select(kvp => kvp.Key)
-                .ToList();
-
-            foreach (var calendarId in calendarsToRemove)
-            {
-                _calendarCache.TryRemove(calendarId, out _);
-            }
-        }
+        ClearCache();
     }
 
     #region Calendar Methods
@@ -266,75 +252,28 @@ public class SqliteStorage : IDisposable
             );
 
             calendar.CalendarId = existing.CalendarId;
-
-            if (rowsAffected > 0 && _cacheInitialized)
-            {
-                var calendarGuid = Guid.Parse(calendar.CalendarId);
-                if (_calendarCache.TryGetValue(calendarGuid, out var cachedCalendar))
-                {
-                    cachedCalendar.Name = calendar.Name;
-                    cachedCalendar.Color = calendar.Color;
-                    cachedCalendar.Enabled = calendar.Enabled != 0;
-                    cachedCalendar.LastSync = calendar.LastSync.HasValue
-                        ? DateTimeOffset.FromUnixTimeSeconds(calendar.LastSync.Value).DateTime
-                        : null;
-                }
-            }
-
             return rowsAffected > 0;
         }
-        else
-        {
-            var calendarId = Guid.NewGuid().ToString();
-            var rowsAffected = await _connection.ExecuteAsync(
-                "INSERT INTO calendar (account_id, calendar_id, external_id, name, color, enabled, last_sync) " +
-                "VALUES (@AccountId, @CalendarId, @ExternalId, @Name, @Color, @Enabled, @LastSync)",
-                new
-                {
-                    calendar.AccountId,
-                    CalendarId = calendarId,
-                    calendar.ExternalId,
-                    calendar.Name,
-                    calendar.Color,
-                    calendar.Enabled,
-                    calendar.LastSync,
-                },
-                commandTimeout: 30
-            );
 
-            calendar.CalendarId = calendarId;
-
-            if (rowsAffected > 0)
+        var calendarId = Guid.NewGuid().ToString();
+        var inserted = await _connection.ExecuteAsync(
+            "INSERT INTO calendar (account_id, calendar_id, external_id, name, color, enabled, last_sync) " +
+            "VALUES (@AccountId, @CalendarId, @ExternalId, @Name, @Color, @Enabled, @LastSync)",
+            new
             {
-                var accountGuid = Guid.Parse(calendar.AccountId);
-                if (!_accountCache.TryGetValue(accountGuid, out var account))
-                {
-                    account = new Account
-                    {
-                        Id = accountGuid,
-                        Name = await _connection.QuerySingleOrDefaultAsync<string>("SELECT name FROM account WHERE account_id = @AccountId", new { AccountId = calendar.AccountId }, commandTimeout: 30) ?? "Unknown Account",
-                        Type = Enum.TryParse<AccountType>(await _connection.QuerySingleOrDefaultAsync<string>("SELECT type FROM account WHERE account_id = @AccountId", new { AccountId = calendar.AccountId }, commandTimeout: 30) ?? "Google", ignoreCase: true, out var accountType) ? accountType : AccountType.Google
-                    };
-                    _accountCache[accountGuid] = account;
-                }
-                
-                var calendarModel = new Calendar
-                {
-                    Account = account,
-                    Id = Guid.Parse(calendarId),
-                    ExternalId = calendar.ExternalId,
-                    Name = calendar.Name,
-                    Color = calendar.Color,
-                    Enabled = calendar.Enabled != 0,
-                    LastSync = calendar.LastSync.HasValue
-                        ? DateTimeOffset.FromUnixTimeSeconds(calendar.LastSync.Value).DateTime
-                        : null
-                };
-                _calendarCache[calendarModel.Id] = calendarModel;
-            }
+                calendar.AccountId,
+                CalendarId = calendarId,
+                calendar.ExternalId,
+                calendar.Name,
+                calendar.Color,
+                calendar.Enabled,
+                calendar.LastSync,
+            },
+            commandTimeout: 30
+        );
 
-            return rowsAffected > 0;
-        }
+        calendar.CalendarId = calendarId;
+        return inserted > 0;
     }
 
     public async Task<bool> DeleteCalendarAsync(string calendarId)
@@ -407,15 +346,6 @@ public class SqliteStorage : IDisposable
             new { CalendarId = calendarId, Enabled = enabled ? 1 : 0 },
             commandTimeout: 30
         );
-
-        if (rowsAffected > 0 && _cacheInitialized)
-        {
-            var calendarGuid = Guid.Parse(calendarId);
-            if (_calendarCache.TryGetValue(calendarGuid, out var cachedCalendar))
-            {
-                cachedCalendar.Enabled = enabled;
-            }
-        }
 
         return rowsAffected > 0;
     }
@@ -894,20 +824,7 @@ public class SqliteStorage : IDisposable
         return _accountCache.Values.OrderBy(account => account.SortOrder);
     }
 
-    public Calendar? GetCachedCalendar(Guid calendarId)
-    {
-        EnsureCacheInitializedAsync();
-        return _calendarCache.TryGetValue(calendarId, out var calendar) ? calendar : null;
-    }
 
-    public IEnumerable<Calendar> GetCachedCalendars(Account account)
-    {
-        EnsureCacheInitializedAsync();
-        return from calendar in _calendarCache.Values
-            where calendar.Account.Id == account.Id
-            orderby calendar.Name
-            select calendar;
-    }
 
     private void EnsureCacheInitializedAsync()
     {
@@ -937,13 +854,6 @@ public class SqliteStorage : IDisposable
             commandTimeout: 30
         );
 
-        var calendarDbos = await _connection.QueryAsync<CalendarDbo>(
-            "SELECT account_id AS AccountId, calendar_id AS CalendarId, external_id AS ExternalId, " +
-            "name AS Name, color AS Color, enabled AS Enabled, last_sync AS LastSync, data AS Data " +
-            "FROM calendar",
-            commandTimeout: 30
-        );
-
         foreach (var accountDbo in accountDbos)
         {
             if (!Enum.TryParse<AccountType>(accountDbo.Type, ignoreCase: true, out var accountType))
@@ -960,53 +870,16 @@ public class SqliteStorage : IDisposable
             };
             _accountCache[account.Id] = account;
         }
-
-        foreach (var calendarDbo in calendarDbos)
-        {
-            var accountId = Guid.Parse(calendarDbo.AccountId);
-            if (_accountCache.TryGetValue(accountId, out var account))
-            {
-                var calendar = new Calendar
-                {
-                    Account = account,
-                    Id = Guid.Parse(calendarDbo.CalendarId),
-                    ExternalId = calendarDbo.ExternalId,
-                    Name = calendarDbo.Name,
-                    Color = calendarDbo.Color,
-                    Enabled = calendarDbo.Enabled != 0,
-                    LastSync = calendarDbo.LastSync.HasValue
-                        ? DateTimeOffset.FromUnixTimeSeconds(calendarDbo.LastSync.Value).DateTime
-                        : null
-                };
-                _calendarCache[calendar.Id] = calendar;
-            }
-        }
     }
 
     private void InvalidateAccountCache(Guid accountId)
     {
         _accountCache.TryRemove(accountId, out _);
-
-        var calendarsToRemove = _calendarCache
-            .Where(kvp => kvp.Value.Account.Id == accountId)
-            .Select(kvp => kvp.Key)
-            .ToList();
-
-        foreach (var calendarId in calendarsToRemove)
-        {
-            _calendarCache.TryRemove(calendarId, out _);
-        }
-    }
-
-    private void InvalidateCalendarCache(Guid calendarId)
-    {
-        _calendarCache.TryRemove(calendarId, out _);
     }
 
     private void ClearCache()
     {
         _accountCache.Clear();
-        _calendarCache.Clear();
         _cacheInitialized = false;
     }
 

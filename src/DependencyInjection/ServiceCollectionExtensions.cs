@@ -41,31 +41,27 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CardDavService>();
         services.AddSingleton<CardDavContactProvider>();
 
-        // ReminderService - requires calendar providers
-        services.AddSingleton<ReminderService>(sp =>
-        {
-            var storage = sp.GetRequiredService<SqliteStorage>();
-            var providers = new Dictionary<AccountType, ICalendarProvider>
+        services.AddSingleton<IReadOnlyDictionary<AccountType, ICalendarProvider>>(sp =>
+            new Dictionary<AccountType, ICalendarProvider>
             {
                 [AccountType.Google] = sp.GetRequiredService<GoogleCalendarProvider>(),
                 [AccountType.CalDav] = sp.GetRequiredService<CalDavCalendarProvider>()
-            };
-            return new ReminderService(storage, providers);
-        });
+            });
+
+        // ReminderService - requires calendar providers
+        services.AddSingleton<ReminderService>(sp =>
+            new ReminderService(
+                sp.GetRequiredService<SqliteStorage>(),
+                sp.GetRequiredService<ICalendarSource>(),
+                sp.GetRequiredService<IReadOnlyDictionary<AccountType, ICalendarProvider>>()));
 
         // SyncService - requires calendar providers
         services.AddSingleton<SyncService>(sp =>
-        {
-            var storage = sp.GetRequiredService<SqliteStorage>();
-            var credentialManager = sp.GetRequiredService<CredentialManagerService>();
-            var reminderService = sp.GetRequiredService<ReminderService>();
-            var providers = new Dictionary<AccountType, ICalendarProvider>
-            {
-                [AccountType.Google] = sp.GetRequiredService<GoogleCalendarProvider>(),
-                [AccountType.CalDav] = sp.GetRequiredService<CalDavCalendarProvider>()
-            };
-            return new SyncService(storage, credentialManager, providers, reminderService);
-        });
+            new SyncService(
+                sp.GetRequiredService<SqliteStorage>(),
+                sp.GetRequiredService<CredentialManagerService>(),
+                sp.GetRequiredService<IReadOnlyDictionary<AccountType, ICalendarProvider>>(),
+                sp.GetRequiredService<ReminderService>()));
 
         // ContactSyncService - requires contact providers
         services.AddSingleton<ContactSyncService>(sp =>
@@ -82,7 +78,7 @@ public static class ServiceCollectionExtensions
         // ICalendarSource — combines SqliteStorage + provider parse/recurrence logic
         services.AddSingleton<ICalendarSource>(sp => new DatabaseCalendarSource(
             sp.GetRequiredService<SqliteStorage>(),
-            sp.GetRequiredService<SyncService>().Providers));
+            sp.GetRequiredService<IReadOnlyDictionary<AccountType, ICalendarProvider>>()));
 
         // ViewModels
         services.AddTransient<Views.Main.MainWindowViewModel>(sp =>

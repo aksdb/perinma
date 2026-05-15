@@ -1,16 +1,19 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using NodaTime;
 using perinma.Models;
-using perinma.Storage.Models;
 using perinma.Services;
+using perinma.Storage.Models;
 using perinma.Utils;
 
 namespace perinma.Storage;
 
 public interface ICalendarSource
 {
+    IReadOnlyList<Calendar> GetCalendars(Account account);
+    Calendar? GetCalendar(Guid calendarId);
     List<CalendarEvent> GetCalendarEvents(Interval interval);
 }
 
@@ -66,6 +69,22 @@ public class DummyCalendarSource : ICalendarSource
         var weekStart = reference.AddDays(-diff);
         _allEvents = BuildEvents(weekStart);
     }
+
+    public IReadOnlyList<Calendar> GetCalendars(Account account)
+    {
+        if (account.Id != _account.Id)
+        {
+            return [];
+        }
+
+        return [_calBlue, _calRed, _calYellow];
+    }
+
+    public Calendar? GetCalendar(Guid calendarId) =>
+        calendarId == _calRed.Id ? _calRed :
+        calendarId == _calBlue.Id ? _calBlue :
+        calendarId == _calYellow.Id ? _calYellow :
+        null;
 
     public List<CalendarEvent> GetCalendarEvents(Interval interval)
     {
@@ -172,7 +191,7 @@ public class DummyCalendarSource : ICalendarSource
                 Calendar = cal,
                 Id = Guid.NewGuid(),
             },
-            StartTime = LocalDateTime.FromDateTime(start), 
+            StartTime = LocalDateTime.FromDateTime(start),
             EndTime = LocalDateTime.FromDateTime(end),
             Title = title,
             ChangedAt = DateTime.Now
@@ -185,17 +204,50 @@ public class DatabaseCalendarSource(
     IReadOnlyDictionary<AccountType, ICalendarProvider> providers)
     : ICalendarSource
 {
+    private readonly ConcurrentDictionary<Guid, Calendar> _calendarCache = new();
+
+    public IReadOnlyList<Calendar> GetCalendars(Account account)
+    {
+        var calendarDbos = storage.GetCalendarsByAccountAsync(account.Id.ToString())
+            .GetAwaiter()
+            .GetResult()
+            .ToList();
+        var seenCalendarIds = new HashSet<Guid>();
+        var calendars = new List<Calendar>(calendarDbos.Count);
+
+        foreach (var calendarDbo in calendarDbos)
+        {
+            var calendar = HydrateCalendar(calendarDbo, account);
+            calendars.Add(calendar);
+            seenCalendarIds.Add(calendar.Id);
+        }
+
+        RemoveMissingCalendars(account, seenCalendarIds);
+        calendars.Sort(static (left, right) => string.Compare(left.Name, right.Name, StringComparison.Ordinal));
+        return calendars;
+    }
+
+    public Calendar? GetCalendar(Guid calendarId)
+    {
+        var calendarDbo = storage.GetCalendarByIdAsync(calendarId.ToString())
+            .GetAwaiter()
+            .GetResult();
+        if (calendarDbo == null)
+        {
+            _calendarCache.TryRemove(calendarId, out _);
+            return null;
+        }
+
+        return HydrateCalendar(calendarDbo, ResolveAccount(calendarDbo));
+    }
+
     public List<CalendarEvent> GetCalendarEvents(Interval interval)
     {
-        var events =
-            storage.GetEventsByTimeRangeAsync(interval)
-                .GetAwaiter()
-                .GetResult()
-                .ToList();
-
+        var events = storage.GetEventsByTimeRangeAsync(interval)
+            .GetAwaiter()
+            .GetResult()
+            .ToList();
         var calendarEvents = new List<CalendarEvent>();
-
-        // Group events by account type and use provider to parse
         var groupedEvents = events.GroupBy(e => e.AccountTypeEnum);
 
         foreach (var group in groupedEvents)
@@ -211,8 +263,7 @@ public class DatabaseCalendarSource(
                 {
                     Reference = new EventReference
                     {
-                        Calendar = storage.GetCachedCalendar(new Guid(e.CalendarId))
-                                   ?? throw new InvalidOperationException($"calendar inconsistency: calendar {e.CalendarId} not found in cache"),
+                        Calendar = HydrateCalendar(e),
                         Id = Guid.Parse(e.EventId),
                         ExternalId = e.ExternalId,
                     },
@@ -234,4 +285,93 @@ public class DatabaseCalendarSource(
         return calendarEvents;
     }
 
+    private Calendar HydrateCalendar(CalendarEventQueryResult eventRow)
+    {
+        var accountId = Guid.Parse(eventRow.AccountId);
+        var account = storage.GetCachedAccount(accountId) ?? new Account
+        {
+            Id = accountId,
+            Name = eventRow.AccountName,
+            Type = eventRow.AccountTypeEnum,
+        };
+
+        return HydrateCalendar(
+            Guid.Parse(eventRow.CalendarId),
+            account,
+            eventRow.CalendarExternalId,
+            eventRow.CalendarName,
+            eventRow.CalendarColor,
+            eventRow.CalendarEnabled != 0,
+            eventRow.CalendarLastSync);
+    }
+
+    private Calendar HydrateCalendar(CalendarDbo calendarDbo, Account account)
+    {
+        return HydrateCalendar(
+            Guid.Parse(calendarDbo.CalendarId),
+            account,
+            calendarDbo.ExternalId,
+            calendarDbo.Name,
+            calendarDbo.Color,
+            calendarDbo.Enabled != 0,
+            calendarDbo.LastSync);
+    }
+
+    private Calendar HydrateCalendar(
+        Guid calendarId,
+        Account account,
+        string? externalId,
+        string name,
+        string? color,
+        bool enabled,
+        long? lastSync)
+    {
+        if (_calendarCache.TryGetValue(calendarId, out var cachedCalendar))
+        {
+            cachedCalendar.Account = account;
+            cachedCalendar.ExternalId = externalId;
+            cachedCalendar.Name = name;
+            cachedCalendar.Color = color;
+            cachedCalendar.Enabled = enabled;
+            cachedCalendar.LastSync = lastSync.HasValue
+                ? DateTimeOffset.FromUnixTimeSeconds(lastSync.Value).DateTime
+                : null;
+            return cachedCalendar;
+        }
+
+        var calendar = new Calendar
+        {
+            Account = account,
+            Id = calendarId,
+            ExternalId = externalId,
+            Name = name,
+            Color = color,
+            Enabled = enabled,
+            LastSync = lastSync.HasValue
+                ? DateTimeOffset.FromUnixTimeSeconds(lastSync.Value).DateTime
+                : null,
+        };
+        _calendarCache[calendarId] = calendar;
+        return calendar;
+    }
+
+    private Account ResolveAccount(CalendarDbo calendarDbo)
+    {
+        var accountId = Guid.Parse(calendarDbo.AccountId);
+        return storage.GetCachedAccount(accountId) ?? throw new InvalidOperationException(
+            $"account inconsistency: account {calendarDbo.AccountId} not found in cache");
+    }
+
+    private void RemoveMissingCalendars(Account account, HashSet<Guid> seenCalendarIds)
+    {
+        var staleCalendarIds = _calendarCache
+            .Where(kvp => kvp.Value.Account.Id == account.Id && !seenCalendarIds.Contains(kvp.Key))
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        foreach (var calendarId in staleCalendarIds)
+        {
+            _calendarCache.TryRemove(calendarId, out _);
+        }
+    }
 }
