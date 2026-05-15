@@ -79,6 +79,11 @@ public static class ServiceCollectionExtensions
             return new ContactSyncService(storage, providers);
         });
 
+        // ICalendarSource — combines SqliteStorage + provider parse/recurrence logic
+        services.AddSingleton<ICalendarSource>(sp => new DatabaseCalendarSource(
+            sp.GetRequiredService<SqliteStorage>(),
+            sp.GetRequiredService<SyncService>().Providers));
+
         // ViewModels
         services.AddTransient<Views.Main.MainWindowViewModel>(sp =>
         {
@@ -93,6 +98,7 @@ public static class ServiceCollectionExtensions
             var storage = sp.GetRequiredService<SqliteStorage>();
             var googleCalendarService = sp.GetRequiredService<GoogleCalendarService>();
             var googleOAuthService = sp.GetRequiredService<GoogleOAuthService>();
+            var calendarSource = sp.GetRequiredService<ICalendarSource>();
 
             return new Views.Main.MainWindowViewModel(
                 databaseService,
@@ -105,7 +111,8 @@ public static class ServiceCollectionExtensions
                 settingsService,
                 storage,
                 googleCalendarService,
-                googleOAuthService);
+                googleOAuthService,
+                calendarSource);
         });
 
         return services;

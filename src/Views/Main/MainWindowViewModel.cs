@@ -133,7 +133,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
         SettingsService settingsService,
         SqliteStorage storage,
         GoogleCalendarService googleCalendarService,
-        GoogleOAuthService googleOAuthService)
+        GoogleOAuthService googleOAuthService,
+        ICalendarSource calendarSource)
     {
         _databaseService = databaseService;
         _credentialManager = credentialManager;
@@ -147,7 +148,6 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _googleCalendarService = googleCalendarService;
         _googleOAuthService = googleOAuthService;
 
-        var calendarSource = new DatabaseCalendarSource(_storage, _syncService.Providers);
         CalendarMonthViewModel = new CalendarMonthViewModel(calendarSource, _settingsService);
         CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, _settingsService);
         CalendarAgendaViewModel = new CalendarAgendaViewModel(calendarSource, _settingsService);
