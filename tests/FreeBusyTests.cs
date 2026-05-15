@@ -351,25 +351,22 @@ public class FreeBusyTests
         Assert.That(vm.OwnEvents, Has.Count.EqualTo(1));
         Assert.Multiple(() =>
         {
-            Assert.That(vm.OwnEvents[0].Start, Is.EqualTo(2.0 / 15).Within(1e-9));
-            Assert.That(vm.OwnEvents[0].Width, Is.EqualTo(1.0 / 15).Within(1e-9));
+            Assert.That(vm.OwnEvents[0].Start,      Is.EqualTo(2.0 / 15).Within(1e-9));
+            Assert.That(vm.OwnEvents[0].Width,      Is.EqualTo(1.0 / 15).Within(1e-9));
+            Assert.That(vm.OwnEvents[0].Titles[0],  Is.EqualTo("Meeting"));
         });
     }
 
     [Test]
-    public void ApplyOwnEvents_PreservesTitleAndColor()
+    public void ApplyOwnEvents_PreservesTitle()
     {
         var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
         vm.ApplyOwnEvents(new List<OwnCalendarEvent>
         {
-            MakeEvent(9, 10, title: "Stand-up", color: "#4CAF50")
+            MakeEvent(9, 10, title: "Stand-up")
         }, DisplayWindow);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(vm.OwnEvents[0].Title,        Is.EqualTo("Stand-up"));
-            Assert.That(vm.OwnEvents[0].CalendarColor, Is.EqualTo("#4CAF50"));
-        });
+        Assert.That(vm.OwnEvents[0].Titles, Is.EqualTo(new[] { "Stand-up" }));
     }
 
     [Test]
@@ -432,5 +429,108 @@ public class FreeBusyTests
 
         vm.ApplyOwnEvents(new List<OwnCalendarEvent>(), DisplayWindow);
         Assert.That(vm.OwnEvents, Is.Empty);
+    }
+
+    // ── Merging ───────────────────────────────────────────────────────────────
+
+    [Test]
+    public void ApplyOwnEvents_TwoNonOverlapping_TwoSlots()
+    {
+        // 09:00–10:00 and 11:00–12:00 — gap between them, so no merging
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent>
+        {
+            MakeEvent(9, 10, "A"),
+            MakeEvent(11, 12, "B")
+        }, DisplayWindow);
+
+        Assert.That(vm.OwnEvents, Has.Count.EqualTo(2));
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.OwnEvents[0].Titles, Is.EqualTo(new[] { "A" }));
+            Assert.That(vm.OwnEvents[1].Titles, Is.EqualTo(new[] { "B" }));
+        });
+    }
+
+    [Test]
+    public void ApplyOwnEvents_TwoOverlapping_MergedIntoOne()
+    {
+        // 09:00–10:30 overlaps 10:00–11:00 → merged 09:00–11:00
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent>
+        {
+            MakeEvent(9, 10, "Stand-up"),
+            new() { Title = "Review",
+                    Start = Instant.FromUtc(2024, 5, 14, 9, 30),
+                    End   = Instant.FromUtc(2024, 5, 14, 10, 30) }
+        }, DisplayWindow);
+
+        Assert.That(vm.OwnEvents, Has.Count.EqualTo(1));
+        // Merged span: 09:00–10:30 → start 2/15, width 1.5/15
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.OwnEvents[0].Start, Is.EqualTo(2.0 / 15).Within(1e-9));
+            Assert.That(vm.OwnEvents[0].Width, Is.EqualTo(1.5 / 15).Within(1e-9));
+            Assert.That(vm.OwnEvents[0].Titles, Is.EquivalentTo(new[] { "Stand-up", "Review" }));
+        });
+    }
+
+    [Test]
+    public void ApplyOwnEvents_TouchingEvents_MergedIntoOne()
+    {
+        // 09:00–10:00 touches 10:00–11:00 (end == next start) → merged
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent>
+        {
+            MakeEvent(9, 10, "First"),
+            MakeEvent(10, 11, "Second")
+        }, DisplayWindow);
+
+        Assert.That(vm.OwnEvents, Has.Count.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.OwnEvents[0].Width, Is.EqualTo(2.0 / 15).Within(1e-9));
+            Assert.That(vm.OwnEvents[0].Titles, Is.EquivalentTo(new[] { "First", "Second" }));
+        });
+    }
+
+    [Test]
+    public void ApplyOwnEvents_OutOfOrderInput_StillMergesCorrectly()
+    {
+        // Supply in reverse order — sort must happen before merging
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent>
+        {
+            MakeEvent(11, 12, "B"),
+            MakeEvent(9,  10, "A")
+        }, DisplayWindow);
+
+        Assert.That(vm.OwnEvents, Has.Count.EqualTo(2));
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.OwnEvents[0].Titles[0], Is.EqualTo("A"));
+            Assert.That(vm.OwnEvents[1].Titles[0], Is.EqualTo("B"));
+        });
+    }
+
+    [Test]
+    public void ApplyOwnEvents_ContainedEvent_ExpandsNotCreatesNewSlot()
+    {
+        // 09:00–12:00 fully contains 10:00–11:00 → one slot, two titles, end stays 12:00
+        var vm = new ParticipantAvailabilityViewModel("me", isOrganizerRow: true);
+        vm.ApplyOwnEvents(new List<OwnCalendarEvent>
+        {
+            MakeEvent(9, 12, "All-Day"),
+            MakeEvent(10, 11, "Inner")
+        }, DisplayWindow);
+
+        Assert.That(vm.OwnEvents, Has.Count.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            // start 2/15, width 3/15
+            Assert.That(vm.OwnEvents[0].Start, Is.EqualTo(2.0 / 15).Within(1e-9));
+            Assert.That(vm.OwnEvents[0].Width, Is.EqualTo(3.0 / 15).Within(1e-9));
+            Assert.That(vm.OwnEvents[0].Titles, Is.EquivalentTo(new[] { "All-Day", "Inner" }));
+        });
     }
 }

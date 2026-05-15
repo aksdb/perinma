@@ -449,7 +449,8 @@ public partial class EventEditViewModel : ViewModelBase
         var accountId = SelectedCalendar.Account.Id.ToString();
 
         // Own-events delegate: queries the local SQLite cache for all enabled calendars
-        // on this account — available offline, includes every calendar, not just the target.
+        // across all accounts — the query already filters c.enabled = 1, so we get
+        // every calendar the user has enabled in the main view.
         var storage = App.Services?.GetService<SqliteStorage>();
         Func<Interval, CancellationToken, Task<IList<OwnCalendarEvent>>>? getOwnEvents = null;
         if (storage != null)
@@ -458,9 +459,7 @@ public partial class EventEditViewModel : ViewModelBase
             {
                 var dbEvents = await storage.GetEventsByTimeRangeAsync(interval);
                 return dbEvents
-                    .Where(e => e.AccountId == accountId
-                             && e.StartTime.HasValue
-                             && e.EndTime.HasValue)
+                    .Where(e => e.StartTime.HasValue && e.EndTime.HasValue)
                     .Select(e => new OwnCalendarEvent
                     {
                         Title         = string.IsNullOrWhiteSpace(e.Title) ? "(No title)" : e.Title,

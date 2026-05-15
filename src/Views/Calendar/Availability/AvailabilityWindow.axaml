@@ -18,6 +18,9 @@
             <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
             <Setter Property="Margin" Value="0,0,8,0"/>
         </Style>
+        <Style Selector="Border.organizer TextBlock.ParticipantName">
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
         <Style Selector="Border.SlotOverlay">
             <Setter Property="Background" Value="#33007AFF"/>
             <Setter Property="BorderBrush" Value="#88007AFF"/>
@@ -94,7 +97,8 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="av:ParticipantAvailabilityViewModel">
                                 <Border Height="{x:Static av:AvailabilityTimelineControl.RowHeight}"
-                                        Margin="0,0,0,4">
+                                        Margin="0,0,0,4"
+                                        Classes.organizer="{Binding IsOrganizerRow}">
                                     <TextBlock Classes="ParticipantName"
                                                Text="{Binding DisplayName}"/>
                                 </Border>

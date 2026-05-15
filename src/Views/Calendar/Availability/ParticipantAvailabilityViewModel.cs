@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using NodaTime;
@@ -105,18 +106,50 @@ public partial class ParticipantAvailabilityViewModel : ObservableObject
         var windowDuration = (displayWindow.End - displayWindow.Start).TotalSeconds;
         if (windowDuration <= 0) return;
 
-        foreach (var ev in events)
+        // Clamp each event to the display window, drop ones entirely outside it,
+        // then sort by clamped start time.
+        var clamped = events
+            .Select(ev => (
+                Start: ev.Start < displayWindow.Start ? displayWindow.Start : ev.Start,
+                End:   ev.End   > displayWindow.End   ? displayWindow.End   : ev.End,
+                ev.Title))
+            .Where(e => e.Start < e.End)
+            .OrderBy(e => e.Start)
+            .ToList();
+
+        if (clamped.Count == 0) return;
+
+        // Merge overlapping / touching intervals; accumulate all titles per merged slot.
+        var mergeStart = clamped[0].Start;
+        var mergeEnd   = clamped[0].End;
+        var titles     = new List<string> { clamped[0].Title };
+
+        for (var i = 1; i < clamped.Count; i++)
         {
-            var clampedStart = ev.Start < displayWindow.Start ? displayWindow.Start : ev.Start;
-            var clampedEnd   = ev.End   > displayWindow.End   ? displayWindow.End   : ev.End;
-
-            if (clampedStart >= clampedEnd) continue;
-
-            var startFraction = (clampedStart - displayWindow.Start).TotalSeconds / windowDuration;
-            var widthFraction = (clampedEnd   - clampedStart).TotalSeconds / windowDuration;
-
-            OwnEvents.Add(new OwnEventSlot(startFraction, widthFraction, ev.Title, ev.CalendarColor));
+            var ev = clamped[i];
+            if (ev.Start <= mergeEnd)
+            {
+                if (ev.End > mergeEnd) mergeEnd = ev.End;
+                titles.Add(ev.Title);
+            }
+            else
+            {
+                EmitSlot(mergeStart, mergeEnd, titles, displayWindow.Start, windowDuration);
+                mergeStart = ev.Start;
+                mergeEnd   = ev.End;
+                titles     = [ev.Title];
+            }
         }
+        EmitSlot(mergeStart, mergeEnd, titles, displayWindow.Start, windowDuration);
+    }
+
+    private void EmitSlot(
+        Instant start, Instant end, List<string> titles,
+        Instant windowStart, double windowDuration)
+    {
+        var sf = (start - windowStart).TotalSeconds / windowDuration;
+        var wf = (end   - start).TotalSeconds       / windowDuration;
+        OwnEvents.Add(new OwnEventSlot(sf, wf, titles.AsReadOnly()));
     }
 }
 
@@ -124,7 +157,8 @@ public partial class ParticipantAvailabilityViewModel : ObservableObject
 public record BusyRange(double Start, double Width);
 
 /// <summary>
-/// An own calendar event projected into fractional offsets [0,1] within the display window,
-/// carrying display metadata (title, calendar colour) for the renderer.
+/// An own calendar event projected into fractional offsets [0,1] within the display window.
+/// Overlapping events are merged; <see cref="OwnEventSlot.Titles"/> carries all event titles
+/// within the merged span for tooltip display.
 /// </summary>
-public record OwnEventSlot(double Start, double Width, string Title, string? CalendarColor);
+public record OwnEventSlot(double Start, double Width, IReadOnlyList<string> Titles);

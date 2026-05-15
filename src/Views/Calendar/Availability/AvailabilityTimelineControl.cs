@@ -141,13 +141,13 @@ public class AvailabilityTimelineControl : Control
             }
             else if (row.IsOrganizerRow)
             {
-                // Own events rendered with each event's calendar colour
+                // Own events are merged by ApplyOwnEvents; render with the same
+                // colour as attendee busy blocks for visual consistency.
                 foreach (var ev in row.OwnEvents)
                 {
-                    var brush = ParseCalendarColor(ev.CalendarColor) ?? busyBrush;
                     var slotX = ev.Start * width;
                     var slotW = Math.Max(MinSlotWidth, ev.Width * width);
-                    context.DrawRectangle(brush, null,
+                    context.DrawRectangle(busyBrush, null,
                         new Rect(slotX, y + 2, slotW, RowHeight - 4),
                         CornerRadius, CornerRadius);
                 }
@@ -200,7 +200,7 @@ public class AvailabilityTimelineControl : Control
                 var slotX = ev.Start * width;
                 var slotW = Math.Max(MinSlotWidth, ev.Width * width);
                 if (pos.X >= slotX && pos.X <= slotX + slotW)
-                    return ev.Title;
+                    return string.Join("\n", ev.Titles);
             }
         }
 
@@ -244,13 +244,6 @@ public class AvailabilityTimelineControl : Control
         row.BusyRanges.CollectionChanged += (_, _) => InvalidateVisual();
         row.OwnEvents.CollectionChanged  += (_, _) => InvalidateVisual();
         row.PropertyChanged              += (_, _) => InvalidateVisual();
-    }
-
-    private static IBrush? ParseCalendarColor(string? hex)
-    {
-        if (string.IsNullOrWhiteSpace(hex)) return null;
-        try { return new SolidColorBrush(Color.Parse(hex)); }
-        catch { return null; }
     }
 
     private T? TryGetResource<T>(string key) where T : class

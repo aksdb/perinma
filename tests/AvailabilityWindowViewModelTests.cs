@@ -535,7 +535,7 @@ public class AvailabilityWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(vm.Rows[0].OwnEvents, Has.Count.EqualTo(1));
-            Assert.That(vm.Rows[0].OwnEvents[0].Title, Is.EqualTo("Stand-up"));
+            Assert.That(vm.Rows[0].OwnEvents[0].Titles[0], Is.EqualTo("Stand-up"));
         });
     }
 
