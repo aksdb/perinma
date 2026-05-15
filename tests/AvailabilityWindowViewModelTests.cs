@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using perinma.Models;
 using perinma.Services;
+using perinma.Storage;
 using perinma.Views.Calendar.Availability;
 using tests.Fakes;
 
@@ -18,6 +21,23 @@ public class AvailabilityWindowViewModelTests
     private static readonly DateTime ExpectedWindowStart = new(2024, 5, 14,  7, 0, 0);
     private static readonly DateTime ExpectedWindowEnd   = new(2024, 5, 14, 22, 0, 0);
 
+
+    private TestCalendarSource _calendarSource = null!;
+
+    [SetUp]
+    public void SetUp()
+    {
+        _calendarSource = new TestCalendarSource();
+        var services = new ServiceCollection();
+        services.AddSingleton<ICalendarSource>(_calendarSource);
+        perinma.App.Services = services.BuildServiceProvider();
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        perinma.App.Services = null;
+    }
     private static AvailabilityWindowViewModel MakeVm(
         IList<string>? emails = null,
         DateTime? start = null,
@@ -79,8 +99,9 @@ public class AvailabilityWindowViewModelTests
         var emails = new List<string> { "alice@example.com", "bob@example.com", "carol@example.com" };
         var vm = MakeVm(emails: emails);
 
-        Assert.That(vm.Rows, Has.Count.EqualTo(3));
-        Assert.That(vm.Rows.Select(r => r.Email), Is.EquivalentTo(emails));
+        Assert.That(vm.Rows, Has.Count.EqualTo(4));
+        Assert.That(vm.Rows[0].IsOrganizerRow, Is.True);
+        Assert.That(vm.Rows.Skip(1).Select(r => r.Email), Is.EquivalentTo(emails));
     }
 
     [Test]
@@ -89,8 +110,9 @@ public class AvailabilityWindowViewModelTests
         var emails = new List<string> { "alice@example.com", "bob@example.com" };
         var vm = MakeVm(emails: emails);
 
-        Assert.That(vm.Rows[0].Email, Is.EqualTo("alice@example.com"));
-        Assert.That(vm.Rows[1].Email, Is.EqualTo("bob@example.com"));
+        Assert.That(vm.Rows[0].IsOrganizerRow, Is.True);
+        Assert.That(vm.Rows[1].Email, Is.EqualTo("alice@example.com"));
+        Assert.That(vm.Rows[2].Email, Is.EqualTo("bob@example.com"));
     }
 
     // ── TimeLabels ────────────────────────────────────────────────────────────
@@ -436,12 +458,12 @@ public class AvailabilityWindowViewModelTests
     public void NavigateDay_ClearsRowBusyRanges()
     {
         var vm = MakeVm(emails: new List<string> { "alice@example.com" });
-        // Simulate pre-populated busy data
-        vm.Rows[0].BusyRanges.Add(new BusyRange(0.2, 0.1));
+        // Simulate pre-populated busy data on the attendee row.
+        vm.Rows[1].BusyRanges.Add(new BusyRange(0.2, 0.1));
 
         vm.GoToNextDayCommand.Execute(null);
 
-        Assert.That(vm.Rows[0].BusyRanges, Is.Empty);
+        Assert.That(vm.Rows[1].BusyRanges, Is.Empty);
     }
 
     [Test]
@@ -461,12 +483,12 @@ public class AvailabilityWindowViewModelTests
 
     // ── Organizer row ─────────────────────────────────────────────────────────
 
-    private static AvailabilityWindowViewModel MakeVmWithOrganizer(
+    private AvailabilityWindowViewModel MakeVmWithOrganizer(
         string organizerName = "My Account",
-        Func<NodaTime.Interval, System.Threading.CancellationToken,
-             System.Threading.Tasks.Task<System.Collections.Generic.IList<perinma.Services.OwnCalendarEvent>>>? getOwnEvents = null,
-        IList<string>? emails = null)
+        IList<string>? emails = null,
+        IEnumerable<CalendarEvent>? ownEvents = null)
     {
+        _calendarSource.Events = ownEvents?.ToList() ?? [];
         var provider = new CalDavCalendarProviderStub();
         return new AvailabilityWindowViewModel(
             provider,
@@ -474,18 +496,17 @@ public class AvailabilityWindowViewModelTests
             emails ?? new List<string> { "alice@example.com" },
             DefaultStart,
             DefaultEnd,
-            organizerDisplayName: organizerName,
-            getOwnEvents: getOwnEvents);
+            organizerDisplayName: organizerName);
     }
 
     [Test]
-    public void OrganizerRow_AddedAsFirstRow_WhenNameProvided()
+    public void OrganizerRow_AddedAsFirstRow()
     {
-        var vm = MakeVmWithOrganizer();
+        var vm = MakeVm();
         Assert.Multiple(() =>
         {
             Assert.That(vm.Rows[0].IsOrganizerRow, Is.True);
-            Assert.That(vm.Rows[0].DisplayName, Is.EqualTo("My Account"));
+            Assert.That(vm.Rows[0].DisplayName, Is.EqualTo("Me"));
         });
     }
 
@@ -503,32 +524,23 @@ public class AvailabilityWindowViewModelTests
     }
 
     [Test]
-    public void NoOrganizerParams_NoOrganizerRow()
+    public void OrganizerRow_UsesProvidedDisplayName()
     {
-        // When neither organizerDisplayName nor getOwnEvents is supplied the
-        // legacy constructor path must not add an extra row.
-        var vm = MakeVm(emails: new List<string> { "alice@example.com" });
-        Assert.That(vm.Rows, Has.Count.EqualTo(1));
-        Assert.That(vm.Rows[0].IsOrganizerRow, Is.False);
+        var vm = MakeVmWithOrganizer(organizerName: "My Account");
+        Assert.That(vm.Rows[0].DisplayName, Is.EqualTo("My Account"));
     }
 
     [Test]
-    public async Task OrganizerRow_PopulatedByGetOwnEvents()
+    public async Task OrganizerRow_PopulatedFromCalendarSource()
     {
-        var events = new List<perinma.Services.OwnCalendarEvent>
-        {
-            new()
-            {
-                Title         = "Stand-up",
-                Start         = NodaTime.Instant.FromUtc(2024, 5, 14, 9, 0),
-                End           = NodaTime.Instant.FromUtc(2024, 5, 14, 9, 30),
-                CalendarColor = "#4CAF50"
-            }
-        };
-
         var vm = MakeVmWithOrganizer(
-            getOwnEvents: (_, _) => System.Threading.Tasks.Task.FromResult(
-                (System.Collections.Generic.IList<perinma.Services.OwnCalendarEvent>)events));
+            ownEvents:
+            [
+                MakeOwnCalendarEvent("Stand-up",
+                    new LocalDateTime(2024, 5, 14, 9, 0),
+                    new LocalDateTime(2024, 5, 14, 9, 30),
+                    "#4CAF50")
+            ]);
 
         await vm.RefreshCommand.ExecuteAsync(null);
 
@@ -542,29 +554,60 @@ public class AvailabilityWindowViewModelTests
     [Test]
     public async Task NavigateDay_ClearsOrganizerOwnEvents()
     {
-        var events = new List<perinma.Services.OwnCalendarEvent>
-        {
-            new()
-            {
-                Title = "Meeting",
-                Start = NodaTime.Instant.FromUtc(2024, 5, 14, 10, 0),
-                End   = NodaTime.Instant.FromUtc(2024, 5, 14, 11, 0)
-            }
-        };
-
         var vm = MakeVmWithOrganizer(
-            getOwnEvents: (_, _) => System.Threading.Tasks.Task.FromResult(
-                (System.Collections.Generic.IList<perinma.Services.OwnCalendarEvent>)events));
+            ownEvents:
+            [
+                MakeOwnCalendarEvent("Meeting",
+                    new LocalDateTime(2024, 5, 14, 10, 0),
+                    new LocalDateTime(2024, 5, 14, 11, 0))
+            ]);
 
         await vm.RefreshCommand.ExecuteAsync(null);
         Assert.That(vm.Rows[0].OwnEvents, Has.Count.EqualTo(1));
 
-        // Navigate clears immediately, then refresh fills with new-day events
+        // Navigate clears immediately, then refresh fills with new-day events.
+        _calendarSource.Events = [];
         vm.GoToNextDayCommand.Execute(null);
 
-        // After navigation the row will be cleared by NavigateDay (synchronously
-        // before the async refresh fires) — but the async refresh also runs.
-        // We just assert the organizer row exists and is the first row.
         Assert.That(vm.Rows[0].IsOrganizerRow, Is.True);
     }
+
+    private static CalendarEvent MakeOwnCalendarEvent(
+        string title,
+        LocalDateTime start,
+        LocalDateTime end,
+        string color = "#336699") =>
+        new()
+        {
+            Reference = new EventReference
+            {
+                Id = Guid.NewGuid(),
+                Calendar = new Calendar
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Work",
+                    Color = color,
+                    Account = new Account
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = "Test",
+                        Type = AccountType.CalDav
+                    }
+                }
+            },
+            StartTime = start,
+            EndTime = end,
+            Title = title
+        };
+}
+
+internal sealed class TestCalendarSource : ICalendarSource
+{
+    public List<CalendarEvent> Events { get; set; } = [];
+
+    public IReadOnlyList<Calendar> GetCalendars(Account account) => [];
+
+    public Calendar? GetCalendar(Guid calendarId) => null;
+
+    public List<CalendarEvent> GetCalendarEvents(Interval interval) => Events;
 }

@@ -454,33 +454,9 @@ public partial class EventEditViewModel : ViewModelBase
 
         var accountId = SelectedCalendar.Account.Id.ToString();
 
-        // Own-events delegate: uses ICalendarSource so recurrence expansion, all enabled
-        // calendars, and provider-specific parsing (including NonBlocking) are handled
-        // consistently with the calendar views.
-        var calendarSource = App.Services?.GetService<ICalendarSource>();
-        Func<Interval, CancellationToken, Task<IList<OwnCalendarEvent>>>? getOwnEvents = null;
-        if (calendarSource != null)
-        {
-            getOwnEvents = (interval, ct) => Task.Run(() =>
-                (IList<OwnCalendarEvent>)calendarSource
-                    .GetCalendarEvents(interval)
-                    .Where(e => !e.Extensions.Get(CalendarEventExtensions.NonBlocking)
-                                && !e.Reference.Calendar.Extensions.Get(CalendarExtensions.IsReadOnly))
-                    .Select(e => new OwnCalendarEvent
-                    {
-                        Title = string.IsNullOrWhiteSpace(e.Title) ? "(No title)" : e.Title,
-                        Start = e.StartTime.ToInstant(),
-                        End = e.EndTime.ToInstant(),
-                        CalendarColor = e.Reference.Calendar.Color,
-                        CalendarName = e.Reference.Calendar.Name
-                    })
-                    .ToList(), ct);
-        }
-
         var vm = new Availability.AvailabilityWindowViewModel(
             provider, accountId, emails,
-            _timeRangeField.StartTime, _timeRangeField.EndTime,
-            getOwnEvents: getOwnEvents);
+            _timeRangeField.StartTime, _timeRangeField.EndTime);
 
         var dialog = new Availability.AvailabilityWindow { DataContext = vm };
         var result = await dialog.ShowDialog<(DateTime, DateTime)?>(_ownerWindow);

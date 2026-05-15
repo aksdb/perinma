@@ -6,8 +6,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using perinma.Models;
 using perinma.Services;
+using perinma.Storage;
+using perinma.Utils;
 
 namespace perinma.Views.Calendar.Availability;
 
@@ -25,6 +29,7 @@ public partial class AvailabilityWindowViewModel : ObservableObject
 
     /// <summary>Local 07:00 on the event's date.</summary>
     public DateTime DisplayWindowStart { get; private set; }
+
     /// <summary>Local 22:00 on the event's date.</summary>
     public DateTime DisplayWindowEnd { get; private set; }
 
@@ -88,11 +93,11 @@ public partial class AvailabilityWindowViewModel : ObservableObject
     private readonly ICalendarProvider _provider;
     private readonly string _accountId;
     private readonly IList<string> _attendeeEmails;
+    private readonly ICalendarSource _calendarSource;
     private CancellationTokenSource? _cts;
 
     /// <summary>The organizer's own row; null when no own-events source was supplied.</summary>
     private ParticipantAvailabilityViewModel? _organizerRow;
-    private Func<Interval, CancellationToken, Task<IList<OwnCalendarEvent>>>? _getOwnEvents;
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -102,18 +107,17 @@ public partial class AvailabilityWindowViewModel : ObservableObject
         IList<string> attendeeEmails,
         DateTime initialStart,
         DateTime initialEnd,
-        string? organizerDisplayName = null,
-        Func<Interval, CancellationToken, Task<IList<OwnCalendarEvent>>>? getOwnEvents = null)
+        string? organizerDisplayName = null)
     {
-        _provider      = provider;
-        _accountId     = accountId;
+        _provider = provider;
+        _accountId = accountId;
         _attendeeEmails = attendeeEmails;
-        _getOwnEvents  = getOwnEvents;
+        _calendarSource = App.Services.GetRequiredService<ICalendarSource>();
 
         // Display window: event date 07:00–22:00 local
         var eventDate = initialStart.Date;
-        DisplayWindowStart   = eventDate.AddHours(7);
-        DisplayWindowEnd     = eventDate.AddHours(22);
+        DisplayWindowStart = eventDate.AddHours(7);
+        DisplayWindowEnd = eventDate.AddHours(22);
         DisplayWindowMinutes = (DisplayWindowEnd - DisplayWindowStart).TotalMinutes;
         DisplayDate = eventDate;
         SelectedStart = Clamp(initialStart, DisplayWindowStart, DisplayWindowEnd.AddMinutes(-30));
@@ -122,13 +126,10 @@ public partial class AvailabilityWindowViewModel : ObservableObject
         // Build time labels every 2 hours
         TimeLabels = BuildTimeLabels();
 
-        // Organizer row first (if a data source was provided)
-        if (organizerDisplayName != null || getOwnEvents != null)
-        {
-            var label = organizerDisplayName ?? "Me";
-            _organizerRow = new ParticipantAvailabilityViewModel(label, isOrganizerRow: true, displayName: label);
-            Rows.Add(_organizerRow);
-        }
+        // Organizer row first
+        var label = organizerDisplayName ?? "Me";
+        _organizerRow = new ParticipantAvailabilityViewModel(label, isOrganizerRow: true, displayName: label);
+        Rows.Add(_organizerRow);
 
         // Attendee rows
         foreach (var email in attendeeEmails)
@@ -158,7 +159,7 @@ public partial class AvailabilityWindowViewModel : ObservableObject
         try
         {
             var windowStart = Instant.FromDateTimeOffset(new DateTimeOffset(DisplayWindowStart));
-            var windowEnd   = Instant.FromDateTimeOffset(new DateTimeOffset(DisplayWindowEnd));
+            var windowEnd = Instant.FromDateTimeOffset(new DateTimeOffset(DisplayWindowEnd));
             var displayInterval = new Interval(windowStart, windowEnd);
             // Query a slightly wider range than the display window so edge-spanning events are included
             var queryInterval = new Interval(
@@ -166,9 +167,9 @@ public partial class AvailabilityWindowViewModel : ObservableObject
                 windowEnd.Plus(Duration.FromHours(1)));
 
             // Organizer row: populate from the local event cache (offline, all calendars)
-            if (_organizerRow != null && _getOwnEvents != null)
+            if (_organizerRow != null)
             {
-                var ownEvents = await _getOwnEvents(queryInterval, linkedCt);
+                var ownEvents = await Task.Run(() => GetOwnEvents(queryInterval), linkedCt);
                 _organizerRow.ApplyOwnEvents(ownEvents, displayInterval);
             }
 
@@ -233,12 +234,12 @@ public partial class AvailabilityWindowViewModel : ObservableObject
     private void NavigateDay(int days)
     {
         var timeOfDayStart = SelectedStart.TimeOfDay;
-        var duration       = SelectedEnd - SelectedStart;
+        var duration = SelectedEnd - SelectedStart;
 
-        var newDate        = DisplayDate.AddDays(days);
+        var newDate = DisplayDate.AddDays(days);
         DisplayWindowStart = newDate.AddHours(7);
-        DisplayWindowEnd   = newDate.AddHours(22);
-        DisplayDate        = newDate;
+        DisplayWindowEnd = newDate.AddHours(22);
+        DisplayDate = newDate;
 
         OnPropertyChanged(nameof(DisplayWindowStart));
         OnPropertyChanged(nameof(DisplayWindowEnd));
@@ -247,9 +248,9 @@ public partial class AvailabilityWindowViewModel : ObservableObject
 
         // Shift slot to same time-of-day on the new date, clamped to the new window.
         // Update DisplayWindow* first so ToFraction() uses the correct bounds.
-        var rawStart  = newDate + timeOfDayStart;
+        var rawStart = newDate + timeOfDayStart;
         SelectedStart = Clamp(rawStart, DisplayWindowStart, DisplayWindowEnd.AddMinutes(-30));
-        SelectedEnd   = Clamp(SelectedStart + duration, SelectedStart.AddMinutes(30), DisplayWindowEnd);
+        SelectedEnd = Clamp(SelectedStart + duration, SelectedStart.AddMinutes(30), DisplayWindowEnd);
 
         // Clear stale data; the subsequent RefreshAsync will repopulate.
         foreach (var row in Rows)
@@ -280,6 +281,7 @@ public partial class AvailabilityWindowViewModel : ObservableObject
             snappedEnd = DisplayWindowEnd;
             snapped = snappedEnd - duration;
         }
+
         if (snapped < DisplayWindowStart)
             snapped = DisplayWindowStart;
 
@@ -342,7 +344,30 @@ public partial class AvailabilityWindowViewModel : ObservableObject
             labels.Add(new TimeLabel(ToFraction(cursor), cursor.ToString("HH:mm")));
             cursor += step;
         }
+
         return labels;
+    }
+
+    /// <summary>
+    /// Fetches the organizer's own calendar events from <see cref="_calendarSource"/>,
+    /// excluding non-blocking and read-only calendar events, and maps them to
+    /// <see cref="OwnCalendarEvent"/> instances.
+    /// </summary>
+    private IList<OwnCalendarEvent> GetOwnEvents(Interval interval)
+    {
+        return _calendarSource!
+            .GetCalendarEvents(interval)
+            .Where(e => !e.Extensions.Get(CalendarEventExtensions.NonBlocking)
+                        && !e.Reference.Calendar.Extensions.Get(CalendarExtensions.IsReadOnly))
+            .Select(e => new OwnCalendarEvent
+            {
+                Title = string.IsNullOrWhiteSpace(e.Title) ? "(No title)" : e.Title,
+                Start = e.StartTime.ToInstant(),
+                End = e.EndTime.ToInstant(),
+                CalendarColor = e.Reference.Calendar.Color,
+                CalendarName = e.Reference.Calendar.Name
+            })
+            .ToList();
     }
 }
 
