@@ -201,6 +201,85 @@
                                                     </StackPanel>
                                                 </DataTemplate>
 
+                                                <DataTemplate DataType="edit:RecurrenceEditViewModel">
+                                                    <StackPanel Spacing="8">
+                                                        <CheckBox Content="Repeat this event"
+                                                                  IsChecked="{Binding IsRecurring}"
+                                                                  IsEnabled="{Binding CanEdit}"/>
+                                                        <TextBlock Text="{Binding ReadOnlyReason}"
+                                                                   Classes.muted="True"
+                                                                   IsVisible="{Binding !CanEdit}"/>
+                                                        <StackPanel Spacing="8" IsVisible="{Binding ShowEditor}">
+                                                            <Grid ColumnDefinitions="Auto,8,Auto,8,*">
+                                                                <TextBlock Text="Frequency" VerticalAlignment="Center"/>
+                                                                <ComboBox Grid.Column="2"
+                                                                          ItemsSource="{Binding FrequencyOptions}"
+                                                                          SelectedItem="{Binding SelectedFrequency}"
+                                                                          MinWidth="120">
+                                                                    <ComboBox.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <TextBlock Text="{Binding Label}"/>
+                                                                        </DataTemplate>
+                                                                    </ComboBox.ItemTemplate>
+                                                                </ComboBox>
+                                                                <TextBlock Grid.Column="4" Text="Every" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                                            </Grid>
+                                                            <Grid ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,8,Auto,8,Auto">
+                                                                <TextBlock Text="Interval" VerticalAlignment="Center"/>
+                                                                <NumericUpDown Grid.Column="2"
+                                                                               Value="{Binding Interval}"
+                                                                               Minimum="1"
+                                                                               Maximum="365"
+                                                                               Increment="1"
+                                                                               HorizontalAlignment="Left"
+                                                                               Width="96"/>
+                                                                <TextBlock Grid.Row="2" Text="Days" VerticalAlignment="Top"
+                                                                           IsVisible="{Binding ShowWeeklyDays}"/>
+                                                                <ItemsControl Grid.Row="2" Grid.Column="2"
+                                                                              ItemsSource="{Binding Weekdays}"
+                                                                              IsVisible="{Binding ShowWeeklyDays}">
+                                                                    <ItemsControl.ItemsPanel>
+                                                                        <ItemsPanelTemplate>
+                                                                            <WrapPanel Orientation="Horizontal"/>
+                                                                        </ItemsPanelTemplate>
+                                                                    </ItemsControl.ItemsPanel>
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate DataType="edit:WeekdaySelectionViewModel">
+                                                                            <CheckBox Content="{Binding Label}"
+                                                                                      IsChecked="{Binding IsSelected}"
+                                                                                      Margin="0,0,8,4"/>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                                <TextBlock Grid.Row="4" Text="Ends" VerticalAlignment="Center"/>
+                                                                <StackPanel Grid.Row="4" Grid.Column="2" Spacing="8">
+                                                                    <ComboBox ItemsSource="{Binding EndOptions}"
+                                                                              SelectedItem="{Binding SelectedEndOption}"
+                                                                              MinWidth="180"
+                                                                              HorizontalAlignment="Left">
+                                                                        <ComboBox.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <TextBlock Text="{Binding Label}"/>
+                                                                            </DataTemplate>
+                                                                        </ComboBox.ItemTemplate>
+                                                                    </ComboBox>
+                                                                    <NumericUpDown Value="{Binding Count}"
+                                                                                   Minimum="1"
+                                                                                   Maximum="999"
+                                                                                   Increment="1"
+                                                                                   HorizontalAlignment="Left"
+                                                                                   Width="96"
+                                                                                   IsVisible="{Binding ShowEndCount}"/>
+                                                                    <CalendarDatePicker SelectedDate="{Binding UntilDate}"
+                                                                                        HorizontalAlignment="Left"
+                                                                                        Width="180"
+                                                                                        IsVisible="{Binding ShowEndDate}"/>
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </DataTemplate>
+
                                                 <DataTemplate DataType="edit:DescriptionEditViewModel">
                                                     <TextBox Text="{Binding Description}"
                                                              PlaceholderText="Description"

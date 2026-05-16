@@ -50,6 +50,7 @@ public partial class EventEditViewModel : ViewModelBase
     private LocationEditViewModel? _locationField;
     private ParticipantsEditViewModel? _participantsField;
     private ReminderEditViewModel? _reminderField;
+    private RecurrenceEditViewModel? _recurrenceField;
     private SendInvitesResult? _sendInvitesResult;
 
     partial void OnSelectedCalendarChanged(CalendarModel? value)
@@ -194,6 +195,15 @@ public partial class EventEditViewModel : ViewModelBase
 
         FieldRows.Add(new FieldRow(_reminderField, "🔔", startExpanded: reminderExpanded));
 
+        if (supportedExtensions.Contains(CalendarEventExtensions.RecurrenceInfo))
+        {
+            var recurrenceInfo = _existingEvent?.Extensions.Get(CalendarEventExtensions.RecurrenceInfo);
+            var recurrenceStart = _existingEvent?.StartTime ?? _timeRangeField.StartTime.ToLocalDateTime();
+            _recurrenceField = new RecurrenceEditViewModel(recurrenceInfo, _editScope != EventEditScope.Occurrence,
+                recurrenceStart);
+            FieldRows.Add(new FieldRow(_recurrenceField, "🔁", startExpanded: recurrenceInfo?.IsRecurring == true));
+        }
+
         if (supportedExtensions.Contains(CalendarEventExtensions.Description))
         {
             var existingDescription = _existingEvent?.Extensions.Get(CalendarEventExtensions.Description);
@@ -301,6 +311,10 @@ public partial class EventEditViewModel : ViewModelBase
                 extensions.Set(CalendarEventExtensions.ReminderMinutesBefore, _reminderField.ReminderMinutes);
             }
 
+            var recurrenceInfo = _recurrenceField?.GetRecurrenceInfo();
+            if (recurrenceInfo != null)
+                extensions.Set(CalendarEventExtensions.RecurrenceInfo, recurrenceInfo);
+
             if (IsEditMode && _existingEvent != null && provider != null)
             {
                 var updatedExtensions = _existingEvent.Extensions;
@@ -330,6 +344,9 @@ public partial class EventEditViewModel : ViewModelBase
                     if (reminder.HasReminder && reminder.ReminderMinutes >= 0)
                         updatedExtensions.Set(CalendarEventExtensions.ReminderMinutesBefore, reminder.ReminderMinutes);
                 });
+
+                if (_recurrenceField != null)
+                    updatedExtensions.Set(CalendarEventExtensions.RecurrenceInfo, _recurrenceField.GetRecurrenceInfo());
 
                 var updatedEvent = new CalendarEvent
                 {
@@ -361,6 +378,22 @@ public partial class EventEditViewModel : ViewModelBase
                     eventStartTime,
                     eventEndTime,
                     _sendInvitesResult ?? SendInvitesResult.SendToNone);
+
+                var createdRecurrenceInfo = _recurrenceField?.GetRecurrenceInfo();
+                if (createdRecurrenceInfo is { IsRecurring: true })
+                {
+                    var syncService = App.Services?.GetRequiredService<SyncService>()
+                                      ?? throw new InvalidOperationException("SyncService not available");
+                    await syncService.RefreshCalendarAsync(targetCalendar.Id.ToString());
+
+                    var storedEvent = await _storage.GetEventByExternalIdAsync(targetCalendar.Id.ToString(), newEventId)
+                        ?? throw new InvalidOperationException("Created recurring event was not found after refresh");
+
+                    WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
+                    _onCompleted(new EventEditResult.Success(storedEvent.EventId));
+                    RequestClose?.Invoke(this, EventArgs.Empty);
+                    return;
+                }
 
                 var calendarId = targetCalendar.Id.ToString();
                 var changedAt = SystemClock.Instance.GetCurrentInstant().ToUnixTimeSeconds();
