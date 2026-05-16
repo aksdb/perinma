@@ -13,6 +13,7 @@ using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Services;
 using NodaTime;
+using NodaTime.Text;
 using perinma.Storage.Models;
 
 namespace perinma.Services.Google;
@@ -432,6 +433,7 @@ public class GoogleCalendarService : IGoogleCalendarService
         return await service.Events.Get(calendarId, eventId).ExecuteAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<Event?> GetOccurrenceAsync(
         CalendarService service,
         string calendarId,
@@ -439,25 +441,11 @@ public class GoogleCalendarService : IGoogleCalendarService
         Instant originalStartTime,
         CancellationToken cancellationToken = default)
     {
-        string? pageToken = null;
+        var request = service.Events.Instances(calendarId, recurringEventId);
+        request.OriginalStart = OffsetDateTimePattern.Rfc3339.Format(originalStartTime.InUtc().ToOffsetDateTime());
 
-        do
-        {
-            var request = service.Events.Instances(calendarId, recurringEventId);
-            request.MaxResults = 250;
-            request.PageToken = pageToken;
-            var response = await request.ExecuteAsync(cancellationToken);
-
-            var match = response.Items?.FirstOrDefault(item =>
-                item.OriginalStartTime?.DateTimeDateTimeOffset != null &&
-                Instant.FromDateTimeOffset(item.OriginalStartTime.DateTimeDateTimeOffset.Value) == originalStartTime);
-            if (match != null)
-                return match;
-
-            pageToken = response.NextPageToken;
-        } while (!string.IsNullOrEmpty(pageToken));
-
-        return null;
+        var response = await request.ExecuteAsync(cancellationToken);
+        return response.Items?.SingleOrDefault();
     }
 
     public async Task DeleteEventAsync(

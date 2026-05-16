@@ -138,7 +138,9 @@ public interface IGoogleCalendarService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retrieves a recurring instance identified by its original start time.
+    /// Retrieves a recurring instance identified by its original start time. Generated occurrences are expanded locally
+    /// from the series RRULE and do not have their own raw event row or instance ID in storage, so mutations must
+    /// resolve the concrete Google instance from the series ID plus original start time.
     /// </summary>
     Task<Event?> GetOccurrenceAsync(
         CalendarService service,
