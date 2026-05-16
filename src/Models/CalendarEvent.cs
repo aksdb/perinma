@@ -59,6 +59,31 @@ public sealed record RecurrenceEditInfo
     public HashSet<RecurringEventAction> AllowedActions { get; init; } = [];
 }
 
+public enum RecurrenceFrequency
+{
+    Daily,
+    Weekly,
+    Monthly,
+    Yearly,
+}
+
+public sealed record EventRecurrenceRule
+{
+    public required RecurrenceFrequency Frequency { get; init; }
+    public int Interval { get; init; } = 1;
+    public IReadOnlyList<IsoDayOfWeek> ByDay { get; init; } = [];
+    public int? Count { get; init; }
+    public LocalDate? UntilDate { get; init; }
+}
+
+public sealed record EventRecurrenceInfo
+{
+    public bool IsRecurring { get; init; }
+    public bool CanEdit { get; init; } = true;
+    public EventRecurrenceRule? Rule { get; init; }
+    public string Summary { get; init; } = "Does not repeat";
+}
+
 public record CalendarEvent
 {
     public required EventReference Reference { get; set; }
@@ -147,5 +172,6 @@ public static class CalendarEventExtensions
     /// </summary>
     public static ModelExtension<bool> NonBlocking = new();
     public static ModelExtension<RecurrenceEditInfo> RecurrenceEdit = new();
+    public static ModelExtension<EventRecurrenceInfo> RecurrenceInfo = new();
 }
 

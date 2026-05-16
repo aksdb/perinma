@@ -171,6 +171,7 @@ public class GoogleCalendarProvider(
             localStartTime = localStartTime.Date.AtMidnight();
             localEndTime = localEndTime.Date.AtMidnight();
         }
+        extensions.Set(CalendarEventExtensions.RecurrenceInfo, RecurrenceParser.GetGoogleRecurrenceInfo(googleEvent.Recurrence, localStartTime));
 
         return new CalendarEvent
         {
@@ -786,6 +787,10 @@ public class GoogleCalendarProvider(
             };
         }
 
+        var recurrenceInfo = extensions.Get(CalendarEventExtensions.RecurrenceInfo);
+        if (recurrenceInfo is { IsRecurring: true, Rule: not null })
+            googleEvent.Recurrence = [RecurrenceParser.BuildGoogleRecurrence(recurrenceInfo.Rule, startTime)];
+
         var description = extensions.Get(CalendarEventExtensions.Description) switch
         {
             RichText.HTML html => html.value,
@@ -857,7 +862,7 @@ public class GoogleCalendarProvider(
 
         var googleEvent = await ResolveGoogleEventForUpdateAsync(service, calendarId, calendarEvent, scope, recurrenceEdit,
             cancellationToken);
-        ApplyEditableValues(calendarEvent, googleEvent);
+        ApplyEditableValues(calendarEvent, googleEvent, scope != EventEditScope.Occurrence);
 
         await googleCalendarService.UpdateEventAsync(service, calendarId, googleEvent.Id, googleEvent, sendUpdates,
             cancellationToken);
@@ -959,7 +964,7 @@ public class GoogleCalendarProvider(
         return occurrence ?? throw new InvalidOperationException("Could not resolve recurring occurrence");
     }
 
-    private static void ApplyEditableValues(CalendarEvent calendarEvent, GoogleEvent googleEvent)
+    private static void ApplyEditableValues(CalendarEvent calendarEvent, GoogleEvent googleEvent, bool applyRecurrence)
     {
         var startTime = calendarEvent.StartTime;
         var endTime = calendarEvent.EndTime;
@@ -1033,6 +1038,22 @@ public class GoogleCalendarProvider(
                 ResponseStatus = MapResponseStatus(p.Status)
             }).ToList()
             : [];
+
+        if (applyRecurrence)
+        {
+            var recurrenceInfo = calendarEvent.Extensions.Get(CalendarEventExtensions.RecurrenceInfo);
+            if (recurrenceInfo is { IsRecurring: true, Rule: not null })
+            {
+                var preservedEntries = googleEvent.Recurrence?
+                    .Where(value => !value.StartsWith("RRULE:", StringComparison.OrdinalIgnoreCase))
+                    .ToList() ?? [];
+                googleEvent.Recurrence = [RecurrenceParser.BuildGoogleRecurrence(recurrenceInfo.Rule, startTime), .. preservedEntries];
+            }
+            else if (recurrenceInfo is { IsRecurring: false })
+            {
+                googleEvent.Recurrence = null;
+            }
+        }
     }
 
     /// <inheritdoc/>
@@ -1045,7 +1066,8 @@ public class GoogleCalendarProvider(
         CalendarEventExtensions.Attachments,
         CalendarEventExtensions.Conference,
         CalendarEventExtensions.Participants,
-        CalendarEventExtensions.Participation
+        CalendarEventExtensions.Participation,
+        CalendarEventExtensions.RecurrenceInfo
     ];
 
     /// <inheritdoc/>

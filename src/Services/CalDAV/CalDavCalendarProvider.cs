@@ -207,6 +207,7 @@ public class CalDavCalendarProvider(
 
         if (evt.Transparency == TransparencyType.Transparent)
             extensions.Set(CalendarEventExtensions.NonBlocking, true);
+        extensions.Set(CalendarEventExtensions.RecurrenceInfo, RecurrenceParser.GetCalDavRecurrenceInfo(evt, localStartTime));
         return new CalendarEvent
         {
             Reference = reference,
@@ -694,6 +695,10 @@ public class CalDavCalendarProvider(
             });
         }
 
+        var recurrenceInfo = extensions.Get(CalendarEventExtensions.RecurrenceInfo);
+        if (recurrenceInfo is { IsRecurring: true, Rule: not null })
+            calendarEvent.RecurrenceRules.Add(RecurrenceParser.BuildCalDavPattern(recurrenceInfo.Rule, startTime));
+
         // TODO honor timezone extension when available? Might have to convert to localtime then first.
 
         calendar.Events.Add(calendarEvent);
@@ -742,7 +747,7 @@ public class CalDavCalendarProvider(
             _ => throw new InvalidOperationException($"Unsupported edit scope {scope}")
         };
 
-        ApplyEditableValues(calendarEvent, targetEvent);
+        ApplyEditableValues(calendarEvent, targetEvent, scope != EventEditScope.Occurrence);
 
         await calDavService.UpdateEventAsync(
             calDavCredentials,
@@ -810,7 +815,7 @@ public class CalDavCalendarProvider(
             cancellationToken);
     }
 
-    private static void ApplyEditableValues(CalendarEvent calendarEvent, ICalEvent iCalEvent)
+    private static void ApplyEditableValues(CalendarEvent calendarEvent, ICalEvent iCalEvent, bool applyRecurrence)
     {
         var description = calendarEvent.Extensions.Get(CalendarEventExtensions.Description) switch
         {
@@ -846,6 +851,20 @@ public class CalDavCalendarProvider(
                     Duration = new Ical.Net.DataTypes.Duration(minutes: -reminderMinutes)
                 }
             });
+        }
+
+        if (applyRecurrence)
+        {
+            var recurrenceInfo = calendarEvent.Extensions.Get(CalendarEventExtensions.RecurrenceInfo);
+            if (recurrenceInfo is { IsRecurring: true, Rule: not null })
+            {
+                iCalEvent.RecurrenceRules.Clear();
+                iCalEvent.RecurrenceRules.Add(RecurrenceParser.BuildCalDavPattern(recurrenceInfo.Rule, startTime));
+            }
+            else if (recurrenceInfo is { IsRecurring: false })
+            {
+                iCalEvent.RecurrenceRules.Clear();
+            }
         }
     }
 
@@ -972,7 +991,8 @@ public class CalDavCalendarProvider(
         CalendarEventExtensions.TimeZone,
         CalendarEventExtensions.Location,
         CalendarEventExtensions.Description,
-        CalendarEventExtensions.Attachments
+        CalendarEventExtensions.Attachments,
+        CalendarEventExtensions.RecurrenceInfo
     ];
 
     /// <inheritdoc/>
