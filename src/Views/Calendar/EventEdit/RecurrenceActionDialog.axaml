@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:edit="using:perinma.Views.Calendar.EventEdit"
+        mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="240"
+        x:Class="perinma.Views.Calendar.EventEdit.RecurrenceActionDialog"
+        x:DataType="edit:RecurrenceActionDialogViewModel"
+        Title="{Binding Title}"
+        Width="420" Height="240"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+        <StackPanel Spacing="8">
+            <TextBlock Text="{Binding EventTitle}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Text="Choose how to apply this change." TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <ItemsControl Grid.Row="1" ItemsSource="{Binding Options}" Margin="0,16,0,16">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="edit:RecurrenceActionOption">
+                    <Button Content="{Binding Label}"
+                            Command="{Binding $parent[Window].DataContext.SelectActionCommand}"
+                            CommandParameter="{Binding}"
+                            HorizontalAlignment="Stretch"
+                            Margin="0,0,0,8"/>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    MinWidth="100"
+                    IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

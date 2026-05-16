@@ -36,6 +36,19 @@ public class SyncService
     /// </summary>
     public IReadOnlyDictionary<AccountType, ICalendarProvider> Providers => _providers;
 
+    public async Task RefreshCalendarAsync(string calendarId, CancellationToken cancellationToken = default)
+    {
+        var calendar = await _storage.GetCalendarByIdAsync(calendarId)
+            ?? throw new InvalidOperationException($"Calendar {calendarId} not found");
+        var account = await _storage.GetAccountByIdAsync(calendar.AccountId)
+            ?? throw new InvalidOperationException($"Account {calendar.AccountId} not found");
+
+        if (!_providers.TryGetValue(account.AccountTypeEnum, out var provider))
+            throw new InvalidOperationException($"No provider found for account type {account.AccountTypeEnum}");
+
+        await SyncCalendarEventsAsync(provider, calendar, account.AccountTypeEnum, cancellationToken);
+    }
+
     /// <summary>
     /// Forces a complete resync of an account by clearing all local data and sync tokens,
     /// then performing a full sync from the remote server.

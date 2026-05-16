@@ -30,6 +30,7 @@ public partial class EventEditViewModel : ViewModelBase
     private readonly CalendarModel? _calendar;
     private readonly string? _existingRawEventData;
     private readonly Window? _ownerWindow;
+    private readonly EventEditScope _editScope;
 
     [ObservableProperty]
     public partial bool IsSaving { get; set; }
@@ -101,6 +102,7 @@ public partial class EventEditViewModel : ViewModelBase
         CalendarEvent? existingEvent,
         CalendarModel? calendar,
         Action<EventEditResult> onCompleted,
+        EventEditScope editScope = EventEditScope.Event,
         DateTime? initialStartTime = null,
         DateTime? initialEndTime = null,
         bool isFullDay = false)
@@ -109,6 +111,7 @@ public partial class EventEditViewModel : ViewModelBase
         _existingEvent = existingEvent;
         _calendar = calendar;
         _onCompleted = onCompleted;
+        _editScope = editScope;
         _initialStartTime = initialStartTime;
         _initialEndTime = initialEndTime;
         _initialFullDay = isFullDay;
@@ -236,7 +239,8 @@ public partial class EventEditViewModel : ViewModelBase
             var dialogViewModel = new SendInvitesDialogViewModel();
             var dialog = new SendInvitesDialog { DataContext = dialogViewModel };
 
-            _sendInvitesResult = await dialog.ShowDialog<SendInvitesResult>(_ownerWindow);
+            _sendInvitesResult = await dialog.ShowDialog<SendInvitesResult>(_ownerWindow
+                ?? throw new InvalidOperationException("Owner window not available"));
         }
         else
         {
@@ -321,7 +325,6 @@ public partial class EventEditViewModel : ViewModelBase
                     }
                 });
 
-                // Add reminder to extensions if enabled
                 _reminderField?.Let(reminder =>
                 {
                     if (reminder.HasReminder && reminder.ReminderMinutes >= 0)
@@ -337,45 +340,15 @@ public partial class EventEditViewModel : ViewModelBase
                     Extensions = updatedExtensions
                 };
 
-                var rawData =
-                    await provider.UpdateEventAsync(updatedEvent, _sendInvitesResult ?? SendInvitesResult.SendToNone);
+                await provider.UpdateEventAsync(updatedEvent, _editScope,
+                    _sendInvitesResult ?? SendInvitesResult.SendToNone);
 
-                var calendarId = targetCalendar.Id.ToString();
-                var changedAt = SystemClock.Instance.GetCurrentInstant().ToUnixTimeSeconds();
-
-                var eventDbo = new CalendarEventDbo
-                {
-                    CalendarId = calendarId,
-                    ExternalId = _existingEvent.Reference.ExternalId,
-                    StartTime = eventStartTime.ToInstant().ToUnixTimeSeconds(),
-                    EndTime = eventEndTime.ToInstant().ToUnixTimeSeconds(),
-                    Title = _titleField.Title,
-                    ChangedAt = changedAt
-                };
-
-                var eventId = await _storage.CreateOrUpdateEventAsync(eventDbo);
-                switch (rawData)
-                {
-                    case DataAttribute.Text text:
-                        await _storage.SetEventData(eventId, "rawData", text.value);
-                        break;
-                    case DataAttribute.JsonText jsonText:
-                        await _storage.SetEventDataJson(eventId, "rawData", jsonText.value);
-                        break;
-                    default:
-                        throw new InvalidOperationException("Unknown rawData type.");
-                }
-
-                // Populate reminders for the updated event
-                var reminderService = App.Services?.GetRequiredService<ReminderService>();
-                if (reminderService != null)
-                {
-                    await reminderService.PopulateRemindersForEventAsync(eventId, calendarId,
-                        targetCalendar.Account.Type);
-                }
+                var syncService = App.Services?.GetRequiredService<SyncService>()
+                                  ?? throw new InvalidOperationException("SyncService not available");
+                await syncService.RefreshCalendarAsync(updatedEvent.Reference.Calendar.Id.ToString());
 
                 WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
-
+                _onCompleted(new EventEditResult.Success(updatedEvent.Reference.Id.ToString()));
                 RequestClose?.Invoke(this, EventArgs.Empty);
             }
             else if (provider != null)
@@ -459,7 +432,8 @@ public partial class EventEditViewModel : ViewModelBase
             _timeRangeField.StartTime, _timeRangeField.EndTime);
 
         var dialog = new Availability.AvailabilityWindow { DataContext = vm };
-        var result = await dialog.ShowDialog<(DateTime, DateTime)?>(_ownerWindow);
+        var result = await dialog.ShowDialog<(DateTime, DateTime)?>(_ownerWindow
+            ?? throw new InvalidOperationException("Owner window not available"));
 
         if (result is { } slot)
         {
