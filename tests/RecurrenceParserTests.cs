@@ -1,7 +1,8 @@
+using NodaTime;
 using NUnit.Framework;
+using perinma.Models;
 using perinma.Utils;
 using Ical.Net;
-
 namespace tests;
 
 [TestFixture]
@@ -107,6 +108,55 @@ public class RecurrenceParserTests
     }
 
     [Test]
+    public void GetGoogleRecurrenceInfo_WithWeeklyRule_ReturnsEditableRule()
+    {
+        var recurrenceInfo = RecurrenceParser.GetGoogleRecurrenceInfo(
+            ["RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;COUNT=5"],
+            new LocalDateTime(2025, 1, 6, 9, 0));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(recurrenceInfo.IsRecurring, Is.True);
+            Assert.That(recurrenceInfo.CanEdit, Is.True);
+            Assert.That(recurrenceInfo.Rule, Is.Not.Null);
+            Assert.That(recurrenceInfo.Rule!.Frequency, Is.EqualTo(RecurrenceFrequency.Weekly));
+            Assert.That(recurrenceInfo.Rule.Interval, Is.EqualTo(2));
+            Assert.That(recurrenceInfo.Rule.Count, Is.EqualTo(5));
+            Assert.That(recurrenceInfo.Rule.ByDay, Is.EqualTo(new[] { IsoDayOfWeek.Monday, IsoDayOfWeek.Wednesday }));
+        });
+    }
+
+    [Test]
+    public void GetGoogleRecurrenceInfo_WithUnsupportedPattern_ReturnsReadOnlyRecurrence()
+    {
+        var recurrenceInfo = RecurrenceParser.GetGoogleRecurrenceInfo(
+            ["RRULE:FREQ=MONTHLY;BYDAY=1MO;COUNT=3"],
+            new LocalDateTime(2025, 1, 6, 9, 0));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(recurrenceInfo.IsRecurring, Is.True);
+            Assert.That(recurrenceInfo.CanEdit, Is.False);
+            Assert.That(recurrenceInfo.Rule, Is.Null);
+            Assert.That(recurrenceInfo.Summary, Is.EqualTo("Custom recurrence"));
+        });
+    }
+
+    [Test]
+    public void BuildGoogleRecurrence_WithUntilDate_FormatsRrule()
+    {
+        var rrule = RecurrenceParser.BuildGoogleRecurrence(new EventRecurrenceRule
+        {
+            Frequency = RecurrenceFrequency.Weekly,
+            Interval = 1,
+            ByDay = [IsoDayOfWeek.Tuesday, IsoDayOfWeek.Thursday],
+            UntilDate = new LocalDate(2025, 2, 28)
+        }, new LocalDateTime(2025, 1, 7, 9, 30));
+
+        Assert.That(rrule, Is.EqualTo("RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20250228T093000Z"));
+    }
+
+    [Test]
     public void GetRecurrenceEndTime_WithMonthlyCount_ReturnsCorrectEndTime()
     {
         // RRULE monthly for 6 occurrences
@@ -164,7 +214,7 @@ RRULE:FREQ=DAILY;COUNT=5
 END:VEVENT
 END:VCALENDAR";
 
-        var calendar = Calendar.Load(icalData);
+        var calendar = Ical.Net.Calendar.Load(icalData);
         var calendarEvent = calendar?.Events.FirstOrDefault();
         Assert.That(calendarEvent, Is.Not.Null);
 
@@ -191,7 +241,7 @@ UID:test@example.com
 END:VEVENT
 END:VCALENDAR";
 
-        var calendar = Calendar.Load(icalData);
+        var calendar = Ical.Net.Calendar.Load(icalData);
         var calendarEvent = calendar?.Events.FirstOrDefault();
         Assert.That(calendarEvent, Is.Not.Null);
 

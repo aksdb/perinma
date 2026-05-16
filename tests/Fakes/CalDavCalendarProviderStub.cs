@@ -128,7 +128,8 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         CalendarEventExtensions.TimeZone,
         CalendarEventExtensions.Location,
         CalendarEventExtensions.Description,
-        CalendarEventExtensions.Attachments
+        CalendarEventExtensions.Attachments,
+        CalendarEventExtensions.RecurrenceInfo
     ];
 
     public Task<IList<AttendeeFreeBusy>> GetFreeBusyAsync(

@@ -1,3 +1,4 @@
+using System.Linq;
 using CredentialStore;
 using NodaTime;
 using perinma.Models;
@@ -928,6 +929,75 @@ public class CalDavCalendarProviderTests
         }
     }
 
+
+    [Test]
+    public async Task CreateEventAsync_WithRecurrence_SetsCalDavRule()
+    {
+        var extensions = new ModelExtensions();
+        extensions.Set(CalendarEventExtensions.RecurrenceInfo, new EventRecurrenceInfo
+        {
+            IsRecurring = true,
+            Rule = new EventRecurrenceRule
+            {
+                Frequency = RecurrenceFrequency.Weekly,
+                ByDay = [IsoDayOfWeek.Tuesday, IsoDayOfWeek.Thursday],
+                Count = 6
+            },
+            Summary = "Every week on Tue, Thu, 6 times"
+        });
+
+        await _provider.CreateEventAsync(_accountId, "https://caldav.example.com/calendars/work", "Recurring",
+            extensions, new LocalDateTime(2025, 1, 7, 9, 0), new LocalDateTime(2025, 1, 7, 10, 0));
+
+        var createdCalendar = _serviceStub.GetCreatedCalendars().Last();
+        var createdEvent = createdCalendar.Events.Single();
+        Assert.That(createdEvent.RecurrenceRules.Single().ToString(), Is.EqualTo("FREQ=WEEKLY;COUNT=6;BYDAY=TU,TH"));
+    }
+
+    [Test]
+    public async Task UpdateEventAsync_EventScope_WithRecurrence_SetsCalDavRule()
+    {
+        var calendar = new perinma.Models.Calendar
+        {
+            Account = new Account { Id = Guid.Parse(_accountId), Name = "Test", Type = AccountType.CalDav },
+            Id = Guid.NewGuid(),
+            ExternalId = "https://caldav.example.com/calendars/work",
+            Name = "Calendar"
+        };
+        var rawICal = TestDataHelpers.CreateCalDavEventRaw(
+            "event-uid-1",
+            "Meeting",
+            new ZonedDateTime(Instant.FromUtc(2025, 1, 6, 9, 0), DateTimeZone.Utc),
+            new ZonedDateTime(Instant.FromUtc(2025, 1, 6, 10, 0), DateTimeZone.Utc));
+
+        var parsedEvent = _provider.ParseEventForEdit(new RawEvent
+        {
+            Reference = new EventReference
+            {
+                Calendar = calendar,
+                Id = Guid.NewGuid(),
+                ExternalId = "https://caldav.example.com/calendars/work/event-uid-1.ics"
+            },
+            RawData = rawICal
+        });
+        parsedEvent.Extensions.Set(CalendarEventExtensions.RecurrenceInfo, new EventRecurrenceInfo
+        {
+            IsRecurring = true,
+            Rule = new EventRecurrenceRule
+            {
+                Frequency = RecurrenceFrequency.Daily,
+                Interval = 2,
+                Count = 3
+            },
+            Summary = "Every 2 days, 3 times"
+        });
+
+        await _provider.UpdateEventAsync(parsedEvent, EventEditScope.Event, SendInvitesResult.SendToNone);
+
+        var updatedCalendar = _serviceStub.GetCreatedCalendars().Last();
+        var updatedEvent = updatedCalendar.Events.Single();
+        Assert.That(updatedEvent.RecurrenceRules.Single().ToString(), Is.EqualTo("FREQ=DAILY;INTERVAL=2;COUNT=3"));
+    }
     #endregion
 
     #region Transparency / NonBlocking Tests

@@ -424,6 +424,71 @@ public class GoogleCalendarProviderTests
         }
     }
 
+    [Test]
+    public async Task CreateEventAsync_WithRecurrence_SetsGoogleRrule()
+    {
+        var extensions = new ModelExtensions();
+        extensions.Set(CalendarEventExtensions.RecurrenceInfo, new EventRecurrenceInfo
+        {
+            IsRecurring = true,
+            Rule = new EventRecurrenceRule
+            {
+                Frequency = RecurrenceFrequency.Weekly,
+                ByDay = [IsoDayOfWeek.Monday, IsoDayOfWeek.Wednesday],
+                Count = 4
+            },
+            Summary = "Every week on Mon, Wed, 4 times"
+        });
+
+        await _provider.CreateEventAsync(_accountId, "cal1", "Recurring Meeting", extensions,
+            new LocalDateTime(2025, 1, 6, 9, 0), new LocalDateTime(2025, 1, 6, 10, 0));
+
+        Assert.That(_serviceStub.LastCreatedEvent, Is.Not.Null);
+        Assert.That(_serviceStub.LastCreatedEvent!.Recurrence, Is.EqualTo(new[] { "RRULE:FREQ=WEEKLY;BYDAY=MO,WE;COUNT=4" }));
+    }
+
+    [Test]
+    public async Task UpdateEventAsync_EventScope_WithRecurrence_SetsGoogleRrule()
+    {
+        var calendar = new perinma.Models.Calendar
+        {
+            Account = new Account { Id = Guid.Parse(_accountId), Name = "Test", Type = AccountType.Google },
+            Id = Guid.NewGuid(),
+            ExternalId = "cal1",
+            Name = "Calendar"
+        };
+        var rawEvent = NewtonsoftJsonSerializer.Instance.Serialize(new Event
+        {
+            Id = "event1",
+            Summary = "Meeting",
+            Status = "confirmed",
+            Start = new EventDateTime { DateTimeRaw = "2025-01-06T09:00:00Z" },
+            End = new EventDateTime { DateTimeRaw = "2025-01-06T10:00:00Z" }
+        });
+
+        var parsedEvent = _provider.ParseEventForEdit(new RawEvent
+        {
+            Reference = new EventReference { Calendar = calendar, Id = Guid.NewGuid(), ExternalId = "event1" },
+            RawData = rawEvent
+        });
+        parsedEvent.Extensions.Set(CalendarEventExtensions.RecurrenceInfo, new EventRecurrenceInfo
+        {
+            IsRecurring = true,
+            Rule = new EventRecurrenceRule
+            {
+                Frequency = RecurrenceFrequency.Daily,
+                Interval = 2,
+                Count = 3
+            },
+            Summary = "Every 2 days, 3 times"
+        });
+
+        await _provider.UpdateEventAsync(parsedEvent, EventEditScope.Event, SendInvitesResult.SendToNone);
+
+        Assert.That(_serviceStub.LastUpdatedEvent, Is.Not.Null);
+        Assert.That(_serviceStub.LastUpdatedEvent!.Recurrence, Is.EqualTo(new[] { "RRULE:FREQ=DAILY;INTERVAL=2;COUNT=3" }));
+    }
+
     #endregion
 
     #region Full-Day Event Tests

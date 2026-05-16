@@ -138,6 +138,20 @@ public class EventEditViewModelTests
     }
 
     [Test]
+    public void Constructor_CreateMode_IncludesRecurrenceField()
+    {
+        var viewModel = new EventEditViewModel(
+            null,
+            null,
+            _calendar,
+            result => _completedResult = result);
+
+        var recurrenceField = Field<RecurrenceEditViewModel>(viewModel);
+        Assert.That(recurrenceField, Is.Not.Null);
+        Assert.That(recurrenceField!.Summary, Is.EqualTo("Does not repeat"));
+    }
+
+    [Test]
     public void SaveAsync_CreateMode_NoTitle_ShowsError()
     {
         var viewModel = new EventEditViewModel(

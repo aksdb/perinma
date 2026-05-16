@@ -27,6 +27,9 @@ public class GoogleCalendarServiceStub : IGoogleCalendarService
     private bool _firstCallMade = false;
     private FreeBusyResponse? _freeBusyResponse;
 
+    public Event? LastCreatedEvent { get; private set; }
+    public Event? LastUpdatedEvent { get; private set; }
+
     public void SetFreeBusyResponse(FreeBusyResponse response) => _freeBusyResponse = response;
 
     /// <summary>
@@ -189,6 +192,7 @@ public class GoogleCalendarServiceStub : IGoogleCalendarService
         SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default)
     {
+        LastCreatedEvent = @event;
         return Task.FromResult("stub_event_id");
     }
 
@@ -200,6 +204,7 @@ public class GoogleCalendarServiceStub : IGoogleCalendarService
         SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default)
     {
+        LastUpdatedEvent = @event;
         return Task.CompletedTask;
     }
 
@@ -209,6 +214,7 @@ public class GoogleCalendarServiceStub : IGoogleCalendarService
         Event @event,
         CancellationToken cancellationToken = default)
     {
+        LastCreatedEvent = @event;
         return Task.FromResult("stub_event_id");
     }
 
@@ -219,6 +225,7 @@ public class GoogleCalendarServiceStub : IGoogleCalendarService
         Event @event,
         CancellationToken cancellationToken = default)
     {
+        LastUpdatedEvent = @event;
         return Task.CompletedTask;
     }
 
