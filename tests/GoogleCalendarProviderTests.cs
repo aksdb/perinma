@@ -425,6 +425,60 @@ public class GoogleCalendarProviderTests
     }
 
     [Test]
+    public void ParseCalendarEvents_CancelledOverrides_AreExcludedFromResults()
+    {
+        var calendar = new perinma.Models.Calendar
+        {
+            Account = new Account { Id = Guid.NewGuid(), Name = "Test", Type = AccountType.Google },
+            Id = Guid.NewGuid(),
+            ExternalId = "cal1",
+            Name = "Calendar"
+        };
+
+        const string originalEvent = """
+            {"created":"2026-05-16T20:11:46.000Z","creator":{"email":"owner@localhost.localdomain"},"end":{"dateTime":"2026-05-14T10:00:00+02:00","timeZone":"Europe/Berlin"},"etag":"\"3557924686561006\"","eventType":"default","htmlLink":"https://www.google.com/calendar/event?eid=am10OXRqanM0dWpnam80ZjRiMHRsaW1kaW9fMjAyNjA1MTRUMDcwMDAwWiBmMGQyZmU3N2Y1ZmZjMWI4MzdkYTM4OTcxY2YzZjUyZjE2NTc4ZTg5YzNiNjk5YzdiZjUyMDI3YTViNzg5ZjI2QGc","iCalUID":"jmt9tjjs4ujgjo4f4b0tlimdio@google.com","id":"jmt9tjjs4ujgjo4f4b0tlimdio","kind":"calendar#event","organizer":{"displayName":"Test 1","email":"f0d2fe77f5ffc1b837da38971cf3f52f16578e89c3b699c7bf52027a5b789f26@group.calendar.google.com","self":true},"recurrence":["RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=TH"],"reminders":{"overrides":[{"method":"popup","minutes":10}],"useDefault":false},"sequence":0,"start":{"dateTime":"2026-05-14T09:00:00+02:00","timeZone":"Europe/Berlin"},"status":"confirmed","summary":"Recurrence test 2","updated":"2026-05-16T20:12:59.337Z"}
+            """;
+        const string cancelledOverrideOne = """
+            {"etag":"\"3557924758674206\"","id":"jmt9tjjs4ujgjo4f4b0tlimdio_20260611T070000Z","kind":"calendar#event","originalStartTime":{"dateTime":"2026-06-11T09:00:00+02:00","timeZone":"Europe/Berlin"},"recurringEventId":"jmt9tjjs4ujgjo4f4b0tlimdio","status":"cancelled"}
+            """;
+        const string cancelledOverrideTwo = """
+            {"etag":"\"3557924719750078\"","id":"jmt9tjjs4ujgjo4f4b0tlimdio_20260528T070000Z","kind":"calendar#event","originalStartTime":{"dateTime":"2026-05-28T09:00:00+02:00","timeZone":"Europe/Berlin"},"recurringEventId":"jmt9tjjs4ujgjo4f4b0tlimdio","status":"cancelled"}
+            """;
+
+        var events = _provider.ParseCalendarEvents(
+            [
+                new RawEvent
+                {
+                    Reference = new EventReference { Calendar = calendar, Id = Guid.NewGuid(), ExternalId = "jmt9tjjs4ujgjo4f4b0tlimdio" },
+                    RawData = originalEvent
+                },
+                new RawEvent
+                {
+                    Reference = new EventReference { Calendar = calendar, Id = Guid.NewGuid(), ExternalId = "jmt9tjjs4ujgjo4f4b0tlimdio_20260611T070000Z" },
+                    RawData = cancelledOverrideOne
+                },
+                new RawEvent
+                {
+                    Reference = new EventReference { Calendar = calendar, Id = Guid.NewGuid(), ExternalId = "jmt9tjjs4ujgjo4f4b0tlimdio_20260528T070000Z" },
+                    RawData = cancelledOverrideTwo
+                }
+            ],
+            new Interval(
+                Instant.FromUtc(2026, 5, 14, 0, 0),
+                Instant.FromUtc(2026, 6, 26, 0, 0)));
+
+        var startTimes = events.Select(e => e.StartTime).OrderBy(time => time).ToList();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(startTimes, Does.Contain(new LocalDateTime(2026, 5, 14, 9, 0)));
+            Assert.That(startTimes, Does.Contain(new LocalDateTime(2026, 6, 25, 9, 0)));
+            Assert.That(startTimes, Does.Not.Contain(new LocalDateTime(2026, 5, 28, 9, 0)));
+            Assert.That(startTimes, Does.Not.Contain(new LocalDateTime(2026, 6, 11, 9, 0)));
+        }
+    }
+
+    [Test]
     public async Task CreateEventAsync_WithRecurrence_SetsGoogleRrule()
     {
         var extensions = new ModelExtensions();
