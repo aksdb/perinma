@@ -864,6 +864,70 @@ public class CalDavCalendarProviderTests
         }
     }
 
+    [Test]
+    public void ParseCalendarEvents_RecurringOccurrence_SetsGeneratedOccurrenceActions()
+    {
+        var start = new ZonedDateTime(Instant.FromUtc(2025, 1, 1, 10, 0), DateTimeZone.Utc);
+        var end = new ZonedDateTime(Instant.FromUtc(2025, 1, 1, 11, 0), DateTimeZone.Utc);
+        var rawICal = TestDataHelpers.CreateRecurringCalDavEventRaw("recurring-uid-1", "Daily Standup", start, end,
+            "RRULE:FREQ=DAILY;COUNT=2");
+
+        var events = _provider.ParseCalendarEvents(
+            [MakeCalDavRawEvent("recurring-uid-1", rawICal)],
+            new Interval(Instant.FromUtc(2025, 1, 1, 0, 0), Instant.FromUtc(2025, 1, 3, 0, 0)));
+
+        var recurrenceEdit = events[0].Extensions.Get(CalendarEventExtensions.RecurrenceEdit);
+        Assert.That(recurrenceEdit, Is.Not.Null);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(recurrenceEdit!.Kind, Is.EqualTo(RecurrenceEditKind.GeneratedOccurrence));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.EditOccurrence));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.DeleteOccurrence));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.EditSeries));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.DeleteSeries));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Not.Contain(RecurringEventAction.RevertOverride));
+        }
+    }
+
+    [Test]
+    public void ParseCalendarEvents_Override_SetsOverrideActions()
+    {
+        const string rawEventData = """
+            BEGIN:VCALENDAR
+            VERSION:2.0
+            BEGIN:VEVENT
+            UID:series-uid
+            SUMMARY:Series Event
+            DTSTART:20250101T100000Z
+            DTEND:20250101T110000Z
+            RRULE:FREQ=DAILY;COUNT=3
+            END:VEVENT
+            BEGIN:VEVENT
+            UID:series-uid
+            RECURRENCE-ID:20250102T100000Z
+            SUMMARY:Moved Event
+            DTSTART:20250102T130000Z
+            DTEND:20250102T140000Z
+            END:VEVENT
+            END:VCALENDAR
+            """;
+
+        var events = _provider.ParseCalendarEvents(
+            [MakeCalDavRawEvent("series-uid", rawEventData)],
+            new Interval(Instant.FromUtc(2025, 1, 1, 0, 0), Instant.FromUtc(2025, 1, 4, 0, 0)));
+
+        var overrideEvent = events.Single(e => e.Extensions.Get(CalendarEventExtensions.RecurrenceEdit)?.Kind == RecurrenceEditKind.OverrideOccurrence);
+        var recurrenceEdit = overrideEvent.Extensions.Get(CalendarEventExtensions.RecurrenceEdit);
+        Assert.That(recurrenceEdit, Is.Not.Null);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(recurrenceEdit!.Kind, Is.EqualTo(RecurrenceEditKind.OverrideOccurrence));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.EditOccurrence));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.DeleteOccurrence));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.RevertOverride));
+        }
+    }
+
     #endregion
 
     #region Transparency / NonBlocking Tests

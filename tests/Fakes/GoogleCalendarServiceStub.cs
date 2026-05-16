@@ -6,6 +6,7 @@ using CredentialStore;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Json;
+using NodaTime;
 using perinma.Services;
 using perinma.Services.Google;
 using perinma.Storage.Models;
@@ -228,6 +229,40 @@ public class GoogleCalendarServiceStub : IGoogleCalendarService
         CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
+    }
+
+    public Task<Event> GetEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        CancellationToken cancellationToken = default)
+    {
+        var rawEvents = _rawEventDataByCalendar.TryGetValue(calendarId, out var events)
+            ? events
+            : [];
+        var match = rawEvents
+            .Select(rawJson => NewtonsoftJsonSerializer.Instance.Deserialize<Event>(rawJson))
+            .FirstOrDefault(evt => evt?.Id == eventId)
+            ?? new Event { Id = eventId };
+        return Task.FromResult(match);
+    }
+
+    public Task<Event?> GetOccurrenceAsync(
+        CalendarService service,
+        string calendarId,
+        string recurringEventId,
+        Instant originalStartTime,
+        CancellationToken cancellationToken = default)
+    {
+        var rawEvents = _rawEventDataByCalendar.TryGetValue(calendarId, out var events)
+            ? events
+            : [];
+        var match = rawEvents
+            .Select(rawJson => NewtonsoftJsonSerializer.Instance.Deserialize<Event>(rawJson))
+            .FirstOrDefault(evt => evt?.RecurringEventId == recurringEventId
+                                   && evt.OriginalStartTime?.DateTimeDateTimeOffset != null
+                                   && Instant.FromDateTimeOffset(evt.OriginalStartTime.DateTimeDateTimeOffset.Value) == originalStartTime);
+        return Task.FromResult(match);
     }
 
     public Task<Google.Apis.Calendar.v3.Data.FreeBusyResponse> GetFreeBusyAsync(

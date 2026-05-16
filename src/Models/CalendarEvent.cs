@@ -33,6 +33,32 @@ public record EventReference
     public string? ExternalId { get; init; }
 }
 
+public enum RecurringEventAction
+{
+    EditOccurrence,
+    EditSeries,
+    DeleteOccurrence,
+    DeleteSeries,
+    RevertOverride,
+}
+
+public enum RecurrenceEditKind
+{
+    None,
+    SeriesMaster,
+    GeneratedOccurrence,
+    OverrideOccurrence,
+}
+
+public sealed record RecurrenceEditInfo
+{
+    public required RecurrenceEditKind Kind { get; init; }
+    public string? SeriesExternalId { get; init; }
+    public Instant? OriginalStartTime { get; init; }
+    public string? BackingExternalId { get; init; }
+    public HashSet<RecurringEventAction> AllowedActions { get; init; } = [];
+}
+
 public record CalendarEvent
 {
     public required EventReference Reference { get; set; }
@@ -120,5 +146,6 @@ public static class CalendarEventExtensions
     /// Absent (default false) means blocking — the safe fallback for providers that do not set it.
     /// </summary>
     public static ModelExtension<bool> NonBlocking = new();
+    public static ModelExtension<RecurrenceEditInfo> RecurrenceEdit = new();
 }
 

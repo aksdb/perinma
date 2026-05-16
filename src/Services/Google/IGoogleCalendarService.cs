@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
+using NodaTime;
 using perinma.Storage.Models;
 
 namespace perinma.Services.Google;
@@ -125,6 +126,25 @@ public interface IGoogleCalendarService
         CalendarService service,
         string calendarId,
         string eventId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves an event by ID.
+    /// </summary>
+    Task<Event> GetEventAsync(
+        CalendarService service,
+        string calendarId,
+        string eventId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves a recurring instance identified by its original start time.
+    /// </summary>
+    Task<Event?> GetOccurrenceAsync(
+        CalendarService service,
+        string calendarId,
+        string recurringEventId,
+        Instant originalStartTime,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -15,6 +15,17 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         return [];
     }
 
+    public CalendarEvent ParseEventForEdit(RawEvent rawEvent)
+    {
+        return new CalendarEvent
+        {
+            Reference = rawEvent.Reference,
+            StartTime = new LocalDateTime(2025, 1, 1, 9, 0),
+            EndTime = new LocalDateTime(2025, 1, 1, 10, 0),
+            Title = "Stub Event"
+        };
+    }
+
     public Task<CalendarSyncResult> GetCalendarsAsync(
         string accountId,
         string? syncToken = null,
@@ -94,37 +105,18 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         return Task.FromResult((Guid.NewGuid().ToString(), string.Empty));
     }
 
-    public Task<DataAttribute> UpdateEventAsync(
+    public Task UpdateEventAsync(
         CalendarEvent calendarEvent,
+        EventEditScope scope,
         SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult<DataAttribute>(new DataAttribute.Text(string.Empty));
-    }
-
-    public Task<(string externalId, string rawData)> CreateEventAsync(
-        string accountId,
-        string calendarId,
-        string title,
-        ModelExtensions extensions,
-        LocalDateTime startTime,
-        LocalDateTime endTime,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult((Guid.NewGuid().ToString(), string.Empty));
-    }
-
-    public Task<DataAttribute> UpdateEventAsync(
-        CalendarEvent calendarEvent,
-        CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult<DataAttribute>(new DataAttribute.Text(string.Empty));
+        return Task.CompletedTask;
     }
 
     public Task DeleteEventAsync(
-        string accountId,
-        string calendarId,
-        string eventId,
+        CalendarEvent calendarEvent,
+        EventDeleteAction action,
         CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;

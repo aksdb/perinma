@@ -34,6 +34,14 @@ public class GoogleCalendarProvider(
     public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange) =>
         ParseCalendarEventsInternal(rawEvents, timeRange);
 
+    /// <inheritdoc/>
+    public CalendarEvent ParseEventForEdit(RawEvent rawEvent)
+    {
+        var googleEvent = NewtonsoftJsonSerializer.Instance.Deserialize<GoogleEvent>(rawEvent.RawData)
+                          ?? throw new InvalidOperationException("Failed to parse Google event");
+        return MapToCalendarEvent(rawEvent.Reference, googleEvent, null);
+    }
+
     private List<CalendarEvent> ParseCalendarEventsInternal(List<RawEvent> rawEvents, Interval timeRange)
     {
         var googleEvents = rawEvents
@@ -46,12 +54,11 @@ public class GoogleCalendarProvider(
             .ToList();
 
         return googleEvents
-            .Where(t => string.IsNullOrEmpty(t.Event.RecurringEventId)) // Main events (regular or master recurring)
+            .Where(t => string.IsNullOrEmpty(t.Event.RecurringEventId))
             .SelectMany(t =>
             {
                 if (t.Event.Recurrence is { Count: > 0 })
                 {
-                    // Generate occurrences for recurring events
                     return DetermineOccurrences(t.Event, timeRange)
                         .Where(occurrenceStart => !overrides.Any(ov =>
                             ov.Event.RecurringEventId == t.Event.Id &&
@@ -59,11 +66,9 @@ public class GoogleCalendarProvider(
                         .Select(occurrenceStart => MapToCalendarEvent(t.Reference, t.Event, occurrenceStart));
                 }
 
-                // Regular non-recurring event
                 return [MapToCalendarEvent(t.Reference, t.Event, null)];
             })
-            .Concat(overrides.Select(ov =>
-                MapToCalendarEvent(ov.Reference, ov.Event, null))) // Include the overrides themselves
+            .Concat(overrides.Select(ov => MapToCalendarEvent(ov.Reference, ov.Event, null)))
             .Where(ce => ce.StartTime.ToInstant() <= timeRange.End && ce.EndTime.ToInstant() >= timeRange.Start)
             .ToList();
     }
@@ -71,23 +76,19 @@ public class GoogleCalendarProvider(
     private CalendarEvent MapToCalendarEvent(EventReference reference, GoogleEvent googleEvent,
         Instant? occurrenceStart)
     {
-        var start = ParseGoogleDateTime(googleEvent.Start) ?? throw new InvalidOperationException("event without start time");;
-        var end = ParseGoogleDateTime(googleEvent.End) ?? throw new InvalidOperationException("event without end time");;
+        var start = ParseGoogleDateTime(googleEvent.Start) ?? throw new InvalidOperationException("event without start time");
+        var end = ParseGoogleDateTime(googleEvent.End) ?? throw new InvalidOperationException("event without end time");
 
         if (occurrenceStart.HasValue)
         {
-            // This is a bit more complicated since we can't rely on the end time anymore.
-            // We have to calculate the original duration and shift the whole event timeframe.
-
             var duration = end.Minus(start);
             start = occurrenceStart.Value;
             end = start.Plus(duration);
         }
-        
+
         string? timeZone = null;
         if (!string.IsNullOrEmpty(googleEvent.Start.TimeZone))
             timeZone = googleEvent.Start.TimeZone;
-        // If the start is represented as a date instead of a datetime, it's apparently full-day.
         bool fullDay = !string.IsNullOrEmpty(googleEvent.Start.Date);
 
         var relevantStatus = googleEvent.Attendees
@@ -96,6 +97,7 @@ public class GoogleCalendarProvider(
 
         var extensions = new ModelExtensions();
         extensions.Set(GoogleEventExtension, googleEvent);
+        extensions.Set(CalendarEventExtensions.RecurrenceEdit, BuildRecurrenceEditInfo(googleEvent, occurrenceStart));
         if (fullDay)
             extensions.Set(CalendarEventExtensions.FullDay, true);
         if (timeZone is not null)
@@ -166,7 +168,6 @@ public class GoogleCalendarProvider(
 
         if (fullDay)
         {
-            // We need to "round" the duration to midnight in our zone.
             localStartTime = localStartTime.Date.AtMidnight();
             localEndTime = localEndTime.Date.AtMidnight();
         }
@@ -180,6 +181,62 @@ public class GoogleCalendarProvider(
             ChangedAt = googleEvent.UpdatedDateTimeOffset?.DateTime,
             ResponseStatus = MapResponseStatus(relevantStatus),
             Extensions = extensions,
+        };
+    }
+
+    private static RecurrenceEditInfo BuildRecurrenceEditInfo(GoogleEvent googleEvent, Instant? occurrenceStart)
+    {
+        var actions = new HashSet<RecurringEventAction>();
+        var originalStartTime = ParseGoogleDateTime(googleEvent.OriginalStartTime) ?? occurrenceStart;
+
+        if (!string.IsNullOrEmpty(googleEvent.RecurringEventId))
+        {
+            actions.Add(RecurringEventAction.EditOccurrence);
+            actions.Add(RecurringEventAction.EditSeries);
+            actions.Add(RecurringEventAction.DeleteOccurrence);
+            actions.Add(RecurringEventAction.DeleteSeries);
+            return new RecurrenceEditInfo
+            {
+                Kind = RecurrenceEditKind.OverrideOccurrence,
+                SeriesExternalId = googleEvent.RecurringEventId,
+                OriginalStartTime = originalStartTime,
+                BackingExternalId = googleEvent.Id,
+                AllowedActions = actions,
+            };
+        }
+
+        if (googleEvent.Recurrence is { Count: > 0 })
+        {
+            actions.Add(RecurringEventAction.EditSeries);
+            actions.Add(RecurringEventAction.DeleteSeries);
+
+            if (occurrenceStart.HasValue)
+            {
+                actions.Add(RecurringEventAction.EditOccurrence);
+                actions.Add(RecurringEventAction.DeleteOccurrence);
+                return new RecurrenceEditInfo
+                {
+                    Kind = RecurrenceEditKind.GeneratedOccurrence,
+                    SeriesExternalId = googleEvent.Id,
+                    OriginalStartTime = occurrenceStart,
+                    BackingExternalId = googleEvent.Id,
+                    AllowedActions = actions,
+                };
+            }
+
+            return new RecurrenceEditInfo
+            {
+                Kind = RecurrenceEditKind.SeriesMaster,
+                SeriesExternalId = googleEvent.Id,
+                BackingExternalId = googleEvent.Id,
+                AllowedActions = actions,
+            };
+        }
+
+        return new RecurrenceEditInfo
+        {
+            Kind = RecurrenceEditKind.None,
+            BackingExternalId = googleEvent.Id,
         };
     }
 
@@ -779,8 +836,9 @@ public class GoogleCalendarProvider(
     }
 
     /// <inheritdoc/>
-    public async Task<DataAttribute> UpdateEventAsync(
+    public async Task UpdateEventAsync(
         CalendarEvent calendarEvent,
+        EventEditScope scope,
         SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default)
     {
@@ -792,10 +850,117 @@ public class GoogleCalendarProvider(
         }
 
         var service = await googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
+        var calendarId = calendarEvent.Reference.Calendar.ExternalId
+            ?? throw new InvalidOperationException("Calendar ExternalId is null");
+        var recurrenceEdit = calendarEvent.Extensions.Get(CalendarEventExtensions.RecurrenceEdit)
+            ?? new RecurrenceEditInfo { Kind = RecurrenceEditKind.None, AllowedActions = [] };
 
-        var googleEvent = calendarEvent.Extensions.Get(GoogleEventExtension) ??
-                          throw new InvalidOperationException("Event without data");
+        var googleEvent = await ResolveGoogleEventForUpdateAsync(service, calendarId, calendarEvent, scope, recurrenceEdit,
+            cancellationToken);
+        ApplyEditableValues(calendarEvent, googleEvent);
 
+        await googleCalendarService.UpdateEventAsync(service, calendarId, googleEvent.Id, googleEvent, sendUpdates,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task DeleteEventAsync(
+        CalendarEvent calendarEvent,
+        EventDeleteAction action,
+        CancellationToken cancellationToken = default)
+    {
+        var accountId = calendarEvent.Reference.Calendar.Account.Id.ToString();
+        var googleCredentials = credentialManager.GetGoogleCredentials(accountId);
+        if (googleCredentials == null)
+        {
+            throw new InvalidOperationException($"No Google credentials found for account {accountId}");
+        }
+
+        var service = await googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
+        var calendarId = calendarEvent.Reference.Calendar.ExternalId
+            ?? throw new InvalidOperationException("Calendar ExternalId is null");
+        var recurrenceEdit = calendarEvent.Extensions.Get(CalendarEventExtensions.RecurrenceEdit)
+            ?? new RecurrenceEditInfo { Kind = RecurrenceEditKind.None, AllowedActions = [] };
+
+        switch (action)
+        {
+            case EventDeleteAction.Event:
+                await googleCalendarService.DeleteEventAsync(service, calendarId,
+                    calendarEvent.Reference.ExternalId ?? throw new InvalidOperationException("Event ExternalId is null"),
+                    cancellationToken);
+                return;
+            case EventDeleteAction.Series:
+                await googleCalendarService.DeleteEventAsync(service, calendarId,
+                    recurrenceEdit.SeriesExternalId ?? calendarEvent.Reference.ExternalId
+                    ?? throw new InvalidOperationException("Series ExternalId is null"),
+                    cancellationToken);
+                return;
+            case EventDeleteAction.Occurrence:
+            {
+                var occurrence = await ResolveGoogleOccurrenceAsync(service, calendarId, calendarEvent, recurrenceEdit,
+                    cancellationToken);
+                occurrence.Status = "cancelled";
+                await googleCalendarService.UpdateEventAsync(service, calendarId, occurrence.Id, occurrence,
+                    SendInvitesResult.SendToNone, cancellationToken);
+                return;
+            }
+            case EventDeleteAction.RevertOverride:
+                throw new InvalidOperationException("Google Calendar does not support reverting overrides safely.");
+            default:
+                throw new InvalidOperationException($"Unsupported delete action {action}");
+        }
+    }
+
+    private async Task<GoogleEvent> ResolveGoogleEventForUpdateAsync(
+        global::Google.Apis.Calendar.v3.CalendarService service,
+        string calendarId,
+        CalendarEvent calendarEvent,
+        EventEditScope scope,
+        RecurrenceEditInfo recurrenceEdit,
+        CancellationToken cancellationToken)
+    {
+        return scope switch
+        {
+            EventEditScope.Event => calendarEvent.Extensions.Get(GoogleEventExtension)
+                                    ?? throw new InvalidOperationException("Event without data"),
+            EventEditScope.Series => await googleCalendarService.GetEventAsync(
+                service,
+                calendarId,
+                recurrenceEdit.SeriesExternalId ?? calendarEvent.Reference.ExternalId
+                ?? throw new InvalidOperationException("Series ExternalId is null"),
+                cancellationToken),
+            EventEditScope.Occurrence => await ResolveGoogleOccurrenceAsync(service, calendarId, calendarEvent,
+                recurrenceEdit, cancellationToken),
+            _ => throw new InvalidOperationException($"Unsupported edit scope {scope}")
+        };
+    }
+
+    private async Task<GoogleEvent> ResolveGoogleOccurrenceAsync(
+        global::Google.Apis.Calendar.v3.CalendarService service,
+        string calendarId,
+        CalendarEvent calendarEvent,
+        RecurrenceEditInfo recurrenceEdit,
+        CancellationToken cancellationToken)
+    {
+        if (recurrenceEdit.Kind == RecurrenceEditKind.OverrideOccurrence)
+        {
+            var overrideId = recurrenceEdit.BackingExternalId ?? calendarEvent.Reference.ExternalId
+                ?? throw new InvalidOperationException("Override event id is missing");
+            return await googleCalendarService.GetEventAsync(service, calendarId, overrideId, cancellationToken);
+        }
+
+        if (recurrenceEdit.Kind != RecurrenceEditKind.GeneratedOccurrence || !recurrenceEdit.OriginalStartTime.HasValue)
+            throw new InvalidOperationException("This event does not identify a single occurrence");
+
+        var occurrence = await googleCalendarService.GetOccurrenceAsync(service, calendarId,
+            recurrenceEdit.SeriesExternalId ?? throw new InvalidOperationException("Series ExternalId is null"),
+            recurrenceEdit.OriginalStartTime.Value, cancellationToken);
+
+        return occurrence ?? throw new InvalidOperationException("Could not resolve recurring occurrence");
+    }
+
+    private static void ApplyEditableValues(CalendarEvent calendarEvent, GoogleEvent googleEvent)
+    {
         var startTime = calendarEvent.StartTime;
         var endTime = calendarEvent.EndTime;
 
@@ -825,6 +990,8 @@ public class GoogleCalendarProvider(
             };
         }
 
+        googleEvent.Summary = calendarEvent.Title;
+
         var description = calendarEvent.Extensions.Get(CalendarEventExtensions.Description) switch
         {
             RichText.HTML html => html.value,
@@ -832,14 +999,9 @@ public class GoogleCalendarProvider(
             _ => null
         };
 
-        if (description != null)
-            googleEvent.Description = description;
+        googleEvent.Description = description;
+        googleEvent.Location = calendarEvent.Extensions.Get(CalendarEventExtensions.Location);
 
-        var location = calendarEvent.Extensions.Get(CalendarEventExtensions.Location);
-        if (location != null)
-            googleEvent.Location = location;
-
-        // Handle reminder
         var reminderMinutes = calendarEvent.Extensions.Get(CalendarEventExtensions.ReminderMinutesBefore);
         if (reminderMinutes >= 0)
         {
@@ -852,44 +1014,25 @@ public class GoogleCalendarProvider(
                 }
             };
         }
-
-        // Handle participants
-        var participants = calendarEvent.Extensions.Get(CalendarEventExtensions.Participants);
-        if (participants != null && participants.Count > 0)
+        else
         {
-            googleEvent.Attendees = participants.Select(p => new global::Google.Apis.Calendar.v3.Data.EventAttendee
+            googleEvent.Reminders = new GoogleEvent.RemindersData
+            {
+                UseDefault = false,
+                Overrides = []
+            };
+        }
+
+        var participants = calendarEvent.Extensions.Get(CalendarEventExtensions.Participants);
+        googleEvent.Attendees = participants?.Count > 0
+            ? participants.Select(p => new global::Google.Apis.Calendar.v3.Data.EventAttendee
             {
                 Email = p.Email,
                 DisplayName = p.Name,
                 Optional = p.IsOptional,
                 ResponseStatus = MapResponseStatus(p.Status)
-            }).ToList();
-        }
-
-        var calendarId = calendarEvent.Reference.Calendar.ExternalId ?? throw new InvalidOperationException("Calendar ExternalId is null");
-        var eventId = calendarEvent.Reference.ExternalId ?? throw new InvalidOperationException("Event ExternalId is null");
-        await googleCalendarService.UpdateEventAsync(service, calendarId, eventId, googleEvent, sendUpdates, cancellationToken);
-
-        var rawData = NewtonsoftJsonSerializer.Instance.Serialize(googleEvent);
-
-        return new DataAttribute.JsonText(rawData);
-    }
-
-    /// <inheritdoc/>
-    public async Task DeleteEventAsync(
-        string accountId,
-        string calendarId,
-        string eventId,
-        CancellationToken cancellationToken = default)
-    {
-        var googleCredentials = credentialManager.GetGoogleCredentials(accountId);
-        if (googleCredentials == null)
-        {
-            throw new InvalidOperationException($"No Google credentials found for account {accountId}");
-        }
-
-        var service = await googleCalendarService.CreateServiceAsync(googleCredentials, cancellationToken, accountId);
-        await googleCalendarService.DeleteEventAsync(service, calendarId, eventId, cancellationToken);
+            }).ToList()
+            : [];
     }
 
     /// <inheritdoc/>

@@ -14,6 +14,21 @@ public enum SendInvitesResult
     SendToNone
 }
 
+public enum EventEditScope
+{
+    Event,
+    Occurrence,
+    Series
+}
+
+public enum EventDeleteAction
+{
+    Event,
+    Occurrence,
+    Series,
+    RevertOverride
+}
+
 /// <summary>
 /// Interface for calendar providers (Google Calendar, CalDAV, etc.).
 /// Provides a unified abstraction for syncing calendars and events from different sources.
@@ -28,6 +43,13 @@ public interface ICalendarProvider
     /// <param name="timeRange"></param>
     /// <returns></returns>
     List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange);
+
+    /// <summary>
+    /// Parses a single stored raw event into the provider's canonical editable representation.
+    /// Unlike <see cref="ParseCalendarEvents"/>, this MUST return the underlying stored event,
+    /// not expanded occurrences.
+    /// </summary>
+    CalendarEvent ParseEventForEdit(RawEvent rawEvent);
 
     /// <summary>
     /// Enriches a <see cref="Calendar"/> object with provider-specific metadata read from
@@ -152,25 +174,24 @@ public interface ICalendarProvider
     /// Updates an existing event.
     /// </summary>
     /// <param name="calendarEvent">The event to update</param>
+    /// <param name="scope">Whether the update applies to the single event, one occurrence, or the series</param>
     /// <param name="sendUpdates">Whether to send invitations to participants</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The rawData of the updated event.</returns>
-    Task<DataAttribute> UpdateEventAsync(
+    Task UpdateEventAsync(
         CalendarEvent calendarEvent,
+        EventEditScope scope,
         SendInvitesResult sendUpdates = SendInvitesResult.SendToAll,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes an existing event.
+    /// Deletes an existing event, occurrence, or override.
     /// </summary>
-    /// <param name="accountId">Account ID to delete event for</param>
-    /// <param name="calendarId">External ID of the calendar</param>
-    /// <param name="eventId">External ID of the event to delete</param>
+    /// <param name="calendarEvent">The event to delete or revert</param>
+    /// <param name="action">Delete mode or override revert operation</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task DeleteEventAsync(
-        string accountId,
-        string calendarId,
-        string eventId,
+        CalendarEvent calendarEvent,
+        EventDeleteAction action,
         CancellationToken cancellationToken = default);
 
     /// <summary>

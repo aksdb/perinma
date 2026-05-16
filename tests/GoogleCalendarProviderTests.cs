@@ -316,6 +316,114 @@ public class GoogleCalendarProviderTests
         Assert.That(result.Events[0].Title, Is.EqualTo("Untitled Event"));
     }
 
+    [Test]
+    public void ParseCalendarEvents_RecurringOccurrence_SetsGeneratedOccurrenceActions()
+    {
+        var start = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+        var end = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc);
+        var rawEvent = NewtonsoftJsonSerializer.Instance.Serialize(new Event
+        {
+            Id = "recurring1",
+            Summary = "Weekly Meeting",
+            Status = "confirmed",
+            Start = new EventDateTime { DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(Instant.FromDateTimeUtc(start).InUtc().ToOffsetDateTime()) },
+            End = new EventDateTime { DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(Instant.FromDateTimeUtc(end).InUtc().ToOffsetDateTime()) },
+            Recurrence = ["RRULE:FREQ=DAILY;COUNT=2"]
+        });
+
+        var calendar = new perinma.Models.Calendar
+        {
+            Account = new Account { Id = Guid.NewGuid(), Name = "Test", Type = AccountType.Google },
+            Id = Guid.NewGuid(),
+            ExternalId = "cal1",
+            Name = "Calendar"
+        };
+
+        var events = _provider.ParseCalendarEvents(
+            [new RawEvent
+            {
+                Reference = new EventReference { Calendar = calendar, Id = Guid.NewGuid(), ExternalId = "recurring1" },
+                RawData = rawEvent
+            }],
+            new Interval(Instant.FromUtc(2025, 1, 1, 0, 0), Instant.FromUtc(2025, 1, 3, 0, 0)));
+
+        var recurrenceEdit = events[0].Extensions.Get(CalendarEventExtensions.RecurrenceEdit);
+        Assert.That(recurrenceEdit, Is.Not.Null);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(recurrenceEdit!.Kind, Is.EqualTo(RecurrenceEditKind.GeneratedOccurrence));
+            Assert.That(recurrenceEdit.SeriesExternalId, Is.EqualTo("recurring1"));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.EditOccurrence));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.DeleteOccurrence));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.EditSeries));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.DeleteSeries));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Not.Contain(RecurringEventAction.RevertOverride));
+        }
+    }
+
+    [Test]
+    public void ParseCalendarEvents_Override_SetsOverrideActions()
+    {
+        var start = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+        var end = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc);
+        var originalStart = new DateTime(2025, 1, 2, 10, 0, 0, DateTimeKind.Utc);
+        var overrideStart = new DateTime(2025, 1, 2, 14, 0, 0, DateTimeKind.Utc);
+        var overrideEnd = new DateTime(2025, 1, 2, 15, 0, 0, DateTimeKind.Utc);
+
+        var calendar = new perinma.Models.Calendar
+        {
+            Account = new Account { Id = Guid.NewGuid(), Name = "Test", Type = AccountType.Google },
+            Id = Guid.NewGuid(),
+            ExternalId = "cal1",
+            Name = "Calendar"
+        };
+
+        var events = _provider.ParseCalendarEvents(
+            [
+                new RawEvent
+                {
+                    Reference = new EventReference { Calendar = calendar, Id = Guid.NewGuid(), ExternalId = "recurring1" },
+                    RawData = NewtonsoftJsonSerializer.Instance.Serialize(new Event
+                    {
+                        Id = "recurring1",
+                        Summary = "Weekly Meeting",
+                        Status = "confirmed",
+                        Start = new EventDateTime { DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(Instant.FromDateTimeUtc(start).InUtc().ToOffsetDateTime()) },
+                        End = new EventDateTime { DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(Instant.FromDateTimeUtc(end).InUtc().ToOffsetDateTime()) },
+                        Recurrence = ["RRULE:FREQ=DAILY;COUNT=3"]
+                    })
+                },
+                new RawEvent
+                {
+                    Reference = new EventReference { Calendar = calendar, Id = Guid.NewGuid(), ExternalId = "override1" },
+                    RawData = NewtonsoftJsonSerializer.Instance.Serialize(new Event
+                    {
+                        Id = "override1",
+                        Summary = "Moved",
+                        Status = "confirmed",
+                        RecurringEventId = "recurring1",
+                        OriginalStartTime = new EventDateTime { DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(Instant.FromDateTimeUtc(originalStart).InUtc().ToOffsetDateTime()) },
+                        Start = new EventDateTime { DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(Instant.FromDateTimeUtc(overrideStart).InUtc().ToOffsetDateTime()) },
+                        End = new EventDateTime { DateTimeRaw = OffsetDateTimePattern.Rfc3339.Format(Instant.FromDateTimeUtc(overrideEnd).InUtc().ToOffsetDateTime()) }
+                    })
+                }
+            ],
+            new Interval(Instant.FromUtc(2025, 1, 1, 0, 0), Instant.FromUtc(2025, 1, 4, 0, 0)));
+
+        var overrideEvent = events.Single(e => e.Title == "Moved");
+        var recurrenceEdit = overrideEvent.Extensions.Get(CalendarEventExtensions.RecurrenceEdit);
+        Assert.That(recurrenceEdit, Is.Not.Null);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(recurrenceEdit!.Kind, Is.EqualTo(RecurrenceEditKind.OverrideOccurrence));
+            Assert.That(recurrenceEdit.SeriesExternalId, Is.EqualTo("recurring1"));
+            Assert.That(recurrenceEdit.BackingExternalId, Is.EqualTo("override1"));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.EditOccurrence));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Contain(RecurringEventAction.DeleteOccurrence));
+            Assert.That(recurrenceEdit.AllowedActions, Does.Not.Contain(RecurringEventAction.RevertOverride));
+        }
+    }
+
     #endregion
 
     #region Full-Day Event Tests
