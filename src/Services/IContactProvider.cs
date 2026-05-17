@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using perinma.Models;
 
 namespace perinma.Services;
 
@@ -53,6 +54,31 @@ public interface IContactProvider
         string accountId,
         string? syncToken = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Populates provider-native model extensions for a hydrated contact.
+    /// </summary>
+    void EnrichContact(Contact contact, Func<string, string?> getData);
+
+    /// <summary>
+    /// Creates a new contact in the provider.
+    /// </summary>
+    Task<Contact> CreateContactAsync(
+        AddressBook addressBook,
+        Contact contact,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing contact in the provider.
+    /// </summary>
+    Task<Contact> UpdateContactAsync(
+        Contact contact,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the list of model extensions that this provider supports for contacts.
+    /// </summary>
+    IList<object> GetSupportedExtensions();
 
     /// <summary>
     /// Tests whether the connection to the provider is working with the given account.
@@ -190,6 +216,11 @@ public class ProviderContact
     /// Raw provider data serialized as string for later use (JSON or vCard).
     /// </summary>
     public string? RawData { get; init; }
+
+    /// <summary>
+    /// Provider specific data that should be persisted alongside the contact.
+    /// </summary>
+    public Dictionary<string, DataAttribute> Data { get; init; } = new();
 
     /// <summary>
     /// External IDs of groups this contact belongs to.

@@ -373,6 +373,22 @@ public class ContactSyncService
                 await _storage.SetContactDataAsync(contactId, "rawData", contact.RawData);
             }
 
+            foreach (var dataPair in contact.Data)
+            {
+                switch (dataPair.Value)
+                {
+                    case DataAttribute.Text text:
+                        await _storage.SetContactDataAsync(contactId, dataPair.Key, text.value);
+                        break;
+                    case DataAttribute.JsonText jsonText:
+                        await _storage.SetContactDataJsonAsync(contactId, dataPair.Key, jsonText.value);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(contact.Data),
+                            $"Unsupported contact data type: {dataPair.Value.GetType().Name}");
+                }
+            }
+
             // Handle group memberships
             if (contact.GroupExternalIds != null && contact.GroupExternalIds.Count > 0)
             {
