@@ -19,6 +19,7 @@ public class ContactSyncServiceTests
     private SqliteStorage _storage = null!;
     private CardDavServiceStub _cardDavService = null!;
     private ContactSyncService _contactSyncService = null!;
+    private CardDavContactProvider _provider = null!;
 
     [SetUp]
     public void SetUp()
@@ -27,10 +28,10 @@ public class ContactSyncServiceTests
         _credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
         _storage = new SqliteStorage(_database, _credentialManager);
         _cardDavService = new CardDavServiceStub();
-        var provider = new CardDavContactProvider(_cardDavService, _credentialManager);
+        _provider = new CardDavContactProvider(_cardDavService, _credentialManager);
         _contactSyncService = new ContactSyncService(_storage, new System.Collections.Generic.Dictionary<AccountType, IContactProvider>
         {
-            [AccountType.CardDav] = provider
+            [AccountType.CardDav] = _provider
         });
     }
 
@@ -99,5 +100,71 @@ public class ContactSyncServiceTests
         Assert.That(contactDataRaw, Does.Contain("FN:Alice Example"));
         Assert.That(resourceUrl, Is.EqualTo($"{addressBookUrl}/contact-1.vcf"));
         Assert.That(etag, Is.EqualTo("\"etag-1\""));
+    }
+
+    [Test]
+    public async Task UpdateContactAsync_WithRelativeStoredResourceUrl_NormalizesToAbsoluteUrl()
+    {
+        var accountId = Guid.NewGuid().ToString();
+        const string addressBookUrl = "https://carddav.example.com/addressbooks/default";
+
+        await _storage.CreateAccountAsync(new AccountDbo
+        {
+            AccountId = accountId,
+            Name = "SOGO Contacts",
+            Type = AccountType.CardDav.ToString()
+        });
+
+        _credentialManager.StoreCardDavCredentials(accountId, new CardDavCredentials
+        {
+            Type = AccountType.CardDav.ToString(),
+            ServerUrl = "https://carddav.example.com",
+            Username = "user@example.com",
+            Password = "secret"
+        });
+
+        _cardDavService.RequireAbsoluteUpdateUrl = true;
+
+        var addressBook = new AddressBookDbo
+        {
+            AccountId = accountId,
+            AddressBookId = string.Empty,
+            ExternalId = addressBookUrl,
+            Name = "Default",
+            Enabled = 1,
+            LastSync = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+        await _storage.CreateOrUpdateAddressBookAsync(addressBook);
+
+        var contactId = await _storage.CreateOrUpdateContactAsync(new ContactDbo
+        {
+            AddressBookId = addressBook.AddressBookId,
+            ContactId = Guid.NewGuid().ToString(),
+            ExternalId = "contact-1",
+            DisplayName = "Alice Example",
+            GivenName = "Alice",
+            FamilyName = "Example",
+            PrimaryEmail = "alice@example.com",
+            ChangedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        });
+
+        await _storage.SetContactDataAsync(contactId, "rawData", "BEGIN:VCARD\nUID:contact-1\nFN:Alice Example\nEND:VCARD");
+        await _storage.SetContactDataAsync(contactId, "resourceUrl", "contact-1.vcf");
+        await _storage.SetContactDataAsync(contactId, "etag", "\"etag-1\"");
+
+        var hydratedContact = await _storage.GetHydratedContactByIdAsync(contactId);
+        Assert.That(hydratedContact, Is.Not.Null);
+
+        _provider.EnrichContact(hydratedContact!, key => _storage.GetContactDataAsync(contactId, key).GetAwaiter().GetResult());
+        hydratedContact.DisplayName = "Alice Example Updated";
+
+        var updatedContact = await _provider.UpdateContactAsync(hydratedContact);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(_cardDavService.LastUpdatedContact, Is.Not.Null);
+            Assert.That(_cardDavService.LastUpdatedContact!.Url, Is.EqualTo($"{addressBookUrl}/contact-1.vcf"));
+            Assert.That(updatedContact.Extensions.Get(ContactExtensions.ProviderResource), Is.EqualTo($"{addressBookUrl}/contact-1.vcf"));
+        });
     }
 }

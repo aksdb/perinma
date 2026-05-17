@@ -164,10 +164,12 @@ public class CardDavContactProvider : IContactProvider
         if (string.IsNullOrWhiteSpace(rawVCard))
             return false;
 
+        var normalizedResourceUrl = NormalizeResourceUrl(contact.Reference.AddressBook.ExternalId,
+            resourceUrl ?? contact.Extensions.Get(ContactExtensions.ProviderResource));
         var parsedContact = new CardDavContact
         {
             Uid = contact.Reference.ExternalId ?? Guid.NewGuid().ToString("N"),
-            Url = resourceUrl ?? contact.Extensions.Get(ContactExtensions.ProviderResource) ?? string.Empty,
+            Url = normalizedResourceUrl ?? string.Empty,
             DisplayName = contact.DisplayName,
             GivenName = contact.GivenName,
             FamilyName = contact.FamilyName,
@@ -213,10 +215,32 @@ public class CardDavContactProvider : IContactProvider
 
     private static CardDavContact BuildCardDavContact(Contact contact)
     {
-        return GetCardDavContact(contact) ?? new CardDavContact
+        var resourceUrl = NormalizeResourceUrl(
+            contact.Reference.AddressBook.ExternalId,
+            contact.Extensions.Get(ContactExtensions.ProviderResource));
+
+        if (GetCardDavContact(contact) is { } existingContact)
+        {
+            return new CardDavContact
+            {
+                Uid = existingContact.Uid,
+                Url = resourceUrl ?? existingContact.Url,
+                DisplayName = contact.DisplayName,
+                GivenName = contact.GivenName,
+                FamilyName = contact.FamilyName,
+                PrimaryEmail = contact.PrimaryEmail,
+                PrimaryPhone = contact.PrimaryPhone,
+                PhotoUrl = contact.PhotoUrl,
+                ETag = contact.Extensions.Get(ContactExtensions.ProviderETag) ?? existingContact.ETag,
+                RawVCard = existingContact.RawVCard,
+                Deleted = existingContact.Deleted
+            };
+        }
+
+        return new CardDavContact
         {
             Uid = contact.Reference.ExternalId ?? Guid.NewGuid().ToString("N"),
-            Url = contact.Extensions.Get(ContactExtensions.ProviderResource) ?? string.Empty,
+            Url = resourceUrl ?? string.Empty,
             DisplayName = contact.DisplayName,
             GivenName = contact.GivenName,
             FamilyName = contact.FamilyName,
@@ -229,6 +253,18 @@ public class CardDavContactProvider : IContactProvider
         };
     }
 
+    private static string? NormalizeResourceUrl(string? addressBookUrl, string? resourceUrl)
+    {
+        if (string.IsNullOrWhiteSpace(resourceUrl))
+            return resourceUrl;
+        if (Uri.IsWellFormedUriString(resourceUrl, UriKind.Absolute))
+            return resourceUrl;
+        if (string.IsNullOrWhiteSpace(addressBookUrl))
+            return resourceUrl;
+
+        var baseUrl = addressBookUrl.EndsWith('/') ? addressBookUrl : addressBookUrl + "/";
+        return new Uri(new Uri(baseUrl), resourceUrl).ToString();
+    }
     private static Dictionary<string, DataAttribute> BuildProviderData(CardDavContact contact)
     {
         var data = new Dictionary<string, DataAttribute>();

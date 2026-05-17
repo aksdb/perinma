@@ -373,10 +373,10 @@ public class CardDavService : ICardDavService
         response.EnsureSuccessStatusCode();
 
         var responseXml = await response.Content.ReadAsStringAsync(cancellationToken);
-        return ParseSyncCollectionResponse(responseXml);
+        return ParseSyncCollectionResponse(responseXml, addressBookUrl);
     }
 
-    private SyncCollectionResponse ParseSyncCollectionResponse(string xml)
+    private SyncCollectionResponse ParseSyncCollectionResponse(string xml, string addressBookUrl)
     {
         var doc = XDocument.Parse(xml);
         var xd = XNamespace.Get(DavNamespace);
@@ -413,7 +413,7 @@ public class CardDavService : ICardDavService
 
             items.Add(new SyncCollectionItem
             {
-                Href = href,
+                Href = NormalizeResourceUrl(addressBookUrl, href),
                 ETag = etag,
                 AddressData = addressData,
                 IsDeleted = isDeleted
@@ -508,6 +508,14 @@ public class CardDavService : ICardDavService
         return lastSegment ?? url;
     }
 
+    private static string NormalizeResourceUrl(string addressBookUrl, string resourceUrl)
+    {
+        if (Uri.IsWellFormedUriString(resourceUrl, UriKind.Absolute))
+            return resourceUrl;
+
+        var baseUrl = addressBookUrl.EndsWith('/') ? addressBookUrl : addressBookUrl + "/";
+        return new Uri(new Uri(baseUrl), resourceUrl).ToString();
+    }
     private static string BuildContactResourceUrl(string addressBookUrl, string uid)
     {
         var baseUrl = addressBookUrl.EndsWith('/') ? addressBookUrl : addressBookUrl + "/";
