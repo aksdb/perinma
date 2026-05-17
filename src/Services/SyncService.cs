@@ -116,8 +116,10 @@ public class SyncService
 
         try
         {
-            var accounts = (await _storage.GetAllAccountsAsync()).ToImmutableList();
-            Console.WriteLine($"Found {accounts.Count} accounts to sync");
+            var accounts = (await _storage.GetAllAccountsAsync())
+                .Where(account => _providers.ContainsKey(account.AccountTypeEnum))
+                .ToImmutableList();
+            Console.WriteLine($"Found {accounts.Count} calendar accounts to sync");
 
             for (int i = 0; i < accounts.Count; i++)
             {

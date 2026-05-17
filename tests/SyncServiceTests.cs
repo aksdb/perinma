@@ -1425,5 +1425,34 @@ public class SyncServiceTests : SyncTestBase
         Assert.That(relations.Any(), Is.False);
     }
 
+    [Test]
+    public async Task SyncAllAccountsAsync_IgnoresCardDavOnlyAccounts()
+    {
+        var googleAccount = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(googleAccount.AccountId);
+
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true, color: "#ff0000")
+        );
+
+        await Storage.CreateAccountAsync(new AccountDbo
+        {
+            AccountId = Guid.NewGuid().ToString(),
+            Name = "SOGO Contacts",
+            Type = AccountType.CardDav.ToString()
+        });
+
+        var result = await SyncService.SyncAllAccountsAsync();
+        var calendarCount = (await Storage.GetCalendarsByAccountAsync(googleAccount.AccountId)).Count();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(result.FailedAccounts, Is.EqualTo(0));
+            Assert.That(result.SyncedAccounts, Is.EqualTo(1));
+            Assert.That(calendarCount, Is.EqualTo(1));
+        });
+    }
+
     #endregion
 }
