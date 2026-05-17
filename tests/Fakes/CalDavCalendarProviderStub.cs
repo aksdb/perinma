@@ -47,7 +47,8 @@ public class CalDavCalendarProviderStub : ICalendarProvider
         return Task.FromResult(new EventSyncResult
         {
             Events = [],
-            SyncToken = null
+            SyncToken = null,
+            MissingEventsAreAuthoritative = string.IsNullOrEmpty(syncToken)
         });
     }
 

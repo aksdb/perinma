@@ -358,7 +358,8 @@ public class GoogleCalendarProvider(
         return new EventSyncResult
         {
             Events = events,
-            SyncToken = result.SyncToken
+            SyncToken = result.SyncToken,
+            MissingEventsAreAuthoritative = string.IsNullOrEmpty(syncToken)
         };
     }
 

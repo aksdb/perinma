@@ -382,7 +382,8 @@ public class CalDavCalendarProvider(
         return new EventSyncResult
         {
             Events = events,
-            SyncToken = result.SyncToken
+            SyncToken = result.SyncToken,
+            MissingEventsAreAuthoritative = string.IsNullOrEmpty(syncToken)
         };
     }
 

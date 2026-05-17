@@ -46,7 +46,7 @@ public class SyncService
         if (!_providers.TryGetValue(account.AccountTypeEnum, out var provider))
             throw new InvalidOperationException($"No provider found for account type {account.AccountTypeEnum}");
 
-        await SyncCalendarEventsAsync(provider, calendar, account.AccountTypeEnum, true, cancellationToken);
+        await SyncCalendarEventsAsync(provider, calendar, account.AccountTypeEnum, cancellationToken);
     }
 
     /// <summary>
@@ -193,7 +193,7 @@ public class SyncService
                         CalendarIndex = i,
                         TotalCalendars = enabledCalendars.Count
                     });
-                    await SyncCalendarEventsAsync(provider, calendar, account.AccountTypeEnum, false, cancellationToken);
+                    await SyncCalendarEventsAsync(provider, calendar, account.AccountTypeEnum, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -337,7 +337,6 @@ public class SyncService
         ICalendarProvider provider,
         CalendarDbo calendar,
         AccountType accountType,
-        bool emptyFullSyncIsAuthoritative = false,
         CancellationToken cancellationToken = default)
     {
         Console.WriteLine($"Syncing events for calendar: {calendar.Name}");
@@ -459,8 +458,8 @@ public class SyncService
         }
 
         // If this was a full sync, clean up events that weren't updated.
-        // Explicit refreshes treat an empty result as authoritative; background syncs stay conservative.
-        if (isFullSync && (result.Events.Count > 0 || emptyFullSyncIsAuthoritative))
+        // Only authoritative snapshots may remove events by absence.
+        if (isFullSync && result.MissingEventsAreAuthoritative)
         {
             var deletedCount = await _storage.DeleteEventsNotSyncedAsync(calendar.CalendarId, currentSyncTime);
             if (deletedCount > 0)
@@ -470,7 +469,7 @@ public class SyncService
         }
         else if (isFullSync && result.Events.Count == 0)
         {
-            Console.WriteLine($"Skipping event cleanup - no events returned from API (may be a permissions issue)");
+            Console.WriteLine($"Skipping event cleanup - provider did not mark this empty full sync as authoritative");
         }
 
         // Store the new sync token for the next incremental sync

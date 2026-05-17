@@ -941,6 +941,65 @@ public class SyncServiceTests : SyncTestBase
     }
 
     [Test]
+    public async Task FullSync_WithAuthoritativeEmptyEventSnapshot_DeletesExistingEvents()
+    {
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
+
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
+        );
+
+        var eventStart = DateTime.UtcNow.AddHours(1);
+        var eventEnd = DateTime.UtcNow.AddHours(2);
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateGoogleEventRaw("event1", "Team Meeting", eventStart, eventEnd)
+        );
+
+        await SyncService.SyncAllAccountsAsync();
+
+        var calendar = (await Storage.GetCalendarsByAccountAsync(account.AccountId)).First();
+        Assert.That((await Storage.GetEventsByCalendarAsync(calendar.CalendarId)).Count(), Is.EqualTo(1));
+
+        await Storage.SetCalendarDataAsync(calendar.CalendarId, "eventSyncToken", string.Empty);
+        GoogleServiceStub.SetRawEvents("cal1");
+
+        await SyncService.SyncAllAccountsAsync();
+
+        Assert.That(await Storage.GetEventsByCalendarAsync(calendar.CalendarId), Is.Empty);
+    }
+
+    [Test]
+    public async Task IncrementalSync_WithEmptyChangeSet_PreservesExistingEvents()
+    {
+        var account = await CreateGoogleAccountAsync();
+        StoreGoogleCredentials(account.AccountId);
+
+        GoogleServiceStub.SetRawCalendars(
+            TestDataHelpers.CreateGoogleCalendarRaw("cal1", "Work Calendar", selected: true)
+        );
+
+        var eventStart = DateTime.UtcNow.AddHours(1);
+        var eventEnd = DateTime.UtcNow.AddHours(2);
+        GoogleServiceStub.SetRawEvents("cal1",
+            TestDataHelpers.CreateGoogleEventRaw("event1", "Team Meeting", eventStart, eventEnd)
+        );
+
+        await SyncService.SyncAllAccountsAsync();
+
+        var calendar = (await Storage.GetCalendarsByAccountAsync(account.AccountId)).First();
+        Assert.That((await Storage.GetEventsByCalendarAsync(calendar.CalendarId)).Count(), Is.EqualTo(1));
+
+        GoogleServiceStub.SetRawEvents("cal1");
+
+        await SyncService.SyncAllAccountsAsync();
+
+        var eventsAfterSecondSync = (await Storage.GetEventsByCalendarAsync(calendar.CalendarId)).ToList();
+        Assert.That(eventsAfterSecondSync.Count, Is.EqualTo(1));
+        Assert.That(eventsAfterSecondSync[0].ExternalId, Is.EqualTo("event1"));
+    }
+
+    [Test]
     public async Task IncrementalSync_PreservesExistingEvents()
     {
         // Arrange

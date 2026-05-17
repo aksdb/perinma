@@ -244,6 +244,12 @@ public class EventSyncResult
     /// Sync token to use for the next incremental sync.
     /// </summary>
     public string? SyncToken { get; init; }
+
+    /// <summary>
+    /// Whether events omitted from this result should be treated as removed remotely.
+    /// This is true for authoritative full snapshots and false for incremental or partial views.
+    /// </summary>
+    public bool MissingEventsAreAuthoritative { get; init; }
 }
 
 /// <summary>
