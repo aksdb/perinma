@@ -155,7 +155,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         CalendarAgendaViewModel = new CalendarAgendaViewModel(calendarSource, _settingsService);
         CalendarNavigationBarViewModel = new CalendarNavigationBarViewModel();
         CalendarListViewModel = new CalendarListViewModel(_storage, calendarSource, _googleCalendarService, _credentialManager);
-        ContactsViewModel = new ContactsViewModel(_storage);
+        ContactsViewModel = new ContactsViewModel(_storage, _contactSyncService);
 
         CalendarWeekViewModel.PropertyChanged += (sender, args) =>
         {

@@ -155,6 +155,16 @@
                 <!-- Header with search -->
                 <StackPanel DockPanel.Dock="Top" Spacing="8">
                     <DockPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" DockPanel.Dock="Right">
+                            <Button Content="New"
+                                    Command="{Binding CreateContactCommand}"
+                                    Padding="10,4"
+                                    Classes="Accent" />
+                            <Button Content="Edit"
+                                    Command="{Binding EditSelectedContactCommand}"
+                                    IsEnabled="{Binding HasSelectedContact}"
+                                    Padding="10,4" />
+                        </StackPanel>
                         <TextBlock Text="Contacts"
                                    FontSize="16"
                                    FontWeight="Bold"
