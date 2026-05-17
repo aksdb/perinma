@@ -75,6 +75,7 @@ public class ContactSyncServiceTests
             GivenName = "Alice",
             FamilyName = "Example",
             PrimaryEmail = "alice@example.com",
+            ETag = "\"etag-1\"",
             RawVCard = "BEGIN:VCARD\nFN:Alice Example\nEND:VCARD"
         });
 
@@ -90,5 +91,13 @@ public class ContactSyncServiceTests
         Assert.That(contacts, Has.Count.EqualTo(1));
         Assert.That(contacts[0].ExternalId, Is.EqualTo("contact-1"));
         Assert.That(contacts[0].DisplayName, Is.EqualTo("Alice Example"));
+
+        var contactDataRaw = await _storage.GetContactDataAsync(contacts[0].ContactId, "rawData");
+        var resourceUrl = await _storage.GetContactDataAsync(contacts[0].ContactId, "resourceUrl");
+        var etag = await _storage.GetContactDataAsync(contacts[0].ContactId, "etag");
+
+        Assert.That(contactDataRaw, Does.Contain("FN:Alice Example"));
+        Assert.That(resourceUrl, Is.EqualTo($"{addressBookUrl}/contact-1.vcf"));
+        Assert.That(etag, Is.EqualTo("\"etag-1\""));
     }
 }

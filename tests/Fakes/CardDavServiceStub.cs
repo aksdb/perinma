@@ -55,6 +55,27 @@ public class CardDavServiceStub : ICardDavService
         });
     }
 
+    public Task<CardDavContact> CreateContactAsync(
+        CardDavCredentials credentials,
+        string addressBookUrl,
+        CardDavContact contact,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_contactsByAddressBook.ContainsKey(addressBookUrl))
+            _contactsByAddressBook[addressBookUrl] = new List<CardDavContact>();
+
+        _contactsByAddressBook[addressBookUrl].Add(contact);
+        return Task.FromResult(contact);
+    }
+
+    public Task<CardDavContact> UpdateContactAsync(
+        CardDavCredentials credentials,
+        CardDavContact contact,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(contact);
+    }
+
     public Task<bool> TestConnectionAsync(
         CardDavCredentials credentials,
         CancellationToken cancellationToken = default)
