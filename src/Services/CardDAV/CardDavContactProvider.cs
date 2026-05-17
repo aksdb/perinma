@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using perinma.Models;
 
 namespace perinma.Services.CardDAV;
 
@@ -13,7 +14,37 @@ public class CardDavContactProvider : IContactProvider
 {
     private readonly ICardDavService _cardDavService;
     private readonly CredentialManagerService _credentialManager;
+    private static readonly ModelExtension<CardDavContact> CardDavContactExtension = new();
 
+    public static bool TryEnrichContact(Contact contact, string? rawVCard, string? resourceUrl = null, string? etag = null)
+    {
+        if (string.IsNullOrWhiteSpace(rawVCard))
+            return false;
+
+        var parsedContact = new CardDavContact
+        {
+            Uid = contact.Reference.ExternalId ?? Guid.NewGuid().ToString("N"),
+            Url = resourceUrl ?? contact.Extensions.Get(ContactExtensions.ProviderResource) ?? string.Empty,
+            DisplayName = contact.DisplayName,
+            GivenName = contact.GivenName,
+            FamilyName = contact.FamilyName,
+            PrimaryEmail = contact.PrimaryEmail,
+            PrimaryPhone = contact.PrimaryPhone,
+            PhotoUrl = contact.PhotoUrl,
+            ETag = etag,
+            RawVCard = rawVCard,
+            Deleted = false
+        };
+
+        contact.Extensions.Set(CardDavContactExtension, parsedContact);
+        if (!string.IsNullOrWhiteSpace(parsedContact.Url))
+            contact.Extensions.Set(ContactExtensions.ProviderResource, parsedContact.Url);
+        if (!string.IsNullOrWhiteSpace(parsedContact.ETag))
+            contact.Extensions.Set(ContactExtensions.ProviderETag, parsedContact.ETag);
+        return true;
+    }
+
+    public static CardDavContact? GetCardDavContact(Contact contact) => contact.Extensions.Get(CardDavContactExtension);
     public CardDavContactProvider(
         ICardDavService cardDavService,
         CredentialManagerService credentialManager)
