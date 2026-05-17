@@ -467,14 +467,17 @@ public class GoogleCalendarProviderTests
                 Instant.FromUtc(2026, 5, 14, 0, 0),
                 Instant.FromUtc(2026, 6, 26, 0, 0)));
 
-        var startTimes = events.Select(e => e.StartTime).OrderBy(time => time).ToList();
+        var occurrenceStartTimes = events
+            .Select(e => e.Extensions.Get(CalendarEventExtensions.RecurrenceEdit)?.OriginalStartTime)
+            .ToList();
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(startTimes, Does.Contain(new LocalDateTime(2026, 5, 14, 9, 0)));
-            Assert.That(startTimes, Does.Contain(new LocalDateTime(2026, 6, 25, 9, 0)));
-            Assert.That(startTimes, Does.Not.Contain(new LocalDateTime(2026, 5, 28, 9, 0)));
-            Assert.That(startTimes, Does.Not.Contain(new LocalDateTime(2026, 6, 11, 9, 0)));
+            Assert.That(events, Has.Count.EqualTo(2));
+            Assert.That(occurrenceStartTimes, Does.Contain(Instant.FromUtc(2026, 5, 14, 7, 0)));
+            Assert.That(occurrenceStartTimes, Does.Contain(Instant.FromUtc(2026, 6, 25, 7, 0)));
+            Assert.That(occurrenceStartTimes, Does.Not.Contain(Instant.FromUtc(2026, 5, 28, 7, 0)));
+            Assert.That(occurrenceStartTimes, Does.Not.Contain(Instant.FromUtc(2026, 6, 11, 7, 0)));
         }
     }
 
