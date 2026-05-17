@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Collections;
@@ -26,6 +27,7 @@ public partial class AccountListViewModel : ViewModelBase
     private readonly ICalDavService _calDavService;
     private readonly ICardDavService _cardDavService;
     private readonly SyncService _syncService;
+    private readonly ContactSyncService _contactSyncService;
     private readonly Window _parentWindow;
     private AddAccountWindow? _addAccountWindow;
     private ReauthenticateAccountWindow? _reauthenticateWindow;
@@ -36,7 +38,7 @@ public partial class AccountListViewModel : ViewModelBase
     [ObservableProperty]
     private bool _canReauthenticate = true;
 
-    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService, SyncService syncService, Window parentWindow)
+    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService, SyncService syncService, ContactSyncService contactSyncService, Window parentWindow)
     {
         _storage = storage;
         _credentialManager = credentialManager;
@@ -44,6 +46,7 @@ public partial class AccountListViewModel : ViewModelBase
         _calDavService = calDavService;
         _cardDavService = cardDavService;
         _syncService = syncService;
+        _contactSyncService = contactSyncService;
         _parentWindow = parentWindow;
         _ = LoadAccountsAsync(); // Fire and forget initial load
     }
@@ -224,21 +227,39 @@ public partial class AccountListViewModel : ViewModelBase
         try
         {
             Console.WriteLine($"Force resyncing account: {account.Name}");
-            var result = await _syncService.ForceResyncAccountAsync(accountId.ToString());
+            bool success;
+            IReadOnlyList<string> errors;
 
-            if (result.Success)
+            if (_syncService.Providers.ContainsKey(account.Type))
+            {
+                var syncResult = await _syncService.ForceResyncAccountAsync(accountId.ToString());
+                success = syncResult.Success;
+                errors = syncResult.Errors;
+            }
+            else if (_contactSyncService.Providers.ContainsKey(account.Type))
+            {
+                var syncResult = await _contactSyncService.ForceResyncAccountAsync(accountId.ToString());
+                success = syncResult.Success;
+                errors = syncResult.Errors;
+            }
+            else
+            {
+                throw new InvalidOperationException($"No sync service registered for account type: {account.Type}");
+            }
+
+            if (success)
             {
                 Console.WriteLine($"Force resync completed for account: {account.Name}");
             }
             else
             {
                 Console.WriteLine($"Force resync failed for account: {account.Name}");
-                foreach (var error in result.Errors)
+                foreach (var error in errors)
                 {
                     Console.WriteLine($"  - {error}");
                 }
 
-                var errorDetails = string.Join("\n", result.Errors);
+                var errorDetails = string.Join("\n", errors);
                 await MessageBoxWindow.ShowAsync(
                     _parentWindow,
                     "Sync Failed",

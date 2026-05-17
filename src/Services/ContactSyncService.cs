@@ -92,6 +92,60 @@ public class ContactSyncService
     }
 
     /// <summary>
+    /// Forces a complete resync of a contact account by clearing all local contact data and sync tokens,
+    /// then performing a full sync from the remote server.
+    /// </summary>
+    public async Task<ContactSyncServiceResult> ForceResyncAccountAsync(string accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var result = new ContactSyncServiceResult();
+        WeakReferenceMessenger.Default.Send(new ContactSyncStartedMessage());
+
+        try
+        {
+            var account = await _storage.GetAccountByIdAsync(accountId);
+            if (account == null)
+            {
+                result.Success = false;
+                result.Errors.Add($"Account with id {accountId} not found");
+                return result;
+            }
+
+            Console.WriteLine($"Force contact resync requested for account: {account.Name}");
+
+            await _storage.ClearAccountContactSyncDataAsync(accountId);
+            Console.WriteLine($"Cleared all contact sync data for account: {account.Name}");
+
+            try
+            {
+                await SyncAccountAsync(account, cancellationToken);
+                result.SyncedAccounts++;
+                result.Success = true;
+                Console.WriteLine($"Force contact resync completed for account: {account.Name}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during force contact resync for account {account.Name}: {ex.Message}");
+                result.FailedAccounts++;
+                result.Errors.Add($"{account.Name}: {ex.Message}");
+                result.Success = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during force contact resync: {ex.Message}");
+            result.Success = false;
+            result.Errors.Add(ex.Message);
+        }
+        finally
+        {
+            WeakReferenceMessenger.Default.Send(new ContactSyncEndedMessage());
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Syncs a single account using the appropriate provider.
     /// </summary>
     private async Task SyncAccountAsync(

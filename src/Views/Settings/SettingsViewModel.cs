@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Microsoft.Extensions.DependencyInjection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -43,13 +44,15 @@ public partial class SettingsViewModel : ObservableRecipient,
     {
         _storage = storage;
         var settingsService = new SettingsService(_storage);
+        var contactSyncService = App.Services?.GetRequiredService<ContactSyncService>()
+            ?? throw new InvalidOperationException("ContactSyncService not available");
 
         // Define available settings pages
         Pages = new List<SettingsPage>
         {
             new SettingsPage { Name = "General", ViewModel = new GeneralSettingsViewModel(settingsService) },
             new SettingsPage { Name = "Calendar", ViewModel = new CalendarSettingsViewModel(settingsService) },
-            new SettingsPage { Name = "Accounts", ViewModel = new AccountListViewModel(_storage, credentialManager, oauthService, calDavService, cardDavService, syncService, parentWindow) }
+            new SettingsPage { Name = "Accounts", ViewModel = new AccountListViewModel(_storage, credentialManager, oauthService, calDavService, cardDavService, syncService, contactSyncService, parentWindow) }
         };
 
         // Select first page by default
