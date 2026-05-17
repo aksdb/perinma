@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Json;
 using Google.Apis.PeopleService.v1.Data;
-
+using perinma.Models;
 namespace perinma.Services.Google;
 
 /// <summary>
@@ -19,7 +19,33 @@ public class GoogleContactProvider(
     // Google uses a single virtual "address book" for all contacts
     private const string DefaultAddressBookExternalId = "people/me";
     private const string DefaultAddressBookName = "Contacts";
+    private static readonly ModelExtension<Person> GooglePersonExtension = new();
 
+    public static bool TryEnrichContact(Contact contact, string? rawData)
+    {
+        if (string.IsNullOrWhiteSpace(rawData))
+            return false;
+
+        var person = NewtonsoftJsonSerializer.Instance.Deserialize<Person>(rawData);
+        if (person == null)
+            return false;
+
+        contact.Extensions.Set(GooglePersonExtension, person);
+
+        var contactSource = GetContactSource(person);
+        if (!string.IsNullOrWhiteSpace(contactSource?.Etag))
+            contact.Extensions.Set(ContactExtensions.ProviderETag, contactSource.Etag);
+
+        if (!string.IsNullOrWhiteSpace(person.ResourceName))
+            contact.Extensions.Set(ContactExtensions.ProviderResource, person.ResourceName);
+
+        if (contactSource == null)
+            contact.Extensions.Set(ContactExtensions.IsReadOnly, true);
+
+        return true;
+    }
+
+    public static Person? GetGooglePerson(Contact contact) => contact.Extensions.Get(GooglePersonExtension);
     /// <inheritdoc/>
     public CredentialManagerService CredentialManager => credentialManager;
 
@@ -201,4 +227,7 @@ public class GoogleContactProvider(
             GroupExternalIds = groupIds
         };
     }
+
+    private static Source? GetContactSource(Person person) =>
+        person.Metadata?.Sources?.FirstOrDefault(source => string.Equals(source.Type, "CONTACT", StringComparison.OrdinalIgnoreCase));
 }

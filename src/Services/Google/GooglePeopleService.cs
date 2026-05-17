@@ -21,7 +21,7 @@ internal partial class GooglePeopleContext : JsonSerializerContext { }
 public class GooglePeopleService : IGooglePeopleService
 {
     // Fields to request from the People API
-    private const string PersonFields = "names,emailAddresses,phoneNumbers,addresses,photos,memberships";
+    private const string PersonFields = "metadata,names,emailAddresses,phoneNumbers,addresses,photos,memberships";
     private const string GroupFields = "name,groupType,memberCount";
 
     public sealed record CombinedSyncToken(string? Personal, string? Directory);
@@ -72,7 +72,7 @@ public class GooglePeopleService : IGooglePeopleService
                 ClientId = BuildSecrets.GoogleClientId,
                 ClientSecret = BuildSecrets.GoogleClientSecret,
             },
-            Scopes = [PeopleServiceService.Scope.ContactsReadonly]
+            Scopes = [PeopleServiceService.Scope.Contacts]
         });
 
         var credential = new UserCredential(flow, "user", tokenResponse);
@@ -321,6 +321,31 @@ public class GooglePeopleService : IGooglePeopleService
             Groups = allGroups,
             SyncToken = null // Contact groups don't support sync tokens
         };
+    }
+
+    public async Task<Person> CreateContactAsync(
+        PeopleServiceService service,
+        Person person,
+        CancellationToken cancellationToken = default)
+    {
+        var request = service.People.CreateContact(person);
+        request.PersonFields = PersonFields;
+        return await request.ExecuteAsync(cancellationToken);
+    }
+
+    public async Task<Person> UpdateContactAsync(
+        PeopleServiceService service,
+        Person person,
+        string updatePersonFields,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(person.ResourceName))
+            throw new InvalidOperationException("ResourceName is required to update a Google contact");
+
+        var request = service.People.UpdateContact(person, person.ResourceName);
+        request.UpdatePersonFields = updatePersonFields;
+        request.PersonFields = PersonFields;
+        return await request.ExecuteAsync(cancellationToken);
     }
 
     public class ContactSyncResult
