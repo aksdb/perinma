@@ -189,8 +189,8 @@ public class GoogleContactProvider(
         contact.Extensions.Set(GooglePersonExtension, person);
 
         var contactSource = GetContactSource(person);
-        if (!string.IsNullOrWhiteSpace(contactSource?.Etag))
-            contact.Extensions.Set(ContactExtensions.ProviderETag, contactSource.Etag);
+        if (!string.IsNullOrWhiteSpace(contactSource?.ETag))
+            contact.Extensions.Set(ContactExtensions.ProviderETag, contactSource.ETag);
 
         if (!string.IsNullOrWhiteSpace(person.ResourceName))
             contact.Extensions.Set(ContactExtensions.ProviderResource, person.ResourceName);
@@ -270,10 +270,8 @@ public class GoogleContactProvider(
                     {
                         Type = contactSource.Type,
                         Id = contactSource.Id,
-                        Etag = contactSource.Etag,
-                        UpdateTime = contactSource.UpdateTime,
-                        ProfileMetadata = contactSource.ProfileMetadata,
-                        SourcePrimary = contactSource.SourcePrimary
+                        ETag = contactSource.ETag,
+                        ProfileMetadata = contactSource.ProfileMetadata
                     }
                 ]
             };
@@ -312,8 +310,8 @@ public class GoogleContactProvider(
         var data = new Dictionary<string, DataAttribute>();
         if (!string.IsNullOrWhiteSpace(person.ResourceName))
             data[ContactResourceKey] = new DataAttribute.Text(person.ResourceName);
-        if (!string.IsNullOrWhiteSpace(contactSource?.Etag))
-            data[ContactEtagKey] = new DataAttribute.Text(contactSource.Etag);
+        if (!string.IsNullOrWhiteSpace(contactSource?.ETag))
+            data[ContactEtagKey] = new DataAttribute.Text(contactSource.ETag);
 
         return new ProviderContact
         {
