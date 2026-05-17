@@ -234,7 +234,8 @@ public partial class ContactsViewModel : ViewModelBase
             }, result);
 
             var savedContact = await provider.CreateContactAsync(result.AddressBook, contact);
-            await PersistContactAsync(savedContact);
+            var savedContactId = await PersistContactAsync(savedContact);
+            await RefreshAfterSaveAsync(savedContactId);
         }
         catch (Exception ex)
         {
@@ -289,7 +290,8 @@ public partial class ContactsViewModel : ViewModelBase
 
             ApplyEditResult(contact, result);
             var savedContact = await provider.UpdateContactAsync(contact);
-            await PersistContactAsync(savedContact);
+            var savedContactId = await PersistContactAsync(savedContact);
+            await RefreshAfterSaveAsync(savedContactId);
         }
         catch (Exception ex)
         {
@@ -342,7 +344,7 @@ public partial class ContactsViewModel : ViewModelBase
             .ToList();
     }
 
-    private async Task PersistContactAsync(Contact contact)
+    private async Task<string> PersistContactAsync(Contact contact)
     {
         var contactId = await _storage.CreateOrUpdateContactAsync(new Storage.Models.ContactDbo
         {
@@ -374,6 +376,17 @@ public partial class ContactsViewModel : ViewModelBase
         }
 
         await PersistProviderFieldAsync(contactId, contact.Reference.AddressBook.Account.Type, contact);
+        return contactId;
+    }
+
+    private async Task RefreshAfterSaveAsync(string contactId)
+    {
+        await LoadAddressBooksAsync();
+
+        var selected = FilteredContacts.FirstOrDefault(contact =>
+            contact.ContactId == Guid.Parse(contactId));
+        if (selected != null)
+            SelectedContact = selected;
     }
 
     private async Task PersistProviderFieldAsync(string contactId, AccountType accountType, Contact contact)
