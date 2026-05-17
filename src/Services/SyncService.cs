@@ -46,7 +46,7 @@ public class SyncService
         if (!_providers.TryGetValue(account.AccountTypeEnum, out var provider))
             throw new InvalidOperationException($"No provider found for account type {account.AccountTypeEnum}");
 
-        await SyncCalendarEventsAsync(provider, calendar, account.AccountTypeEnum, cancellationToken);
+        await SyncCalendarEventsAsync(provider, calendar, account.AccountTypeEnum, true, cancellationToken);
     }
 
     /// <summary>
@@ -193,7 +193,7 @@ public class SyncService
                         CalendarIndex = i,
                         TotalCalendars = enabledCalendars.Count
                     });
-                    await SyncCalendarEventsAsync(provider, calendar, account.AccountTypeEnum, cancellationToken);
+                    await SyncCalendarEventsAsync(provider, calendar, account.AccountTypeEnum, false, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -337,7 +337,8 @@ public class SyncService
         ICalendarProvider provider,
         CalendarDbo calendar,
         AccountType accountType,
-        CancellationToken cancellationToken)
+        bool emptyFullSyncIsAuthoritative = false,
+        CancellationToken cancellationToken = default)
     {
         Console.WriteLine($"Syncing events for calendar: {calendar.Name}");
 
@@ -365,8 +366,9 @@ public class SyncService
             Console.WriteLine($"Found {result.Events.Count} events in full sync for calendar {calendar.Name}");
         }
 
-        // Track the current sync timestamp for cleanup
-        var currentSyncTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        // Track the current sync timestamp for cleanup.
+        // Millisecond precision avoids same-second full-sync cleanups missing stale rows.
+        var currentSyncTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         // Use account type for reminders
         var reminderAccountType = accountType;
@@ -456,10 +458,9 @@ public class SyncService
                 cancellationToken);
         }
 
-        // If this was a full sync, clean up events that weren't updated
-        // Only delete if we actually synced some events - this prevents
-        // deleting all events if the API returns an empty list due to an error
-        if (isFullSync && result.Events.Count > 0)
+        // If this was a full sync, clean up events that weren't updated.
+        // Explicit refreshes treat an empty result as authoritative; background syncs stay conservative.
+        if (isFullSync && (result.Events.Count > 0 || emptyFullSyncIsAuthoritative))
         {
             var deletedCount = await _storage.DeleteEventsNotSyncedAsync(calendar.CalendarId, currentSyncTime);
             if (deletedCount > 0)

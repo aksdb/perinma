@@ -1,7 +1,10 @@
 using Dapper;
+using System.Linq;
 using NodaTime;
+using perinma.Models;
 using perinma.Services;
 using perinma.Services.CalDAV;
+using perinma.Storage;
 using perinma.Storage.Models;
 using tests.Fakes;
 using tests.Base;
@@ -546,6 +549,88 @@ public class SyncServiceTests : SyncTestBase
         Assert.That(endTimeUtc.Day, Is.EqualTo(10));
         Assert.That(endTimeUtc.Hour, Is.EqualTo(8));
         Assert.That(endTimeUtc.Minute, Is.EqualTo(30));
+    }
+
+    [Test]
+    public async Task DeletingRecurringSeries_AfterEditingOccurrence_ShouldNotLeaveVisibleOverride()
+    {
+        var account = await CreateCalDavAccountAsync();
+        StoreCalDavCredentials(account.AccountId);
+
+        const string calendarUrl = "https://caldav.example.com/calendars/work";
+        CalDavServiceStub.SetCalendars(new CalDavCalendar
+        {
+            Url = calendarUrl,
+            DisplayName = "Work Calendar",
+            Deleted = false,
+            PropfindXml = ""
+        });
+
+        await SyncService.SyncAllAccountsAsync();
+
+        var calendarDbo = (await Storage.GetCalendarsByAccountAsync(account.AccountId)).Single();
+        var calendarSource = new DatabaseCalendarSource(Storage, Providers);
+        var provider = Providers[AccountType.CalDav];
+
+        var createExtensions = new ModelExtensions();
+        createExtensions.Set(CalendarEventExtensions.RecurrenceInfo, new EventRecurrenceInfo
+        {
+            IsRecurring = true,
+            Rule = new EventRecurrenceRule
+            {
+                Frequency = RecurrenceFrequency.Weekly,
+                Count = 4,
+                ByDay = [IsoDayOfWeek.Wednesday]
+            },
+            Summary = "Every week on Wed, 4 times"
+        });
+
+        await provider.CreateEventAsync(
+            account.AccountId,
+            calendarUrl,
+            "Series Event",
+            createExtensions,
+            new LocalDateTime(2025, 1, 1, 9, 0),
+            new LocalDateTime(2025, 1, 1, 10, 0),
+            SendInvitesResult.SendToNone);
+
+        await SyncService.RefreshCalendarAsync(calendarDbo.CalendarId);
+
+        var seriesEvents = calendarSource.GetCalendarEvents(new Interval(
+            Instant.FromUtc(2025, 1, 1, 0, 0),
+            Instant.FromUtc(2025, 2, 1, 0, 0)));
+        var secondOccurrence = seriesEvents
+            .Single(e => e.StartTime == new LocalDateTime(2025, 1, 8, 9, 0));
+
+        var updatedOccurrence = new CalendarEvent
+        {
+            Reference = secondOccurrence.Reference,
+            StartTime = new LocalDateTime(2025, 1, 8, 13, 0),
+            EndTime = new LocalDateTime(2025, 1, 8, 14, 0),
+            Title = "Moved Event",
+            Extensions = secondOccurrence.Extensions
+        };
+        await provider.UpdateEventAsync(updatedOccurrence, EventEditScope.Occurrence, SendInvitesResult.SendToNone);
+
+        await SyncService.RefreshCalendarAsync(calendarDbo.CalendarId);
+
+        var eventsAfterOverride = calendarSource.GetCalendarEvents(new Interval(
+            Instant.FromUtc(2025, 1, 1, 0, 0),
+            Instant.FromUtc(2025, 2, 1, 0, 0)));
+        var overrideOccurrence = eventsAfterOverride.Single(e => e.Title == "Moved Event");
+
+        await provider.DeleteEventAsync(overrideOccurrence, EventDeleteAction.Series);
+
+        Assert.That(CalDavServiceStub.GetEvents(calendarUrl), Is.Empty,
+            "Deleting the series should remove the remote CalDAV resource.");
+
+        await SyncService.RefreshCalendarAsync(calendarDbo.CalendarId);
+
+        var visibleEvents = calendarSource.GetCalendarEvents(new Interval(
+            Instant.FromUtc(2025, 1, 1, 0, 0),
+            Instant.FromUtc(2025, 2, 1, 0, 0)));
+
+        Assert.That(visibleEvents, Is.Empty, "Deleting the series should not leave an orphaned override visible.");
     }
 
     [Test]

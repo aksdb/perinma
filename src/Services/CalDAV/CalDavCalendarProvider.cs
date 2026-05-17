@@ -14,6 +14,7 @@ using perinma.Models;
 using perinma.Utils;
 using perinma.Storage;
 using perinma.Services;
+using perinma.Storage.Models;
 using Calendar = Ical.Net.Calendar;
 using Duration = NodaTime.Duration;
 using ICalEvent = Ical.Net.CalendarComponents.CalendarEvent;
@@ -98,8 +99,9 @@ public class CalDavCalendarProvider(
         foreach (var group in eventsByUid)
         {
             var baseEvent = group.FirstOrDefault(evt => evt.RecurrenceIdentifier == null && evt.RecurrenceRules.Count > 0)
-                ?? group.FirstOrDefault(evt => evt.RecurrenceIdentifier == null)
-                ?? group.First();
+                ?? group.FirstOrDefault(evt => evt.RecurrenceIdentifier == null);
+            if (baseEvent == null)
+                continue;
 
             var overridesByStart = group
                 .Where(evt => evt.RecurrenceIdentifier != null)
@@ -769,7 +771,26 @@ public class CalDavCalendarProvider(
             throw new InvalidOperationException($"No CalDAV credentials found for account {accountId}");
         }
 
-        if (action is EventDeleteAction.Event or EventDeleteAction.Series)
+        if (action == EventDeleteAction.Series)
+        {
+            var sourceEvent = calendarEvent.Extensions.Get(ICalEventExtension);
+            var eventUrls = await GetSeriesEventUrlsAsync(
+                calDavService,
+                calDavCredentials,
+                calendarEvent.Reference.Calendar.ExternalId,
+                ResolveEventUrl(calendarEvent.Reference.Calendar.ExternalId, calendarEvent.Reference.ExternalId),
+                sourceEvent?.Uid,
+                cancellationToken);
+
+            foreach (var eventUrl in eventUrls)
+            {
+                await calDavService.DeleteEventAsync(calDavCredentials, eventUrl, cancellationToken);
+            }
+
+            return;
+        }
+
+        if (action == EventDeleteAction.Event)
         {
             await calDavService.DeleteEventAsync(
                 calDavCredentials,
@@ -813,6 +834,30 @@ public class CalDavCalendarProvider(
             ResolveEventUrl(calendarEvent.Reference.Calendar.ExternalId, calendarEvent.Reference.ExternalId),
             workingCalendar,
             cancellationToken);
+    }
+
+    private static async Task<IReadOnlyList<string>> GetSeriesEventUrlsAsync(
+        ICalDavService calDavService,
+        CalDavCredentials calDavCredentials,
+        string? calendarExternalId,
+        string primaryEventUrl,
+        string? uid,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(calendarExternalId) || string.IsNullOrWhiteSpace(uid))
+            return [primaryEventUrl];
+
+        var result = await calDavService.GetEventsAsync(calDavCredentials, calendarExternalId, null, cancellationToken);
+        var eventUrls = result.Events
+            .Where(evt => evt.Uid == uid && !string.IsNullOrWhiteSpace(evt.Url))
+            .Select(evt => evt.Url)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (!eventUrls.Contains(primaryEventUrl, StringComparer.Ordinal))
+            eventUrls.Add(primaryEventUrl);
+
+        return eventUrls;
     }
 
     private static void ApplyEditableValues(CalendarEvent calendarEvent, ICalEvent iCalEvent, bool applyRecurrence)

@@ -929,6 +929,109 @@ public class CalDavCalendarProviderTests
         }
     }
 
+    [Test]
+    public void ParseCalendarEvents_OrphanedOverride_DoesNotSurfaceVisibleEvent()
+    {
+        const string rawEventData = """
+            BEGIN:VCALENDAR
+            VERSION:2.0
+            BEGIN:VEVENT
+            UID:series-uid
+            RECURRENCE-ID:20250102T100000Z
+            SUMMARY:Moved Event
+            DTSTART:20250102T130000Z
+            DTEND:20250102T140000Z
+            END:VEVENT
+            END:VCALENDAR
+            """;
+
+        var events = _provider.ParseCalendarEvents(
+            [MakeCalDavRawEvent("series-uid", rawEventData)],
+            new Interval(Instant.FromUtc(2025, 1, 1, 0, 0), Instant.FromUtc(2025, 1, 4, 0, 0)));
+
+        Assert.That(events, Is.Empty);
+    }
+
+    [Test]
+    public async Task DeleteEventAsync_Series_DeletesSiblingOverrideResourcesWithSameUid()
+    {
+        const string calendarUrl = "https://caldav.example.com/calendars/work";
+        const string masterUrl = "https://caldav.example.com/calendars/work/series.ics";
+        const string overrideUrl = "https://caldav.example.com/calendars/work/series-occurrence.ics";
+        const string uid = "series-uid";
+        const string masterRawEventData = """
+            BEGIN:VCALENDAR
+            VERSION:2.0
+            BEGIN:VEVENT
+            UID:series-uid
+            SUMMARY:Series Event
+            DTSTART:20250101T100000Z
+            DTEND:20250101T110000Z
+            RRULE:FREQ=DAILY;COUNT=3
+            END:VEVENT
+            END:VCALENDAR
+            """;
+        const string overrideRawEventData = """
+            BEGIN:VCALENDAR
+            VERSION:2.0
+            BEGIN:VEVENT
+            UID:series-uid
+            RECURRENCE-ID:20250102T100000Z
+            SUMMARY:Moved Event
+            DTSTART:20250102T130000Z
+            DTEND:20250102T140000Z
+            END:VEVENT
+            END:VCALENDAR
+            """;
+
+        _serviceStub.SetEvents(calendarUrl,
+            new CalDavEvent
+            {
+                Uid = uid,
+                Url = masterUrl,
+                Summary = "Series Event",
+                StartTime = new DateTime(2025, 1, 1, 10, 0, 0, DateTimeKind.Utc),
+                EndTime = new DateTime(2025, 1, 1, 11, 0, 0, DateTimeKind.Utc),
+                Status = "CONFIRMED",
+                RawICalendar = masterRawEventData,
+                Deleted = false
+            },
+            new CalDavEvent
+            {
+                Uid = uid,
+                Url = overrideUrl,
+                Summary = "Moved Event",
+                StartTime = new DateTime(2025, 1, 2, 13, 0, 0, DateTimeKind.Utc),
+                EndTime = new DateTime(2025, 1, 2, 14, 0, 0, DateTimeKind.Utc),
+                Status = "CONFIRMED",
+                RawICalendar = overrideRawEventData,
+                Deleted = false
+            });
+
+        var overrideEvent = _provider.ParseEventForEdit(new RawEvent
+        {
+            RawData = overrideRawEventData,
+            Reference = new EventReference
+            {
+                Calendar = new perinma.Models.Calendar
+                {
+                    Account = new Account { Id = Guid.Parse(_accountId), Name = "Test", Type = AccountType.CalDav },
+                    Id = Guid.NewGuid(), ExternalId = calendarUrl, Name = "Test Calendar"
+                },
+                Id = Guid.NewGuid(),
+                ExternalId = overrideUrl
+            }
+        });
+
+        await _provider.DeleteEventAsync(overrideEvent, EventDeleteAction.Series);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(_serviceStub.GetDeletedEventUrls(), Is.EquivalentTo(new[] { masterUrl, overrideUrl }));
+            Assert.That(_serviceStub.GetEvents(calendarUrl), Is.Empty);
+        });
+    }
+
 
     [Test]
     public async Task CreateEventAsync_WithRecurrence_SetsCalDavRule()
