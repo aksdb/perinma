@@ -1224,6 +1224,17 @@ public class SqliteStorage : IDisposable
         return rowsAffected;
     }
 
+    public async Task<bool> DeleteContactAsync(string contactId)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            "DELETE FROM contact WHERE contact_id = @ContactId",
+            new { ContactId = contactId },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
+    }
+
     public async Task<bool> SetContactDataAsync(string contactId, string key, string value)
     {
         var rowsAffected = await _connection.ExecuteAsync(

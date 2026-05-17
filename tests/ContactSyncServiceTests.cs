@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CredentialStore;
 using NUnit.Framework;
@@ -167,4 +169,182 @@ public class ContactSyncServiceTests
             Assert.That(updatedContact.Extensions.Get(ContactExtensions.ProviderResource), Is.EqualTo($"{addressBookUrl}/contact-1.vcf"));
         });
     }
+
+    [Test]
+    public async Task SyncAllAccountsAsync_DeletesIncrementalRemovedGoogleContacts()
+    {
+        const string accountId = "google-account";
+        const string addressBookExternalId = "people/me";
+        const string contactExternalId = "people/c123";
+
+        var provider = new FakeContactProvider(
+            new ContactSyncResult
+            {
+                Contacts =
+                [
+                    new ProviderContact
+                    {
+                        ExternalId = contactExternalId,
+                        DisplayName = "Alice Example",
+                        Deleted = true
+                    }
+                ],
+                SyncToken = "next-sync-token"
+            });
+        var service = new ContactSyncService(_storage, new Dictionary<AccountType, IContactProvider>
+        {
+            [AccountType.Google] = provider
+        });
+
+        await _storage.CreateAccountAsync(new AccountDbo
+        {
+            AccountId = accountId,
+            Name = "Google Contacts",
+            Type = AccountType.Google.ToString()
+        });
+
+        var addressBook = new AddressBookDbo
+        {
+            AccountId = accountId,
+            AddressBookId = string.Empty,
+            ExternalId = addressBookExternalId,
+            Name = "Contacts",
+            Enabled = 1,
+            LastSync = DateTimeOffset.UtcNow.AddMinutes(-10).ToUnixTimeSeconds()
+        };
+        await _storage.CreateOrUpdateAddressBookAsync(addressBook);
+        await _storage.SetAddressBookDataAsync(addressBook.AddressBookId, "contactSyncToken", "previous-token");
+
+        await _storage.CreateOrUpdateContactAsync(new ContactDbo
+        {
+            AddressBookId = addressBook.AddressBookId,
+            ContactId = Guid.NewGuid().ToString(),
+            ExternalId = contactExternalId,
+            DisplayName = "Alice Example",
+            ChangedAt = DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeSeconds()
+        });
+
+        var result = await service.SyncAllAccountsAsync();
+        var remainingContacts = await _storage.GetContactsByAddressBookAsync(addressBook.AddressBookId);
+        var syncToken = await _storage.GetAddressBookDataAsync(addressBook.AddressBookId, "contactSyncToken");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(remainingContacts, Is.Empty);
+            Assert.That(syncToken, Is.EqualTo("next-sync-token"));
+        });
+    }
+
+    [Test]
+    public async Task ForceResyncAccountAsync_WhenGoogleReturnsNoContacts_ClearsStaleCache()
+    {
+        const string accountId = "google-account";
+        const string addressBookExternalId = "people/me";
+
+        var provider = new FakeContactProvider(
+            new ContactSyncResult
+            {
+                Contacts = [],
+                SyncToken = "full-sync-token"
+            });
+        var service = new ContactSyncService(_storage, new Dictionary<AccountType, IContactProvider>
+        {
+            [AccountType.Google] = provider
+        });
+
+        await _storage.CreateAccountAsync(new AccountDbo
+        {
+            AccountId = accountId,
+            Name = "Google Contacts",
+            Type = AccountType.Google.ToString()
+        });
+
+        var addressBook = new AddressBookDbo
+        {
+            AccountId = accountId,
+            AddressBookId = string.Empty,
+            ExternalId = addressBookExternalId,
+            Name = "Contacts",
+            Enabled = 1,
+            LastSync = DateTimeOffset.UtcNow.AddMinutes(-10).ToUnixTimeSeconds()
+        };
+        await _storage.CreateOrUpdateAddressBookAsync(addressBook);
+
+        await _storage.CreateOrUpdateContactAsync(new ContactDbo
+        {
+            AddressBookId = addressBook.AddressBookId,
+            ContactId = Guid.NewGuid().ToString(),
+            ExternalId = "people/c123",
+            DisplayName = "Alice Example",
+            ChangedAt = DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeSeconds()
+        });
+
+        var result = await service.ForceResyncAccountAsync(accountId);
+        var syncedAddressBook = (await _storage.GetAddressBooksByAccountAsync(accountId)).Single();
+        var remainingContacts = await _storage.GetContactsByAddressBookAsync(syncedAddressBook.AddressBookId);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Success, Is.True);
+            Assert.That(remainingContacts, Is.Empty);
+            Assert.That(provider.ContactsCallCount, Is.EqualTo(1));
+        });
+    }
+}
+
+internal sealed class FakeContactProvider(ContactSyncResult contactSyncResult) : IContactProvider
+{
+    public int ContactsCallCount { get; private set; }
+    public CredentialManagerService CredentialManager { get; } = new(new InMemoryCredentialStore());
+
+    public Task<AddressBookSyncResult> GetAddressBooksAsync(string accountId, string? syncToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(new AddressBookSyncResult
+        {
+            AddressBooks =
+            [
+                new ProviderAddressBook
+                {
+                    ExternalId = "people/me",
+                    Name = "Contacts",
+                    Deleted = false
+                }
+            ],
+            SyncToken = null
+        });
+    }
+
+    public Task<ContactSyncResult> GetContactsAsync(string accountId, string addressBookExternalId, string? syncToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        ContactsCallCount++;
+        return Task.FromResult(contactSyncResult);
+    }
+
+    public Task<ContactGroupSyncResult> GetContactGroupsAsync(string accountId, string? syncToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(new ContactGroupSyncResult
+        {
+            Groups = [],
+            SyncToken = null
+        });
+    }
+
+    public void EnrichContact(Contact contact, Func<string, string?> getData)
+    {
+    }
+
+    public Task<Contact> CreateContactAsync(AddressBook addressBook, Contact contact,
+        CancellationToken cancellationToken = default) => Task.FromResult(contact);
+
+    public Task<Contact> UpdateContactAsync(Contact contact, CancellationToken cancellationToken = default) =>
+        Task.FromResult(contact);
+
+    public IList<object> GetSupportedExtensions() => [];
+
+    public Task<bool> TestConnectionAsync(string accountId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(true);
 }
