@@ -29,6 +29,8 @@ public class GoogleCalendarProvider(
 {
     private readonly IClock _clock = clock ?? SystemClock.Instance;
     private static ModelExtension<GoogleEvent> GoogleEventExtension = new();
+    
+    private const string EventStatusCancelled = "cancelled";
 
     /// <inheritdoc/>
     public List<CalendarEvent> ParseCalendarEvents(List<RawEvent> rawEvents, Interval timeRange) =>
@@ -46,7 +48,7 @@ public class GoogleCalendarProvider(
     {
         var googleEvents = rawEvents
             .Select(e => (e.Reference, Event: NewtonsoftJsonSerializer.Instance.Deserialize<Event>(e.RawData)))
-            .Where(t => t.Event != null && t.Event.Status != "cancelled")
+            .Where(t => t.Event != null)
             .ToList();
 
         var overrides = googleEvents
@@ -54,7 +56,7 @@ public class GoogleCalendarProvider(
             .ToList();
 
         return googleEvents
-            .Where(t => string.IsNullOrEmpty(t.Event.RecurringEventId))
+            .Where(t => t.Event.Status != EventStatusCancelled && string.IsNullOrEmpty(t.Event.RecurringEventId))
             .SelectMany(t =>
             {
                 if (t.Event.Recurrence is { Count: > 0 })
@@ -68,7 +70,9 @@ public class GoogleCalendarProvider(
 
                 return [MapToCalendarEvent(t.Reference, t.Event, null)];
             })
-            .Concat(overrides.Select(ov => MapToCalendarEvent(ov.Reference, ov.Event, null)))
+            .Concat(overrides
+                .Where(ov => ov.Event.Status != EventStatusCancelled)
+                .Select(ov => MapToCalendarEvent(ov.Reference, ov.Event, null)))
             .Where(ce => ce.StartTime.ToInstant() <= timeRange.End && ce.EndTime.ToInstant() >= timeRange.Start)
             .ToList();
     }
@@ -389,7 +393,7 @@ public class GoogleCalendarProvider(
         var isOverride = !string.IsNullOrEmpty(evt.RecurringEventId);
 
         // For non-override cancelled events, mark as deleted
-        if (!isOverride && evt.Status == "cancelled")
+        if (!isOverride && evt.Status == EventStatusCancelled)
         {
             return new ProviderEvent
             {
@@ -414,7 +418,7 @@ public class GoogleCalendarProvider(
             // Parse OriginalStartTime (when override replaces)
             originalStartTime = ParseGoogleDateTime(evt.OriginalStartTime);
 
-            if (evt.Status == "cancelled")
+            if (evt.Status == EventStatusCancelled)
             {
                 // Cancelled override - use OriginalStartTime
                 startTime = originalStartTime;
@@ -623,7 +627,7 @@ public class GoogleCalendarProvider(
 
                     if (overrideEvent != null)
                     {
-                        if (overrideEvent.Status == "cancelled")
+                        if (overrideEvent.Status == EventStatusCancelled)
                         {
                             continue; // This occurrence is cancelled, skip it
                         }
@@ -904,7 +908,7 @@ public class GoogleCalendarProvider(
             {
                 var occurrence = await ResolveGoogleOccurrenceAsync(service, calendarId, calendarEvent, recurrenceEdit,
                     cancellationToken);
-                occurrence.Status = "cancelled";
+                occurrence.Status = EventStatusCancelled;
                 await googleCalendarService.UpdateEventAsync(service, calendarId, occurrence.Id, occurrence,
                     SendInvitesResult.SendToNone, cancellationToken);
                 return;
