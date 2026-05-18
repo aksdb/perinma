@@ -28,7 +28,7 @@ public class GoogleCalendarProvider(
     : ICalendarProvider
 {
     private readonly IClock _clock = clock ?? SystemClock.Instance;
-    private static ModelExtension<GoogleEvent> GoogleEventExtension = new();
+    private static readonly ModelExtension<GoogleEvent> GoogleEventExtension = new();
     
     private const string EventStatusCancelled = "cancelled";
 

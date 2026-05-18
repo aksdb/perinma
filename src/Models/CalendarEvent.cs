@@ -157,21 +157,21 @@ public record Participation
 
 public static class CalendarEventExtensions
 {
-    public static ModelExtension<bool> FullDay = new();
-    public static ModelExtension<string> TimeZone = new();
-    public static ModelExtension<RichText> Description = new();
-    public static ModelExtension<string> Location = new();
-    public static ModelExtension<List<CalendarEventParticipant>> Participants = new();
-    public static ModelExtension<List<CalendarEventAttachment>> Attachments = new();
-    public static ModelExtension<CalendarEventConference> Conference = new();
-    public static ModelExtension<Participation> Participation = new();
-    public static ModelExtension<int> ReminderMinutesBefore = new();
+    public static readonly ModelExtension<bool> FullDay = new();
+    public static readonly ModelExtension<string> TimeZone = new();
+    public static readonly ModelExtension<RichText> Description = new();
+    public static readonly ModelExtension<string> Location = new();
+    public static readonly ModelExtension<List<CalendarEventParticipant>> Participants = new();
+    public static readonly ModelExtension<List<CalendarEventAttachment>> Attachments = new();
+    public static readonly ModelExtension<CalendarEventConference> Conference = new();
+    public static readonly ModelExtension<Participation> Participation = new();
+    public static readonly ModelExtension<int> ReminderMinutesBefore = new();
     /// <summary>
     /// True when the event is transparent (free) and should not block the organizer's time.
     /// Absent (default false) means blocking — the safe fallback for providers that do not set it.
     /// </summary>
-    public static ModelExtension<bool> NonBlocking = new();
-    public static ModelExtension<RecurrenceEditInfo> RecurrenceEdit = new();
-    public static ModelExtension<EventRecurrenceInfo> RecurrenceInfo = new();
+    public static readonly ModelExtension<bool> NonBlocking = new();
+    public static readonly ModelExtension<RecurrenceEditInfo> RecurrenceEdit = new();
+    public static readonly ModelExtension<EventRecurrenceInfo> RecurrenceInfo = new();
 }
 

@@ -24,8 +24,7 @@ public class Contact
 
 public static class ContactExtensions
 {
-    public static ModelExtension<object> ProviderNative = new();
-    public static ModelExtension<string> ProviderResource = new();
-    public static ModelExtension<string> ProviderETag = new();
-    public static ModelExtension<bool> IsReadOnly = new();
+    public static readonly ModelExtension<string> ProviderResource = new();
+    public static readonly ModelExtension<string> ProviderETag = new();
+    public static readonly ModelExtension<bool> IsReadOnly = new();
 }

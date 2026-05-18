@@ -22,5 +22,5 @@ public static class CalendarExtensions
     /// the organizer's time in free/busy calculations.
     /// Absent (default false) = owned/writable — the safe fallback.
     /// </summary>
-    public static ModelExtension<bool> IsReadOnly = new();
+    public static readonly ModelExtension<bool> IsReadOnly = new();
 }

@@ -32,8 +32,8 @@ public class CalDavCalendarProvider(
     SqliteStorage? storage = null)
     : ICalendarProvider
 {
-    private static ModelExtension<ICalEvent> ICalEventExtension = new();
-    private static ModelExtension<Calendar> ICalCalendarExtension = new();
+    private static readonly ModelExtension<ICalEvent> ICalEventExtension = new();
+    private static readonly ModelExtension<Calendar> ICalCalendarExtension = new();
 
     /// <inheritdoc/>
     public void EnrichCalendar(perinma.Models.Calendar calendar, Func<string, string?> getData)

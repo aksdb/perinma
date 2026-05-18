@@ -16,6 +16,7 @@ public class CardDavContactProvider : IContactProvider
     private const string ContactEtagKey = "etag";
     private readonly ICardDavService _cardDavService;
     private readonly CredentialManagerService _credentialManager;
+    
     private static readonly ModelExtension<CardDavContact> CardDavContactExtension = new();
 
     public CardDavContactProvider(
