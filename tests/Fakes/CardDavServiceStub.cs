@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +11,8 @@ public class CardDavServiceStub : ICardDavService
 {
     private readonly List<CardDavAddressBook> _addressBooks = new();
     private readonly Dictionary<string, List<CardDavContact>> _contactsByAddressBook = new();
+    public CardDavContact? LastUpdatedContact { get; private set; }
+    public bool RequireAbsoluteUpdateUrl { get; set; }
 
     public void SetAddressBooks(params CardDavAddressBook[] addressBooks)
     {
@@ -53,6 +56,31 @@ public class CardDavServiceStub : ICardDavService
             Contacts = contacts,
             SyncToken = null
         });
+    }
+
+    public Task<CardDavContact> CreateContactAsync(
+        CardDavCredentials credentials,
+        string addressBookUrl,
+        CardDavContact contact,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_contactsByAddressBook.ContainsKey(addressBookUrl))
+            _contactsByAddressBook[addressBookUrl] = new List<CardDavContact>();
+
+        _contactsByAddressBook[addressBookUrl].Add(contact);
+        return Task.FromResult(contact);
+    }
+
+    public Task<CardDavContact> UpdateContactAsync(
+        CardDavCredentials credentials,
+        CardDavContact contact,
+        CancellationToken cancellationToken = default)
+    {
+        if (RequireAbsoluteUpdateUrl && !Uri.IsWellFormedUriString(contact.Url, UriKind.Absolute))
+            throw new InvalidOperationException("an invalid url was provided");
+
+        LastUpdatedContact = contact;
+        return Task.FromResult(contact);
     }
 
     public Task<bool> TestConnectionAsync(

@@ -18,6 +18,17 @@ public interface ICardDavService
         string? syncToken = null,
         CancellationToken cancellationToken = default);
 
+    Task<CardDavContact> CreateContactAsync(
+        CardDavCredentials credentials,
+        string addressBookUrl,
+        CardDavContact contact,
+        CancellationToken cancellationToken = default);
+
+    Task<CardDavContact> UpdateContactAsync(
+        CardDavCredentials credentials,
+        CardDavContact contact,
+        CancellationToken cancellationToken = default);
+
     Task<bool> TestConnectionAsync(
         CardDavCredentials credentials,
         CancellationToken cancellationToken = default);

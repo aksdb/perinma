@@ -98,6 +98,70 @@ public class CardDavService : ICardDavService
         };
     }
 
+    public async Task<CardDavContact> CreateContactAsync(
+        CardDavCredentials credentials,
+        string addressBookUrl,
+        CardDavContact contact,
+        CancellationToken cancellationToken = default)
+    {
+        using var client = CreateClient(credentials);
+
+        var uid = string.IsNullOrWhiteSpace(contact.Uid) ? Guid.NewGuid().ToString("N") : contact.Uid;
+        var resourceUrl = BuildContactResourceUrl(addressBookUrl, uid);
+        var vCard = BuildVCard(new CardDavContact
+        {
+            Uid = uid,
+            Url = resourceUrl,
+            DisplayName = contact.DisplayName,
+            GivenName = contact.GivenName,
+            FamilyName = contact.FamilyName,
+            PrimaryEmail = contact.PrimaryEmail,
+            PrimaryPhone = contact.PrimaryPhone,
+            PhotoUrl = contact.PhotoUrl,
+            ETag = contact.ETag,
+            RawVCard = contact.RawVCard,
+            Deleted = false
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Put, resourceUrl)
+        {
+            Content = new StringContent(vCard, Encoding.UTF8, "text/vcard")
+        };
+        request.Headers.TryAddWithoutValidation("If-None-Match", "*");
+
+        using var response = await client.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return ParseVCard(resourceUrl, vCard, response.Headers.ETag?.Tag)
+               ?? throw new InvalidOperationException("Failed to parse created CardDAV contact");
+    }
+
+    public async Task<CardDavContact> UpdateContactAsync(
+        CardDavCredentials credentials,
+        CardDavContact contact,
+        CancellationToken cancellationToken = default)
+    {
+        using var client = CreateClient(credentials);
+
+        if (string.IsNullOrWhiteSpace(contact.Url))
+            throw new InvalidOperationException("CardDAV contact URL is required for updates");
+
+        var vCard = BuildVCard(contact);
+        using var request = new HttpRequestMessage(HttpMethod.Put, contact.Url)
+        {
+            Content = new StringContent(vCard, Encoding.UTF8, "text/vcard")
+        };
+
+        if (!string.IsNullOrWhiteSpace(contact.ETag))
+            request.Headers.TryAddWithoutValidation("If-Match", contact.ETag);
+
+        using var response = await client.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return ParseVCard(contact.Url, vCard, response.Headers.ETag?.Tag ?? contact.ETag)
+               ?? throw new InvalidOperationException("Failed to parse updated CardDAV contact");
+    }
+
     public async Task<bool> TestConnectionAsync(
         CardDavCredentials credentials,
         CancellationToken cancellationToken = default)
@@ -309,10 +373,10 @@ public class CardDavService : ICardDavService
         response.EnsureSuccessStatusCode();
 
         var responseXml = await response.Content.ReadAsStringAsync(cancellationToken);
-        return ParseSyncCollectionResponse(responseXml);
+        return ParseSyncCollectionResponse(responseXml, addressBookUrl);
     }
 
-    private SyncCollectionResponse ParseSyncCollectionResponse(string xml)
+    private SyncCollectionResponse ParseSyncCollectionResponse(string xml, string addressBookUrl)
     {
         var doc = XDocument.Parse(xml);
         var xd = XNamespace.Get(DavNamespace);
@@ -349,7 +413,7 @@ public class CardDavService : ICardDavService
 
             items.Add(new SyncCollectionItem
             {
-                Href = href,
+                Href = NormalizeResourceUrl(addressBookUrl, href),
                 ETag = etag,
                 AddressData = addressData,
                 IsDeleted = isDeleted
@@ -443,6 +507,60 @@ public class CardDavService : ICardDavService
 
         return lastSegment ?? url;
     }
+
+    private static string NormalizeResourceUrl(string addressBookUrl, string resourceUrl)
+    {
+        if (Uri.IsWellFormedUriString(resourceUrl, UriKind.Absolute))
+            return resourceUrl;
+
+        var baseUrl = addressBookUrl.EndsWith('/') ? addressBookUrl : addressBookUrl + "/";
+        return new Uri(new Uri(baseUrl), resourceUrl).ToString();
+    }
+    private static string BuildContactResourceUrl(string addressBookUrl, string uid)
+    {
+        var baseUrl = addressBookUrl.EndsWith('/') ? addressBookUrl : addressBookUrl + "/";
+        return new Uri(new Uri(baseUrl), $"{Uri.EscapeDataString(uid)}.vcf").ToString();
+    }
+
+    private static string BuildVCard(CardDavContact contact)
+    {
+        var uid = string.IsNullOrWhiteSpace(contact.Uid) ? Guid.NewGuid().ToString("N") : contact.Uid;
+        var displayName = string.IsNullOrWhiteSpace(contact.DisplayName)
+            ? string.Join(' ', new[] { contact.GivenName, contact.FamilyName }.Where(value => !string.IsNullOrWhiteSpace(value))).Trim()
+            : contact.DisplayName;
+
+        var lines = new List<string>
+        {
+            "BEGIN:VCARD",
+            "VERSION:3.0",
+            $"UID:{EscapeVCardValue(uid)}",
+            $"FN:{EscapeVCardValue(displayName)}",
+            $"N:{EscapeVCardValue(contact.FamilyName)};{EscapeVCardValue(contact.GivenName)};;;"
+        };
+
+        if (!string.IsNullOrWhiteSpace(contact.PrimaryEmail))
+            lines.Add($"EMAIL;TYPE=INTERNET:{EscapeVCardValue(contact.PrimaryEmail)}");
+
+        if (!string.IsNullOrWhiteSpace(contact.PrimaryPhone))
+            lines.Add($"TEL:{EscapeVCardValue(contact.PrimaryPhone)}");
+
+        if (!string.IsNullOrWhiteSpace(contact.PhotoUrl))
+            lines.Add($"PHOTO:{EscapeVCardValue(contact.PhotoUrl)}");
+
+        lines.Add("END:VCARD");
+        return string.Join("\r\n", lines) + "\r\n";
+    }
+
+    private static string EscapeVCardValue(string? value) =>
+        string.IsNullOrEmpty(value)
+            ? string.Empty
+            : value
+                .Replace("\\", "\\\\", StringComparison.Ordinal)
+                .Replace(";", "\\;", StringComparison.Ordinal)
+                .Replace(",", "\\,", StringComparison.Ordinal)
+                .Replace("\r\n", "\\n", StringComparison.Ordinal)
+                .Replace("\n", "\\n", StringComparison.Ordinal)
+                .Replace("\r", "\\n", StringComparison.Ordinal);
 
     private class SyncCollectionResponse
     {

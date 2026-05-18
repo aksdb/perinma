@@ -2,11 +2,16 @@ using System;
 
 namespace perinma.Models;
 
+public record ContactReference
+{
+    public required AddressBook AddressBook { get; init; }
+    public required Guid Id { get; init; }
+    public string? ExternalId { get; init; }
+}
+
 public class Contact
 {
-    public required AddressBook AddressBook { get; set; }
-    public required Guid Id { get; set; }
-    public string? ExternalId { get; set; }
+    public required ContactReference Reference { get; set; }
     public string? DisplayName { get; set; }
     public string? GivenName { get; set; }
     public string? FamilyName { get; set; }
@@ -14,4 +19,13 @@ public class Contact
     public string? PrimaryPhone { get; set; }
     public string? PhotoUrl { get; set; }
     public DateTime? ChangedAt { get; set; }
+    public ModelExtensions Extensions { get; init; } = new();
+}
+
+public static class ContactExtensions
+{
+    public static ModelExtension<object> ProviderNative = new();
+    public static ModelExtension<string> ProviderResource = new();
+    public static ModelExtension<string> ProviderETag = new();
+    public static ModelExtension<bool> IsReadOnly = new();
 }

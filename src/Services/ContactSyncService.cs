@@ -341,7 +341,13 @@ public class ContactSyncService
 
             if (contact.Deleted)
             {
-                Console.WriteLine($"Contact {contact.DisplayName} was deleted, will clean up");
+                var existingContact = await _storage.GetContactByExternalIdAsync(addressBook.AddressBookId, contact.ExternalId);
+                if (existingContact != null)
+                {
+                    await _storage.DeleteContactAsync(existingContact.ContactId);
+                    Console.WriteLine($"Deleted contact {contact.ExternalId} from local database");
+                }
+
                 continue;
             }
 
@@ -373,6 +379,22 @@ public class ContactSyncService
                 await _storage.SetContactDataAsync(contactId, "rawData", contact.RawData);
             }
 
+            foreach (var dataPair in contact.Data)
+            {
+                switch (dataPair.Value)
+                {
+                    case DataAttribute.Text text:
+                        await _storage.SetContactDataAsync(contactId, dataPair.Key, text.value);
+                        break;
+                    case DataAttribute.JsonText jsonText:
+                        await _storage.SetContactDataJsonAsync(contactId, dataPair.Key, jsonText.value);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(contact.Data),
+                            $"Unsupported contact data type: {dataPair.Value.GetType().Name}");
+                }
+            }
+
             // Handle group memberships
             if (contact.GroupExternalIds != null && contact.GroupExternalIds.Count > 0)
             {
@@ -390,20 +412,15 @@ public class ContactSyncService
             }
         }
 
-        // If this was a full sync, clean up contacts that weren't updated
-        // Only delete if we actually synced some contacts - this prevents
-        // deleting all contacts if the API returns an empty list due to an error
-        if (isFullSync && result.Contacts.Count > 0)
+        // If this was a full sync, clean up contacts that weren't updated.
+        // A successful full sync with zero contacts is authoritative and should clear stale cache entries.
+        if (isFullSync)
         {
             var deletedCount = await _storage.DeleteContactsNotSyncedAsync(addressBook.AddressBookId, currentSyncTime);
             if (deletedCount > 0)
             {
                 Console.WriteLine($"Deleted {deletedCount} contact(s) that were removed remotely");
             }
-        }
-        else if (isFullSync && result.Contacts.Count == 0)
-        {
-            Console.WriteLine($"Skipping contact cleanup - no contacts returned from API (may be a permissions issue)");
         }
 
         if (!string.IsNullOrEmpty(result.SyncToken))

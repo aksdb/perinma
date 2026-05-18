@@ -1133,6 +1133,19 @@ public class SqliteStorage : IDisposable
         );
     }
 
+    public async Task<ContactDbo?> GetContactByIdAsync(string contactId)
+    {
+        return await _connection.QuerySingleOrDefaultAsync<ContactDbo>(
+            "SELECT address_book_id AS AddressBookId, contact_id AS ContactId, external_id AS ExternalId, " +
+            "display_name AS DisplayName, given_name AS GivenName, family_name AS FamilyName, " +
+            "primary_email AS PrimaryEmail, primary_phone AS PrimaryPhone, photo_url AS PhotoUrl, " +
+            "changed_at AS ChangedAt " +
+            "FROM contact WHERE contact_id = @ContactId",
+            new { ContactId = contactId },
+            commandTimeout: 30
+        );
+    }
+
     public async Task<string?> GetContactPhotoUrlAsync(string addressBookId, string externalId)
     {
         return await _connection.QuerySingleOrDefaultAsync<string?>(
@@ -1209,6 +1222,17 @@ public class SqliteStorage : IDisposable
         );
 
         return rowsAffected;
+    }
+
+    public async Task<bool> DeleteContactAsync(string contactId)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            "DELETE FROM contact WHERE contact_id = @ContactId",
+            new { ContactId = contactId },
+            commandTimeout: 30
+        );
+
+        return rowsAffected > 0;
     }
 
     public async Task<bool> SetContactDataAsync(string contactId, string key, string value)
@@ -1363,6 +1387,101 @@ public class SqliteStorage : IDisposable
             new { AccountId = accountId },
             commandTimeout: 30
         );
+    }
+
+    public async Task<Contact?> GetHydratedContactByIdAsync(string contactId)
+    {
+        var result = await _connection.QuerySingleOrDefaultAsync<ContactQueryResult>(
+            """
+            SELECT
+                c.contact_id AS ContactId,
+                c.external_id AS ExternalId,
+                c.display_name AS DisplayName,
+                c.given_name AS GivenName,
+                c.family_name AS FamilyName,
+                c.primary_email AS PrimaryEmail,
+                c.primary_phone AS PrimaryPhone,
+                c.photo_url AS PhotoUrl,
+                c.changed_at AS ChangedAt,
+                c.data ->> '$.rawData' AS RawData,
+                ab.address_book_id AS AddressBookId,
+                ab.external_id AS AddressBookExternalId,
+                ab.name AS AddressBookName,
+                ab.enabled AS AddressBookEnabled,
+                ab.last_sync AS AddressBookLastSync,
+                a.account_id AS AccountId,
+                a.name AS AccountName,
+                a.type AS AccountType
+            FROM contact c
+            INNER JOIN address_book ab ON c.address_book_id = ab.address_book_id
+            INNER JOIN account a ON ab.account_id = a.account_id
+            WHERE c.contact_id = @ContactId
+            LIMIT 1
+            """,
+            new { ContactId = contactId },
+            commandTimeout: 30);
+
+        return result == null ? null : HydrateContact(result);
+    }
+
+    public async Task<IEnumerable<Contact>> GetHydratedContactsByAccountAsync(string accountId)
+    {
+        var contacts = await GetContactsByAccountAsync(accountId);
+        return contacts.Select(HydrateContact);
+    }
+
+    public async Task<IEnumerable<Contact>> GetAllHydratedContactsAsync()
+    {
+        var contacts = await GetAllContactsAsync();
+        return contacts.Select(HydrateContact);
+    }
+
+    private Contact HydrateContact(ContactQueryResult contact)
+    {
+        var addressBook = HydrateAddressBook(contact);
+        return new Contact
+        {
+            Reference = new ContactReference
+            {
+                AddressBook = addressBook,
+                Id = Guid.Parse(contact.ContactId),
+                ExternalId = contact.ExternalId,
+            },
+            DisplayName = contact.DisplayName,
+            GivenName = contact.GivenName,
+            FamilyName = contact.FamilyName,
+            PrimaryEmail = contact.PrimaryEmail,
+            PrimaryPhone = contact.PrimaryPhone,
+            PhotoUrl = contact.PhotoUrl,
+            ChangedAt = contact.ChangedAt == null
+                ? null
+                : DateTimeOffset.FromUnixTimeSeconds(contact.ChangedAt.Value).UtcDateTime,
+        };
+    }
+
+    private AddressBook HydrateAddressBook(ContactQueryResult contact)
+    {
+        var accountId = Guid.Parse(contact.AccountId);
+        var account = GetCachedAccount(accountId) ?? new Account
+        {
+            Id = accountId,
+            Name = contact.AccountName,
+            Type = contact.AccountTypeEnum,
+        };
+
+        var addressBook = new AddressBook
+        {
+            Account = account,
+            Id = Guid.Parse(contact.AddressBookId),
+            ExternalId = contact.AddressBookExternalId,
+            Name = contact.AddressBookName,
+            Enabled = contact.AddressBookEnabled != 0,
+            LastSync = contact.AddressBookLastSync == null
+                ? null
+                : DateTimeOffset.FromUnixTimeSeconds(contact.AddressBookLastSync.Value).UtcDateTime,
+        };
+
+        return addressBook;
     }
 
     #endregion

@@ -1,0 +1,73 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:contacts="using:perinma.Views.Contacts"
+        x:DataType="contacts:ContactEditViewModel"
+        mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="420"
+        x:Class="perinma.Views.Contacts.ContactEditDialog"
+        Title="{Binding Title}"
+        Width="460"
+        MaxWidth="520"
+        CanResize="False"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner">
+
+    <StackPanel Margin="20" Spacing="14">
+        <StackPanel Spacing="6">
+            <TextBlock Text="Address Book" FontWeight="SemiBold" />
+            <ComboBox ItemsSource="{Binding AddressBooks}"
+                      SelectedItem="{Binding SelectedAddressBook}"
+                      IsEnabled="{Binding CanChangeAddressBook}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="contacts:ContactAddressBookOption">
+                        <TextBlock Text="{Binding DisplayName}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </StackPanel>
+
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+            <StackPanel Grid.Column="0" Spacing="6">
+                <TextBlock Text="First Name" FontWeight="SemiBold" />
+                <TextBox Text="{Binding GivenName}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="6">
+                <TextBlock Text="Last Name" FontWeight="SemiBold" />
+                <TextBox Text="{Binding FamilyName}" />
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Spacing="6">
+            <TextBlock Text="Display Name" FontWeight="SemiBold" />
+            <TextBox Text="{Binding DisplayName}" />
+        </StackPanel>
+
+        <StackPanel Spacing="6">
+            <TextBlock Text="Primary Email" FontWeight="SemiBold" />
+            <TextBox Text="{Binding PrimaryEmail}" />
+        </StackPanel>
+
+        <StackPanel Spacing="6">
+            <TextBlock Text="Primary Phone" FontWeight="SemiBold" />
+            <TextBox Text="{Binding PrimaryPhone}" />
+        </StackPanel>
+
+        <TextBlock Text="{Binding ValidationError}"
+                   Foreground="IndianRed"
+                   TextWrapping="Wrap"
+                   IsVisible="{Binding ValidationError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="10">
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Width="90" />
+            <Button Content="Save"
+                    Command="{Binding SaveCommand}"
+                    Width="90"
+                    Classes="Accent" />
+        </StackPanel>
+    </StackPanel>
+</Window>

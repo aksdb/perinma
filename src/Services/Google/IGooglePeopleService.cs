@@ -1,6 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.PeopleService.v1;
+using Google.Apis.PeopleService.v1.Data;
 using perinma.Storage.Models;
 
 namespace perinma.Services.Google;
@@ -32,5 +33,22 @@ public interface IGooglePeopleService
     Task<GooglePeopleService.ContactGroupSyncResult> GetContactGroupsAsync(
         PeopleServiceService service,
         string? syncToken = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a new Google contact and returns the hydrated person.
+    /// </summary>
+    Task<Person> CreateContactAsync(
+        PeopleServiceService service,
+        Person person,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing Google contact and returns the hydrated person.
+    /// </summary>
+    Task<Person> UpdateContactAsync(
+        PeopleServiceService service,
+        Person person,
+        string updatePersonFields,
         CancellationToken cancellationToken = default);
 }
