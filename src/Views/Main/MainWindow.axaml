@@ -25,42 +25,89 @@
         <!-- Menu Bar with View Switcher -->
         <DockPanel Grid.Row="0">
             <atom:Menu DockPanel.Dock="Left" x:Name="MainMenu">
-                <atom:MenuItem Header="_File">
-                    <atom:MenuItem Header="_Settings" Name="MnuSettings" Command="{Binding ShowSettingsCommand}"/>
-                    <atom:MenuItem Header="_Sync" Command="{Binding SyncCommand}"/>
-                    <atom:MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"/>
+                <atom:MenuItem>
+                    <atom:MenuItem.Header>
+                        <AccessText Text="_File"/>
+                    </atom:MenuItem.Header>
+                    <atom:MenuItem Name="MnuSettings" Command="{Binding ShowSettingsCommand}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Settings"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
+                    <atom:MenuItem Command="{Binding SyncCommand}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Sync"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
+                    <atom:MenuItem Name="MnuExit" Click="MnuExit_OnClick">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Exit"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
                 </atom:MenuItem>
-                <atom:MenuItem Header="_View">
-                    <atom:MenuItem Header="_Calendar" Command="{Binding ShowCalendarViewCommand}">
+                <atom:MenuItem>
+                    <atom:MenuItem.Header>
+                        <AccessText Text="_View"/>
+                    </atom:MenuItem.Header>
+                    <atom:MenuItem Command="{Binding ShowCalendarViewCommand}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Calendar"/>
+                        </atom:MenuItem.Header>
                         <MenuItem.Icon>
                             <atom:CheckBox IsChecked="{Binding IsCalendarViewActive}" IsHitTestVisible="False"/>
                         </MenuItem.Icon>
                     </atom:MenuItem>
-                    <atom:MenuItem Header="C_ontacts" Command="{Binding ShowContactsViewCommand}">
+                    <atom:MenuItem Command="{Binding ShowContactsViewCommand}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="C_ontacts"/>
+                        </atom:MenuItem.Header>
                         <MenuItem.Icon>
                             <atom:CheckBox IsChecked="{Binding IsContactsViewActive}" IsHitTestVisible="False"/>
                         </MenuItem.Icon>
                     </atom:MenuItem>
                     <atom:Separator/>
 
-                    <atom:MenuItem Header="_Theme">
-                        <atom:MenuItem Header="_Light" Command="{Binding SetLightThemeCommand}">
+                    <atom:MenuItem>
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Theme"/>
+                        </atom:MenuItem.Header>
+                        <atom:MenuItem Command="{Binding SetLightThemeCommand}">
+                            <atom:MenuItem.Header>
+                                <AccessText Text="_Light"/>
+                            </atom:MenuItem.Header>
                             <MenuItem.Icon>
                                 <atom:CheckBox IsChecked="{Binding IsLightTheme}" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
                         </atom:MenuItem>
-                        <atom:MenuItem Header="_Dark" Command="{Binding SetDarkThemeCommand}">
+                        <atom:MenuItem Command="{Binding SetDarkThemeCommand}">
+                            <atom:MenuItem.Header>
+                                <AccessText Text="_Dark"/>
+                            </atom:MenuItem.Header>
                             <MenuItem.Icon>
                                 <atom:CheckBox IsChecked="{Binding IsDarkTheme}" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
                         </atom:MenuItem>
                     </atom:MenuItem>
                 </atom:MenuItem>
-                <atom:MenuItem Header="_Tools">
-                    <atom:MenuItem Header="_Debug" Command="{Binding ShowDebugWindowCommand}"/>
+                <atom:MenuItem>
+                    <atom:MenuItem.Header>
+                        <AccessText Text="_Tools"/>
+                    </atom:MenuItem.Header>
+                    <atom:MenuItem Command="{Binding ShowDebugWindowCommand}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Debug"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
                 </atom:MenuItem>
-                <atom:MenuItem Header="_Help">
-                    <atom:MenuItem Header="_About" Command="{Binding ShowAboutCommand}"/>
+                <atom:MenuItem>
+                    <atom:MenuItem.Header>
+                        <AccessText Text="_Help"/>
+                    </atom:MenuItem.Header>
+                    <atom:MenuItem Command="{Binding ShowAboutCommand}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_About"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
                 </atom:MenuItem>
             </atom:Menu>
 

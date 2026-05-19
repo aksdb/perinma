@@ -1,4 +1,7 @@
+using System.Linq;
+using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
+using perinma.Views.Main;
 
 namespace tests;
 
@@ -34,5 +37,22 @@ public class MainMenuTests
         {
             window.Close();
         }
+    }
+
+    [AvaloniaTest]
+    public void MainWindow_UsesAccessTextHeadersForAtomMenuItems()
+    {
+        var window = new MainWindow();
+
+        var menu = window.FindControl<AtomUI.Desktop.Controls.Menu>("MainMenu");
+        Assert.That(menu, Is.Not.Null);
+
+        var menuItems = menu!.Items.OfType<AtomUI.Desktop.Controls.MenuItem>().ToArray();
+        Assert.That(menuItems, Has.Length.EqualTo(4));
+        Assert.That(menuItems.Select(item => item.Header?.GetType().Name),
+            Is.EqualTo(new[] { "AccessText", "AccessText", "AccessText", "AccessText" }));
+
+        var settingsItem = menuItems[0].Items.OfType<AtomUI.Desktop.Controls.MenuItem>().First();
+        Assert.That(settingsItem.Header?.GetType().Name, Is.EqualTo("AccessText"));
     }
 }
