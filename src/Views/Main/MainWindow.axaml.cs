@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using AtomUI;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
@@ -31,9 +32,9 @@ public partial class MainWindow : AtomUI.Desktop.Controls.Window
                 Height = height;
             }
 
-            if (sidebarWidth > 0 && CalendarViewGrid.ColumnDefinitions.Count > 0)
+            if (sidebarWidth > 0)
             {
-                CalendarViewGrid.ColumnDefinitions[0].Width = new GridLength(sidebarWidth);
+                AtomUI.Desktop.Controls.Splitter.SetSize(CalendarListPane, new Dimension(sidebarWidth));
             }
         }
     }
@@ -42,9 +43,9 @@ public partial class MainWindow : AtomUI.Desktop.Controls.Window
     {
         if (DataContext is MainWindowViewModel viewModel)
         {
-            var sidebarWidth = CalendarViewGrid.ColumnDefinitions.Count > 0
-                ? (int)CalendarViewGrid.ColumnDefinitions[0].Width.Value
-                : 250;
+            var sidebarWidth = AtomUI.Desktop.Controls.Splitter.GetSize(CalendarListPane)?.Value is > 0 and var savedWidth
+                ? (int)savedWidth
+                : (int)Math.Round(CalendarListPane.Bounds.Width);
             await viewModel.SaveWindowSettingsAsync(Position.X, Position.Y, (int)Width, (int)Height, sidebarWidth);
             await viewModel.SaveViewStateAsync();
             await viewModel.SaveThemeAsync();

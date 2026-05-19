@@ -135,27 +135,19 @@
         <!-- Main Content Area -->
         <Panel Grid.Row="1">
             <!-- Calendar View -->
-            <Grid x:Name="CalendarViewGrid" IsVisible="{Binding IsCalendarViewActive}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="250" MinWidth="200"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                
-                <Border Grid.Column="0"
+            <atom:Splitter x:Name="CalendarViewSplitter"
+                           IsVisible="{Binding IsCalendarViewActive}"
+                           Orientation="Vertical">
+                <Border x:Name="CalendarListPane"
                         BorderBrush="{DynamicResource AppChromeBorderBrush}"
-                        BorderThickness="0,0,1,0">
+                        BorderThickness="0,0,1,0"
+                        atom:Splitter.DefaultSize="250"
+                        atom:Splitter.MinSize="200">
                     <callist:CalendarListView DataContext="{Binding CalendarListViewModel}"/>
                 </Border>
 
-                <GridSplitter Grid.Column="1"
-                              Width="4"
-                              Background="Transparent"
-                              ResizeDirection="Columns"
-                              ResizeBehavior="PreviousAndNext"/>
-
                 <!-- Calendar Views - switch based on ViewMode -->
-                <Grid Grid.Column="2" RowDefinitions="Auto,*">
+                <Grid RowDefinitions="Auto,*">
                     <!-- Navigation Bar -->
                     <cal:CalendarNavigationBar Grid.Row="0"
                                             DataContext="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).CalendarNavigationBarViewModel}"/>
@@ -175,7 +167,7 @@
                                                 IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsAgendaView}"/>
                     </Panel>
                 </Grid>
-            </Grid>
+            </atom:Splitter>
             
             <!-- Contacts View -->
             <contacts:ContactsView IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsContactsViewActive}"

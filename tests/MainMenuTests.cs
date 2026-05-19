@@ -1,4 +1,5 @@
 using System.Linq;
+using Avalonia.Layout;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using perinma.Views.Main;
@@ -54,5 +55,20 @@ public class MainMenuTests
 
         var settingsItem = menuItems[0].Items.OfType<AtomUI.Desktop.Controls.MenuItem>().First();
         Assert.That(settingsItem.Header?.GetType().Name, Is.EqualTo("AccessText"));
+    }
+
+    [AvaloniaTest]
+    public void MainWindow_UsesAtomSplitterForCalendarShell()
+    {
+        var window = new MainWindow();
+
+        var splitter = window.FindControl<AtomUI.Desktop.Controls.Splitter>("CalendarViewSplitter");
+        Assert.That(splitter, Is.Not.Null);
+        Assert.That(splitter!.Orientation, Is.EqualTo(Orientation.Vertical));
+
+        var calendarListPane = window.FindControl<Border>("CalendarListPane");
+        Assert.That(calendarListPane, Is.Not.Null);
+        Assert.That(AtomUI.Desktop.Controls.Splitter.GetDefaultSize(calendarListPane!), Is.EqualTo(new AtomUI.Dimension(250)));
+        Assert.That(AtomUI.Desktop.Controls.Splitter.GetMinSize(calendarListPane!), Is.EqualTo(new AtomUI.Dimension(200)));
     }
 }
