@@ -356,20 +356,24 @@ public partial class MainWindowViewModel : ObservableRecipient,
     [RelayCommand]
     private void SetLightTheme()
     {
-        _themeService.SetTheme(ThemeVariant.Light);
-        IsLightTheme = true;
-        IsDarkTheme = false;
+        _themeService.SetLightTheme();
+        UpdateThemeFlags();
     }
 
     [RelayCommand]
     private void SetDarkTheme()
     {
-        _themeService.SetTheme(ThemeVariant.Dark);
-        IsLightTheme = false;
-        IsDarkTheme = true;
+        _themeService.SetDarkTheme();
+        UpdateThemeFlags();
     }
 
     public Task SaveThemeAsync() => _themeService.SaveThemeAsync();
+
+    private void UpdateThemeFlags()
+    {
+        IsLightTheme = _themeService.IsLightTheme;
+        IsDarkTheme = _themeService.IsDarkTheme;
+    }
     #endregion
 
     #region Sync
@@ -584,8 +588,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
         // Load and restore theme
         await _themeService.LoadThemeAsync();
-        IsLightTheme = _themeService.IsLightTheme;
-        IsDarkTheme = _themeService.IsDarkTheme;
+        UpdateThemeFlags();
 
         // Load and restore last view state
         await LoadViewStateAsync();

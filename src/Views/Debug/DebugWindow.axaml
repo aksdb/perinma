@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:atom="https://atomui.net"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:debug="using:perinma.Views.Debug"
@@ -16,27 +17,27 @@
     <Grid RowDefinitions="Auto,*">
         <!-- Header -->
         <Border Grid.Row="0"
-                Background="{DynamicResource SystemChromeMediumLowColor}"
-                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                Background="{DynamicResource AppPanelSubtleBrush}"
+                BorderBrush="{DynamicResource AppChromeBorderBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="16,12">
             <StackPanel Spacing="4">
                 <TextBlock Text="Debug Tools"
                            FontSize="18"
                            FontWeight="SemiBold"
-                           Foreground="{DynamicResource SystemBaseHighColor}"/>
+                           Foreground="{DynamicResource AppTextPrimaryBrush}"/>
                 <TextBlock Text="Developer utilities for troubleshooting and maintenance"
                            FontSize="13"
-                           Foreground="{DynamicResource SystemBaseMediumHighColor}"/>
+                           Foreground="{DynamicResource AppTextSecondaryBrush}"/>
             </StackPanel>
         </Border>
 
         <!-- Content Area -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <atom:ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="16" Spacing="20">
                 <!-- Rebuild Reminders Section -->
-                <Border Background="{DynamicResource SystemAltMediumColor}"
-                        BorderBrush="{DynamicResource SystemChromeLowColor}"
+                <Border Background="{DynamicResource AppPanelMutedBrush}"
+                        BorderBrush="{DynamicResource AppChromeBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="4"
                         Padding="16">
@@ -46,7 +47,7 @@
                                    FontSize="16"/>
                         <TextBlock Text="Rebuild all reminders from existing calendar events."
                                    TextWrapping="Wrap"
-                                   Foreground="{DynamicResource SystemBaseMediumHighColor}"/>
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}"/>
 
                         <TextBlock Text="This will:"
                                    Margin="0,4,0,0"
@@ -59,25 +60,25 @@
                         </TextBlock>
 
                         <TextBlock Text="Note: This operation may take a while depending on the number of events."
-                                   Foreground="{DynamicResource SystemAccentColor}"
+                                   Foreground="{DynamicResource AppAccentBrush}"
                                    FontSize="12"
                                    Margin="0,8,0,0"/>
 
                         <!-- Status Display -->
-                        <Border Background="{DynamicResource SystemBaseLowColor}"
-                                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                        <Border Background="{DynamicResource AppPanelSubtleBrush}"
+                                BorderBrush="{DynamicResource AppChromeBorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="4"
                                 Padding="12"
                                 IsVisible="{Binding IsProcessing}">
                             <StackPanel Spacing="8">
-                                <ProgressBar IsIndeterminate="False"
+                                <atom:ProgressBar IsIndeterminate="False"
                                             Value="{Binding Progress}"
                                             Height="4"
-                                            Foreground="{DynamicResource SystemAccentColor}"/>
+                                            Foreground="{DynamicResource AppAccentBrush}"/>
                                 <TextBlock Text="{Binding StatusText}"
                                            FontSize="13"
-                                           Foreground="{DynamicResource SystemBaseMediumHighColor}"/>
+                                           Foreground="{DynamicResource AppTextSecondaryBrush}"/>
                                 <TextBlock>
                                     <Run Text="Processed: "/>
                                     <Run Text="{Binding EventsProcessed}" FontWeight="SemiBold"/>
@@ -91,8 +92,8 @@
                         </Border>
 
                         <!-- Result Display -->
-                        <Border Background="{DynamicResource SystemBaseLowColor}"
-                                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                        <Border Background="{DynamicResource AppPanelSubtleBrush}"
+                                BorderBrush="{DynamicResource AppChromeBorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="4"
                                 Padding="12"
@@ -100,7 +101,7 @@
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Rebuild Complete!"
                                            FontWeight="SemiBold"
-                                           Foreground="{DynamicResource SystemAccentColorLight2}"/>
+                                           Foreground="{DynamicResource AppAccentBrushLight2}"/>
                                 <TextBlock>
                                     <Run Text="Processed "/>
                                     <Run Text="{Binding EventsProcessed}" FontWeight="SemiBold"/>
@@ -117,12 +118,12 @@
                         </Border>
 
                         <!-- Error Details -->
-                        <ScrollViewer MaxHeight="150"
+                        <atom:ScrollViewer MaxHeight="150"
                                       IsVisible="{Binding HasErrors}">
                             <ItemsControl ItemsSource="{Binding Errors}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{DynamicResource SystemErrorColor}"
+                                        <Border Background="{DynamicResource AppErrorBrush}"
                                                 CornerRadius="2"
                                                 Padding="8,4"
                                                 Margin="0,2">
@@ -134,16 +135,16 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </ScrollViewer>
+                        </atom:ScrollViewer>
 
                         <!-- Action Buttons -->
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="Rebuild Reminders"
+                            <atom:Button Content="Rebuild Reminders"
                                     Command="{Binding RebuildRemindersCommand}"
                                     IsEnabled="{Binding IsProcessing, Converter={x:Static BoolConverters.Not}}"
                                     Padding="20,8"
                                     MinWidth="120"/>
-                            <Button Content="Close"
+                            <atom:Button Content="Close"
                                     Command="{Binding CloseCommand}"
                                     Padding="20,8"
                                     MinWidth="120"/>
@@ -153,6 +154,6 @@
 
                 <!-- More debug features can be added here -->
             </StackPanel>
-        </ScrollViewer>
+        </atom:ScrollViewer>
     </Grid>
 </Window>

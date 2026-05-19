@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:atom="https://atomui.net"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:wizard="using:perinma.Views.Settings.AddAccountWizard"
@@ -20,12 +21,12 @@
         </StackPanel>
 
         <!-- Navigation buttons at bottom -->
-        <Border DockPanel.Dock="Bottom" BorderBrush="LightGray" BorderThickness="0,1,0,0" Background="{DynamicResource SystemChromeLowColor}">
+        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource AppChromeBorderBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource AppChromeBorderBrush}">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20" Spacing="10">
-                <Button Content="Cancel" Command="{Binding CancelCommand}" Width="80" />
-                <Button Content="Back" Command="{Binding BackCommand}" IsVisible="{Binding CanGoBack}" Width="80" />
-                <Button Content="Next" Command="{Binding NextCommand}" IsVisible="{Binding !IsLastStep}" Width="80" />
-                <Button Content="Finish" Command="{Binding FinishCommand}" IsVisible="{Binding IsLastStep}" Width="80" />
+                <atom:Button Content="Cancel" Command="{Binding CancelCommand}" Width="80" />
+                <atom:Button Content="Back" Command="{Binding BackCommand}" IsVisible="{Binding CanGoBack}" Width="80" />
+                <atom:Button Content="Next" Command="{Binding NextCommand}" IsVisible="{Binding !IsLastStep}" Width="80" />
+                <atom:Button Content="Finish" Command="{Binding FinishCommand}" IsVisible="{Binding IsLastStep}" Width="80" />
             </StackPanel>
         </Border>
 

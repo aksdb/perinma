@@ -10,7 +10,7 @@
     <Border Padding="4,3" Background="Transparent" CornerRadius="4">
         <Border.Styles>
             <Style Selector="Border:pointerover">
-                <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}" />
+                <Setter Property="Background" Value="{DynamicResource AppHoverBrush}" />
             </Style>
         </Border.Styles>
         <FlyoutBase.AttachedFlyout>
@@ -18,7 +18,7 @@
                 <Border Padding="12" MinWidth="240" MaxWidth="300">
                     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto">
                         <Border Grid.RowSpan="2" Width="48" Height="48" CornerRadius="24"
-                                Background="{DynamicResource SystemAccentColorLight2}"
+                                Background="{DynamicResource AppAccentBrushLight2}"
                                 Margin="0,0,12,0" VerticalAlignment="Top">
                             <Panel>
                                 <Image Source="{Binding PhotoBitmap}" Stretch="UniformToFill"
@@ -45,14 +45,14 @@
                         <TextBlock Grid.Column="1" Grid.Row="1"
                                    Text="{Binding Email}"
                                    FontSize="12"
-                                   Foreground="Gray"
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}"
                                    TextWrapping="Wrap"
                                    Margin="0,2,0,0" />
                         
                         <TextBlock Grid.Column="1" Grid.Row="2"
                                    Text="Organizer"
                                    FontSize="11"
-                                   Foreground="{DynamicResource SystemControlHighlightAltBrush}"
+                                   Foreground="{DynamicResource AppSelectionSubtleBrush}"
                                    IsVisible="{Binding IsOrganizer}"
                                    Margin="0,4,0,0" />
                     </Grid>
@@ -61,7 +61,7 @@
         </FlyoutBase.AttachedFlyout>
         <Grid ColumnDefinitions="28,16,*" PointerEntered="OnPointerEntered">
             <Border Width="24" Height="24" CornerRadius="12"
-                    Background="{DynamicResource SystemAccentColorLight2}">
+                    Background="{DynamicResource AppAccentBrushLight2}">
                 <Panel>
                     <Image Source="{Binding PhotoBitmap}" Stretch="UniformToFill"
                            IsVisible="{Binding HasPhoto}" />

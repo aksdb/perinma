@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:atom="https://atomui.net"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:settings="using:perinma.Views.Settings"
@@ -13,10 +14,10 @@
 
     <DockPanel>
         <!-- Header -->
-        <Border DockPanel.Dock="Top" Background="{DynamicResource SystemChromeMediumColor}" Padding="20">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource AppPanelMutedBrush}" Padding="20">
             <StackPanel Spacing="10">
                 <TextBlock Text="Reauthenticate Account" FontSize="20" FontWeight="Bold" />
-                <TextBlock Text="Google Account" FontSize="14" Foreground="Gray" />
+                <TextBlock Text="Google Account" FontSize="14" Foreground="{DynamicResource AppTextSecondaryBrush}" />
             </StackPanel>
         </Border>
 
@@ -32,16 +33,16 @@
                 <TextBlock Text="{Binding StatusMessage}"
                            TextWrapping="Wrap"
                            TextAlignment="Center"
-                           Foreground="Gray"
+                           Foreground="{DynamicResource AppTextSecondaryBrush}"
                            MinHeight="80" />
 
-                <Button Content="Reauthenticate"
+                <atom:Button Content="Reauthenticate"
                         Command="{Binding ReauthenticateCommand}"
                         IsEnabled="{Binding !IsConnecting}"
                         HorizontalAlignment="Center"
                         MinWidth="150" />
 
-                <Button Content="Cancel"
+                <atom:Button Content="Cancel"
                         Command="{Binding CancelCommand}"
                         IsEnabled="{Binding !IsConnecting}"
                         HorizontalAlignment="Center"

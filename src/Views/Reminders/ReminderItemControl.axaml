@@ -1,22 +1,23 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:atom="https://atomui.net"
              xmlns:reminders="clr-namespace:perinma.Views.Reminders"
              x:Class="perinma.Views.Reminders.ReminderItemControl"
              x:DataType="reminders:ReminderViewModel">
 
     <UserControl.Styles>
         <Style Selector="Button.SnoozeButton">
-            <Setter Property="Background" Value="{DynamicResource SystemAltMediumLowBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AppPanelSubtleBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemChromeMediumColor}"/>
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AppPanelMutedBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}"/>
             <Setter Property="Padding" Value="12,6"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="MinWidth" Value="80"/>
         </Style>
         <Style Selector="Button.SnoozeButton:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemAltMediumHighBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AppPanelElevatedBrush}"/>
         </Style>
         <Style Selector="Button.DismissButton">
             <Setter Property="Background" Value="#E53935"/>
@@ -36,20 +37,20 @@
         </Style>
         <Style Selector="Button.SnoozeOptionButton">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="Padding" Value="12,8"/>
             <Setter Property="FontSize" Value="13"/>
         </Style>
         <Style Selector="Button.SnoozeOptionButton:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemAltMediumHighBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AppPanelElevatedBrush}"/>
         </Style>
     </UserControl.Styles>
 
-    <Border Background="{DynamicResource SystemAltMediumHighBrush}"
+    <Border Background="{DynamicResource AppPanelElevatedBrush}"
             CornerRadius="8"
-            BorderBrush="{DynamicResource SystemChromeLowColor}"
+            BorderBrush="{DynamicResource AppChromeBorderBrush}"
             BorderThickness="1">
         <Grid RowDefinitions="Auto,Auto">
             <!-- Main Content -->
@@ -68,7 +69,7 @@
                                FontSize="16"
                                TextWrapping="Wrap"
                                VerticalAlignment="Top"
-                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                               Foreground="{DynamicResource AppTextPrimaryBrush}"/>
                 </Grid>
 
                 <!-- Calendar & Time Info -->
@@ -81,30 +82,30 @@
                         <TextBlock Grid.Column="1"
                                    Text="{Binding CalendarName}"
                                    FontSize="12"
-                                   Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}"
+                                   Foreground="{DynamicResource AppTextTertiaryBrush}"
                                    VerticalAlignment="Center"/>
                     </Grid>
 
                     <TextBlock Text="•"
                                FontSize="12"
-                                Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}"
+                                Foreground="{DynamicResource AppTextTertiaryBrush}"
                                 VerticalAlignment="Center"/>
 
                     <TextBlock Text="{Binding StartTime, StringFormat='{}{0:ddd, MMM d, yyyy • HH:mm}'}"
                                FontSize="12"
-                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                               Foreground="{DynamicResource AppTextPrimaryBrush}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
 
             <!-- Action Buttons -->
             <Border Grid.Row="1"
-                    Background="{DynamicResource SystemAltLowBrush}"
+                    Background="{DynamicResource AppPanelSubtleBrush}"
                     Padding="12"
                     CornerRadius="0,0,8,8">
                 <Grid ColumnDefinitions="1*,Auto">
                     <!-- Snooze Button with Dropdown -->
-                    <Button Grid.Column="0"
+                    <atom:Button Grid.Column="0"
                             Name="SnoozeButton"
                             Content="Snooze"
                             Classes="SnoozeButton"
@@ -112,50 +113,50 @@
                             HorizontalContentAlignment="Center">
                         <Button.Flyout>
                             <Flyout Placement="TopEdgeAlignedLeft">
-                                <Border Background="{DynamicResource SystemChromeMediumHighColor}"
+                                <Border Background="{DynamicResource AppPanelElevatedBrush}"
                                         CornerRadius="8"
-                                        BorderBrush="{DynamicResource SystemChromeMediumColor}"
+                                        BorderBrush="{DynamicResource AppPanelMutedBrush}"
                                         BorderThickness="1"
                                         MaxWidth="200">
                                     <StackPanel Spacing="0">
-                                        <Button Content="1 minute"
+                                        <atom:Button Content="1 minute"
                                                 Classes="SnoozeOptionButton"
                                                 Click="Snooze1MinClick"/>
-                                        <Button Content="5 minutes"
+                                        <atom:Button Content="5 minutes"
                                                 Classes="SnoozeOptionButton"
                                                 Click="Snooze5MinClick"/>
-                                        <Button Content="10 minutes"
+                                        <atom:Button Content="10 minutes"
                                                 Classes="SnoozeOptionButton"
                                                 Click="Snooze10MinClick"/>
-                                        <Button Content="15 minutes"
+                                        <atom:Button Content="15 minutes"
                                                 Classes="SnoozeOptionButton"
                                                 Click="Snooze15MinClick"/>
-                                        <Button Content="30 minutes"
+                                        <atom:Button Content="30 minutes"
                                                 Classes="SnoozeOptionButton"
                                                 Click="Snooze30MinClick"/>
-                                        <Button Content="1 hour"
+                                        <atom:Button Content="1 hour"
                                                 Classes="SnoozeOptionButton"
                                                 Click="Snooze1HourClick"/>
-                                        <Button Content="2 hours"
+                                        <atom:Button Content="2 hours"
                                                 Classes="SnoozeOptionButton"
                                                 Click="Snooze2HourClick"/>
-                                        <Button Content="Tomorrow"
+                                        <atom:Button Content="Tomorrow"
                                                 Classes="SnoozeOptionButton"
                                                 Click="SnoozeTomorrowClick"/>
-                                        <Button Content="1 minute before start"
+                                        <atom:Button Content="1 minute before start"
                                                 Classes="SnoozeOptionButton"
                                                 Click="Snooze1MinBeforeClick"/>
-                                        <Button Content="When it starts"
+                                        <atom:Button Content="When it starts"
                                                 Classes="SnoozeOptionButton"
                                                 Click="SnoozeStartClick"/>
                                     </StackPanel>
                                 </Border>
                             </Flyout>
                         </Button.Flyout>
-                    </Button>
+                    </atom:Button>
 
                     <!-- Dismiss Button -->
-                    <Button Grid.Column="1"
+                    <atom:Button Grid.Column="1"
                             Content="Dismiss"
                             Classes="DismissButton"
                             Command="{Binding DismissCommand}"

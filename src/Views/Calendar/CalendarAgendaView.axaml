@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:atom="https://atomui.net"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cal="using:perinma.Views.Calendar"
@@ -8,13 +9,13 @@
              x:Class="perinma.Views.Calendar.CalendarAgendaView">
 
     <Grid RowDefinitions="*">
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+        <atom:ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
         <ItemsControl ItemsSource="{Binding AgendaDays}" Margin="10">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="cal:AgendaDayViewModel">
                     <StackPanel Margin="0,0,0,16" IsVisible="{Binding HasEvents}">
                         <!-- Day Header -->
-                        <Border Background="{DynamicResource SystemChromeMediumLowColor}"
+                        <Border Background="{DynamicResource AppPanelSubtleBrush}"
                                 CornerRadius="4"
                                 Padding="12,8"
                                 Margin="0,0,0,8">
@@ -24,10 +25,10 @@
                                            FontSize="14"/>
                                 <TextBlock Text="{Binding DateDisplay}"
                                            FontSize="14"
-                                           Foreground="Gray"/>
+                                           Foreground="{DynamicResource AppTextSecondaryBrush}"/>
                                 <TextBlock Text="Today"
                                            FontWeight="Bold"
-                                           Foreground="{DynamicResource SystemAccentColor}"
+                                           Foreground="{DynamicResource AppAccentBrush}"
                                            IsVisible="{Binding IsToday}"/>
                             </StackPanel>
                         </Border>
@@ -36,7 +37,7 @@
                         <ItemsControl ItemsSource="{Binding Events}" Margin="8,0,0,0">
                             <ItemsControl.ItemTemplate>
                                      <DataTemplate x:DataType="cal:AgendaEventViewModel">
-                                     <Button Background="{Binding Background}"
+                                     <atom:Button Background="{Binding Background}"
                                              CornerRadius="6"
                                              Padding="12,8"
                                              Margin="0,4"
@@ -57,8 +58,8 @@
                                           </Button.Styles>
                                           <Button.ContextMenu>
                                               <ContextMenu>
-                                                  <MenuItem Header="Edit" Command="{ReflectionBinding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
-                                                  <MenuItem Header="Delete" Command="{ReflectionBinding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                                  <atom:MenuItem Header="Edit" Command="{ReflectionBinding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                                  <atom:MenuItem Header="Delete" Command="{ReflectionBinding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
                                               </ContextMenu>
                                           </Button.ContextMenu>
                                           <Button.Flyout>
@@ -93,7 +94,7 @@
                                                             Margin="0,2,0,0"/>
                                              </StackPanel>
                                          </Grid>
-                                     </Button>
+                                     </atom:Button>
                                  </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -101,6 +102,6 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        </ScrollViewer>
+        </atom:ScrollViewer>
     </Grid>
 </UserControl>

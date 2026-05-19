@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:atom="https://atomui.net"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:cal="using:perinma.Views.Calendar"
@@ -20,7 +21,7 @@
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
         <Style Selector="Button.SmallButton:pointerover">
-            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AppHoverBrush}"/>
         </Style>
         <Style Selector="Button.FieldRow">
             <Setter Property="Background" Value="Transparent"/>
@@ -31,10 +32,10 @@
             <Setter Property="CornerRadius" Value="0"/>
         </Style>
         <Style Selector="Button.FieldRow:pointerover">
-            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AppHoverBrush}"/>
         </Style>
         <Style Selector="TextBlock.muted">
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AppTextSecondaryBrush}"/>
             <Setter Property="FontStyle" Value="Italic"/>
         </Style>
         <Style Selector="NumericUpDown.TimeInput">
@@ -57,7 +58,7 @@
         <!-- Calendar selector -->
         <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,10">
             <TextBlock Text="Calendar" FontWeight="SemiBold" FontSize="12"/>
-            <ComboBox ItemsSource="{Binding Calendars}"
+            <atom:ComboBox ItemsSource="{Binding Calendars}"
                       SelectedItem="{Binding SelectedCalendar}"
                       HorizontalAlignment="Stretch"
                       PlaceholderText="Select Calendar">
@@ -65,23 +66,23 @@
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Ellipse Width="12" Height="12" Fill="{Binding Color}"
-                                     Stroke="{DynamicResource SystemControlForegroundBrush}"/>
+                                     Stroke="{DynamicResource AppTextPrimaryBrush}"/>
                             <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
-            </ComboBox>
+            </atom:ComboBox>
         </StackPanel>
 
         <!-- Field list -->
-        <ScrollViewer Grid.Row="1" Margin="0,0,0,10">
-            <Border BorderBrush="{DynamicResource SystemChromeLowColor}"
+        <atom:ScrollViewer Grid.Row="1" Margin="0,0,0,10">
+            <Border BorderBrush="{DynamicResource AppChromeBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="8">
                 <StackPanel>
 
                     <!-- Title: always visible, outside the collapsible rows -->
-                    <TextBox Text="{Binding TitleField.Title}"
+                    <atom:TextBox Text="{Binding TitleField.Title}"
                              PlaceholderText="Event title"
                              FontSize="15"
                              FontWeight="SemiBold"
@@ -95,11 +96,11 @@
                             <!-- Single template: header defined once here, body varies by field type -->
                             <DataTemplate DataType="edit:FieldRow">
                                 <Border BorderThickness="0,1,0,0"
-                                        BorderBrush="{DynamicResource SystemChromeLowColor}">
+                                        BorderBrush="{DynamicResource AppChromeBorderBrush}">
                                     <StackPanel>
 
                                         <!-- Expand/collapse header -->
-                                        <Button Classes="FieldRow"
+                                        <atom:Button Classes="FieldRow"
                                                 Command="{Binding ToggleExpandedCommand}">
                                             <Grid ColumnDefinitions="20,*,20">
                                                 <TextBlock Text="{Binding Icon}" FontSize="13"
@@ -115,9 +116,9 @@
                                                            Text="{Binding Chevron}"
                                                            VerticalAlignment="Center"
                                                            HorizontalAlignment="Center"
-                                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                                           Foreground="{DynamicResource AppTextSecondaryBrush}"/>
                                             </Grid>
-                                        </Button>
+                                        </atom:Button>
 
                                         <!-- Type-specific editor body -->
                                         <ContentControl IsVisible="{Binding IsExpanded}"
@@ -127,7 +128,7 @@
 
                                                 <DataTemplate DataType="edit:TimeRangeEditViewModel">
                                                     <StackPanel Spacing="8">
-                                                        <CheckBox Content="All-day event"
+                                                        <atom:CheckBox Content="All-day event"
                                                                   IsChecked="{Binding IsFullDay}"
                                                                   IsVisible="{Binding IsFullDaySupported}"/>
                                                         <StackPanel Spacing="4">
@@ -140,14 +141,14 @@
                                                                             Orientation="Horizontal" Spacing="4"
                                                                             VerticalAlignment="Center"
                                                                             IsVisible="{Binding !IsFullDay}">
-                                                                    <NumericUpDown Classes="TimeInput" Width="52"
+                                                                    <atom:NumericUpDown Classes="TimeInput" Width="52"
                                                                                    Value="{Binding StartHour}"
                                                                                    Minimum="0" Maximum="23"
                                                                                    FormatString="00"
                                                                                    Increment="1"/>
                                                                     <TextBlock Text=":" FontSize="14" FontWeight="SemiBold"
                                                                                VerticalAlignment="Center"/>
-                                                                    <NumericUpDown Classes="TimeInput" Width="52"
+                                                                    <atom:NumericUpDown Classes="TimeInput" Width="52"
                                                                                    Value="{Binding StartMinute}"
                                                                                    Minimum="0" Maximum="59"
                                                                                    FormatString="00"
@@ -165,14 +166,14 @@
                                                                             Orientation="Horizontal" Spacing="4"
                                                                             VerticalAlignment="Center"
                                                                             IsVisible="{Binding !IsFullDay}">
-                                                                    <NumericUpDown Classes="TimeInput" Width="52"
+                                                                    <atom:NumericUpDown Classes="TimeInput" Width="52"
                                                                                    Value="{Binding EndHour}"
                                                                                    Minimum="0" Maximum="23"
                                                                                    FormatString="00"
                                                                                    Increment="1"/>
                                                                     <TextBlock Text=":" FontSize="14" FontWeight="SemiBold"
                                                                                VerticalAlignment="Center"/>
-                                                                    <NumericUpDown Classes="TimeInput" Width="52"
+                                                                    <atom:NumericUpDown Classes="TimeInput" Width="52"
                                                                                    Value="{Binding EndMinute}"
                                                                                    Minimum="0" Maximum="59"
                                                                                    FormatString="00"
@@ -185,9 +186,9 @@
 
                                                 <DataTemplate DataType="edit:ReminderEditViewModel">
                                                     <StackPanel Spacing="8">
-                                                        <CheckBox Content="Enable reminder"
+                                                        <atom:CheckBox Content="Enable reminder"
                                                                   IsChecked="{Binding HasReminder}"/>
-                                                        <ComboBox ItemsSource="{Binding ReminderOptions}"
+                                                        <atom:ComboBox ItemsSource="{Binding ReminderOptions}"
                                                                   SelectedItem="{Binding SelectedReminderOption}"
                                                                   HorizontalAlignment="Stretch"
                                                                   IsVisible="{Binding HasReminder}">
@@ -197,13 +198,13 @@
                                                                                VerticalAlignment="Center"/>
                                                                 </DataTemplate>
                                                             </ComboBox.ItemTemplate>
-                                                        </ComboBox>
+                                                        </atom:ComboBox>
                                                     </StackPanel>
                                                 </DataTemplate>
 
                                                 <DataTemplate DataType="edit:RecurrenceEditViewModel">
                                                     <StackPanel Spacing="8">
-                                                        <CheckBox Content="Repeat this event"
+                                                        <atom:CheckBox Content="Repeat this event"
                                                                   IsChecked="{Binding IsRecurring}"
                                                                   IsEnabled="{Binding CanEdit}"/>
                                                         <TextBlock Text="{Binding ReadOnlyReason}"
@@ -212,7 +213,7 @@
                                                         <StackPanel Spacing="8" IsVisible="{Binding ShowEditor}">
                                                             <Grid ColumnDefinitions="Auto,8,Auto,8,*">
                                                                 <TextBlock Text="Frequency" VerticalAlignment="Center"/>
-                                                                <ComboBox Grid.Column="2"
+                                                                <atom:ComboBox Grid.Column="2"
                                                                           ItemsSource="{Binding FrequencyOptions}"
                                                                           SelectedItem="{Binding SelectedFrequency}"
                                                                           MinWidth="120">
@@ -221,12 +222,12 @@
                                                                             <TextBlock Text="{Binding Label}"/>
                                                                         </DataTemplate>
                                                                     </ComboBox.ItemTemplate>
-                                                                </ComboBox>
+                                                                </atom:ComboBox>
                                                                 <TextBlock Grid.Column="4" Text="Every" VerticalAlignment="Center" Margin="8,0,0,0"/>
                                                             </Grid>
                                                             <Grid ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,8,Auto,8,Auto">
                                                                 <TextBlock Text="Interval" VerticalAlignment="Center"/>
-                                                                <NumericUpDown Grid.Column="2"
+                                                                <atom:NumericUpDown Grid.Column="2"
                                                                                Value="{Binding Interval}"
                                                                                Minimum="1"
                                                                                Maximum="365"
@@ -245,7 +246,7 @@
                                                                     </ItemsControl.ItemsPanel>
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate DataType="edit:WeekdaySelectionViewModel">
-                                                                            <CheckBox Content="{Binding Label}"
+                                                                            <atom:CheckBox Content="{Binding Label}"
                                                                                       IsChecked="{Binding IsSelected}"
                                                                                       Margin="0,0,8,4"/>
                                                                         </DataTemplate>
@@ -253,7 +254,7 @@
                                                                 </ItemsControl>
                                                                 <TextBlock Grid.Row="4" Text="Ends" VerticalAlignment="Center"/>
                                                                 <StackPanel Grid.Row="4" Grid.Column="2" Spacing="8">
-                                                                    <ComboBox ItemsSource="{Binding EndOptions}"
+                                                                    <atom:ComboBox ItemsSource="{Binding EndOptions}"
                                                                               SelectedItem="{Binding SelectedEndOption}"
                                                                               MinWidth="180"
                                                                               HorizontalAlignment="Left">
@@ -262,8 +263,8 @@
                                                                                 <TextBlock Text="{Binding Label}"/>
                                                                             </DataTemplate>
                                                                         </ComboBox.ItemTemplate>
-                                                                    </ComboBox>
-                                                                    <NumericUpDown Value="{Binding Count}"
+                                                                    </atom:ComboBox>
+                                                                    <atom:NumericUpDown Value="{Binding Count}"
                                                                                    Minimum="1"
                                                                                    Maximum="999"
                                                                                    Increment="1"
@@ -281,7 +282,7 @@
                                                 </DataTemplate>
 
                                                 <DataTemplate DataType="edit:DescriptionEditViewModel">
-                                                    <TextBox Text="{Binding Description}"
+                                                    <atom:TextBox Text="{Binding Description}"
                                                              PlaceholderText="Description"
                                                              AcceptsReturn="True"
                                                              TextWrapping="Wrap"
@@ -290,7 +291,7 @@
                                                 </DataTemplate>
 
                                                 <DataTemplate DataType="edit:LocationEditViewModel">
-                                                    <TextBox Text="{Binding Location}"
+                                                    <atom:TextBox Text="{Binding Location}"
                                                              PlaceholderText="Location"
                                                              HorizontalAlignment="Stretch"/>
                                                 </DataTemplate>
@@ -305,13 +306,13 @@
                                                             </ItemsControl.ItemsPanel>
                                                             <ItemsControl.ItemTemplate>
                                                                 <DataTemplate DataType="edit:ParticipantEditItemViewModel">
-                                                                    <Border Background="{DynamicResource SystemControlHighlightAltBrush}"
+                                                                    <Border Background="{DynamicResource AppSelectionSubtleBrush}"
                                                                             CornerRadius="16"
                                                                             Padding="6,4"
                                                                             Margin="0,0,4,4">
                                                                         <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                                                             <Border Width="24" Height="24" CornerRadius="12"
-                                                                                    Background="{DynamicResource SystemAccentColorLight2}">
+                                                                                    Background="{DynamicResource AppAccentBrushLight2}">
                                                                                 <Panel>
                                                                                     <Image Source="{Binding PhotoBitmap}"
                                                                                            Stretch="UniformToFill"
@@ -331,7 +332,7 @@
                                                                                        TextTrimming="CharacterEllipsis"
                                                                                        Margin="6,0,0,0"/>
                                                                             <Border Grid.Column="2"
-                                                                                    Background="{DynamicResource SystemControlHyperlinkBrush}"
+                                                                                    Background="{DynamicResource AppHyperlinkBrush}"
                                                                                     CornerRadius="8"
                                                                                     Padding="4,2"
                                                                                     Margin="6,0,0,0"
@@ -340,19 +341,19 @@
                                                                                            FontSize="10"
                                                                                            Foreground="White"/>
                                                                             </Border>
-                                                                            <Button Grid.Column="3"
+                                                                            <atom:Button Grid.Column="3"
                                                                                     Classes="SmallButton"
                                                                                     Padding="4"
                                                                                     Command="{Binding RemoveCommand}">
                                                                                 <TextBlock Text="✕" FontSize="12"/>
-                                                                            </Button>
+                                                                            </atom:Button>
                                                                         </Grid>
                                                                     </Border>
                                                                 </DataTemplate>
                                                             </ItemsControl.ItemTemplate>
                                                         </ItemsControl>
                                                         <Grid>
-                                                            <TextBox x:Name="SearchTextBox"
+                                                            <atom:TextBox x:Name="SearchTextBox"
                                                                      Text="{Binding SearchText}"
                                                                      PlaceholderText="Add participants"
                                                                      HorizontalAlignment="Stretch"
@@ -361,15 +362,15 @@
                                                                    PlacementTarget="{Binding ElementName=SearchTextBox}"
                                                                    Placement="Bottom"
                                                                    MaxHeight="250">
-                                                                <Border Background="{DynamicResource SystemChromeMediumColor}"
-                                                                        BorderBrush="{DynamicResource SystemChromeHighColor}"
+                                                                <Border Background="{DynamicResource AppPanelMutedBrush}"
+                                                                        BorderBrush="{DynamicResource AppChromeStrongBorderBrush}"
                                                                         BorderThickness="1"
                                                                         CornerRadius="4"
                                                                         Padding="4">
                                                                     <ItemsControl ItemsSource="{Binding SearchResults}">
                                                                         <ItemsControl.ItemTemplate>
                                                                             <DataTemplate DataType="edit:ParticipantEditItemViewModel">
-                                                                                <Button Background="Transparent"
+                                                                                <atom:Button Background="Transparent"
                                                                                         BorderThickness="0"
                                                                                         Padding="0"
                                                                                         HorizontalAlignment="Stretch"
@@ -380,12 +381,12 @@
                                                                                         <Border.Styles>
                                                                                             <Style Selector="Border:pointerover">
                                                                                                 <Setter Property="Background"
-                                                                                                        Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+                                                                                                        Value="{DynamicResource AppHoverBrush}"/>
                                                                                             </Style>
                                                                                         </Border.Styles>
                                                                                         <Grid ColumnDefinitions="Auto,*">
                                                                                             <Border Width="32" Height="32" CornerRadius="16"
-                                                                                                    Background="{DynamicResource SystemAccentColorLight2}">
+                                                                                                    Background="{DynamicResource AppAccentBrushLight2}">
                                                                                                 <Panel>
                                                                                                     <Image Source="{Binding PhotoBitmap}"
                                                                                                            Stretch="UniformToFill"
@@ -404,19 +405,19 @@
                                                                                                            TextTrimming="CharacterEllipsis"/>
                                                                                                 <TextBlock Text="{Binding Email}"
                                                                                                            FontSize="11"
-                                                                                                           Foreground="{DynamicResource SystemControlForegroundAltBrush}"
+                                                                                                           Foreground="{DynamicResource AppTextSecondaryBrush}"
                                                                                                            TextTrimming="CharacterEllipsis"/>
                                                                                             </StackPanel>
                                                                                         </Grid>
                                                                                     </Border>
-                                                                                </Button>
+                                                                                </atom:Button>
                                                                             </DataTemplate>
                                                                         </ItemsControl.ItemTemplate>
                                                                     </ItemsControl>
                                                                 </Border>
                                                             </Popup>
                                                         </Grid>
-                                                        <Button Content="Check availability →"
+                                                        <atom:Button Content="Check availability →"
                                                                 HorizontalAlignment="Right"
                                                                 Command="{Binding $parent[Window].((cal:EventEditViewModel)DataContext).CheckAvailabilityCommand}"
                                                                 IsVisible="{Binding HasValue}"
@@ -436,22 +437,22 @@
 
                 </StackPanel>
             </Border>
-        </ScrollViewer>
+        </atom:ScrollViewer>
 
         <!-- Error + Buttons -->
         <StackPanel Grid.Row="2" Spacing="8">
             <Border IsVisible="{Binding ErrorMessage}">
                 <TextBlock Text="{Binding ErrorMessage}"
-                           Foreground="{DynamicResource SystemErrorColorBrush}"
+                           Foreground="{DynamicResource AppErrorBrushBrush}"
                            FontSize="12"
                            TextWrapping="Wrap"/>
             </Border>
             <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                <Button Content="Save"
+                <atom:Button Content="Save"
                         Command="{Binding SaveCommand}"
                         IsEnabled="{Binding !IsSaving}"
                         MinWidth="100"/>
-                <Button Content="Cancel"
+                <atom:Button Content="Cancel"
                         Command="{Binding CancelCommand}"
                         MinWidth="100"/>
             </StackPanel>

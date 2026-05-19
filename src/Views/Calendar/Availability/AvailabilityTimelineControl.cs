@@ -93,10 +93,10 @@ public class AvailabilityTimelineControl : Control
                               ?? new SolidColorBrush(Color.FromArgb(180, 220, 60, 60));
         var unknownBrush    = TryGetResource<IBrush>("AvailabilityUnknownBrush")
                               ?? new SolidColorBrush(Color.FromArgb(60, 128, 128, 128));
-        var headerLineBrush = TryGetResource<IBrush>("SystemChromeHighColor")  ?? Brushes.Gray;
-        var rowBgBrush      = TryGetResource<IBrush>("SystemChromeLowColor")
+        var headerLineBrush = TryGetResource<IBrush>("AppChromeStrongBorderBrush")  ?? Brushes.Gray;
+        var rowBgBrush      = TryGetResource<IBrush>("AppChromeBorderBrush")
                               ?? new SolidColorBrush(Color.FromArgb(25, 128, 128, 128));
-        var labelBrush      = TryGetResource<IBrush>("SystemControlForegroundBaseMediumBrush")
+        var labelBrush      = TryGetResource<IBrush>("AppTextSecondaryBrush")
                               ?? Brushes.Gray;
         var typeface        = new Typeface(FontFamily.Default);
 

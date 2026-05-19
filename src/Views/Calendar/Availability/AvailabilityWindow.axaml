@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:atom="https://atomui.net"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:av="using:perinma.Views.Calendar.Availability"
@@ -45,7 +46,7 @@
 
             <!-- Navigation bar -->
             <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,6">
-                <Button Content="◀"
+                <atom:Button Content="◀"
                         Command="{Binding GoToPreviousDayCommand}"
                         Width="30" Height="28" Padding="4,0"
                         VerticalAlignment="Center"/>
@@ -54,13 +55,13 @@
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
                            FontSize="13" FontWeight="SemiBold"/>
-                <Button Grid.Column="2"
+                <atom:Button Grid.Column="2"
                         Content="▶"
                         Command="{Binding GoToNextDayCommand}"
                         Width="30" Height="28" Padding="4,0"
                         Margin="0,0,8,0"
                         VerticalAlignment="Center"/>
-                <Button Grid.Column="3"
+                <atom:Button Grid.Column="3"
                         Content="↺ Refresh"
                         Command="{Binding RefreshCommand}"
                         IsEnabled="{Binding !IsLoading}"
@@ -71,11 +72,11 @@
             <StackPanel Grid.Row="1" Spacing="4">
                 <TextBlock Text="Loading availability…"
                            FontSize="12"
-                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                           Foreground="{DynamicResource AppTextSecondaryBrush}"
                            IsVisible="{Binding IsLoading}"/>
                 <TextBlock Text="{Binding ErrorMessage}"
                            FontSize="12" TextWrapping="Wrap"
-                           Foreground="{DynamicResource SystemErrorTextColorBrush}"
+                           Foreground="{DynamicResource AppErrorBrush}"
                            IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             </StackPanel>
 
@@ -85,7 +86,7 @@
         <Grid Grid.Row="1" ColumnDefinitions="110,*">
 
             <!-- Name column -->
-            <ScrollViewer Grid.Column="0"
+            <atom:ScrollViewer Grid.Column="0"
                           x:Name="NameScrollViewer"
                           VerticalScrollBarVisibility="Hidden"
                           HorizontalScrollBarVisibility="Disabled">
@@ -106,10 +107,10 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
-            </ScrollViewer>
+            </atom:ScrollViewer>
 
             <!-- Timeline column -->
-            <ScrollViewer Grid.Column="1"
+            <atom:ScrollViewer Grid.Column="1"
                           x:Name="TimelineScrollViewer"
                           HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Hidden">
@@ -142,7 +143,7 @@
                         </Border>
                     </Canvas>
                 </Panel>
-            </ScrollViewer>
+            </atom:ScrollViewer>
         </Grid>
 
         <!-- ── Row 2: selected label + action buttons ────────────────────── -->
@@ -152,11 +153,11 @@
                        FontSize="13" FontWeight="SemiBold"
                        VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                <Button x:Name="UseSlotButton"
+                <atom:Button x:Name="UseSlotButton"
                         Content="Use this slot"
                         MinWidth="120"
                         Click="OnUseSlotClick"/>
-                <Button Content="Cancel"
+                <atom:Button Content="Cancel"
                         MinWidth="80"
                         Click="OnCancelClick"/>
             </StackPanel>

@@ -11,27 +11,6 @@
         <ResourceDictionary>
             <x:Double x:Key="CalendarTimeHourFontSize">12</x:Double>
             <x:Double x:Key="CalendarTimeMinuteFontSize">9</x:Double>
-
-            <ResourceDictionary.ThemeDictionaries>
-                <ResourceDictionary x:Key="Light">
-                    <LinearGradientBrush x:Key="HeaderDropShadow" StartPoint="50%,0%" EndPoint="50%,100%">
-                        <GradientStop Color="White" Offset="0" />
-                        <GradientStop Color="DarkGray" Offset="0.2" />
-                        <GradientStop Color="White" Offset="1" />
-                    </LinearGradientBrush>
-                    <SolidColorBrush x:Key="NonWorkingHourBrush" Color="#20000000" />
-                    <SolidColorBrush x:Key="GridLineColor" Color="#FFD3D3D3" />
-                </ResourceDictionary>
-                <ResourceDictionary x:Key="Dark">
-                    <LinearGradientBrush x:Key="HeaderDropShadow" StartPoint="50%,0%" EndPoint="50%,100%">
-                        <GradientStop Color="#2B2B2B" Offset="0" />
-                        <GradientStop Color="#1A1A1A" Offset="0.2" />
-                        <GradientStop Color="#2B2B2B" Offset="1" />
-                    </LinearGradientBrush>
-                    <SolidColorBrush x:Key="NonWorkingHourBrush" Color="#90CCCCCC" />
-                    <SolidColorBrush x:Key="GridLineColor" Color="#FF404040" />
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -42,11 +21,11 @@
                 <ControlTemplate>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <TextBlock FontSize="{DynamicResource CalendarTimeHourFontSize}"
-                                   Foreground="Gray"
+                                   Foreground="{DynamicResource AppTextTertiaryBrush}"
                                    VerticalAlignment="Top"
                                    Text="{Binding Hour, RelativeSource={RelativeSource TemplatedParent}, StringFormat={}{0:00}}" />
                         <TextBlock FontSize="{DynamicResource CalendarTimeMinuteFontSize}"
-                                   Foreground="Gray"
+                                   Foreground="{DynamicResource AppTextTertiaryBrush}"
                                    VerticalAlignment="Top"
                                    Margin="2,0,0,0"
                                    Text="{Binding Minute, RelativeSource={RelativeSource TemplatedParent}, StringFormat={}{0:00}}" />
@@ -142,7 +121,7 @@
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,*">
         <TextBlock Grid.Row="0" Grid.Column="0"
                    FontSize="{DynamicResource CalendarTimeHourFontSize}"
-                   Foreground="Gray"
+                   Foreground="{DynamicResource AppTextTertiaryBrush}"
                    VerticalAlignment="Center"
                    Text="All-day"
                    Margin="4, 0, 4, 0" />
@@ -172,7 +151,7 @@
                           VerticalScrollBarVisibility="Auto">
             </ScrollViewer>
             <Border Height="10" CornerRadius="0, 0, 10, 10"
-                    Background="{DynamicResource HeaderDropShadow}" />
+                    Background="{DynamicResource AppCalendarHeaderShadowBrush}" />
         </StackPanel>
         <ScrollViewer Name="TimeRows" Grid.Column="0" Grid.Row="1"
                       VerticalScrollBarVisibility="Hidden"

@@ -10,25 +10,25 @@
     <Grid RowDefinitions="Auto,*">
         <!-- Weekday Headers -->
         <UniformGrid Grid.Row="0" Columns="7">
-            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+            <Border BorderBrush="{DynamicResource AppChromeBorderBrush}" BorderThickness="0,0,1,1" Padding="4">
                 <TextBlock Text="Mon" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
             </Border>
-            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+            <Border BorderBrush="{DynamicResource AppChromeBorderBrush}" BorderThickness="0,0,1,1" Padding="4">
                 <TextBlock Text="Tue" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
             </Border>
-            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+            <Border BorderBrush="{DynamicResource AppChromeBorderBrush}" BorderThickness="0,0,1,1" Padding="4">
                 <TextBlock Text="Wed" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
             </Border>
-            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+            <Border BorderBrush="{DynamicResource AppChromeBorderBrush}" BorderThickness="0,0,1,1" Padding="4">
                 <TextBlock Text="Thu" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
             </Border>
-            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+            <Border BorderBrush="{DynamicResource AppChromeBorderBrush}" BorderThickness="0,0,1,1" Padding="4">
                 <TextBlock Text="Fri" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
             </Border>
-            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+            <Border BorderBrush="{DynamicResource AppChromeBorderBrush}" BorderThickness="0,0,1,1" Padding="4">
                 <TextBlock Text="Sat" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
             </Border>
-            <Border BorderBrush="LightGray" BorderThickness="0,0,1,1" Padding="4">
+            <Border BorderBrush="{DynamicResource AppChromeBorderBrush}" BorderThickness="0,0,1,1" Padding="4">
                 <TextBlock Text="Sun" HorizontalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
             </Border>
         </UniformGrid>
@@ -42,7 +42,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="cal:MonthDayViewModel">
-                    <Border BorderBrush="LightGray" 
+                    <Border BorderBrush="{DynamicResource AppChromeBorderBrush}" 
                             BorderThickness="0,0,1,1"
                             Background="{Binding Background}"
                             MinHeight="80">

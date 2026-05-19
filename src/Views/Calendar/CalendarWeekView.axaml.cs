@@ -230,14 +230,14 @@ public partial class CalendarWeekView : UserControl
 
         private void UpdateThemeBrushes()
         {
-            if (_parent.TryGetResource("GridLineColor", ActualThemeVariant, out var lineColorObj)
+            if (_parent.TryGetResource("AppCalendarGridLineBrush", ActualThemeVariant, out var lineColorObj)
                 && lineColorObj is IBrush lineBrush)
             {
                 _gridLineBrush = lineBrush;
                 _gridLineThickBrush = lineBrush;
             }
 
-            if (_parent.TryGetResource("NonWorkingHourBrush", ActualThemeVariant, out var brushObj)
+            if (_parent.TryGetResource("AppCalendarNonWorkingBrush", ActualThemeVariant, out var brushObj)
                 && brushObj is IBrush brush)
             {
                 _nonWorkingHourBrush = brush;
@@ -693,7 +693,7 @@ public partial class CalendarWeekView : UserControl
 
         private void UpdateThemeBrushes()
         {
-            if (_parent.TryGetResource("SystemChromeLowColor", ActualThemeVariant, out var colorObj)
+            if (_parent.TryGetResource("AppChromeBorderBrush", ActualThemeVariant, out var colorObj)
                 && colorObj is Color color)
             {
                 _gridLineBrush = new SolidColorBrush(color);

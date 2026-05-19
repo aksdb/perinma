@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:atom="https://atomui.net"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:cal="using:perinma.Views.Calendar"
@@ -23,45 +24,45 @@
     <Grid x:Name="MainGrid" RowDefinitions="Auto,*,Auto">
         <!-- Menu Bar with View Switcher -->
         <DockPanel Grid.Row="0">
-            <Menu DockPanel.Dock="Left">
-                <MenuItem Header="_File">
-                    <MenuItem Header="_Settings" Name="MnuSettings" Command="{Binding ShowSettingsCommand}"/>
-                    <MenuItem Header="_Sync" Command="{Binding SyncCommand}"/>
-                    <MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"/>
-                </MenuItem>
-                <MenuItem Header="_View">
-                    <MenuItem Header="_Calendar" Command="{Binding ShowCalendarViewCommand}">
+            <atom:Menu DockPanel.Dock="Left">
+                <atom:MenuItem Header="_File">
+                    <atom:MenuItem Header="_Settings" Name="MnuSettings" Command="{Binding ShowSettingsCommand}"/>
+                    <atom:MenuItem Header="_Sync" Command="{Binding SyncCommand}"/>
+                    <atom:MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"/>
+                </atom:MenuItem>
+                <atom:MenuItem Header="_View">
+                    <atom:MenuItem Header="_Calendar" Command="{Binding ShowCalendarViewCommand}">
                         <MenuItem.Icon>
-                            <CheckBox IsChecked="{Binding IsCalendarViewActive}" IsHitTestVisible="False"/>
+                            <atom:CheckBox IsChecked="{Binding IsCalendarViewActive}" IsHitTestVisible="False"/>
                         </MenuItem.Icon>
-                    </MenuItem>
-                    <MenuItem Header="C_ontacts" Command="{Binding ShowContactsViewCommand}">
+                    </atom:MenuItem>
+                    <atom:MenuItem Header="C_ontacts" Command="{Binding ShowContactsViewCommand}">
                         <MenuItem.Icon>
-                            <CheckBox IsChecked="{Binding IsContactsViewActive}" IsHitTestVisible="False"/>
+                            <atom:CheckBox IsChecked="{Binding IsContactsViewActive}" IsHitTestVisible="False"/>
                         </MenuItem.Icon>
-                    </MenuItem>
-                    <Separator/>
+                    </atom:MenuItem>
+                    <atom:Separator/>
 
-                    <MenuItem Header="_Theme">
-                        <MenuItem Header="_Light" Command="{Binding SetLightThemeCommand}">
+                    <atom:MenuItem Header="_Theme">
+                        <atom:MenuItem Header="_Light" Command="{Binding SetLightThemeCommand}">
                             <MenuItem.Icon>
-                                <CheckBox IsChecked="{Binding IsLightTheme}" IsHitTestVisible="False"/>
+                                <atom:CheckBox IsChecked="{Binding IsLightTheme}" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="_Dark" Command="{Binding SetDarkThemeCommand}">
+                        </atom:MenuItem>
+                        <atom:MenuItem Header="_Dark" Command="{Binding SetDarkThemeCommand}">
                             <MenuItem.Icon>
-                                <CheckBox IsChecked="{Binding IsDarkTheme}" IsHitTestVisible="False"/>
+                                <atom:CheckBox IsChecked="{Binding IsDarkTheme}" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
-                        </MenuItem>
-                    </MenuItem>
-                </MenuItem>
-                <MenuItem Header="_Tools">
-                    <MenuItem Header="_Debug" Command="{Binding ShowDebugWindowCommand}"/>
-                </MenuItem>
-                <MenuItem Header="_Help">
-                    <MenuItem Header="_About" Command="{Binding ShowAboutCommand}"/>
-                </MenuItem>
-            </Menu>
+                        </atom:MenuItem>
+                    </atom:MenuItem>
+                </atom:MenuItem>
+                <atom:MenuItem Header="_Tools">
+                    <atom:MenuItem Header="_Debug" Command="{Binding ShowDebugWindowCommand}"/>
+                </atom:MenuItem>
+                <atom:MenuItem Header="_Help">
+                    <atom:MenuItem Header="_About" Command="{Binding ShowAboutCommand}"/>
+                </atom:MenuItem>
+            </atom:Menu>
 
             <!-- View Switcher Buttons -->
             <StackPanel DockPanel.Dock="Right" 
@@ -95,7 +96,7 @@
                 </Grid.ColumnDefinitions>
                 
                 <Border Grid.Column="0"
-                        BorderBrush="Gray"
+                        BorderBrush="{DynamicResource AppChromeBorderBrush}"
                         BorderThickness="0,0,1,0">
                     <callist:CalendarListView DataContext="{Binding CalendarListViewModel}"/>
                 </Border>
@@ -136,30 +137,30 @@
 
         <!-- Status Bar -->
         <Border Grid.Row="2"
-                Background="{DynamicResource SystemChromeMediumLowColor}"
-                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                Background="{DynamicResource AppPanelSubtleBrush}"
+                BorderBrush="{DynamicResource AppChromeBorderBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="12,8"
                 MinHeight="32">
 
             <Grid ColumnDefinitions="Auto,*">
                 <!-- Progress Indicator (only shows during sync) -->
-                <ProgressBar Grid.Column="0"
+                <atom:ProgressBar Grid.Column="0"
                             Width="80"
                             Height="3"
                             Margin="0,0,12,0"
                             IsIndeterminate="{Binding SyncProgressIsIndeterminate}"
                             Value="{Binding SyncProgress}"
                             IsVisible="{Binding IsSyncing}"
-                            Foreground="{DynamicResource SystemAccentColor}"
-                            Background="{DynamicResource SystemBaseLowColor}"/>
+                            Foreground="{DynamicResource AppAccentBrush}"
+                            Background="{DynamicResource AppPanelSubtleBrush}"/>
 
                 <!-- Status Text -->
                 <TextBlock Grid.Column="1"
                            Text="{Binding SyncStatusText, FallbackValue='Ready'}"
                            VerticalAlignment="Center"
                            FontSize="13"
-                           Foreground="{DynamicResource SystemBaseHighColor}"
+                           Foreground="{DynamicResource AppTextPrimaryBrush}"
                            TextTrimming="CharacterEllipsis"/>
             </Grid>
         </Border>

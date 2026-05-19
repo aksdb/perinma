@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:atom="https://atomui.net"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:main="using:perinma.Views.Main"
@@ -19,10 +20,10 @@
 
     <DockPanel>
         <!-- Header -->
-        <Border DockPanel.Dock="Top" Background="{DynamicResource SystemChromeMediumColor}" Padding="20">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource AppPanelMutedBrush}" Padding="20">
             <StackPanel Spacing="5">
                 <TextBlock Text="Re-authentication Required" FontSize="18" FontWeight="Bold" />
-                <TextBlock Text="Google Account" FontSize="12" Foreground="Gray" />
+                <TextBlock Text="Google Account" FontSize="12" Foreground="{DynamicResource AppTextSecondaryBrush}" />
             </StackPanel>
         </Border>
 
@@ -50,12 +51,12 @@
                            MinHeight="60" />
 
                 <StackPanel Spacing="10" Orientation="Horizontal" HorizontalAlignment="Center">
-                    <Button Content="Done"
+                    <atom:Button Content="Done"
                             Command="{Binding CompleteAuthenticationCommand}"
                             IsEnabled="{Binding OAuthUrl, Converter={x:Static ObjectConverters.IsNotNull}}"
                             MinWidth="100" />
 
-                    <Button Content="Cancel"
+                    <atom:Button Content="Cancel"
                             Command="{Binding CancelCommand}"
                             MinWidth="100" />
                 </StackPanel>

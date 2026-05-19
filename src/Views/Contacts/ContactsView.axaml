@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:atom="https://atomui.net"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:contacts="using:perinma.Views.Contacts"
@@ -18,7 +19,7 @@
 
         <!-- Left Pane: Address Books -->
         <Border Grid.Column="0"
-                BorderBrush="Gray"
+                BorderBrush="{DynamicResource AppChromeBorderBrush}"
                 BorderThickness="0,0,1,0">
             <DockPanel Margin="10">
                 <TextBlock DockPanel.Dock="Top"
@@ -27,7 +28,7 @@
                            FontWeight="Bold"
                            Margin="0,0,0,10" />
 
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                <atom:ScrollViewer HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <ItemsControl ItemsSource="{Binding AccountGroups}">
@@ -60,7 +61,7 @@
                                                 </ToggleButton>
                                                 <TextBlock Text="{Binding AccountName}"
                                                            FontWeight="SemiBold"
-                                                           Foreground="Gray"
+                                                           Foreground="{DynamicResource AppTextSecondaryBrush}"
                                                            FontSize="12"
                                                            VerticalAlignment="Center"
                                                            TextTrimming="CharacterEllipsis" />
@@ -74,14 +75,14 @@
                                                     <DataTemplate x:DataType="contacts:AddressBookViewModel">
                                                         <Border Padding="4,3" Margin="0,1" Background="Transparent">
                                                             <DockPanel>
-                                                                <CheckBox IsChecked="{Binding Enabled}"
+                                                                <atom:CheckBox IsChecked="{Binding Enabled}"
                                                                           DockPanel.Dock="Right"
                                                                           VerticalAlignment="Center"
                                                                           Margin="8,0,0,0" />
                                                                 <TextBlock DockPanel.Dock="Right"
                                                                            Text="{Binding ContactCount, StringFormat='({0})'}"
                                                                            FontSize="11"
-                                                                           Foreground="Gray"
+                                                                           Foreground="{DynamicResource AppTextSecondaryBrush}"
                                                                            VerticalAlignment="Center"
                                                                            Margin="4,0,0,0" />
                                                                 <TextBlock Text="{Binding Name}"
@@ -99,13 +100,13 @@
                         </ItemsControl>
 
                         <TextBlock Text="No address books"
-                                   Foreground="Gray"
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}"
                                    FontSize="12"
                                    Margin="0,10"
                                    IsVisible="{Binding !AccountGroups.Count}" />
 
                         <!-- Groups Section -->
-                        <Separator Margin="0,12,0,8" IsVisible="{Binding ContactGroups.Count}" />
+                        <atom:Separator Margin="0,12,0,8" IsVisible="{Binding ContactGroups.Count}" />
 
                         <TextBlock Text="Groups"
                                    FontSize="14"
@@ -113,7 +114,7 @@
                                    Margin="0,0,0,8"
                                    IsVisible="{Binding ContactGroups.Count}" />
 
-                        <ListBox ItemsSource="{Binding ContactGroups}"
+                        <atom:ListBox ItemsSource="{Binding ContactGroups}"
                                  SelectedItem="{Binding SelectedGroup}"
                                  Background="Transparent"
                                  BorderThickness="0"
@@ -125,7 +126,7 @@
                                             <TextBlock DockPanel.Dock="Right"
                                                        Text="{Binding MemberCount, StringFormat='({0})'}"
                                                        FontSize="11"
-                                                       Foreground="Gray"
+                                                       Foreground="{DynamicResource AppTextSecondaryBrush}"
                                                        VerticalAlignment="Center"
                                                        Margin="4,0,0,0" />
                                             <TextBlock Text="{Binding Name}"
@@ -135,9 +136,9 @@
                                     </Border>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
-                        </ListBox>
+                        </atom:ListBox>
                     </StackPanel>
-                </ScrollViewer>
+                </atom:ScrollViewer>
             </DockPanel>
         </Border>
 
@@ -149,18 +150,18 @@
 
         <!-- Center Pane: Contact List -->
         <Border Grid.Column="2"
-                BorderBrush="Gray"
+                BorderBrush="{DynamicResource AppChromeBorderBrush}"
                 BorderThickness="0,0,1,0">
             <DockPanel Margin="10">
                 <!-- Header with search -->
                 <StackPanel DockPanel.Dock="Top" Spacing="8">
                     <DockPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8" DockPanel.Dock="Right">
-                            <Button Content="New"
+                            <atom:Button Content="New"
                                     Command="{Binding CreateContactCommand}"
                                     Padding="10,4"
                                     Classes="Accent" />
-                            <Button Content="Edit"
+                            <atom:Button Content="Edit"
                                     Command="{Binding EditSelectedContactCommand}"
                                     IsEnabled="{Binding HasSelectedContact}"
                                     Padding="10,4" />
@@ -171,18 +172,18 @@
                                    VerticalAlignment="Center" />
                         <TextBlock Text="{Binding TotalContactCount, StringFormat='({0})'}"
                                    FontSize="12"
-                                   Foreground="Gray"
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}"
                                    VerticalAlignment="Center"
                                    Margin="8,0,0,0" />
                     </DockPanel>
 
                     <!-- Group filter indicator -->
                     <Border IsVisible="{Binding HasSelectedGroup}"
-                            Background="{DynamicResource SystemAccentColorLight2}"
+                            Background="{DynamicResource AppAccentBrushLight2}"
                             CornerRadius="4"
                             Padding="8,4">
                         <DockPanel>
-                            <Button DockPanel.Dock="Right"
+                            <atom:Button DockPanel.Dock="Right"
                                     Content="X"
                                     Command="{Binding ClearGroupFilterCommand}"
                                     Width="20"
@@ -201,11 +202,11 @@
                     </Border>
 
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBox Grid.Column="0"
+                        <atom:TextBox Grid.Column="0"
                                  Text="{Binding SearchText}"
                                  PlaceholderText="Search contacts..."
                                  Margin="0,0,4,0" />
-                        <Button Grid.Column="1"
+                        <atom:Button Grid.Column="1"
                                 Content="X"
                                 Command="{Binding ClearSearchCommand}"
                                 IsVisible="{Binding SearchText.Length}"
@@ -218,7 +219,7 @@
                 </StackPanel>
 
                 <!-- Contact List -->
-                <ListBox ItemsSource="{Binding FilteredContacts}"
+                <atom:ListBox ItemsSource="{Binding FilteredContacts}"
                          SelectedItem="{Binding SelectedContact}"
                          Margin="0,10,0,0"
                          Background="Transparent"
@@ -232,7 +233,7 @@
                                              Width="36"
                                              Height="36"
                                              CornerRadius="18"
-                                             Background="{DynamicResource SystemAccentColorLight2}"
+                                             Background="{DynamicResource AppAccentBrushLight2}"
                                              VerticalAlignment="Center"
                                              Margin="0,0,10,0">
                                          <Panel>
@@ -259,7 +260,7 @@
                                                    TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding Subtitle}"
                                                    FontSize="11"
-                                                   Foreground="Gray"
+                                                   Foreground="{DynamicResource AppTextSecondaryBrush}"
                                                    TextTrimming="CharacterEllipsis"
                                                    IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                     </StackPanel>
@@ -267,7 +268,7 @@
                             </Border>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
-                </ListBox>
+                </atom:ListBox>
             </DockPanel>
         </Border>
 
@@ -286,17 +287,17 @@
                             HorizontalAlignment="Center">
                     <TextBlock Text="Select a contact"
                                FontSize="16"
-                               Foreground="Gray"
+                               Foreground="{DynamicResource AppTextSecondaryBrush}"
                                HorizontalAlignment="Center" />
                     <TextBlock Text="to view details"
                                FontSize="14"
-                               Foreground="Gray"
+                               Foreground="{DynamicResource AppTextSecondaryBrush}"
                                HorizontalAlignment="Center"
                                Margin="0,4,0,0" />
                 </StackPanel>
 
                 <!-- Contact detail view -->
-                <ScrollViewer IsVisible="{Binding HasSelectedContact}"
+                <atom:ScrollViewer IsVisible="{Binding HasSelectedContact}"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20" Spacing="16"
@@ -306,7 +307,7 @@
                              <Border Width="64"
                                      Height="64"
                                      CornerRadius="32"
-                                     Background="{DynamicResource SystemAccentColorLight2}">
+                                     Background="{DynamicResource AppAccentBrushLight2}">
                                  <Panel>
                                      <!-- Photo -->
                                      <Image Source="{Binding PhotoBitmap}"
@@ -328,33 +329,33 @@
                                             FontWeight="Bold" />
                                  <TextBlock Text="{Binding AddressBookName}"
                                             FontSize="12"
-                                            Foreground="Gray" />
+                                            Foreground="{DynamicResource AppTextSecondaryBrush}" />
                              </StackPanel>
                          </StackPanel>
 
-                        <Separator/>
+                        <atom:Separator/>
 
                         <!-- Contact fields -->
                         <StackPanel Spacing="12">
                             <!-- Name fields -->
                             <StackPanel IsVisible="{Binding GivenName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <TextBlock Text="First Name" FontSize="11" Foreground="Gray" />
+                                <TextBlock Text="First Name" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                 <TextBlock Text="{Binding GivenName}" FontSize="14" />
                             </StackPanel>
 
                             <StackPanel IsVisible="{Binding FamilyName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <TextBlock Text="Last Name" FontSize="11" Foreground="Gray" />
+                                <TextBlock Text="Last Name" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                 <TextBlock Text="{Binding FamilyName}" FontSize="14" />
                             </StackPanel>
 
                             <!-- Emails -->
                             <StackPanel IsVisible="{Binding HasEmails}" Spacing="8">
-                                <TextBlock Text="Email" FontSize="13" FontWeight="SemiBold" Foreground="Gray" />
+                                <TextBlock Text="Email" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                 <ItemsControl ItemsSource="{Binding Emails}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="contacts:ContactEmailField">
                                             <StackPanel Margin="0,0,0,6">
-                                                <TextBlock Text="{Binding DisplayLabel}" FontSize="11" Foreground="Gray" />
+                                                <TextBlock Text="{Binding DisplayLabel}" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                                 <TextBlock Text="{Binding Value}" FontSize="14" />
                                             </StackPanel>
                                         </DataTemplate>
@@ -364,12 +365,12 @@
 
                             <!-- Phones -->
                             <StackPanel IsVisible="{Binding HasPhones}" Spacing="8">
-                                <TextBlock Text="Phone" FontSize="13" FontWeight="SemiBold" Foreground="Gray" />
+                                <TextBlock Text="Phone" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                 <ItemsControl ItemsSource="{Binding Phones}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="contacts:ContactPhoneField">
                                             <StackPanel Margin="0,0,0,6">
-                                                <TextBlock Text="{Binding DisplayLabel}" FontSize="11" Foreground="Gray" />
+                                                <TextBlock Text="{Binding DisplayLabel}" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                                 <TextBlock Text="{Binding Value}" FontSize="14" />
                                             </StackPanel>
                                         </DataTemplate>
@@ -379,12 +380,12 @@
 
                             <!-- Addresses -->
                             <StackPanel IsVisible="{Binding HasAddresses}" Spacing="8">
-                                <TextBlock Text="Address" FontSize="13" FontWeight="SemiBold" Foreground="Gray" />
+                                <TextBlock Text="Address" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                 <ItemsControl ItemsSource="{Binding Addresses}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="contacts:ContactAddressField">
                                             <StackPanel Margin="0,0,0,6">
-                                                <TextBlock Text="{Binding DisplayLabel}" FontSize="11" Foreground="Gray" />
+                                                <TextBlock Text="{Binding DisplayLabel}" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                                 <TextBlock Text="{Binding DisplayValue}" FontSize="14" TextWrapping="Wrap" />
                                             </StackPanel>
                                         </DataTemplate>
@@ -392,30 +393,30 @@
                                 </ItemsControl>
                             </StackPanel>
 
-                            <Separator/>
+                            <atom:Separator/>
 
                             <!-- Metadata -->
                             <StackPanel Spacing="8">
-                                <TextBlock Text="Details" FontSize="13" FontWeight="SemiBold" Foreground="Gray" />
+                                <TextBlock Text="Details" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                 
                                 <StackPanel>
-                                    <TextBlock Text="Account" FontSize="11" Foreground="Gray" />
+                                    <TextBlock Text="Account" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                     <TextBlock Text="{Binding AccountName}" FontSize="13" />
                                 </StackPanel>
 
                                 <StackPanel>
-                                    <TextBlock Text="Address Book" FontSize="11" Foreground="Gray" />
+                                    <TextBlock Text="Address Book" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                     <TextBlock Text="{Binding AddressBookName}" FontSize="13" />
                                 </StackPanel>
 
                                 <StackPanel IsVisible="{Binding ExternalId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                    <TextBlock Text="External ID" FontSize="11" Foreground="Gray" />
-                                    <TextBlock Text="{Binding ExternalId}" FontSize="11" Foreground="Gray" TextWrapping="Wrap" />
+                                    <TextBlock Text="External ID" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}" />
+                                    <TextBlock Text="{Binding ExternalId}" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}" TextWrapping="Wrap" />
                                 </StackPanel>
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
-                </ScrollViewer>
+                </atom:ScrollViewer>
             </Panel>
         </Border>
     </Grid>
