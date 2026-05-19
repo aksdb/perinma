@@ -1,9 +1,4 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="tests.App"
-             xmlns:local="using:tests">
-  
-    <Application.Styles>
-        <FluentTheme />
-    </Application.Styles>
+             x:Class="tests.App">
 </Application>
