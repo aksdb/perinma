@@ -203,11 +203,12 @@ public partial class MainWindowViewModel : ObservableRecipient,
         ActiveCalendarViewModel = ResolveActiveViewModel();
         CalendarListViewModel.ActiveCalendarViewModel = ActiveCalendarViewModel;
 
-        CalendarNavigationBarViewModel.IsMonthView = IsMonthView;
-        CalendarNavigationBarViewModel.IsFiveDaysView = IsWorkWeekView;
-        CalendarNavigationBarViewModel.IsDayView = IsDayView;
-        CalendarNavigationBarViewModel.IsWeekView = IsWeekView && !IsWorkWeekView && !IsDayView;
-        CalendarNavigationBarViewModel.IsAgendaView = IsAgendaView;
+        CalendarNavigationBarViewModel.SetSelectedViewMode(
+            IsWorkWeekView ? CalendarNavigationBarViewModel.CalendarNavigationViewMode.WorkWeek
+            : IsDayView ? CalendarNavigationBarViewModel.CalendarNavigationViewMode.Day
+            : IsMonthView ? CalendarNavigationBarViewModel.CalendarNavigationViewMode.Month
+            : IsAgendaView ? CalendarNavigationBarViewModel.CalendarNavigationViewMode.Agenda
+            : CalendarNavigationBarViewModel.CalendarNavigationViewMode.Week);
 
         CalendarNavigationBarViewModel.ShowMonthViewCommand = ShowMonthViewCommand;
         CalendarNavigationBarViewModel.ShowWeekViewCommand = ShowWeekViewCommand;

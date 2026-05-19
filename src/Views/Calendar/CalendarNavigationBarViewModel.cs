@@ -5,6 +5,17 @@ namespace perinma.Views.Calendar;
 
 public partial class CalendarNavigationBarViewModel : ViewModelBase
 {
+    public enum CalendarNavigationViewMode
+    {
+        Month,
+        Week,
+        WorkWeek,
+        Day,
+        Agenda
+    }
+
+    private bool _suppressSelectedViewIndexChanged;
+
     [ObservableProperty]
     private string _dateRangeDisplay = string.Empty;
 
@@ -36,17 +47,45 @@ public partial class CalendarNavigationBarViewModel : ViewModelBase
     private IRelayCommand? _showAgendaViewCommand;
 
     [ObservableProperty]
-    private bool _isMonthView;
+    private int _selectedViewIndex = (int)CalendarNavigationViewMode.Week;
 
-    [ObservableProperty]
-    private bool _isWeekView;
+    public void SetSelectedViewMode(CalendarNavigationViewMode mode)
+    {
+        _suppressSelectedViewIndexChanged = true;
+        try
+        {
+            SelectedViewIndex = (int)mode;
+        }
+        finally
+        {
+            _suppressSelectedViewIndexChanged = false;
+        }
+    }
 
-    [ObservableProperty]
-    private bool _isFiveDaysView;
+    partial void OnSelectedViewIndexChanged(int value)
+    {
+        if (_suppressSelectedViewIndexChanged)
+        {
+            return;
+        }
 
-    [ObservableProperty]
-    private bool _isDayView;
-
-    [ObservableProperty]
-    private bool _isAgendaView;
+        switch ((CalendarNavigationViewMode)value)
+        {
+            case CalendarNavigationViewMode.Month:
+                ShowMonthViewCommand?.Execute(null);
+                break;
+            case CalendarNavigationViewMode.Week:
+                ShowWeekViewCommand?.Execute(null);
+                break;
+            case CalendarNavigationViewMode.WorkWeek:
+                ShowFiveDaysViewCommand?.Execute(null);
+                break;
+            case CalendarNavigationViewMode.Day:
+                ShowDayViewCommand?.Execute(null);
+                break;
+            case CalendarNavigationViewMode.Agenda:
+                ShowAgendaViewCommand?.Execute(null);
+                break;
+        }
+    }
 }

@@ -15,12 +15,12 @@ public class CalendarNavigationBarTests
             DataContext = new CalendarNavigationBarViewModel()
         };
 
-        AssertAtomControl(control, "ViewModeGroup", "OptionButtonGroup");
-        AssertAtomControl(control, "MonthViewButton", "OptionButton");
-        AssertAtomControl(control, "WeekViewButton", "OptionButton");
-        AssertAtomControl(control, "WorkWeekViewButton", "OptionButton");
-        AssertAtomControl(control, "DayViewButton", "OptionButton");
-        AssertAtomControl(control, "AgendaViewButton", "OptionButton");
+        AssertAtomControl(control, "ViewModeGroup", "Segmented");
+        AssertAtomControl(control, "MonthViewButton", "SegmentedItem");
+        AssertAtomControl(control, "WeekViewButton", "SegmentedItem");
+        AssertAtomControl(control, "WorkWeekViewButton", "SegmentedItem");
+        AssertAtomControl(control, "DayViewButton", "SegmentedItem");
+        AssertAtomControl(control, "AgendaViewButton", "SegmentedItem");
         AssertAtomControl(control, "PreviousButton", "Button");
         AssertAtomControl(control, "TodayButton", "Button");
         AssertAtomControl(control, "NextButton", "Button");

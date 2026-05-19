@@ -7,7 +7,7 @@
              x:DataType="cal:CalendarNavigationBarViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="60"
              x:Class="perinma.Views.Calendar.CalendarNavigationBar">
-
+    
     <Grid Margin="0, 10, 0, 10">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
@@ -16,37 +16,27 @@
         </Grid.ColumnDefinitions>
 
         <!-- View Mode Switcher -->
-        <atom:OptionButtonGroup Grid.Column="0"
-                                Name="ViewModeGroup"
-                                HorizontalAlignment="Left"
-                                Margin="10, 0, 0, 0"
-                                ButtonStyle="Outline">
-            <atom:OptionButton Name="MonthViewButton"
-                               Content="Month"
-                               IsChecked="{Binding IsMonthView}"
-                               Command="{Binding ShowMonthViewCommand}"
-                               FontSize="12"/>
-            <atom:OptionButton Name="WeekViewButton"
-                               Content="Week"
-                               IsChecked="{Binding IsWeekView}"
-                               Command="{Binding ShowWeekViewCommand}"
-                               FontSize="12"/>
-            <atom:OptionButton Name="WorkWeekViewButton"
-                               Content="Work Week"
-                               IsChecked="{Binding IsFiveDaysView}"
-                               Command="{Binding ShowFiveDaysViewCommand}"
-                               FontSize="12"/>
-            <atom:OptionButton Name="DayViewButton"
-                               Content="Day"
-                               IsChecked="{Binding IsDayView}"
-                               Command="{Binding ShowDayViewCommand}"
-                               FontSize="12"/>
-            <atom:OptionButton Name="AgendaViewButton"
-                               Content="Agenda"
-                               IsChecked="{Binding IsAgendaView}"
-                               Command="{Binding ShowAgendaViewCommand}"
-                               FontSize="12"/>
-        </atom:OptionButtonGroup>
+        <atom:Segmented Grid.Column="0"
+                        Name="ViewModeGroup"
+                        HorizontalAlignment="Left"
+                        Margin="10, 0, 0, 0"
+                        SelectedIndex="{Binding SelectedViewIndex, Mode=TwoWay}">
+            <atom:SegmentedItem Name="MonthViewButton"
+                                Content="Month"
+                                FontSize="12"/>
+            <atom:SegmentedItem Name="WeekViewButton"
+                                Content="Week"
+                                FontSize="12"/>
+            <atom:SegmentedItem Name="WorkWeekViewButton"
+                                Content="Work Week"
+                                FontSize="12"/>
+            <atom:SegmentedItem Name="DayViewButton"
+                                Content="Day"
+                                FontSize="12"/>
+            <atom:SegmentedItem Name="AgendaViewButton"
+                                Content="Agenda"
+                                FontSize="12"/>
+        </atom:Segmented>
 
         <!-- Navigation Controls (Center) -->
         <StackPanel Grid.Column="1"
@@ -57,7 +47,7 @@
                          Command="{Binding PreviousCommand}"
                          Margin="0, 0, 8, 0"
                          Padding="8, 4"
-                         ToolTip.Tip="Previous"
+                         atom:ToolTip.Tip="Previous"
                          Content="←"/>
 
             <TextBlock Text="{Binding DateRangeDisplay}"
@@ -70,13 +60,14 @@
                          Command="{Binding TodayCommand}"
                          Margin="0, 0, 8, 0"
                          Padding="8, 4"
-                         ToolTip.Tip="Today"
+                         atom:ToolTip.Tip="Today"
+                         FontSize="12"
                          Content="Today"/>
 
             <atom:Button Name="NextButton"
                          Command="{Binding NextCommand}"
                          Padding="8, 4"
-                         ToolTip.Tip="Next"
+                         atom:ToolTip.Tip="Next"
                          Content="→"/>
         </StackPanel>
 
@@ -85,7 +76,8 @@
                      Name="CreateEventButton"
                      Command="{Binding CreateNewEventCommand}"
                      Content="Create Event"
-                     Classes="Accent"
+                     ButtonType="Primary"
+                     FontSize="12"
                      Padding="8, 4"
                      Margin="10, 0, 10, 0"/>
     </Grid>
