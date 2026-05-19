@@ -20,7 +20,8 @@
             <atom:ComboBox x:Name="AddressBookComboBox"
                            ItemsSource="{Binding AddressBooks}"
                            SelectedItem="{Binding SelectedAddressBook}"
-                           IsEnabled="{Binding CanChangeAddressBook}">
+                           IsEnabled="{Binding CanChangeAddressBook}"
+                           HorizontalAlignment="Stretch">
                 <atom:ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="contacts:ContactAddressBookOption">
                         <TextBlock Text="{Binding DisplayName}" />
@@ -32,27 +33,27 @@
         <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
             <StackPanel Grid.Column="0" Spacing="6">
                 <TextBlock Text="First Name" FontWeight="SemiBold" />
-                <atom:TextBox x:Name="GivenNameTextBox" Text="{Binding GivenName}" />
+                <atom:LineEdit x:Name="GivenNameInput" Text="{Binding GivenName}" />
             </StackPanel>
             <StackPanel Grid.Column="1" Spacing="6">
                 <TextBlock Text="Last Name" FontWeight="SemiBold" />
-                <atom:TextBox x:Name="FamilyNameTextBox" Text="{Binding FamilyName}" />
+                <atom:LineEdit x:Name="FamilyNameInput" Text="{Binding FamilyName}" />
             </StackPanel>
         </Grid>
 
         <StackPanel Spacing="6">
             <TextBlock Text="Display Name" FontWeight="SemiBold" />
-            <atom:TextBox x:Name="DisplayNameTextBox" Text="{Binding DisplayName}" />
+            <atom:LineEdit x:Name="DisplayNameInput" Text="{Binding DisplayName}" />
         </StackPanel>
 
         <StackPanel Spacing="6">
             <TextBlock Text="Primary Email" FontWeight="SemiBold" />
-            <atom:TextBox x:Name="PrimaryEmailTextBox" Text="{Binding PrimaryEmail}" />
+            <atom:LineEdit x:Name="PrimaryEmailInput" Text="{Binding PrimaryEmail}" />
         </StackPanel>
 
         <StackPanel Spacing="6">
             <TextBlock Text="Primary Phone" FontWeight="SemiBold" />
-            <atom:TextBox x:Name="PrimaryPhoneTextBox" Text="{Binding PrimaryPhone}" />
+            <atom:LineEdit x:Name="PrimaryPhoneInput" Text="{Binding PrimaryPhone}" />
         </StackPanel>
 
         <TextBlock Text="{Binding ValidationError}"

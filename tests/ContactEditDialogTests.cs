@@ -16,20 +16,20 @@ public class ContactEditDialogTests
             DataContext = viewModel
         };
 
-        AssertAtomControl(dialog, "AddressBookComboBox");
-        AssertAtomControl(dialog, "GivenNameTextBox");
-        AssertAtomControl(dialog, "FamilyNameTextBox");
-        AssertAtomControl(dialog, "DisplayNameTextBox");
-        AssertAtomControl(dialog, "PrimaryEmailTextBox");
-        AssertAtomControl(dialog, "PrimaryPhoneTextBox");
-        AssertAtomControl(dialog, "CancelButton");
-        AssertAtomControl(dialog, "SaveButton");
+        AssertAtomControl(dialog, "AddressBookComboBox", "ComboBox");
+        AssertAtomControl(dialog, "GivenNameInput", "LineEdit");
+        AssertAtomControl(dialog, "FamilyNameInput", "LineEdit");
+        AssertAtomControl(dialog, "DisplayNameInput", "LineEdit");
+        AssertAtomControl(dialog, "PrimaryEmailInput", "LineEdit");
+        AssertAtomControl(dialog, "PrimaryPhoneInput", "LineEdit");
+        AssertAtomControl(dialog, "CancelButton", "Button");
+        AssertAtomControl(dialog, "SaveButton", "Button");
     }
 
-    private static void AssertAtomControl(ContactEditDialog dialog, string name)
+    private static void AssertAtomControl(ContactEditDialog dialog, string name, string typeName)
     {
         var control = dialog.FindControl<Control>(name);
         Assert.That(control, Is.Not.Null, $"Missing control '{name}'.");
-        Assert.That(control!.GetType().FullName, Does.StartWith("AtomUI."), $"Control '{name}' should use an AtomUI control type.");
+        Assert.That(control!.GetType().Name, Is.EqualTo(typeName), $"Control '{name}' should use AtomUI {typeName}.");
     }
 }
