@@ -14,61 +14,46 @@ public partial class CalendarNavigationBarViewModel : ViewModelBase
         Agenda
     }
 
-    private bool _suppressSelectedViewIndexChanged;
+    [ObservableProperty]
+    public partial string DateRangeDisplay { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string _dateRangeDisplay = string.Empty;
+    public partial IRelayCommand? PreviousCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _previousCommand;
+    public partial IRelayCommand? NextCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _nextCommand;
+    public partial IRelayCommand? TodayCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _todayCommand;
+    public partial IRelayCommand? CreateNewEventCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _createNewEventCommand;
+    public partial IRelayCommand? ShowMonthViewCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _showMonthViewCommand;
+    public partial IRelayCommand? ShowWeekViewCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _showWeekViewCommand;
+    public partial IRelayCommand? ShowFiveDaysViewCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _showFiveDaysViewCommand;
+    public partial IRelayCommand? ShowDayViewCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _showDayViewCommand;
+    public partial IRelayCommand? ShowAgendaViewCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _showAgendaViewCommand;
-
-    [ObservableProperty]
-    private int _selectedViewIndex = (int)CalendarNavigationViewMode.Week;
+    public partial int SelectedViewIndex { get; set; } = (int)CalendarNavigationViewMode.Week;
 
     public void SetSelectedViewMode(CalendarNavigationViewMode mode)
     {
-        _suppressSelectedViewIndexChanged = true;
-        try
-        {
-            SelectedViewIndex = (int)mode;
-        }
-        finally
-        {
-            _suppressSelectedViewIndexChanged = false;
-        }
+        SelectedViewIndex = (int)mode;
     }
 
     partial void OnSelectedViewIndexChanged(int value)
     {
-        if (_suppressSelectedViewIndexChanged)
-        {
-            return;
-        }
-
         switch ((CalendarNavigationViewMode)value)
         {
             case CalendarNavigationViewMode.Month:

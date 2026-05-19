@@ -17,25 +17,26 @@ public partial class MainWindow : AtomUI.Desktop.Controls.Window
 
     private async void MainWindow_Loaded(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is MainWindowViewModel viewModel)
+        if (DataContext is not MainWindowViewModel viewModel) return;
+        
+        viewModel.AfterLoad();
+            
+        var (x, y, width, height, sidebarWidth) = await viewModel.GetWindowSettingsAsync();
+
+        if (x != int.MinValue && y != int.MinValue)
         {
-            var (x, y, width, height, sidebarWidth) = await viewModel.GetWindowSettingsAsync();
+            Position = new Avalonia.PixelPoint(x, y);
+        }
 
-            if (x != int.MinValue && y != int.MinValue)
-            {
-                Position = new Avalonia.PixelPoint(x, y);
-            }
+        if (width > 0 && height > 0)
+        {
+            Width = width;
+            Height = height;
+        }
 
-            if (width > 0 && height > 0)
-            {
-                Width = width;
-                Height = height;
-            }
-
-            if (sidebarWidth > 0)
-            {
-                AtomUI.Desktop.Controls.Splitter.SetSize(CalendarListPane, new Dimension(sidebarWidth));
-            }
+        if (sidebarWidth > 0)
+        {
+            AtomUI.Desktop.Controls.Splitter.SetSize(CalendarListPane, new Dimension(sidebarWidth));
         }
     }
 

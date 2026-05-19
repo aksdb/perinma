@@ -54,21 +54,21 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private System.Threading.Timer? _autoSyncTimer;
 
     [ObservableProperty]
-    private bool _isSyncing;
+    public partial bool IsSyncing { get; set; }
 
     [ObservableProperty]
-    private string _syncStatusText = "Ready";
+    public partial string SyncStatusText { get; set; } = "Ready";
 
     [ObservableProperty]
-    private double _syncProgress = 0.0;
+    public partial double SyncProgress { get; set; } = 0.0;
 
     [ObservableProperty]
-    private bool _syncProgressIsIndeterminate = true;
+    public partial bool SyncProgressIsIndeterminate { get; set; } = true;
 
     // View switching
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsContactsViewActive))]
-    private bool _isCalendarViewActive = true;
+    public partial bool IsCalendarViewActive { get; set; } = true;
 
     public bool IsContactsViewActive => !IsCalendarViewActive;
 
@@ -83,7 +83,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     [NotifyPropertyChangedFor(nameof(IsMonthView))]
     [NotifyPropertyChangedFor(nameof(IsWeekView))]
     [NotifyPropertyChangedFor(nameof(IsAgendaView))]
-    private CalendarView _calendarViewMode = CalendarView.Week;
+    public partial CalendarView CalendarViewMode { get; set; } = CalendarView.Week;
 
     public bool IsMonthView => CalendarViewMode == CalendarView.Month;
     public bool IsWeekView => CalendarViewMode == CalendarView.Week;
@@ -100,7 +100,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     public ContactsViewModel ContactsViewModel { get; }
 
     [ObservableProperty]
-    private CalendarViewModelBase _activeCalendarViewModel = null!;
+    public partial CalendarViewModelBase ActiveCalendarViewModel { get; set; } = null!;
 
     private CalendarViewModelBase? _dateRangeSubscriptionTarget;
 
@@ -165,9 +165,6 @@ public partial class MainWindowViewModel : ObservableRecipient,
             }
         };
 
-        SetupNavigationBar();
-        Initialize();
-
         WeakReferenceMessenger.Default.Register<WorkingDaysChangedMessage>(this, (r, m) =>
         {
             if (IsWorkWeekView)
@@ -176,6 +173,12 @@ public partial class MainWindowViewModel : ObservableRecipient,
                 LoadCurrentCalendarView();
             }
         });
+    }
+
+    public void AfterLoad()
+    {
+        SetupNavigationBar();
+        Initialize();
     }
 
     [RelayCommand]
@@ -349,10 +352,10 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
     #region Theme
     [ObservableProperty]
-    private bool _isLightTheme = true;
+    public partial bool IsLightTheme { get; set; } = true;
 
     [ObservableProperty]
-    private bool _isDarkTheme;
+    public partial bool IsDarkTheme { get; set; }
 
     [RelayCommand]
     private void SetLightTheme()

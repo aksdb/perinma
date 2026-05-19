@@ -49,43 +49,31 @@
                     <atom:MenuItem.Header>
                         <AccessText Text="_View"/>
                     </atom:MenuItem.Header>
-                    <atom:MenuItem Command="{Binding ShowCalendarViewCommand}">
+                    <atom:MenuItem Command="{Binding ShowCalendarViewCommand}" ToggleType="Radio" IsChecked="{Binding IsCalendarViewActive}">
                         <atom:MenuItem.Header>
                             <AccessText Text="_Calendar"/>
                         </atom:MenuItem.Header>
-                        <MenuItem.Icon>
-                            <atom:CheckBox IsChecked="{Binding IsCalendarViewActive}" IsHitTestVisible="False"/>
-                        </MenuItem.Icon>
                     </atom:MenuItem>
-                    <atom:MenuItem Command="{Binding ShowContactsViewCommand}">
+                    <atom:MenuItem Command="{Binding ShowContactsViewCommand}" ToggleType="Radio" IsChecked="{Binding IsContactsViewActive}">
                         <atom:MenuItem.Header>
                             <AccessText Text="C_ontacts"/>
                         </atom:MenuItem.Header>
-                        <MenuItem.Icon>
-                            <atom:CheckBox IsChecked="{Binding IsContactsViewActive}" IsHitTestVisible="False"/>
-                        </MenuItem.Icon>
                     </atom:MenuItem>
-                    <atom:Separator/>
+                    <atom:MenuSeparator/>
 
                     <atom:MenuItem>
                         <atom:MenuItem.Header>
                             <AccessText Text="_Theme"/>
                         </atom:MenuItem.Header>
-                        <atom:MenuItem Command="{Binding SetLightThemeCommand}">
+                        <atom:MenuItem Command="{Binding SetLightThemeCommand}" ToggleType="Radio" IsChecked="{Binding IsLightTheme}">
                             <atom:MenuItem.Header>
                                 <AccessText Text="_Light"/>
                             </atom:MenuItem.Header>
-                            <MenuItem.Icon>
-                                <atom:CheckBox IsChecked="{Binding IsLightTheme}" IsHitTestVisible="False"/>
-                            </MenuItem.Icon>
                         </atom:MenuItem>
-                        <atom:MenuItem Command="{Binding SetDarkThemeCommand}">
+                        <atom:MenuItem Command="{Binding SetDarkThemeCommand}" ToggleType="Radio" IsChecked="{Binding IsDarkTheme}">
                             <atom:MenuItem.Header>
                                 <AccessText Text="_Dark"/>
                             </atom:MenuItem.Header>
-                            <MenuItem.Icon>
-                                <atom:CheckBox IsChecked="{Binding IsDarkTheme}" IsHitTestVisible="False"/>
-                            </MenuItem.Icon>
                         </atom:MenuItem>
                     </atom:MenuItem>
                 </atom:MenuItem>
