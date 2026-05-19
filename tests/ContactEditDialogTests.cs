@@ -26,6 +26,31 @@ public class ContactEditDialogTests
         AssertAtomControl(dialog, "SaveButton", "Button");
     }
 
+    [AvaloniaTest]
+    public void ContactEditDialog_AddressBookDropdownOpensInsideAtomWindow()
+    {
+        var viewModel = new ContactEditViewModel([ContactEditViewModelTests.CreateAddressBookOptionForTests()]);
+        var dialog = new ContactEditDialog
+        {
+            DataContext = viewModel
+        };
+
+        dialog.Show();
+
+        try
+        {
+            var comboBox = dialog.FindControl<AtomUI.Desktop.Controls.ComboBox>("AddressBookComboBox");
+            Assert.That(comboBox, Is.Not.Null);
+
+            Assert.DoesNotThrow(() => comboBox!.IsDropDownOpen = true);
+            Assert.That(comboBox.IsDropDownOpen, Is.True);
+        }
+        finally
+        {
+            dialog.Close();
+        }
+    }
+
     private static void AssertAtomControl(ContactEditDialog dialog, string name, string typeName)
     {
         var control = dialog.FindControl<Control>(name);
