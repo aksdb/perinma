@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cal="using:perinma.Views.Calendar"
@@ -13,83 +14,79 @@
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
-        
+
         <!-- View Mode Switcher -->
-        <StackPanel Grid.Column="0"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Left"
-                    Margin="10, 0, 0, 0"
-                    Spacing="2">
-            <ToggleButton Content="Month"
-                          IsChecked="{Binding IsMonthView}"
-                          Command="{Binding ShowMonthViewCommand}"
-                          Padding="8, 4"
-                          FontSize="12"/>
-            <ToggleButton Content="Week"
-                          IsChecked="{Binding IsWeekView}"
-                          Command="{Binding ShowWeekViewCommand}"
-                          Padding="8, 4"
-                          FontSize="12"/>
-            <ToggleButton Content="Work Week"
-                          IsChecked="{Binding IsFiveDaysView}"
-                          Command="{Binding ShowFiveDaysViewCommand}"
-                          Padding="8, 4"
-                          FontSize="12"/>
-            <ToggleButton Content="Day"
-                          IsChecked="{Binding IsDayView}"
-                          Command="{Binding ShowDayViewCommand}"
-                          Padding="8, 4"
-                          FontSize="12"/>
-            <ToggleButton Content="Agenda"
-                          IsChecked="{Binding IsAgendaView}"
-                          Command="{Binding ShowAgendaViewCommand}"
-                          Padding="8, 4"
-                          FontSize="12"/>
-        </StackPanel>
+        <atom:OptionButtonGroup Grid.Column="0"
+                                Name="ViewModeGroup"
+                                HorizontalAlignment="Left"
+                                Margin="10, 0, 0, 0"
+                                ButtonStyle="Outline">
+            <atom:OptionButton Name="MonthViewButton"
+                               Content="Month"
+                               IsChecked="{Binding IsMonthView}"
+                               Command="{Binding ShowMonthViewCommand}"
+                               FontSize="12"/>
+            <atom:OptionButton Name="WeekViewButton"
+                               Content="Week"
+                               IsChecked="{Binding IsWeekView}"
+                               Command="{Binding ShowWeekViewCommand}"
+                               FontSize="12"/>
+            <atom:OptionButton Name="WorkWeekViewButton"
+                               Content="Work Week"
+                               IsChecked="{Binding IsFiveDaysView}"
+                               Command="{Binding ShowFiveDaysViewCommand}"
+                               FontSize="12"/>
+            <atom:OptionButton Name="DayViewButton"
+                               Content="Day"
+                               IsChecked="{Binding IsDayView}"
+                               Command="{Binding ShowDayViewCommand}"
+                               FontSize="12"/>
+            <atom:OptionButton Name="AgendaViewButton"
+                               Content="Agenda"
+                               IsChecked="{Binding IsAgendaView}"
+                               Command="{Binding ShowAgendaViewCommand}"
+                               FontSize="12"/>
+        </atom:OptionButtonGroup>
 
         <!-- Navigation Controls (Center) -->
         <StackPanel Grid.Column="1"
                     Orientation="Horizontal"
                     HorizontalAlignment="Center"
                     Spacing="8">
+            <atom:Button Name="PreviousButton"
+                         Command="{Binding PreviousCommand}"
+                         Margin="0, 0, 8, 0"
+                         Padding="8, 4"
+                         ToolTip.Tip="Previous"
+                         Content="←"/>
 
-            <!-- Previous -->
-            <Button Command="{Binding PreviousCommand}"
-                    Margin="0, 0, 8, 0"
-                    Padding="8, 4"
-                    ToolTip.Tip="Previous">
-                ←
-            </Button>
-
-            <!-- Date Range Display -->
             <TextBlock Text="{Binding DateRangeDisplay}"
                        FontSize="16"
                        FontWeight="SemiBold"
                        VerticalAlignment="Center"
                        Margin="0, 0, 8, 0"/>
-            
-            <!-- Today -->
-            <Button Command="{Binding TodayCommand}"
-                    Margin="0, 0, 8, 0"
-                    Padding="8, 4"
-                    ToolTip.Tip="Today">
-                Today
-            </Button>
 
-            <!-- Next -->
-            <Button Command="{Binding NextCommand}"
-                    Padding="8, 4"
-                    ToolTip.Tip="Next">
-                →
-            </Button>
+            <atom:Button Name="TodayButton"
+                         Command="{Binding TodayCommand}"
+                         Margin="0, 0, 8, 0"
+                         Padding="8, 4"
+                         ToolTip.Tip="Today"
+                         Content="Today"/>
+
+            <atom:Button Name="NextButton"
+                         Command="{Binding NextCommand}"
+                         Padding="8, 4"
+                         ToolTip.Tip="Next"
+                         Content="→"/>
         </StackPanel>
-        
+
         <!-- Create Event (Right) -->
-        <Button Grid.Column="2"
-                Name="CreateEventButton"
-                Command="{Binding CreateNewEventCommand}"
-                Content="Create Event"
-                Padding="8, 4"
-                Margin="10, 0, 10, 0"/>
+        <atom:Button Grid.Column="2"
+                     Name="CreateEventButton"
+                     Command="{Binding CreateNewEventCommand}"
+                     Content="Create Event"
+                     Classes="Accent"
+                     Padding="8, 4"
+                     Margin="10, 0, 10, 0"/>
     </Grid>
 </UserControl>
