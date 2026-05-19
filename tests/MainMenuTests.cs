@@ -1,4 +1,3 @@
-using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 
 namespace tests;
@@ -7,23 +6,23 @@ namespace tests;
 public class MainMenuTests
 {
     [AvaloniaTest]
-    public void AvaloniaMenu_SubmenuOpensWithoutPopupHostFailure()
+    public void AtomMenu_SubmenuOpensInsideAtomWindow()
     {
-        var fileMenu = new MenuItem
+        var fileMenu = new AtomUI.Desktop.Controls.MenuItem
         {
             Header = "_File",
             ItemsSource = new object[]
             {
-                new MenuItem { Header = "_Settings" }
+                new AtomUI.Desktop.Controls.MenuItem { Header = "_Settings" }
             }
         };
 
-        var menu = new Menu
+        var menu = new AtomUI.Desktop.Controls.Menu
         {
             ItemsSource = new object[] { fileMenu }
         };
 
-        var window = new Window { Content = menu };
+        var window = new AtomUI.Desktop.Controls.Window { Content = menu };
         window.Show();
 
         try

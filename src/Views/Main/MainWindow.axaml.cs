@@ -5,7 +5,7 @@ using Avalonia.Interactivity;
 
 namespace perinma.Views.Main;
 
-public partial class MainWindow : Window
+public partial class MainWindow : AtomUI.Desktop.Controls.Window
 {
     public MainWindow()
     {
