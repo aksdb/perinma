@@ -4,9 +4,14 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cal="using:perinma.Views.Calendar"
+             xmlns:conv="using:perinma.Converters"
              x:DataType="cal:CalendarNavigationBarViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="60"
              x:Class="perinma.Views.Calendar.CalendarNavigationBar">
+
+    <UserControl.Resources>
+        <conv:EnumToIndexConverter x:Key="EnumToIndexConverter"/>
+    </UserControl.Resources>
     
     <Grid Margin="0, 10, 0, 10"
           ClipToBounds="True">
@@ -21,7 +26,7 @@
                         Name="ViewModeGroup"
                         HorizontalAlignment="Left"
                         Margin="10, 0, 16, 0"
-                        SelectedIndex="{Binding SelectedViewIndex, Mode=TwoWay}">
+                        SelectedIndex="{Binding SelectedView, Mode=TwoWay, Converter={StaticResource EnumToIndexConverter}}">
             <atom:SegmentedItem Name="MonthViewButton"
                                 Content="Month"
                                 FontSize="12"/>

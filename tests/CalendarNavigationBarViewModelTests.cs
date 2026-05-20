@@ -7,7 +7,7 @@ namespace tests;
 public class CalendarNavigationBarViewModelTests
 {
     [Test]
-    public void SelectedViewIndex_ExecutesMatchingCommand()
+    public void SelectedView_ExecutesMatchingCommand()
     {
         var viewModel = new CalendarNavigationBarViewModel();
         var executed = new List<string>();
@@ -18,7 +18,7 @@ public class CalendarNavigationBarViewModelTests
         viewModel.ShowDayViewCommand = new RelayCommand(() => executed.Add("Day"));
         viewModel.ShowAgendaViewCommand = new RelayCommand(() => executed.Add("Agenda"));
 
-        viewModel.SelectedViewIndex = (int)CalendarNavigationBarViewModel.CalendarNavigationViewMode.Day;
+        viewModel.SelectedView = CalendarNavigationBarViewModel.CalendarNavigationViewMode.Day;
 
         Assert.That(executed, Is.EqualTo(new[] { "Day" }));
     }
@@ -30,7 +30,7 @@ public class CalendarNavigationBarViewModelTests
 
         viewModel.SetSelectedViewMode(CalendarNavigationBarViewModel.CalendarNavigationViewMode.Month);
 
-        Assert.That(viewModel.SelectedViewIndex,
-            Is.EqualTo((int)CalendarNavigationBarViewModel.CalendarNavigationViewMode.Month));
+        Assert.That(viewModel.SelectedView,
+            Is.EqualTo(CalendarNavigationBarViewModel.CalendarNavigationViewMode.Month));
     }
 }

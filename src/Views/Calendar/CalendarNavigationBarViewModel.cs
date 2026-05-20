@@ -45,16 +45,16 @@ public partial class CalendarNavigationBarViewModel : ViewModelBase
     public partial IRelayCommand? ShowAgendaViewCommand { get; set; }
 
     [ObservableProperty]
-    public partial int SelectedViewIndex { get; set; } = (int)CalendarNavigationViewMode.Week;
+    public partial CalendarNavigationViewMode SelectedView { get; set; } = CalendarNavigationViewMode.Week;
 
     public void SetSelectedViewMode(CalendarNavigationViewMode mode)
     {
-        SelectedViewIndex = (int)mode;
+        SelectedView = mode;
     }
 
-    partial void OnSelectedViewIndexChanged(int value)
+    partial void OnSelectedViewChanged(CalendarNavigationViewMode value)
     {
-        switch ((CalendarNavigationViewMode)value)
+        switch (value)
         {
             case CalendarNavigationViewMode.Month:
                 ShowMonthViewCommand?.Execute(null);
