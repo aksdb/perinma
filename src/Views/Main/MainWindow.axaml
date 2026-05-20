@@ -6,6 +6,7 @@
              xmlns:cal="using:perinma.Views.Calendar"
              xmlns:callist="using:perinma.Views.CalendarList"
              xmlns:contacts="using:perinma.Views.Contacts"
+             xmlns:conv="using:perinma.Converters"
              xmlns:main="using:perinma.Views.Main"
              xmlns:debug="using:perinma.Views.Debug"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
@@ -20,6 +21,10 @@
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <main:MainWindowViewModel/>
     </Design.DataContext>
+
+    <atom:Window.Resources>
+        <conv:EnumToIndexConverter x:Key="EnumToIndexConverter"/>
+    </atom:Window.Resources>
     
     <Grid x:Name="MainGrid" RowDefinitions="Auto,*,Auto">
         <!-- Menu Bar with View Switcher -->
@@ -49,12 +54,12 @@
                     <atom:MenuItem.Header>
                         <AccessText Text="_View"/>
                     </atom:MenuItem.Header>
-                    <atom:MenuItem Command="{Binding ShowCalendarViewCommand}" ToggleType="Radio" IsChecked="{Binding IsCalendarViewActive}">
+                    <atom:MenuItem Command="{Binding SelectCalendarMainViewCommand}" ToggleType="Radio" IsChecked="{Binding IsCalendarMainView}">
                         <atom:MenuItem.Header>
                             <AccessText Text="_Calendar"/>
                         </atom:MenuItem.Header>
                     </atom:MenuItem>
-                    <atom:MenuItem Command="{Binding ShowContactsViewCommand}" ToggleType="Radio" IsChecked="{Binding IsContactsViewActive}">
+                    <atom:MenuItem Command="{Binding SelectContactsMainViewCommand}" ToggleType="Radio" IsChecked="{Binding IsContactsMainView}">
                         <atom:MenuItem.Header>
                             <AccessText Text="C_ontacts"/>
                         </atom:MenuItem.Header>
@@ -104,7 +109,7 @@
                             x:Name="MainModeGroup"
                             Margin="0,0,10,0"
                             VerticalAlignment="Center"
-                            SelectedIndex="{Binding SelectedMainViewIndex, Mode=TwoWay}">
+                            SelectedIndex="{Binding SelectedMainView, Mode=TwoWay, Converter={StaticResource EnumToIndexConverter}}">
                 <atom:SegmentedItem x:Name="CalendarModeItem"
                                     Content="Calendar"
                                     FontSize="12"/>
@@ -120,7 +125,7 @@
         <Panel Grid.Row="1">
             <!-- Calendar View -->
             <atom:Splitter x:Name="CalendarViewSplitter"
-                           IsVisible="{Binding IsCalendarViewActive}"
+                           IsVisible="{Binding IsCalendarMainView}"
                            Orientation="Vertical">
                 <Border x:Name="CalendarListPane"
                         BorderBrush="{DynamicResource AppChromeBorderBrush}"
@@ -154,7 +159,7 @@
             </atom:Splitter>
             
             <!-- Contacts View -->
-            <contacts:ContactsView IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsContactsViewActive}"
+            <contacts:ContactsView IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsContactsMainView}"
                                    DataContext="{Binding ContactsViewModel}"/>
         </Panel>
 
