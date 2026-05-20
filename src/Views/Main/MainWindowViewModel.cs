@@ -66,12 +66,65 @@ public partial class MainWindowViewModel : ObservableRecipient,
     public partial bool SyncProgressIsIndeterminate { get; set; } = true;
 
     // View switching
+    public enum MainViewMode
+    {
+        Calendar,
+        Contacts
+    }
+
+    private bool _suppressSelectedMainViewIndexChanged;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsContactsViewActive))]
     public partial bool IsCalendarViewActive { get; set; } = true;
 
+    [ObservableProperty]
+    public partial int SelectedMainViewIndex { get; set; } = (int)MainViewMode.Calendar;
+
     public bool IsContactsViewActive => !IsCalendarViewActive;
 
+    partial void OnIsCalendarViewActiveChanged(bool value)
+    {
+        var targetIndex = value ? (int)MainViewMode.Calendar : (int)MainViewMode.Contacts;
+        if (SelectedMainViewIndex == targetIndex)
+        {
+            return;
+        }
+
+        _suppressSelectedMainViewIndexChanged = true;
+        try
+        {
+            SelectedMainViewIndex = targetIndex;
+        }
+        finally
+        {
+            _suppressSelectedMainViewIndexChanged = false;
+        }
+    }
+
+    partial void OnSelectedMainViewIndexChanged(int value)
+    {
+        if (_suppressSelectedMainViewIndexChanged)
+        {
+            return;
+        }
+
+        switch ((MainViewMode)value)
+        {
+            case MainViewMode.Calendar:
+                if (!IsCalendarViewActive)
+                {
+                    ShowCalendarView();
+                }
+                break;
+            case MainViewMode.Contacts:
+                if (IsCalendarViewActive)
+                {
+                    ShowContactsView();
+                }
+                break;
+        }
+    }
     public enum CalendarView
     {
         Month,

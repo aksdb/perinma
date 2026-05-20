@@ -71,4 +71,19 @@ public class MainMenuTests
         Assert.That(AtomUI.Desktop.Controls.Splitter.GetDefaultSize(calendarListPane!), Is.EqualTo(new AtomUI.Dimension(250)));
         Assert.That(AtomUI.Desktop.Controls.Splitter.GetMinSize(calendarListPane!), Is.EqualTo(new AtomUI.Dimension(200)));
     }
+
+    [AvaloniaTest]
+    public void MainWindow_UsesSegmentedMainModeSwitcher()
+    {
+        var window = new MainWindow();
+
+        var segmented = window.FindControl<AtomUI.Desktop.Controls.Segmented>("MainModeGroup");
+        Assert.That(segmented, Is.Not.Null);
+
+        var calendarItem = window.FindControl<AtomUI.Desktop.Controls.SegmentedItem>("CalendarModeItem");
+        var contactsItem = window.FindControl<AtomUI.Desktop.Controls.SegmentedItem>("ContactsModeItem");
+        Assert.That(calendarItem, Is.Not.Null);
+        Assert.That(contactsItem, Is.Not.Null);
+        Assert.That(segmented!.Items.Count, Is.EqualTo(2));
+    }
 }

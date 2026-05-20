@@ -99,23 +99,19 @@
                 </atom:MenuItem>
             </atom:Menu>
 
-            <!-- View Switcher Buttons -->
-            <StackPanel DockPanel.Dock="Right" 
-                        Orientation="Horizontal" 
-                        Margin="0,0,10,0"
-                        VerticalAlignment="Center"
-                        Spacing="4">
-                <ToggleButton Content="Calendar" 
-                              IsChecked="{Binding IsCalendarViewActive}"
-                              Command="{Binding ShowCalendarViewCommand}"
-                              Padding="12,4"
-                              FontSize="12"/>
-                <ToggleButton Content="Contacts" 
-                              IsChecked="{Binding IsContactsViewActive}"
-                              Command="{Binding ShowContactsViewCommand}"
-                              Padding="12,4"
-                              FontSize="12"/>
-            </StackPanel>
+            <!-- View Switcher -->
+            <atom:Segmented DockPanel.Dock="Right"
+                            x:Name="MainModeGroup"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Center"
+                            SelectedIndex="{Binding SelectedMainViewIndex, Mode=TwoWay}">
+                <atom:SegmentedItem x:Name="CalendarModeItem"
+                                    Content="Calendar"
+                                    FontSize="12"/>
+                <atom:SegmentedItem x:Name="ContactsModeItem"
+                                    Content="Contacts"
+                                    FontSize="12"/>
+            </atom:Segmented>
             
             <Border/> <!-- Spacer -->
         </DockPanel>
