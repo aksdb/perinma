@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
@@ -85,6 +86,24 @@ public class CalendarViewAtomUiTests
         AssertAtomControl(control, "TopView", "ScrollViewer");
         AssertAtomControl(control, "TimeRows", "ScrollViewer");
         AssertAtomControl(control, "CenterView", "ScrollViewer");
+    }
+
+    [AvaloniaTest]
+    public void EventItem_TrySetFlyoutContent_SupportsAtomFlyout()
+    {
+        var flyout = new AtomUI.Desktop.Controls.Flyout();
+        var content = new object();
+        var method = typeof(EventItem).GetMethod("TrySetFlyoutContent", BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.That(method, Is.Not.Null);
+
+        var result = method!.Invoke(null, [flyout, content]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(true));
+            Assert.That(flyout.Content, Is.SameAs(content));
+        });
     }
 
     [AvaloniaTest]

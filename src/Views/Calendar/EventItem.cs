@@ -242,12 +242,23 @@ public partial class EventItem : TemplatedControl
         }
 
         var flyout = FlyoutBase.GetAttachedFlyout(border);
-        if (flyout is Flyout fly && fly.Content is ContentControl contentControl)
-        {
-            contentControl.Content = CreateViewModel();
-        }
-
+        TrySetFlyoutContent(flyout, CreateViewModel());
         FlyoutBase.ShowAttachedFlyout(border);
+    }
+
+    private static bool TrySetFlyoutContent(FlyoutBase? flyout, object? content)
+    {
+        switch (flyout)
+        {
+            case Flyout avaloniaFlyout:
+                avaloniaFlyout.Content = content;
+                return true;
+            case AtomUI.Desktop.Controls.Flyout atomFlyout:
+                atomFlyout.Content = content!;
+                return true;
+            default:
+                return false;
+        }
     }
 
     private object? CreateViewModel()
