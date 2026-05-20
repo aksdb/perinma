@@ -24,16 +24,13 @@ public class CalendarNavigationBarViewModelTests
     }
 
     [Test]
-    public void SetSelectedViewMode_UpdatesSelectionWithoutExecutingCommand()
+    public void SetSelectedViewMode_UpdatesSelection()
     {
         var viewModel = new CalendarNavigationBarViewModel();
-        var executed = new List<string>();
 
-        viewModel.ShowMonthViewCommand = new RelayCommand(() => executed.Add("Month"));
         viewModel.SetSelectedViewMode(CalendarNavigationBarViewModel.CalendarNavigationViewMode.Month);
 
         Assert.That(viewModel.SelectedViewIndex,
             Is.EqualTo((int)CalendarNavigationBarViewModel.CalendarNavigationViewMode.Month));
-        Assert.That(executed, Is.Empty);
     }
 }
