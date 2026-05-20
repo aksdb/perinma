@@ -12,7 +12,7 @@
              Width="500" Height="520"
              WindowStartupLocation="CenterOwner">
 
-    <Window.Styles>
+    <atom:Window.Styles>
         <Style Selector="Button.SmallButton">
             <Setter Property="Padding" Value="4"/>
             <Setter Property="MinWidth" Value="20"/>
@@ -48,10 +48,10 @@
             <Setter Property="MinWidth" Value="0"/>
             <Setter Property="TextAlignment" Value="Center"/>
         </Style>
-    </Window.Styles>
+    </atom:Window.Styles>
 
-    <Window.Resources>
-    </Window.Resources>
+    <atom:Window.Resources>
+    </atom:Window.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="16">
 
@@ -76,7 +76,7 @@
         </StackPanel>
 
         <!-- Field list -->
-        <atom:ScrollViewer Grid.Row="1" Margin="0,0,0,10">
+        <atom:ScrollViewer x:Name="FieldListScrollViewer" Grid.Row="1" Margin="0,0,0,10">
             <Border BorderBrush="{DynamicResource AppChromeBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="8">
@@ -135,9 +135,9 @@
                                                         <StackPanel Spacing="4">
                                                             <TextBlock Text="Start" FontWeight="SemiBold" FontSize="12"/>
                                                             <Grid ColumnDefinitions="*,8,Auto">
-                                                                <CalendarDatePicker SelectedDate="{Binding StartDate}"
-                                                                                    HorizontalAlignment="Stretch"
-                                                                                    IsTodayHighlighted="True"/>
+                                                                <atom:DatePicker x:Name="StartDatePicker"
+                                                                                 SelectedDateTime="{Binding StartDate}"
+                                                                                 HorizontalAlignment="Stretch"/>
                                                                 <StackPanel Grid.Column="2"
                                                                             Orientation="Horizontal" Spacing="4"
                                                                             VerticalAlignment="Center"
@@ -160,9 +160,9 @@
                                                         <StackPanel Spacing="4">
                                                             <TextBlock Text="End" FontWeight="SemiBold" FontSize="12"/>
                                                             <Grid ColumnDefinitions="*,8,Auto">
-                                                                <CalendarDatePicker SelectedDate="{Binding EndDate}"
-                                                                                    HorizontalAlignment="Stretch"
-                                                                                    IsTodayHighlighted="True"/>
+                                                                <atom:DatePicker x:Name="EndDatePicker"
+                                                                                 SelectedDateTime="{Binding EndDate}"
+                                                                                 HorizontalAlignment="Stretch"/>
                                                                 <StackPanel Grid.Column="2"
                                                                             Orientation="Horizontal" Spacing="4"
                                                                             VerticalAlignment="Center"
@@ -272,10 +272,11 @@
                                                                                    HorizontalAlignment="Left"
                                                                                    Width="96"
                                                                                    IsVisible="{Binding ShowEndCount}"/>
-                                                                    <CalendarDatePicker SelectedDate="{Binding UntilDate}"
-                                                                                        HorizontalAlignment="Left"
-                                                                                        Width="180"
-                                                                                        IsVisible="{Binding ShowEndDate}"/>
+                                                                    <atom:DatePicker x:Name="UntilDatePicker"
+                                                                                     SelectedDateTime="{Binding UntilDate}"
+                                                                                     HorizontalAlignment="Left"
+                                                                                     Width="180"
+                                                                                     IsVisible="{Binding ShowEndDate}"/>
                                                                 </StackPanel>
                                                             </Grid>
                                                         </StackPanel>
@@ -359,10 +360,11 @@
                                                                      PlaceholderText="Add participants"
                                                                      HorizontalAlignment="Stretch"
                                                                      KeyDown="OnSearchTextBoxKeyDown"/>
-                                                            <Popup IsOpen="{Binding IsDropdownOpen}"
-                                                                   PlacementTarget="{Binding ElementName=SearchTextBox}"
-                                                                   Placement="Bottom"
-                                                                   MaxHeight="250">
+                                                            <atom:Popup x:Name="ParticipantSearchPopup"
+                                                                        IsOpen="{Binding IsDropdownOpen}"
+                                                                        PlacementTarget="{Binding ElementName=SearchTextBox}"
+                                                                        Placement="Bottom"
+                                                                        MaxHeight="250">
                                                                 <Border Background="{DynamicResource AppPanelMutedBrush}"
                                                                         BorderBrush="{DynamicResource AppChromeStrongBorderBrush}"
                                                                         BorderThickness="1"
@@ -372,12 +374,12 @@
                                                                         <ItemsControl.ItemTemplate>
                                                                             <DataTemplate DataType="edit:ParticipantEditItemViewModel">
                                                                                 <atom:Button Background="Transparent"
-                                                                                        BorderThickness="0"
-                                                                                        Padding="0"
-                                                                                        HorizontalAlignment="Stretch"
-                                                                                        HorizontalContentAlignment="Stretch"
-                                                                                        Command="{Binding $parent[ItemsControl].((edit:ParticipantsEditViewModel)DataContext).AddFromContactCommand}"
-                                                                                        CommandParameter="{Binding}">
+                                                                                            BorderThickness="0"
+                                                                                            Padding="0"
+                                                                                            HorizontalAlignment="Stretch"
+                                                                                            HorizontalContentAlignment="Stretch"
+                                                                                            Command="{Binding $parent[ItemsControl].((edit:ParticipantsEditViewModel)DataContext).AddFromContactCommand}"
+                                                                                            CommandParameter="{Binding}">
                                                                                     <Border Padding="8,4" CornerRadius="4">
                                                                                         <Border.Styles>
                                                                                             <Style Selector="Border:pointerover">
@@ -416,7 +418,7 @@
                                                                         </ItemsControl.ItemTemplate>
                                                                     </ItemsControl>
                                                                 </Border>
-                                                            </Popup>
+                                                            </atom:Popup>
                                                         </Grid>
                                                         <atom:Button Content="Check availability →"
                                                                 HorizontalAlignment="Right"
@@ -453,7 +455,8 @@
                         Command="{Binding SaveCommand}"
                         IsEnabled="{Binding !IsSaving}"
                         MinWidth="100"/>
-                <atom:Button Content="Cancel"
+                <atom:Button x:Name="CancelButton"
+                        Content="Cancel"
                         Command="{Binding CancelCommand}"
                         MinWidth="100"/>
             </StackPanel>

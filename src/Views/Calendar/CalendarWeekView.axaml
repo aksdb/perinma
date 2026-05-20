@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cal="using:perinma.Views.Calendar"
@@ -52,14 +53,14 @@
                                 Margin="1"
                                 Bounds="{Binding AvailableBounds, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWayToSource}">
                             <Border.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="Edit"
-                                              Command="{ReflectionBinding $parent[UserControl].DataContext.EditEventCommand}"
-                                              CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}" />
-                                    <MenuItem Header="Delete"
-                                              Command="{ReflectionBinding $parent[UserControl].DataContext.DeleteEventCommand}"
-                                              CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}" />
-                                </ContextMenu>
+                                <atom:ContextMenu>
+                                    <atom:MenuItem Header="Edit"
+                                                   Command="{ReflectionBinding $parent[UserControl].DataContext.EditEventCommand}"
+                                                   CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}" />
+                                    <atom:MenuItem Header="Delete"
+                                                   Command="{ReflectionBinding $parent[UserControl].DataContext.DeleteEventCommand}"
+                                                   CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}" />
+                                </atom:ContextMenu>
                             </Border.ContextMenu>
                             <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">
                                 <TextBlock Name="TitleTextBlock"
@@ -92,9 +93,9 @@
                                 </StackPanel>
                             </StackPanel>
                             <FlyoutBase.AttachedFlyout>
-                                <Flyout Placement="Right">
+                                <atom:Flyout Placement="Right">
                                     <ContentControl Name="EventFlyoutContent" />
-                                </Flyout>
+                                </atom:Flyout>
                             </FlyoutBase.AttachedFlyout>
                         </Border>
                     </Grid>
@@ -146,20 +147,20 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <ScrollViewer Name="TopView"
-                          MinHeight="0"
-                          VerticalScrollBarVisibility="Auto">
-            </ScrollViewer>
+            <atom:ScrollViewer Name="TopView"
+                               MinHeight="0"
+                               VerticalScrollBarVisibility="Auto">
+            </atom:ScrollViewer>
             <Border Height="10" CornerRadius="0, 0, 10, 10"
                     Background="{DynamicResource AppCalendarHeaderShadowBrush}" />
         </StackPanel>
-        <ScrollViewer Name="TimeRows" Grid.Column="0" Grid.Row="1"
-                      VerticalScrollBarVisibility="Hidden"
-                      Margin="5, 0, 5, 0">
-        </ScrollViewer>
-        <ScrollViewer Name="CenterView" Grid.Column="1" Grid.Row="1" Offset="{Binding #TimeRows.Offset, Mode=TwoWay}"
-                      Effect="">
-        </ScrollViewer>
+        <atom:ScrollViewer Name="TimeRows" Grid.Column="0" Grid.Row="1"
+                           VerticalScrollBarVisibility="Hidden"
+                           Margin="5, 0, 5, 0">
+        </atom:ScrollViewer>
+        <atom:ScrollViewer Name="CenterView" Grid.Column="1" Grid.Row="1" Offset="{Binding #TimeRows.Offset, Mode=TwoWay}"
+                           Effect="">
+        </atom:ScrollViewer>
     </Grid>
 
 </UserControl>

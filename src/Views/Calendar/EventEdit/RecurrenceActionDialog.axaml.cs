@@ -4,7 +4,7 @@ using perinma.Models;
 
 namespace perinma.Views.Calendar.EventEdit;
 
-public partial class RecurrenceActionDialog : Window
+public partial class RecurrenceActionDialog : AtomUI.Desktop.Controls.Window
 {
     public RecurrenceActionDialog()
     {

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ev="using:perinma.Views.Calendar.EventView"
@@ -14,7 +15,7 @@
             </Style>
         </Border.Styles>
         <FlyoutBase.AttachedFlyout>
-            <Flyout Placement="Right" ShowMode="TransientWithDismissOnPointerMoveAway">
+            <atom:Flyout Placement="Right" ShowMode="TransientWithDismissOnPointerMoveAway">
                 <Border Padding="12" MinWidth="240" MaxWidth="300">
                     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto">
                         <Border Grid.RowSpan="2" Width="48" Height="48" CornerRadius="24"
@@ -28,7 +29,7 @@
                                            VerticalAlignment="Center" IsVisible="{Binding !HasPhoto}" />
                             </Panel>
                         </Border>
-                        
+
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="{Binding DisplayName}"
                                        FontSize="14"
@@ -41,14 +42,14 @@
                                        ToolTip.Tip="{Binding StatusTooltip}"
                                        IsVisible="{Binding HasStatus}" />
                         </StackPanel>
-                        
+
                         <TextBlock Grid.Column="1" Grid.Row="1"
                                    Text="{Binding Email}"
                                    FontSize="12"
                                    Foreground="{DynamicResource AppTextSecondaryBrush}"
                                    TextWrapping="Wrap"
                                    Margin="0,2,0,0" />
-                        
+
                         <TextBlock Grid.Column="1" Grid.Row="2"
                                    Text="Organizer"
                                    FontSize="11"
@@ -57,7 +58,7 @@
                                    Margin="0,4,0,0" />
                     </Grid>
                 </Border>
-            </Flyout>
+            </atom:Flyout>
         </FlyoutBase.AttachedFlyout>
         <Grid ColumnDefinitions="28,16,*" PointerEntered="OnPointerEntered">
             <Border Width="24" Height="24" CornerRadius="12"
@@ -70,7 +71,7 @@
                                VerticalAlignment="Center" IsVisible="{Binding !HasPhoto}" />
                 </Panel>
             </Border>
-            
+
             <TextBlock Grid.Column="1"
                        Text="{Binding StatusIcon}"
                        Foreground="{Binding StatusColor}"
@@ -79,7 +80,7 @@
                        HorizontalAlignment="Center"
                        ToolTip.Tip="{Binding StatusTooltip}"
                        IsVisible="{Binding HasStatus}" />
-            
+
             <TextBlock Grid.Column="2"
                        Text="{Binding DisplayName}"
                        VerticalAlignment="Center"

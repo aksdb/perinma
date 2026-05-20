@@ -15,7 +15,7 @@ namespace perinma.Views.Calendar.Availability;
 ///   • Handle pointer drag events (move / resize the slot overlay).
 ///   • Return (SelectedStart, SelectedEnd) on confirm, null on cancel.
 /// </summary>
-public partial class AvailabilityWindow : Window
+public partial class AvailabilityWindow : AtomUI.Desktop.Controls.Window
 {
     private enum DragMode { None, Move, Resize }
     private DragMode _dragMode = DragMode.None;

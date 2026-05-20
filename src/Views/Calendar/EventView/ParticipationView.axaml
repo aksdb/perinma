@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ev="clr-namespace:perinma.Views.Calendar.EventView"
@@ -10,24 +11,27 @@
     <StackPanel Spacing="8" Margin="0,8,0,0">
         <TextBlock Text="Participate?" FontWeight="SemiBold" />
         <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Yes"
-                    Command="{Binding AcceptCommand}"
-                    IsEnabled="{Binding CanAccept}"
-                    Width="60"
-                    Background="#E5E7EB"
-                    Foreground="#374151" />
-            <Button Content="No"
-                    Command="{Binding DeclineCommand}"
-                    IsEnabled="{Binding CanDecline}"
-                    Width="60"
-                    Background="#E5E7EB"
-                    Foreground="#374151" />
-            <Button Content="Maybe"
-                    Command="{Binding TentativeCommand}"
-                    IsEnabled="{Binding CanTentative}"
-                    Width="60"
-                    Background="#E5E7EB"
-                    Foreground="#374151" />
+            <atom:Button x:Name="AcceptButton"
+                         Content="Yes"
+                         Command="{Binding AcceptCommand}"
+                         IsEnabled="{Binding CanAccept}"
+                         Width="60"
+                         Background="#E5E7EB"
+                         Foreground="#374151" />
+            <atom:Button x:Name="DeclineButton"
+                         Content="No"
+                         Command="{Binding DeclineCommand}"
+                         IsEnabled="{Binding CanDecline}"
+                         Width="60"
+                         Background="#E5E7EB"
+                         Foreground="#374151" />
+            <atom:Button x:Name="TentativeButton"
+                         Content="Maybe"
+                         Command="{Binding TentativeCommand}"
+                         IsEnabled="{Binding CanTentative}"
+                         Width="60"
+                         Background="#E5E7EB"
+                         Foreground="#374151" />
         </StackPanel>
     </StackPanel>
 
