@@ -12,25 +12,30 @@
     <StackPanel Margin="20" Spacing="15">
         <TextBlock Text="Account Details" FontSize="18" FontWeight="SemiBold" />
 
-        <StackPanel Spacing="5">
-            <TextBlock Text="Account Name" />
-            <atom:LineEdit x:Name="AccountNameInput" Text="{Binding AccountName}" PlaceholderText="My Calendar Account" />
-            <TextBlock Text="{Binding NameValidationError}"
-                       Foreground="{DynamicResource AppErrorBrush}"
-                       IsVisible="{Binding !!NameValidationError}" />
-        </StackPanel>
+        <atom:Form x:Name="AccountDetailsForm"
+                   IsValidateFeedbackEnabled="True">
+            <atom:FormItem x:Name="AccountNameFormItem"
+                           LabelText="Account Name"
+                           IsRequired="True"
+                           ValidateStatus="{Binding AccountNameValidateStatus}"
+                           Help="{Binding NameValidationError}">
+                <atom:LineEdit x:Name="AccountNameInput"
+                               Text="{Binding AccountName}"
+                               PlaceholderText="My Calendar Account" />
+            </atom:FormItem>
 
-        <StackPanel Spacing="5">
-            <TextBlock Text="Account Type" />
-            <atom:ComboBox x:Name="AccountTypeComboBox"
-                           SelectedItem="{Binding SelectedAccountType}"
-                           HorizontalAlignment="Stretch">
-                <ComboBox.Items>
-                    <models:AccountType>Google</models:AccountType>
-                    <models:AccountType>CalDav</models:AccountType>
-                    <models:AccountType>CardDav</models:AccountType>
-                </ComboBox.Items>
-            </atom:ComboBox>
-        </StackPanel>
+            <atom:FormItem x:Name="AccountTypeFormItem"
+                           LabelText="Account Type">
+                <atom:ComboBox x:Name="AccountTypeComboBox"
+                               SelectedItem="{Binding SelectedAccountType}"
+                               HorizontalAlignment="Stretch">
+                    <ComboBox.Items>
+                        <models:AccountType>Google</models:AccountType>
+                        <models:AccountType>CalDav</models:AccountType>
+                        <models:AccountType>CardDav</models:AccountType>
+                    </ComboBox.Items>
+                </atom:ComboBox>
+            </atom:FormItem>
+        </atom:Form>
     </StackPanel>
 </UserControl>

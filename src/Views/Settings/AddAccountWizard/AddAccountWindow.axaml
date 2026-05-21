@@ -29,8 +29,8 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20" Spacing="10">
                 <atom:Button x:Name="CancelButton" Content="Cancel" Command="{Binding CancelCommand}" Width="80" />
                 <atom:Button x:Name="BackButton" Content="Back" Command="{Binding BackCommand}" IsVisible="{Binding CanGoBack}" Width="80" />
-                <atom:Button x:Name="NextButton" Content="Next" Command="{Binding NextCommand}" IsVisible="{Binding !IsLastStep}" Width="80" />
-                <atom:Button x:Name="FinishButton" Content="Finish" Command="{Binding FinishCommand}" IsVisible="{Binding IsLastStep}" Width="80" />
+                <atom:Button x:Name="NextButton" Content="Next" Command="{Binding NextCommand}" IsVisible="{Binding !IsLastStep}" Width="80" ButtonType="Primary" />
+                <atom:Button x:Name="FinishButton" Content="Finish" Command="{Binding FinishCommand}" IsVisible="{Binding IsLastStep}" Width="80" ButtonType="Primary" />
             </StackPanel>
         </Border>
 

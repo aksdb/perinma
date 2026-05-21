@@ -1,7 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
+using CredentialStore;
+using AtomUI.Controls;
+using perinma.Services;
 using perinma.Views.Settings;
 using perinma.Views.Settings.AddAccountWizard;
+using perinma.Storage;
 
 namespace tests;
 
@@ -37,6 +41,8 @@ public class SettingsPagesTests
     [AvaloniaTest]
     public void AccountWizardSteps_UseAtomInputs()
     {
+        AssertAtomControl(new AccountDetailsStepView(), "AccountDetailsForm", "Form");
+        AssertAtomControl(new AccountDetailsStepView(), "AccountNameFormItem", "FormItem");
         AssertAtomControl(new AccountDetailsStepView(), "AccountNameInput", "LineEdit");
         AssertAtomControl(new AccountDetailsStepView(), "AccountTypeComboBox", "ComboBox");
         AssertAtomControl(new CalDavConnectionStepView(), "ServerUrlInput", "LineEdit");
@@ -49,6 +55,31 @@ public class SettingsPagesTests
         AssertAtomControl(new CardDavConnectionStepView(), "ConnectionProgressBar", "ProgressBar");
         AssertAtomControl(new GoogleConnectionStepView(), "ConnectButton", "Button");
         AssertAtomControl(new GoogleConnectionStepView(), "ConnectProgressBar", "ProgressBar");
+    }
+
+    [Test]
+    public async Task AccountDetailsStepViewModel_UsesErrorValidationStatus()
+    {
+        using var database = new DatabaseService(inMemory: true);
+        using var storage = new SqliteStorage(database, new CredentialManagerService(new InMemoryCredentialStore()));
+        var viewModel = new AccountDetailsStepViewModel(storage);
+
+        var isValid = await viewModel.ValidateAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(isValid, Is.False);
+            Assert.That(viewModel.AccountNameValidateStatus, Is.EqualTo(FormValidateStatus.Error));
+            Assert.That(viewModel.NameValidationError, Is.EqualTo("Account name is required"));
+        });
+
+        viewModel.AccountName = "Personal";
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(viewModel.AccountNameValidateStatus, Is.EqualTo(FormValidateStatus.Default));
+            Assert.That(viewModel.NameValidationError, Is.Null);
+        });
     }
 
     [AvaloniaTest]
