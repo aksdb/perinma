@@ -1,15 +1,12 @@
 using System;
-using Avalonia.Controls;
 
 namespace perinma.Views.Settings;
 
-public partial class ReauthenticateAccountWindow : Window
+public partial class ReauthenticateAccountWindow : AtomUI.Desktop.Controls.Window
 {
     public ReauthenticateAccountWindow()
     {
         InitializeComponent();
-
-        // Subscribe to close request from ViewModel
         DataContextChanged += OnDataContextChanged;
     }
 

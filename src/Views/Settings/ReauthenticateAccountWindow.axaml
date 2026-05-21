@@ -1,19 +1,18 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:atom="https://atomui.net"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:settings="using:perinma.Views.Settings"
-        x:DataType="settings:ReauthenticateAccountViewModel"
-        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
-        x:Class="perinma.Views.Settings.ReauthenticateAccountWindow"
-        Title="Reauthenticate Account"
-        Width="600"
-        Height="400"
-        CanResize="False">
+<atom:Window xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:settings="using:perinma.Views.Settings"
+             x:DataType="settings:ReauthenticateAccountViewModel"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
+             x:Class="perinma.Views.Settings.ReauthenticateAccountWindow"
+             Title="Reauthenticate Account"
+             Width="600"
+             Height="400"
+             CanResize="False">
 
     <DockPanel>
-        <!-- Header -->
         <Border DockPanel.Dock="Top" Background="{DynamicResource AppPanelMutedBrush}" Padding="20">
             <StackPanel Spacing="10">
                 <TextBlock Text="Reauthenticate Account" FontSize="20" FontWeight="Bold" />
@@ -21,7 +20,6 @@
             </StackPanel>
         </Border>
 
-        <!-- Content area -->
         <ContentControl DockPanel.Dock="Top" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel Spacing="20" MaxWidth="500">
                 <TextBlock TextWrapping="Wrap" TextAlignment="Center">
@@ -36,19 +34,20 @@
                            Foreground="{DynamicResource AppTextSecondaryBrush}"
                            MinHeight="80" />
 
-                <atom:Button Content="Reauthenticate"
-                        Command="{Binding ReauthenticateCommand}"
-                        IsEnabled="{Binding !IsConnecting}"
-                        HorizontalAlignment="Center"
-                        MinWidth="150" />
+                <atom:Button x:Name="ReauthenticateButton"
+                             Content="Reauthenticate"
+                             Command="{Binding ReauthenticateCommand}"
+                             IsEnabled="{Binding !IsConnecting}"
+                             HorizontalAlignment="Center"
+                             MinWidth="150" />
 
-                <atom:Button Content="Cancel"
-                        Command="{Binding CancelCommand}"
-                        IsEnabled="{Binding !IsConnecting}"
-                        HorizontalAlignment="Center"
-                        MinWidth="150" />
+                <atom:Button x:Name="CancelButton"
+                             Content="Cancel"
+                             Command="{Binding CancelCommand}"
+                             IsEnabled="{Binding !IsConnecting}"
+                             HorizontalAlignment="Center"
+                             MinWidth="150" />
             </StackPanel>
         </ContentControl>
     </DockPanel>
-
-</Window>
+</atom:Window>
