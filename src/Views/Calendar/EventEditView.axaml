@@ -23,16 +23,8 @@
         <Style Selector="Button.SmallButton:pointerover">
             <Setter Property="Background" Value="{DynamicResource AppHoverBrush}"/>
         </Style>
-        <Style Selector="Button.FieldRow">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
+        <Style Selector="Expander.FieldRow">
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="Padding" Value="12,10,12,10"/>
-            <Setter Property="CornerRadius" Value="0"/>
-        </Style>
-        <Style Selector="Button.FieldRow:pointerover">
-            <Setter Property="Background" Value="{DynamicResource AppHoverBrush}"/>
         </Style>
         <Style Selector="TextBlock.muted">
             <Setter Property="Foreground" Value="{DynamicResource AppTextSecondaryBrush}"/>
@@ -98,12 +90,10 @@
                             <DataTemplate DataType="edit:FieldRow">
                                 <Border BorderThickness="0,1,0,0"
                                         BorderBrush="{DynamicResource AppChromeBorderBrush}">
-                                    <StackPanel>
-
-                                        <!-- Expand/collapse header -->
-                                        <atom:Button Classes="FieldRow"
-                                                Command="{Binding ToggleExpandedCommand}">
-                                            <Grid ColumnDefinitions="20,*,20">
+                                    <atom:Expander Classes="FieldRow"
+                                                   IsExpanded="{Binding IsExpanded}">
+                                        <atom:Expander.Header>
+                                            <Grid ColumnDefinitions="20,*">
                                                 <TextBlock Text="{Binding Icon}" FontSize="13"
                                                            VerticalAlignment="Center"
                                                            HorizontalAlignment="Center"/>
@@ -113,17 +103,11 @@
                                                            Margin="8,0,0,0"
                                                            TextTrimming="CharacterEllipsis"
                                                            Classes.muted="{Binding !Field.HasValue}"/>
-                                                <TextBlock Grid.Column="2"
-                                                           Text="{Binding Chevron}"
-                                                           VerticalAlignment="Center"
-                                                           HorizontalAlignment="Center"
-                                                           Foreground="{DynamicResource AppTextSecondaryBrush}"/>
                                             </Grid>
-                                        </atom:Button>
+                                        </atom:Expander.Header>
 
                                         <!-- Type-specific editor body -->
-                                        <ContentControl IsVisible="{Binding IsExpanded}"
-                                                        Content="{Binding Field}"
+                                        <ContentControl Content="{Binding Field}"
                                                         Margin="40,4,12,12">
                                             <ContentControl.DataTemplates>
 
@@ -432,7 +416,7 @@
                                             </ContentControl.DataTemplates>
                                         </ContentControl>
 
-                                    </StackPanel>
+                                    </atom:Expander>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
