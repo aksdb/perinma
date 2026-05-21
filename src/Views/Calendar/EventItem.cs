@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -104,6 +106,8 @@ public partial class EventItem : TemplatedControl
     private CalendarEvent? _calendarEvent;
 
     public event EventHandler<CalendarEvent?>? EventDoubleTapped;
+    public ICommand? EditEventCommand { get; set; }
+    public ICommand? DeleteEventCommand { get; set; }
 
 #pragma warning restore CS0169
 #pragma warning restore CS0414
@@ -212,6 +216,8 @@ public partial class EventItem : TemplatedControl
         var border = e.NameScope.Find<Border>("Border");
         if (border == null) return;
 
+        ConfigureContextMenu(border.ContextMenu);
+
         CancellationTokenSource? singleTapCtx = null;
         border.Tapped += async (sender, args) =>
         {
@@ -233,6 +239,28 @@ public partial class EventItem : TemplatedControl
         };
     }
 
+    private void ConfigureContextMenu(ContextMenu? contextMenu)
+    {
+        if (contextMenu == null)
+        {
+            return;
+        }
+
+        foreach (var menuItem in contextMenu.Items.OfType<MenuItem>())
+        {
+            switch (menuItem.Header?.ToString())
+            {
+                case "Edit":
+                    menuItem.Command = EditEventCommand;
+                    menuItem.CommandParameter = CalendarEvent;
+                    break;
+                case "Delete":
+                    menuItem.Command = DeleteEventCommand;
+                    menuItem.CommandParameter = CalendarEvent;
+                    break;
+            }
+        }
+    }
     private void ShowFlyout(Border border)
     {
         if (CalendarEvent == null)

@@ -107,6 +107,42 @@ public class CalendarViewAtomUiTests
     }
 
     [AvaloniaTest]
+    public void EventItem_ConfigureContextMenu_WiresAtomMenuCommands()
+    {
+        var calendarEvent = CreateSampleCalendarEvent();
+        var editCommand = new CommunityToolkit.Mvvm.Input.RelayCommand<CalendarEvent?>(_ => { });
+        var deleteCommand = new CommunityToolkit.Mvvm.Input.RelayCommand<CalendarEvent?>(_ => { });
+        var contextMenu = new AtomUI.Desktop.Controls.ContextMenu
+        {
+            Items =
+            {
+                new AtomUI.Desktop.Controls.MenuItem { Header = "Edit" },
+                new AtomUI.Desktop.Controls.MenuItem { Header = "Delete" }
+            }
+        };
+        var method = typeof(EventItem).GetMethod("ConfigureContextMenu", BindingFlags.NonPublic | BindingFlags.Instance);
+        var eventItem = new EventItem
+        {
+            CalendarEvent = calendarEvent,
+            EditEventCommand = editCommand,
+            DeleteEventCommand = deleteCommand
+        };
+
+        Assert.That(method, Is.Not.Null);
+
+        method!.Invoke(eventItem, [contextMenu]);
+
+        var menuItems = contextMenu.Items.OfType<Avalonia.Controls.MenuItem>().ToArray();
+        Assert.Multiple(() =>
+        {
+            Assert.That(menuItems[0].Command, Is.SameAs(editCommand));
+            Assert.That(menuItems[0].CommandParameter, Is.SameAs(calendarEvent));
+            Assert.That(menuItems[1].Command, Is.SameAs(deleteCommand));
+            Assert.That(menuItems[1].CommandParameter, Is.SameAs(calendarEvent));
+        });
+    }
+
+    [AvaloniaTest]
     public void CalendarDialogs_UseAtomWindowsAndInputs()
     {
         var recurrenceDialog = new RecurrenceActionDialog
@@ -195,6 +231,37 @@ public class CalendarViewAtomUiTests
         var viewModel = new CalendarAgendaViewModel(new DummyCalendarSource(DateTime.Today));
         viewModel.Load();
         return viewModel;
+    }
+
+    private static CalendarEvent CreateSampleCalendarEvent()
+    {
+        var account = new Account
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Account",
+            Type = AccountType.Google
+        };
+
+        var calendar = new perinma.Models.Calendar
+        {
+            Account = account,
+            Id = Guid.NewGuid(),
+            Name = "Test Calendar",
+            Color = "#3366FF",
+            Enabled = true
+        };
+
+        return new CalendarEvent
+        {
+            Reference = new EventReference
+            {
+                Calendar = calendar,
+                Id = Guid.NewGuid()
+            },
+            Title = "Test Event",
+            StartTime = NodaTime.LocalDateTime.FromDateTime(DateTime.Today.AddHours(9)),
+            EndTime = NodaTime.LocalDateTime.FromDateTime(DateTime.Today.AddHours(10))
+        };
     }
 
     private static List<CalendarEventParticipant> CreateSampleParticipants()

@@ -314,6 +314,8 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
                         EndTimeText = e.EndTime.ToString("HH:mm", null),
                         ShowInlineTimes = true,
                         CalendarEvent = e,
+                        EditEventCommand = EditEventCommand,
+                        DeleteEventCommand = DeleteEventCommand,
                         NeedsResponse = needsResponse,
                         IsDeclined = isDeclined,
                     };
