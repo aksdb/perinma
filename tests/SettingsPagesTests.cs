@@ -57,6 +57,7 @@ public class SettingsPagesTests
         var window = new AddAccountWindow();
 
         Assert.That(window, Is.InstanceOf<AtomUI.Desktop.Controls.Window>());
+        Assert.That(window.SizeToContent, Is.EqualTo(SizeToContent.Height));
         AssertAtomControl(window, "AddAccountSteps", "Steps");
         AssertAtomControl(window, "CancelButton", "Button");
         AssertAtomControl(window, "BackButton", "Button");

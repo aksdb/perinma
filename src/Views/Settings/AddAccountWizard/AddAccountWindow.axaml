@@ -9,7 +9,7 @@
              x:Class="perinma.Views.Settings.AddAccountWizard.AddAccountWindow"
              Title="Add Account"
              Width="600"
-             Height="400"
+             SizeToContent="Height"
              CanResize="False">
 
     <DockPanel>
