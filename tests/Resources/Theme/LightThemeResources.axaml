@@ -27,42 +27,4 @@
         <GradientStop Color="#FFFFFFFF" Offset="1" />
     </LinearGradientBrush>
 
-    <SolidColorBrush x:Key="AccentColor2" Color="#FF4096FF" />
-    <SolidColorBrush x:Key="AccentColor3" Color="#FF1677FF" />
-    <SolidColorBrush x:Key="AccentForeground2" Color="#FFFFFFFF" />
-    <SolidColorBrush x:Key="CalendarViewCalendarItemForeground" Color="#FF1F1F1F" />
-    <SolidColorBrush x:Key="GridLineColor" Color="#FFE1E6ED" />
-    <LinearGradientBrush x:Key="HeaderDropShadow" StartPoint="50%,0%" EndPoint="50%,100%">
-        <GradientStop Color="#FFFFFFFF" Offset="0" />
-        <GradientStop Color="#FFC6CCD6" Offset="0.22" />
-        <GradientStop Color="#FFFFFFFF" Offset="1" />
-    </LinearGradientBrush>
-    <SolidColorBrush x:Key="NonWorkingHourBrush" Color="#12000000" />
-    <SolidColorBrush x:Key="SystemAccentColor" Color="#FF1677FF" />
-    <SolidColorBrush x:Key="SystemAccentColorLight2" Color="#FFE6F4FF" />
-    <SolidColorBrush x:Key="SystemAltLowBrush" Color="#FFF7F8FA" />
-    <SolidColorBrush x:Key="SystemAltMediumColor" Color="#FFF0F2F5" />
-    <SolidColorBrush x:Key="SystemAltMediumHighBrush" Color="#FFFFFFFF" />
-    <SolidColorBrush x:Key="SystemAltMediumLowBrush" Color="#FFF7F8FA" />
-    <SolidColorBrush x:Key="SystemBaseHighColor" Color="#FF1F1F1F" />
-    <SolidColorBrush x:Key="SystemBaseLowColor" Color="#FFF7F8FA" />
-    <SolidColorBrush x:Key="SystemBaseMediumHighColor" Color="#FF595959" />
-    <SolidColorBrush x:Key="SystemBaseMediumLowColor" Color="#FF8C8C8C" />
-    <SolidColorBrush x:Key="SystemChromeHighColor" Color="#FFBFC8D6" />
-    <SolidColorBrush x:Key="SystemChromeLowColor" Color="#FFD9DFEA" />
-    <SolidColorBrush x:Key="SystemChromeMediumColor" Color="#FFF0F2F5" />
-    <SolidColorBrush x:Key="SystemChromeMediumHighColor" Color="#FFFFFFFF" />
-    <SolidColorBrush x:Key="SystemChromeMediumLowColor" Color="#FFF7F8FA" />
-    <SolidColorBrush x:Key="SystemControlBackgroundListLowBrush" Color="#FFF5F7FA" />
-    <SolidColorBrush x:Key="SystemControlDisabledBaseMediumLowBrush" Color="#FF8C8C8C" />
-    <SolidColorBrush x:Key="SystemControlForegroundAltBrush" Color="#FF595959" />
-    <SolidColorBrush x:Key="SystemControlForegroundBaseHighBrush" Color="#FF1F1F1F" />
-    <SolidColorBrush x:Key="SystemControlForegroundBaseMediumBrush" Color="#FF595959" />
-    <SolidColorBrush x:Key="SystemControlForegroundBrush" Color="#FF1F1F1F" />
-    <SolidColorBrush x:Key="SystemControlHighlightAltBrush" Color="#FFF0F5FF" />
-    <SolidColorBrush x:Key="SystemControlHighlightListLowBrush" Color="#FFF5F7FA" />
-    <SolidColorBrush x:Key="SystemControlHyperlinkBrush" Color="#FF0958D9" />
-    <SolidColorBrush x:Key="SystemErrorColor" Color="#FFFF4D4F" />
-    <SolidColorBrush x:Key="SystemErrorColorBrush" Color="#FFFF4D4F" />
-    <SolidColorBrush x:Key="SystemErrorTextColorBrush" Color="#FFFF4D4F" />
 </ResourceDictionary>
