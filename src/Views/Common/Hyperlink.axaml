@@ -11,6 +11,12 @@
                  ButtonType="Link"
                  Content="{Binding DisplayText, ElementName=Root}"
                  Click="OnOpenClick"
+                 MinWidth="0"
+                 MinHeight="0"
+                 Padding="0"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 HorizontalAlignment="Left"
                  atom:ToolTip.Tip="{Binding Uri, ElementName=Root}">
         <atom:Button.ContextMenu>
             <atom:ContextMenu>
