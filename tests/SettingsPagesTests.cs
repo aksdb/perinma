@@ -1,11 +1,19 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
+using Avalonia.VisualTree;
 using CredentialStore;
 using AtomUI.Controls;
+using perinma.Models;
 using perinma.Services;
+using perinma.Services.Google;
 using perinma.Views.Settings;
 using perinma.Views.Settings.AddAccountWizard;
 using perinma.Storage;
+using tests.Fakes;
 
 namespace tests;
 
@@ -36,6 +44,87 @@ public class SettingsPagesTests
         var view = new AccountListView();
 
         AssertAtomControl(view, "AddAccountButton", "Button");
+    }
+
+    [AvaloniaTest]
+    public void AccountListView_UsesAtomAccountActionsFlyout()
+    {
+        using var database = new DatabaseService(inMemory: true);
+        using var storage = new SqliteStorage(database, new CredentialManagerService(new InMemoryCredentialStore()));
+        var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
+        var viewModel = new AccountListViewModel(
+            storage,
+            credentialManager,
+            new GoogleOAuthService(new GoogleCalendarService()),
+            new CalDavServiceStub(),
+            new CardDavServiceStub(),
+            new SyncService(storage, credentialManager, new Dictionary<AccountType, ICalendarProvider>(), null!),
+            new ContactSyncService(storage, new Dictionary<AccountType, IContactProvider>()),
+            new AtomUI.Desktop.Controls.Window());
+
+        viewModel.Accounts =
+        [
+            new AccountViewModel
+            {
+                Id = System.Guid.NewGuid(),
+                Name = "Work",
+                Type = AccountType.Google,
+                CanReauthenticate = true,
+                ForceResyncCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(() => Task.CompletedTask),
+                ReauthenticateCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(() => Task.CompletedTask),
+                DeleteCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(() => Task.CompletedTask)
+            }
+        ];
+
+        var view = new AccountListView
+        {
+            DataContext = viewModel
+        };
+
+        var host = new AtomUI.Desktop.Controls.Window
+        {
+            Width = 800,
+            Height = 600,
+            Content = view
+        };
+        host.Show();
+
+        try
+        {
+            var actionsButton = host.GetVisualDescendants()
+                .OfType<AtomUI.Desktop.Controls.Button>()
+                .FirstOrDefault(control => control.Name == "AccountActionsButton");
+
+            Assert.That(actionsButton, Is.Not.Null, "Missing account actions dropdown button.");
+            Assert.That(actionsButton!.Flyout, Is.InstanceOf<AtomUI.Desktop.Controls.Flyout>());
+
+            var flyoutContent = ((AtomUI.Desktop.Controls.Flyout)actionsButton.Flyout!).Content as Control;
+            Assert.That(flyoutContent, Is.Not.Null, "Missing account actions flyout content.");
+
+            var flyoutControls = new[] { flyoutContent! }
+                .Concat(flyoutContent!.GetVisualDescendants().OfType<Control>())
+                .ToList();
+            var forceResyncButton = flyoutControls.OfType<AtomUI.Desktop.Controls.Button>()
+                .FirstOrDefault(control => control.Name == "ForceResyncActionButton");
+            var reauthenticateButton = flyoutControls.OfType<AtomUI.Desktop.Controls.Button>()
+                .FirstOrDefault(control => control.Name == "ReauthenticateActionButton");
+            var deleteButton = flyoutControls.OfType<AtomUI.Desktop.Controls.Button>()
+                .FirstOrDefault(control => control.Name == "DeleteActionButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(forceResyncButton, Is.Not.Null);
+                Assert.That(reauthenticateButton, Is.Not.Null);
+                Assert.That(deleteButton, Is.Not.Null);
+                Assert.That(reauthenticateButton!.IsDanger, Is.True);
+                Assert.That(deleteButton!.IsDanger, Is.True);
+                Assert.That(reauthenticateButton.IsVisible, Is.True);
+            });
+        }
+        finally
+        {
+            host.Close();
+        }
     }
 
     [AvaloniaTest]
