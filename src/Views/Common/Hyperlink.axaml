@@ -3,20 +3,20 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cm="clr-namespace:perinma.Views.Common"
+             xmlns:atom="https://atomui.net"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="perinma.Views.Common.Hyperlink">
-    <StackPanel
-        ToolTip.Tip="{Binding Uri, RelativeSource={RelativeSource AncestorType=cm:Hyperlink}}">
-        <TextBlock Text="{Binding DisplayText, RelativeSource={RelativeSource AncestorType=cm:Hyperlink}}"
-                   Foreground="Blue"
-                   TextWrapping="Wrap"
-                   Cursor="Hand"
-                   TextDecorations="Underline" />
-        <StackPanel.ContextMenu>
-            <ContextMenu>
-                <MenuItem Header="Open" Click="OnOpenClick" />
-                <MenuItem Header="Copy" Click="OnCopyClick" />
-            </ContextMenu>
-        </StackPanel.ContextMenu>
-    </StackPanel>
+             x:Class="perinma.Views.Common.Hyperlink"
+             x:Name="Root">
+    <atom:Button x:Name="LinkButton"
+                 ButtonType="Link"
+                 Content="{Binding DisplayText, ElementName=Root}"
+                 Click="OnOpenClick"
+                 atom:ToolTip.Tip="{Binding Uri, ElementName=Root}">
+        <atom:Button.ContextMenu>
+            <atom:ContextMenu>
+                <atom:MenuItem Header="Open" Click="OnOpenClick" />
+                <atom:MenuItem Header="Copy" Click="OnCopyClick" />
+            </atom:ContextMenu>
+        </atom:Button.ContextMenu>
+    </atom:Button>
 </UserControl>
