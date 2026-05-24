@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using CredentialStore;
 using Microsoft.Extensions.DependencyInjection;
@@ -197,6 +198,58 @@ public class CalendarViewAtomUiTests
     }
 
     [AvaloniaTest]
+    public void ParticipationView_UsesPaletteStyledButtonsForCurrentState()
+    {
+        var participationView = new ParticipationView
+        {
+            DataContext = new ParticipationViewModel(new Participation
+            {
+                CurrentState = EventResponseStatus.Accepted,
+                Actions = new ParticipationActions
+                {
+                    Accept = () => Task.CompletedTask,
+                    Decline = () => Task.CompletedTask,
+                    Tentative = () => Task.CompletedTask
+                }
+            })
+        };
+
+        var host = ShowInWindow(participationView);
+        try
+        {
+            var acceptButton = participationView.FindControl<AtomUI.Desktop.Controls.Button>("AcceptButton");
+            var declineButton = participationView.FindControl<AtomUI.Desktop.Controls.Button>("DeclineButton");
+            var tentativeButton = participationView.FindControl<AtomUI.Desktop.Controls.Button>("TentativeButton");
+            var acceptBrush = GetBrushColor(participationView, "ParticipationAcceptBrush");
+            var declineBrush = GetBrushColor(participationView, "ParticipationDeclineBrush");
+            var tentativeBrush = GetBrushColor(participationView, "ParticipationTentativeBrush");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(acceptButton, Is.Not.Null);
+                Assert.That(declineButton, Is.Not.Null);
+                Assert.That(tentativeButton, Is.Not.Null);
+
+                Assert.That(acceptButton!.Shape, Is.EqualTo(AtomUI.Desktop.Controls.ButtonShape.Round));
+                Assert.That(acceptButton.Classes.Contains("active"), Is.True);
+                Assert.That(declineButton!.Classes.Contains("active"), Is.False);
+                Assert.That(tentativeButton!.Classes.Contains("active"), Is.False);
+
+                Assert.That(GetSolidColor(acceptButton.BorderBrush), Is.EqualTo(acceptBrush));
+                Assert.That(GetSolidColor(acceptButton.Background), Is.EqualTo(acceptBrush));
+                Assert.That(GetSolidColor(declineButton.BorderBrush), Is.EqualTo(declineBrush));
+                Assert.That(GetSolidColor(declineButton.Foreground), Is.EqualTo(declineBrush));
+                Assert.That(GetSolidColor(tentativeButton.BorderBrush), Is.EqualTo(tentativeBrush));
+                Assert.That(GetSolidColor(tentativeButton.Foreground), Is.EqualTo(tentativeBrush));
+            });
+        }
+        finally
+        {
+            host.Close();
+        }
+    }
+
+    [AvaloniaTest]
     public void AvailabilityWindow_UsesAtomWindowShell()
     {
         var window = new AvailabilityWindow();
@@ -290,6 +343,17 @@ public class CalendarViewAtomUiTests
         return window;
     }
 
+    private static Color GetBrushColor(Control root, string resourceKey)
+    {
+        var resource = root.Resources[resourceKey];
+        Assert.That(resource, Is.InstanceOf<SolidColorBrush>(), $"Resource '{resourceKey}' should be a SolidColorBrush.");
+        return ((SolidColorBrush)resource!).Color;
+    }
+
+    private static Color? GetSolidColor(IBrush? brush)
+    {
+        return brush is ISolidColorBrush solidColorBrush ? solidColorBrush.Color : null;
+    }
     private static void AssertAtomControl(Control root, string name, string typeName)
     {
         var control = root.FindControl<Control>(name);
