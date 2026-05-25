@@ -59,6 +59,7 @@
                                                 <atom:ContextMenu>
                                                     <atom:MenuItem Header="Edit" Command="{ReflectionBinding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
                                                     <atom:MenuItem Header="Delete" Command="{ReflectionBinding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                                    <atom:MenuItem Header="Trigger Reminder" Command="{ReflectionBinding $parent[UserControl].DataContext.TriggerReminderCommand}" CommandParameter="{Binding CalendarEvent}"/>
                                                 </atom:ContextMenu>
                                             </Button.ContextMenu>
                                             <Button.Flyout>

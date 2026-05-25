@@ -28,6 +28,7 @@ public class SettingsService(SqliteStorage storage)
         public const string LastCalendarDayColumns = "mainWindow.view.lastCalendarDayColumns";
         public const string AutoSyncInterval = "sync.autoSyncIntervalMinutes";
         public const string Theme = "appearance.theme";
+        public const string DebuggingEnabled = "debug.enabled";
     }
 
     // Default values
@@ -52,6 +53,7 @@ public class SettingsService(SqliteStorage storage)
         public const int LastCalendarDayColumns = 7;
         public const int AutoSyncInterval = 5;
         public const string Theme = "Light";
+        public const bool DebuggingEnabled = false;
     }
 
     // Generic accessors
@@ -151,4 +153,6 @@ public class SettingsService(SqliteStorage storage)
     // Theme accessors
     public Task<string> GetThemeAsync() => GetAsync(Keys.Theme, Defaults.Theme);
     public Task SetThemeAsync(string value) => SetAsync(Keys.Theme, value);
+    public Task<bool> GetDebuggingEnabledAsync() => GetBoolAsync(Keys.DebuggingEnabled, Defaults.DebuggingEnabled);
+    public Task SetDebuggingEnabledAsync(bool value) => SetBoolAsync(Keys.DebuggingEnabled, value);
 }

@@ -12,6 +12,7 @@ using perinma.Services;
 using perinma.Storage;
 using perinma.Views.MessageBox;
 using perinma.Views.Calendar.EventEdit;
+using perinma.Views.Reminders;
 
 namespace perinma.Views.Calendar;
 
@@ -104,6 +105,25 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
             Console.WriteLine($"Failed to delete event: {ex}");
             throw;
         }
+    }
+
+    [RelayCommand]
+    private async Task TriggerReminderAsync(CalendarEvent? eventToTrigger)
+    {
+        if (eventToTrigger == null)
+            return;
+
+        var reminderService = App.Services?.GetRequiredService<ReminderService>();
+        if (reminderService == null)
+            throw new InvalidOperationException("ReminderService not available");
+
+        var result = await reminderService.TriggerRemindersNowAsync([eventToTrigger.Reference.Id.ToString()]);
+        if (result.Reminders.Count == 0)
+            return;
+
+        var ownerWindow = App.MainWindow
+            ?? throw new InvalidOperationException("MainWindow not available");
+        await ReminderNotificationWindow.ShowAsync(ownerWindow, reminderService, result.Reminders.ToList());
     }
 
     public async void OpenEventEditor(CalendarEvent? existingEvent = null,

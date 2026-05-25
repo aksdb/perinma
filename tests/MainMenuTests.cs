@@ -86,4 +86,21 @@ public class MainMenuTests
         Assert.That(contactsItem, Is.Not.Null);
         Assert.That(segmented!.Items.Count, Is.EqualTo(2));
     }
+
+    [AvaloniaTest]
+    public void MainWindow_ToolsMenuContainsDebugToggleAndDebugWindowItem()
+    {
+        var window = new MainWindow();
+
+        var enableDebuggingItem = window.FindControl<AtomUI.Desktop.Controls.MenuItem>("EnableDebuggingMenuItem");
+        var openDebugWindowItem = window.FindControl<AtomUI.Desktop.Controls.MenuItem>("OpenDebugWindowMenuItem");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(enableDebuggingItem, Is.Not.Null);
+            Assert.That(openDebugWindowItem, Is.Not.Null);
+            Assert.That(enableDebuggingItem!.Header?.GetType().Name, Is.EqualTo("AccessText"));
+            Assert.That(openDebugWindowItem!.Header?.GetType().Name, Is.EqualTo("AccessText"));
+        });
+    }
 }

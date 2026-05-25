@@ -113,12 +113,14 @@ public class CalendarViewAtomUiTests
         var calendarEvent = CreateSampleCalendarEvent();
         var editCommand = new CommunityToolkit.Mvvm.Input.RelayCommand<CalendarEvent?>(_ => { });
         var deleteCommand = new CommunityToolkit.Mvvm.Input.RelayCommand<CalendarEvent?>(_ => { });
+        var triggerReminderCommand = new CommunityToolkit.Mvvm.Input.RelayCommand<CalendarEvent?>(_ => { });
         var contextMenu = new AtomUI.Desktop.Controls.ContextMenu
         {
             Items =
             {
                 new AtomUI.Desktop.Controls.MenuItem { Header = "Edit" },
-                new AtomUI.Desktop.Controls.MenuItem { Header = "Delete" }
+                new AtomUI.Desktop.Controls.MenuItem { Header = "Delete" },
+                new AtomUI.Desktop.Controls.MenuItem { Header = "Trigger Reminder" }
             }
         };
         var method = typeof(EventItem).GetMethod("ConfigureContextMenu", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -126,7 +128,8 @@ public class CalendarViewAtomUiTests
         {
             CalendarEvent = calendarEvent,
             EditEventCommand = editCommand,
-            DeleteEventCommand = deleteCommand
+            DeleteEventCommand = deleteCommand,
+            TriggerReminderCommand = triggerReminderCommand
         };
 
         Assert.That(method, Is.Not.Null);
@@ -140,6 +143,8 @@ public class CalendarViewAtomUiTests
             Assert.That(menuItems[0].CommandParameter, Is.SameAs(calendarEvent));
             Assert.That(menuItems[1].Command, Is.SameAs(deleteCommand));
             Assert.That(menuItems[1].CommandParameter, Is.SameAs(calendarEvent));
+            Assert.That(menuItems[2].Command, Is.SameAs(triggerReminderCommand));
+            Assert.That(menuItems[2].CommandParameter, Is.SameAs(calendarEvent));
         });
     }
 

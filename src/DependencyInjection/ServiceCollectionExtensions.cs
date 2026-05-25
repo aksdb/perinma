@@ -87,6 +87,7 @@ public static class ServiceCollectionExtensions
             var credentialManager = sp.GetRequiredService<CredentialManagerService>();
             var syncService = sp.GetRequiredService<SyncService>();
             var contactSyncService = sp.GetRequiredService<ContactSyncService>();
+            var reminderService = sp.GetRequiredService<ReminderService>();
             var calDavService = sp.GetRequiredService<CalDavService>();
             var cardDavService = sp.GetRequiredService<CardDavService>();
             var themeService = sp.GetRequiredService<ThemeService>();
@@ -101,6 +102,7 @@ public static class ServiceCollectionExtensions
                 credentialManager,
                 syncService,
                 contactSyncService,
+                reminderService,
                 calDavService,
                 cardDavService,
                 themeService,

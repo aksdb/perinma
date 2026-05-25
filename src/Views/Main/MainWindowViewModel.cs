@@ -42,6 +42,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private readonly CredentialManagerService _credentialManager;
     private readonly SyncService _syncService;
     private readonly ContactSyncService _contactSyncService;
+    private readonly ReminderService _reminderService;
     private readonly GoogleCalendarService _googleCalendarService;
     private readonly GoogleOAuthService _googleOAuthService;
     private readonly ICalDavService _calDavService;
@@ -61,6 +62,9 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
     [ObservableProperty]
     public partial double SyncProgress { get; set; } = 0.0;
+
+    [ObservableProperty]
+    public partial bool IsDebuggingEnabled { get; set; }
 
     [ObservableProperty]
     public partial bool SyncProgressIsIndeterminate { get; set; } = true;
@@ -98,6 +102,11 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private void SelectContactsMainView()
     {
         SelectedMainView = MainViewMode.Contacts;
+    }
+
+    partial void OnIsDebuggingEnabledChanged(bool value)
+    {
+        _ = _settingsService.SetDebuggingEnabledAsync(value);
     }
 
     public enum CalendarView
@@ -153,6 +162,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         CredentialManagerService credentialManager,
         SyncService syncService,
         ContactSyncService contactSyncService,
+        ReminderService reminderService,
         ICalDavService calDavService,
         ICardDavService cardDavService,
         ThemeService themeService,
@@ -166,6 +176,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _credentialManager = credentialManager;
         _syncService = syncService;
         _contactSyncService = contactSyncService;
+        _reminderService = reminderService;
         _calDavService = calDavService;
         _cardDavService = cardDavService;
         _themeService = themeService;
@@ -366,16 +377,19 @@ public partial class MainWindowViewModel : ObservableRecipient,
     [RelayCommand]
     private void ShowDebugWindow()
     {
+        if (!IsDebuggingEnabled)
+        {
+            return;
+        }
+
         if (_debugWindow != null)
         {
             _debugWindow.Activate();
             return;
         }
 
-        var reminderService = new ReminderService(_storage, _calendarSource, _syncService.Providers);
-
         _debugWindow = new DebugWindow();
-        _debugWindow.DataContext = new DebugWindowViewModel(reminderService);
+        _debugWindow.DataContext = new DebugWindowViewModel(_reminderService);
         _debugWindow.Closed += (_, _) => _debugWindow = null;
         _debugWindow.Show();
     }
@@ -641,6 +655,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         // Load and restore theme
         await _themeService.LoadThemeAsync();
         UpdateThemeFlags();
+        IsDebuggingEnabled = await _settingsService.GetDebuggingEnabledAsync();
 
         // Load and restore last view state
         await LoadViewStateAsync();

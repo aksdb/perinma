@@ -316,6 +316,7 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
                         CalendarEvent = e,
                         EditEventCommand = EditEventCommand,
                         DeleteEventCommand = DeleteEventCommand,
+                        TriggerReminderCommand = TriggerReminderCommand,
                         NeedsResponse = needsResponse,
                         IsDeclined = isDeclined,
                     };

@@ -108,6 +108,7 @@ public partial class EventItem : TemplatedControl
     public event EventHandler<CalendarEvent?>? EventDoubleTapped;
     public ICommand? EditEventCommand { get; set; }
     public ICommand? DeleteEventCommand { get; set; }
+    public ICommand? TriggerReminderCommand { get; set; }
 
 #pragma warning restore CS0169
 #pragma warning restore CS0414
@@ -256,6 +257,10 @@ public partial class EventItem : TemplatedControl
                     break;
                 case "Delete":
                     menuItem.Command = DeleteEventCommand;
+                    menuItem.CommandParameter = CalendarEvent;
+                    break;
+                case "Trigger Reminder":
+                    menuItem.Command = TriggerReminderCommand;
                     menuItem.CommandParameter = CalendarEvent;
                     break;
             }
