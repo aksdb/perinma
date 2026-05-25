@@ -87,6 +87,8 @@ public class CalendarListViewTests
                 Assert.That(selectedDates.First(), Is.EqualTo(new DateTime(2026, 6, 8)));
                 Assert.That(selectedDates.Last(), Is.EqualTo(new DateTime(2026, 6, 12)));
                 Assert.That(sidebarCalendar.SelectionMode, Is.EqualTo(AtomUI.Desktop.Controls.CalendarSelectionMode.SingleRange));
+                Assert.That(sidebarCalendar.DisplayDate, Is.EqualTo(new DateTime(2026, 6, 8)));
+                Assert.That(sidebarCalendar.SelectedDate, Is.EqualTo(new DateTime(2026, 6, 8)));
             });
         }
         finally

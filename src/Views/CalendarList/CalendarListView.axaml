@@ -15,6 +15,7 @@
                 <atom:Calendar x:Name="SidebarCalendar"
                                SelectionMode="SingleRange"
                                FirstDayOfWeek="Monday"
+                               DisplayDate="{Binding Mode=OneWay, Path=ActiveCalendarViewModel.ViewStart}"
                                SelectedDate="{Binding ActiveCalendarViewModel.ViewStart}" />
             </Viewbox>
 
