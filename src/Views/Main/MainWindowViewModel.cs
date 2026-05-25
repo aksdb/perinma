@@ -384,14 +384,18 @@ public partial class MainWindowViewModel : ObservableRecipient,
             return;
         }
 
-        if (_debugWindow != null)
+        if (_debugWindow?.DataContext is DebugWindowViewModel existingViewModel)
         {
+            existingViewModel.RefreshTriggerEvents();
             _debugWindow.Activate();
             return;
         }
 
         _debugWindow = new DebugWindow();
-        _debugWindow.DataContext = new DebugWindowViewModel(_reminderService);
+        _debugWindow.DataContext = new DebugWindowViewModel(
+            _reminderService,
+            () => ActiveCalendarViewModel.GetEventsInCurrentRange(),
+            () => ActiveCalendarViewModel.DateRangeDisplay);
         _debugWindow.Closed += (_, _) => _debugWindow = null;
         _debugWindow.Show();
     }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -54,21 +55,12 @@ public partial class CalendarMonthViewModel : CalendarViewModelBase, IRecipient<
     {
         MonthDays.Clear();
 
+        var events = GetEventsInCurrentRange();
         var firstOfMonth = new LocalDate(ViewStart.Year, ViewStart.Month, 1);
-        var lastOfMonth = firstOfMonth.PlusMonths(1).PlusDays(-1);
 
         // Find the Monday before or on the first of month
         var startOffset = ((int)firstOfMonth.DayOfWeek + 6) % 7;
         var gridStart = firstOfMonth.PlusDays(-startOffset);
-
-        // Always show 6 weeks (42 days) for consistent grid
-        var gridEnd = gridStart.PlusDays(42);
-
-        // Get all events for the visible range
-        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
-        var startInstant = gridStart.AtMidnight().InZoneLeniently(zone).ToInstant();
-        var endInstant = gridEnd.AtMidnight().InZoneLeniently(zone).ToInstant();
-        var events = _calendarSource.GetCalendarEvents(new Interval(startInstant, endInstant)).ToList();
 
         // Build day view models
         for (var i = 0; i < 42; i++)
@@ -104,6 +96,25 @@ public partial class CalendarMonthViewModel : CalendarViewModelBase, IRecipient<
 
             MonthDays.Add(dayVm);
         }
+    }
+
+    public override IReadOnlyList<CalendarEvent> GetEventsInCurrentRange()
+    {
+        var firstOfMonth = new LocalDate(ViewStart.Year, ViewStart.Month, 1);
+
+        // Find the Monday before or on the first of month
+        var startOffset = ((int)firstOfMonth.DayOfWeek + 6) % 7;
+        var gridStart = firstOfMonth.PlusDays(-startOffset);
+
+        // Always show 6 weeks (42 days) for consistent grid
+        var gridEnd = gridStart.PlusDays(42);
+        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var startInstant = gridStart.AtMidnight().InZoneLeniently(zone).ToInstant();
+        var endInstant = gridEnd.AtMidnight().InZoneLeniently(zone).ToInstant();
+        return _calendarSource.GetCalendarEvents(new Interval(startInstant, endInstant))
+            .OrderBy(e => e.StartTime)
+            .ThenBy(e => e.Title)
+            .ToList();
     }
 
     public void Receive(EventsChangedMessage message)

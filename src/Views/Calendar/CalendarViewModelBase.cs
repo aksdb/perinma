@@ -308,5 +308,7 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
         OpenEventEditor();
     }
 
+
+    public abstract IReadOnlyList<CalendarEvent> GetEventsInCurrentRange();
     public abstract void Load();
 }

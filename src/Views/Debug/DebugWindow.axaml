@@ -44,17 +44,57 @@
                         <TextBlock Text="Trigger Reminder Window"
                                    FontWeight="SemiBold"
                                    FontSize="16"/>
-                        <TextBlock Text="Trigger the reminder window immediately for one or more internal event ids. For single-event testing, use the calendar event context menu."
+                        <TextBlock Text="Trigger the reminder window immediately for one or more events from the current calendar range. For single-event testing, use the calendar event context menu."
                                    TextWrapping="Wrap"
                                    Foreground="{DynamicResource AppTextSecondaryBrush}"/>
-                        <atom:TextBox x:Name="TriggerReminderEventIdsInput"
-                                      Text="{Binding TriggerEventIdsText}"
-                                      AcceptsReturn="True"
-                                      TextWrapping="Wrap"
-                                      Height="96"
-                                      HorizontalAlignment="Stretch"
-                                      VerticalContentAlignment="Top"
-                                      PlaceholderText="Paste one or more event ids, separated by spaces, commas, or new lines"/>
+                        <TextBlock Text="{Binding TriggerRangeDescription}"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                   IsVisible="{Binding HasTriggerEvents}"/>
+                        <Border Background="{DynamicResource AppPanelSubtleBrush}"
+                                BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="12">
+                            <Grid>
+                                <TextBlock x:Name="TriggerReminderEmptyState"
+                                           Text="No events are available in the current calendar range."
+                                           FontSize="13"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                           IsVisible="{Binding HasNoTriggerEvents}"/>
+                                <atom:ScrollViewer x:Name="TriggerReminderEventList"
+                                                   MaxHeight="240"
+                                                   IsVisible="{Binding HasTriggerEvents}">
+                                    <ItemsControl ItemsSource="{Binding TriggerEvents}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="debug:DebugTriggerEventItemViewModel">
+                                                <Border BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                                                        BorderThickness="0,0,0,1"
+                                                        Padding="0,8">
+                                                    <atom:CheckBox IsChecked="{Binding IsSelected}">
+                                                        <StackPanel Spacing="2">
+                                                            <TextBlock Text="{Binding Title}"
+                                                                       FontWeight="SemiBold"
+                                                                       TextWrapping="Wrap"/>
+                                                            <TextBlock Text="{Binding ScheduleDescription}"
+                                                                       FontSize="12"
+                                                                       TextWrapping="Wrap"
+                                                                       Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                                                            <TextBlock Text="{Binding EventId}"
+                                                                       FontSize="11"
+                                                                       TextWrapping="Wrap"
+                                                                       Foreground="{DynamicResource AppTextTertiaryBrush}"/>
+                                                        </StackPanel>
+                                                    </atom:CheckBox>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </atom:ScrollViewer>
+                            </Grid>
+                        </Border>
                         <TextBlock Text="{Binding TriggerStatusText}"
                                    FontSize="13"
                                    TextWrapping="Wrap"
@@ -79,11 +119,11 @@
                         </atom:ScrollViewer>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <atom:Button x:Name="TriggerRemindersButton"
-                                         Content="Trigger Reminders"
+                                         Content="Trigger Selected Reminders"
                                          Command="{Binding TriggerRemindersCommand}"
                                          IsEnabled="{Binding IsTriggeringReminders, Converter={x:Static BoolConverters.Not}}"
                                          Padding="20,8"
-                                         MinWidth="120"/>
+                                         MinWidth="160"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>

@@ -118,6 +118,8 @@ public class CalendarListViewTests
         {
         }
 
+        public override IReadOnlyList<CalendarEvent> GetEventsInCurrentRange() => [];
+
         public void SetRange(DateTime viewStart, DateTime? highlightStart, DateTime? highlightEnd)
         {
             HighlightStart = highlightStart;
