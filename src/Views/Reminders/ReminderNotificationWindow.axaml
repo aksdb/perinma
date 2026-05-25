@@ -1,37 +1,18 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:atom="https://atomui.net"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:reminders="clr-namespace:perinma.Views.Reminders"
-        x:DataType="reminders:ReminderListViewModel"
-        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="450"
-        x:Class="perinma.Views.Reminders.ReminderNotificationWindow"
-         Title="Reminders" Width="450" MaxHeight="600" MinHeight="200" SizeToContent="Height"
-         CanResize="False" WindowStartupLocation="CenterOwner"
-         Icon="/Assets/avalonia-logo.ico"
-         ShowInTaskbar="True">
-
-     <Window.Styles>
-        <Style Selector="Button.DismissAllButton">
-            <Setter Property="Background" Value="{DynamicResource AppAccentBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource AppTextOnAccentBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource AppTextOnAccentBrush}"/>
-            <Setter Property="Padding" Value="14,6"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="FontSize" Value="13"/>
-        </Style>
-        <Style Selector="Button.DismissAllButton:pointerover">
-            <Setter Property="Background" Value="{DynamicResource AppAccentHoverBrush}"/>
-        </Style>
-        <Style Selector="Button:pointerover">
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-    </Window.Styles>
+<atom:Window xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:reminders="clr-namespace:perinma.Views.Reminders"
+             x:DataType="reminders:ReminderListViewModel"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="450"
+             x:Class="perinma.Views.Reminders.ReminderNotificationWindow"
+             Title="Reminders" Width="450" MaxHeight="600" MinHeight="200" SizeToContent="Height"
+             CanResize="False" WindowStartupLocation="CenterOwner"
+             Icon="/Assets/avalonia-logo.ico"
+             ShowInTaskbar="True">
 
     <Grid RowDefinitions="Auto,*">
-        <!-- Header -->
         <Border Grid.Row="0"
                 Background="{DynamicResource AppAccentBrush}"
                 Padding="16,12"
@@ -49,18 +30,19 @@
                                Foreground="{DynamicResource AppTextOnAccentBrush}"/>
                 </StackPanel>
 
-                <atom:Button Grid.Column="1"
-                        Content="Dismiss All"
-                        Classes="DismissAllButton"
-                        Command="{Binding DismissAllCommand}"
-                        IsEnabled="{Binding Reminders.Count, Mode=OneWay}"/>
+                <atom:Button x:Name="DismissAllButton"
+                             Grid.Column="1"
+                             Content="Dismiss All"
+                             ButtonType="Primary"
+                             Command="{Binding DismissAllCommand}"
+                             IsEnabled="{Binding Reminders.Count, Mode=OneWay}"/>
             </Grid>
         </Border>
 
-        <!-- Reminder List -->
-        <atom:ScrollViewer Grid.Row="1"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
+        <atom:ScrollViewer x:Name="ReminderListScrollViewer"
+                           Grid.Row="1"
+                           VerticalScrollBarVisibility="Auto"
+                           HorizontalScrollBarVisibility="Disabled">
             <ItemsControl ItemsSource="{Binding Reminders}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -75,4 +57,4 @@
             </ItemsControl>
         </atom:ScrollViewer>
     </Grid>
-</Window>
+</atom:Window>

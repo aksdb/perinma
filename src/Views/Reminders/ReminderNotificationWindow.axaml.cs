@@ -12,7 +12,7 @@ using perinma.Storage.Models;
 
 namespace perinma.Views.Reminders;
 
-public partial class ReminderNotificationWindow : Window
+public partial class ReminderNotificationWindow : AtomUI.Desktop.Controls.Window
 {
     private readonly ReminderListViewModel _viewModel;
     private readonly TaskCompletionSource<bool> _tcs;
