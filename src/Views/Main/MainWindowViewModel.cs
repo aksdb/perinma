@@ -50,7 +50,6 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private readonly ThemeService _themeService;
     private readonly SettingsService _settingsService;
     private readonly SqliteStorage _storage;
-    private readonly ICalendarSource _calendarSource;
     private DebugWindow? _debugWindow;
     private System.Threading.Timer? _autoSyncTimer;
 
@@ -182,7 +181,6 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _themeService = themeService;
         _settingsService = settingsService;
         _storage = storage;
-        _calendarSource = calendarSource;
         _googleCalendarService = googleCalendarService;
         _googleOAuthService = googleOAuthService;
 

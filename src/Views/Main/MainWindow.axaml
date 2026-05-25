@@ -86,9 +86,8 @@
                     <atom:MenuItem.Header>
                         <AccessText Text="_Tools"/>
                     </atom:MenuItem.Header>
-                    <atom:MenuItem x:Name="EnableDebuggingMenuItem"
-                                   ToggleType="CheckBox"
-                                   IsChecked="{Binding IsDebuggingEnabled}">
+                    <atom:MenuItem ToggleType="CheckBox"
+                                   IsChecked="{Binding Path=IsDebuggingEnabled, Mode=TwoWay}">
                         <atom:MenuItem.Header>
                             <AccessText Text="Enable _Debugging"/>
                         </atom:MenuItem.Header>
