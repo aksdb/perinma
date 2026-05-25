@@ -43,6 +43,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private readonly SyncService _syncService;
     private readonly ContactSyncService _contactSyncService;
     private readonly ReminderService _reminderService;
+    private readonly DebugFeaturesService _debugFeatures;
     private readonly GoogleCalendarService _googleCalendarService;
     private readonly GoogleOAuthService _googleOAuthService;
     private readonly ICalDavService _calDavService;
@@ -52,6 +53,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private readonly SqliteStorage _storage;
     private DebugWindow? _debugWindow;
     private System.Threading.Timer? _autoSyncTimer;
+
+    public DebugFeaturesService DebugFeatures => _debugFeatures;
 
     [ObservableProperty]
     public partial bool IsSyncing { get; set; }
@@ -63,10 +66,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
     public partial double SyncProgress { get; set; } = 0.0;
 
     [ObservableProperty]
-    public partial bool IsDebuggingEnabled { get; set; }
-
-    [ObservableProperty]
     public partial bool SyncProgressIsIndeterminate { get; set; } = true;
+
 
     // View switching
     public enum MainViewMode
@@ -103,10 +104,9 @@ public partial class MainWindowViewModel : ObservableRecipient,
         SelectedMainView = MainViewMode.Contacts;
     }
 
-    partial void OnIsDebuggingEnabledChanged(bool value)
-    {
-        _ = _settingsService.SetDebuggingEnabledAsync(value);
-    }
+    [RelayCommand]
+    private Task ToggleDebuggingAsync() => _debugFeatures.ToggleDebuggingAsync();
+
 
     public enum CalendarView
     {
@@ -169,13 +169,16 @@ public partial class MainWindowViewModel : ObservableRecipient,
         SqliteStorage storage,
         GoogleCalendarService googleCalendarService,
         GoogleOAuthService googleOAuthService,
-        ICalendarSource calendarSource)
+        ICalendarSource calendarSource,
+        DebugFeaturesService debugFeatures)
+
     {
         _databaseService = databaseService;
         _credentialManager = credentialManager;
         _syncService = syncService;
         _contactSyncService = contactSyncService;
         _reminderService = reminderService;
+        _debugFeatures = debugFeatures;
         _calDavService = calDavService;
         _cardDavService = cardDavService;
         _themeService = themeService;
@@ -184,9 +187,10 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _googleCalendarService = googleCalendarService;
         _googleOAuthService = googleOAuthService;
 
-        CalendarMonthViewModel = new CalendarMonthViewModel(calendarSource, _settingsService);
-        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, _settingsService);
-        CalendarAgendaViewModel = new CalendarAgendaViewModel(calendarSource, _settingsService);
+        CalendarMonthViewModel = new CalendarMonthViewModel(calendarSource, _settingsService, _debugFeatures);
+        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, _settingsService, _debugFeatures);
+        CalendarAgendaViewModel = new CalendarAgendaViewModel(calendarSource, _settingsService, _debugFeatures);
+
         CalendarNavigationBarViewModel = new CalendarNavigationBarViewModel();
         CalendarListViewModel =
             new CalendarListViewModel(_storage, calendarSource, _googleCalendarService, _credentialManager);
@@ -375,7 +379,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     [RelayCommand]
     private void ShowDebugWindow()
     {
-        if (!IsDebuggingEnabled)
+        if (!_debugFeatures.IsDebuggingEnabled)
         {
             return;
         }
@@ -391,6 +395,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _debugWindow.Closed += (_, _) => _debugWindow = null;
         _debugWindow.Show();
     }
+
 
     #endregion
 
@@ -650,10 +655,11 @@ public partial class MainWindowViewModel : ObservableRecipient,
         // Enable message registration
         IsActive = true;
 
+        await _debugFeatures.LoadAsync();
+
         // Load and restore theme
         await _themeService.LoadThemeAsync();
         UpdateThemeFlags();
-        IsDebuggingEnabled = await _settingsService.GetDebuggingEnabledAsync();
 
         // Load and restore last view state
         await LoadViewStateAsync();

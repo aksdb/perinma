@@ -31,8 +31,9 @@ public partial class CalendarAgendaViewModel : CalendarViewModelBase, IRecipient
 
     public CalendarAgendaViewModel(
         ICalendarSource calendarSource,
-        SettingsService? settingsService = null)
-        : base(calendarSource, settingsService)
+        SettingsService? settingsService = null,
+        DebugFeaturesService? debugFeatures = null)
+        : base(calendarSource, settingsService, debugFeatures)
     {
         WeakReferenceMessenger.Default.Register<EventsChangedMessage>(this);
     }

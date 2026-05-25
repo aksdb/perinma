@@ -25,8 +25,9 @@ public partial class CalendarMonthViewModel : CalendarViewModelBase, IRecipient<
 
     public CalendarMonthViewModel(
         ICalendarSource calendarSource,
-        SettingsService? settingsService = null)
-        : base(calendarSource, settingsService)
+        SettingsService? settingsService = null,
+        DebugFeaturesService? debugFeatures = null)
+        : base(calendarSource, settingsService, debugFeatures)
     {
         WeakReferenceMessenger.Default.Register<EventsChangedMessage>(this);
     }

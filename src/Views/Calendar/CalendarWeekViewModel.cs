@@ -65,8 +65,9 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
 
     public CalendarWeekViewModel(
         ICalendarSource calendarSource,
-        SettingsService? settingsService = null)
-        : base(calendarSource, settingsService)
+        SettingsService? settingsService = null,
+        DebugFeaturesService? debugFeatures = null)
+        : base(calendarSource, settingsService, debugFeatures)
     {
         DayColumns = 7;
         ViewStart = DateTime.Now;

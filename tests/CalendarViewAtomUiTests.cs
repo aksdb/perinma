@@ -149,6 +149,25 @@ public class CalendarViewAtomUiTests
     }
 
     [AvaloniaTest]
+    public async Task TriggerReminderCommand_WhenDebuggingDisabled_NoOps()
+    {
+        var services = CreateCalendarViewServices();
+        try
+        {
+            var viewModel = new CalendarMonthViewModel(
+                new DummyCalendarSource(DateTime.Today),
+                debugFeatures: new DebugFeaturesService());
+
+            Assert.DoesNotThrowAsync(async () => await viewModel.TriggerReminderCommand.ExecuteAsync(CreateSampleCalendarEvent()));
+        }
+        finally
+        {
+            services.Storage.Dispose();
+            services.Database.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public void CalendarDialogs_UseAtomWindowsAndInputs()
     {
         var recurrenceDialog = new RecurrenceActionDialog

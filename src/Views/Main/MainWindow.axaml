@@ -86,16 +86,18 @@
                     <atom:MenuItem.Header>
                         <AccessText Text="_Tools"/>
                     </atom:MenuItem.Header>
-                    <atom:MenuItem ToggleType="CheckBox"
-                                   IsChecked="{Binding Path=IsDebuggingEnabled, Mode=TwoWay}">
+                    <atom:MenuItem x:Name="EnableDebuggingMenuItem"
+                                   ToggleType="CheckBox"
+                                   Click="EnableDebuggingMenuItem_OnClick"
+                                   IsChecked="{Binding DebugFeatures.IsDebuggingEnabled, Mode=OneWay}">
                         <atom:MenuItem.Header>
                             <AccessText Text="Enable _Debugging"/>
                         </atom:MenuItem.Header>
                     </atom:MenuItem>
-                    <atom:MenuSeparator IsVisible="{Binding IsDebuggingEnabled}"/>
+                    <atom:MenuSeparator IsVisible="{Binding DebugFeatures.IsDebuggingEnabled}"/>
                     <atom:MenuItem x:Name="OpenDebugWindowMenuItem"
                                    Command="{Binding ShowDebugWindowCommand}"
-                                   IsVisible="{Binding IsDebuggingEnabled}">
+                                   IsVisible="{Binding DebugFeatures.IsDebuggingEnabled}">
                         <atom:MenuItem.Header>
                             <AccessText Text="_Debug Window"/>
                         </atom:MenuItem.Header>

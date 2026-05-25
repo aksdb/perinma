@@ -22,6 +22,7 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
     protected readonly SqliteStorage _storage;
 
     public SettingsService? SettingsService { get; }
+    public DebugFeaturesService DebugFeatures { get; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DateRangeDisplay))]
@@ -32,10 +33,15 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
 
     public abstract string DateRangeDisplay { get; }
 
-    protected CalendarViewModelBase(ICalendarSource calendarSource, SettingsService? settingsService = null)
+    protected CalendarViewModelBase(
+        ICalendarSource calendarSource,
+        SettingsService? settingsService = null,
+        DebugFeaturesService? debugFeatures = null)
+
     {
         _calendarSource = calendarSource;
         SettingsService = settingsService;
+        DebugFeatures = debugFeatures ?? App.Services?.GetService<DebugFeaturesService>() ?? new DebugFeaturesService();
 
         var storage = App.Services?.GetRequiredService<SqliteStorage>();
         if (storage == null)
@@ -45,6 +51,7 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
 
         _storage = storage;
     }
+
 
     partial void OnViewStartChanged(DateTime value)
     {
@@ -110,7 +117,7 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
     [RelayCommand]
     private async Task TriggerReminderAsync(CalendarEvent? eventToTrigger)
     {
-        if (eventToTrigger == null)
+        if (!DebugFeatures.IsDebuggingEnabled || eventToTrigger == null)
             return;
 
         var reminderService = App.Services?.GetRequiredService<ReminderService>();

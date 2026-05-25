@@ -62,7 +62,8 @@
                                                    CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}" />
                                     <atom:MenuItem Header="Trigger Reminder"
                                                    Command="{ReflectionBinding $parent[UserControl].DataContext.TriggerReminderCommand}"
-                                                   CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}" />
+                                                   CommandParameter="{Binding CalendarEvent, RelativeSource={RelativeSource TemplatedParent}}"
+                                                   IsVisible="{ReflectionBinding $parent[UserControl].DataContext.DebugFeatures.IsDebuggingEnabled}" />
                                 </atom:ContextMenu>
                             </Border.ContextMenu>
                             <StackPanel Orientation="Vertical" Spacing="1" Margin="5, 1, 5, 1">

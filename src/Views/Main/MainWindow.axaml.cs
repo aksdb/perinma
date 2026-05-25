@@ -58,4 +58,14 @@ public partial class MainWindow : AtomUI.Desktop.Controls.Window
     {
         Environment.Exit(0);
     }
+
+    private async void EnableDebuggingMenuItem_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        await viewModel.ToggleDebuggingCommand.ExecuteAsync(null);
+    }
 }
