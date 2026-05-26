@@ -8,7 +8,7 @@ using TheArtOfDev.HtmlRenderer.Avalonia;
 
 namespace perinma.Views.Calendar.EventView;
 
-// HtmlPanel uses FontsHandler._existingFontFamilies (populated from FontManager.SystemFonts)
+// HtmlLabel uses FontsHandler._existingFontFamilies (populated from FontManager.SystemFonts)
 // which stores FontFamily objects carrying a URI key ("fonts:SystemFonts#<name>").
 // On Linux, AvaloniaAdapter.CreateFontInt(RFontFamily) constructs a Typeface from that keyed
 // FontFamily, and TryGetGlyphTypeface fails for some weight/style combinations, causing a
@@ -19,9 +19,9 @@ namespace perinma.Views.Calendar.EventView;
 // resolves correctly. The side-effect — IsFontExists always returning false — is harmless
 // here: the CSS engine returns "inherit" for any font-family declaration and Avalonia
 // falls back to its default font.
-internal sealed class SafeHtmlPanel : HtmlPanel
+internal sealed class SafeHtmlLabel : HtmlLabel
 {
-    public SafeHtmlPanel()
+    public SafeHtmlLabel()
     {
         var avaloniaAdapter = typeof(HtmlContainer)
             .GetProperty("AvaloniaAdapter", BindingFlags.Instance | BindingFlags.NonPublic)
@@ -60,15 +60,16 @@ public partial class RichTextView : UserControl
     {
         base.OnLoaded(e);
 
-        // Re-trigger layout: HtmlPanel measures at height 0 before the flyout has
+        // Re-trigger layout: HtmlLabel measures at height 0 before the flyout has
         // laid out this control (no valid constraint width yet). OnLoaded fires once
         // the visual tree is attached and a real width is available.
-        var panel = this.FindControl<SafeHtmlPanel>("HtmlPanel");
-        if (panel is not null
-            && DataContext is RichTextViewModel { IsHtml: true, HtmlText: { } ht })
+        var label = this.FindControl<SafeHtmlLabel>("HtmlLabel");
+        if (label is not null
+            && DataContext is RichTextViewModel { IsHtml: true } vm
+            && vm.HtmlText is string ht)
         {
-            panel.Text = null;
-            panel.Text = ht;
+            label.Text = null;
+            label.Text = ht;
         }
     }
 }

@@ -9,11 +9,14 @@
 
     <StackPanel Spacing="4">
         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-        <ev:SafeHtmlPanel x:Name="HtmlPanel"
-                          Text="{Binding HtmlText}"
-                          MaxHeight="200"
-                          MaxWidth="400"
-                          IsVisible="{Binding IsHtml}" />
+        <ScrollViewer MaxHeight="200"
+                      HorizontalScrollBarVisibility="Disabled"
+                      IsVisible="{Binding IsHtml}">
+            <ev:SafeHtmlLabel x:Name="HtmlLabel"
+                              Text="{Binding HtmlText}"
+                              MaxWidth="400"
+                              AutoSizeHeightOnly="True" />
+        </ScrollViewer>
         <TextBlock Text="{Binding SimpleText}"
                    TextWrapping="Wrap"
                    IsVisible="{Binding !IsHtml}" />
