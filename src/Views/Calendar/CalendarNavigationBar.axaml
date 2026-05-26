@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:atom="https://atomui.net"
+             xmlns:antdicons="https://atomui.net/icons/antdesign"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cal="using:perinma.Views.Calendar"
@@ -56,7 +57,7 @@
                              Margin="0, 0, 8, 0"
                              Padding="8, 4"
                              atom:ToolTip.Tip="Previous"
-                             Content="←"/>
+                             Icon="{antdicons:AntDesignIconProvider Kind=CaretLeftOutlined}"/>
 
                 <TextBlock Text="{Binding DateRangeDisplay}"
                            FontSize="16"
@@ -65,19 +66,20 @@
                            Margin="0, 0, 8, 0"
                            TextTrimming="CharacterEllipsis"/>
 
+                <atom:Button Name="NextButton"
+                             Command="{Binding NextCommand}"
+                             Padding="8, 4"
+                             atom:ToolTip.Tip="Next"
+                             Icon="{antdicons:AntDesignIconProvider Kind=CaretRightOutlined}"/>
+                
                 <atom:Button Name="TodayButton"
                              Command="{Binding TodayCommand}"
                              Margin="0, 0, 8, 0"
                              Padding="8, 4"
                              atom:ToolTip.Tip="Today"
+                             ButtonType="Link"
                              FontSize="12"
                              Content="Today"/>
-
-                <atom:Button Name="NextButton"
-                             Command="{Binding NextCommand}"
-                             Padding="8, 4"
-                             atom:ToolTip.Tip="Next"
-                             Content="→"/>
             </StackPanel>
         </Grid>
 
