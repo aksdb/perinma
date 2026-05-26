@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ev="clr-namespace:perinma.Views.Calendar.EventView"
@@ -9,7 +10,7 @@
 
     <StackPanel Spacing="4">
         <TextBlock Text="Participants" FontWeight="SemiBold" />
-        <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+        <atom:ScrollViewer x:Name="ParticipantsScrollViewer" MaxHeight="220" VerticalScrollBarVisibility="Auto">
             <ItemsControl ItemsSource="{Binding Participants}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="ev:ParticipantViewModel">
@@ -17,7 +18,6 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-        </ScrollViewer>
+        </atom:ScrollViewer>
     </StackPanel>
-
 </UserControl>

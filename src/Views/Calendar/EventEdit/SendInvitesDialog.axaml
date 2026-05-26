@@ -1,43 +1,49 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:edit="using:perinma.Views.Calendar.EventEdit"
-        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="200"
-        x:Class="perinma.Views.Calendar.EventEdit.SendInvitesDialog"
-        x:DataType="edit:SendInvitesDialogViewModel"
-        Title="Send Invitations?"
-        Width="400" Height="200"
-        WindowStartupLocation="CenterOwner">
+<atom:Window xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:edit="using:perinma.Views.Calendar.EventEdit"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="200"
+             x:Class="perinma.Views.Calendar.EventEdit.SendInvitesDialog"
+             x:DataType="edit:SendInvitesDialogViewModel"
+             Title="Send Invitations?"
+             Width="400" Height="200"
+             WindowStartupLocation="CenterOwner">
 
     <Grid RowDefinitions="*,Auto,Auto" Margin="20">
-        <TextBlock Grid.Row="0" 
+        <TextBlock Grid.Row="0"
                    Text="Send invitations to the participants you added?"
                    TextWrapping="Wrap"
                    Margin="0,0,0,20"/>
-        
+
         <StackPanel Grid.Row="1" Spacing="12" Margin="0,0,0,20">
-            <RadioButton GroupName="SendOption"
-                       IsChecked="{Binding SendToAll}"
-                       Content="Send to all participants"/>
-            <RadioButton GroupName="SendOption"
-                       IsChecked="{Binding SendToExternalOnly}"
-                       Content="Send to external only (non-Google)"/>
-            <RadioButton GroupName="SendOption"
-                       IsChecked="{Binding SendToNone}"
-                       Content="Don't send invitations"/>
+            <atom:RadioButton x:Name="SendToAllButton"
+                              GroupName="SendOption"
+                              IsChecked="{Binding SendToAll}"
+                              Content="Send to all participants"/>
+            <atom:RadioButton x:Name="SendToExternalOnlyButton"
+                              GroupName="SendOption"
+                              IsChecked="{Binding SendToExternalOnly}"
+                              Content="Send to external only (non-Google)"/>
+            <atom:RadioButton x:Name="SendToNoneButton"
+                              GroupName="SendOption"
+                              IsChecked="{Binding SendToNone}"
+                              Content="Don't send invitations"/>
         </StackPanel>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-            <Button Content="OK" 
-                    Command="{Binding OkCommand}" 
-                    MinWidth="100"
-                    HorizontalAlignment="Right"
-                    IsDefault="True"/>
-            <Button Content="Cancel" 
-                    Command="{Binding CancelCommand}" 
-                    MinWidth="100"
-                    HorizontalAlignment="Right"/>
+            <atom:Button x:Name="OkButton"
+                         Content="OK"
+                         Command="{Binding OkCommand}"
+                         MinWidth="100"
+                         HorizontalAlignment="Right"
+                         IsDefault="True"/>
+            <atom:Button x:Name="CancelButton"
+                         Content="Cancel"
+                         Command="{Binding CancelCommand}"
+                         MinWidth="100"
+                         HorizontalAlignment="Right"/>
         </StackPanel>
     </Grid>
-</Window>
+</atom:Window>

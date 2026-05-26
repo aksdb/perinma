@@ -4,7 +4,7 @@ using perinma.Services;
 
 namespace perinma.Views.Calendar.EventEdit;
 
-public partial class SendInvitesDialog : Window
+public partial class SendInvitesDialog : AtomUI.Desktop.Controls.Window
 {
     public SendInvitesDialog()
     {

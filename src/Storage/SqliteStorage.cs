@@ -376,6 +376,17 @@ public class SqliteStorage : IDisposable
         );
     }
 
+    public async Task<CalendarEventDbo?> GetEventByIdAsync(string eventId)
+    {
+        return await _connection.QuerySingleOrDefaultAsync<CalendarEventDbo>(
+            "SELECT calendar_id AS CalendarId, event_id AS EventId, external_id AS ExternalId, " +
+            "start_time AS StartTime, end_time AS EndTime, title AS Title, changed_at AS ChangedAt " +
+            "FROM calendar_event WHERE event_id = @EventId",
+            new { EventId = eventId },
+            commandTimeout: 30
+        );
+    }
+
     public async Task<bool> DeleteEventByExternalIdAsync(string calendarId, string externalId)
     {
         var rowsAffected = await _connection.ExecuteAsync(
@@ -689,10 +700,13 @@ public class SqliteStorage : IDisposable
         )).ToList();
     }
 
-    public async Task CreateReminderAsync(string eventId, DateTime occurrenceTime, DateTime triggerTime)
+    public Task CreateReminderAsync(string eventId, DateTime occurrenceTime, DateTime triggerTime)
     {
-        var reminderId = Guid.NewGuid().ToString();
+        return CreateReminderAsync(Guid.NewGuid().ToString(), eventId, occurrenceTime, triggerTime);
+    }
 
+    public async Task CreateReminderAsync(string reminderId, string eventId, DateTime occurrenceTime, DateTime triggerTime)
+    {
         await _connection.ExecuteAsync(
             "INSERT INTO reminder (reminder_id, target_type, target_id, target_time, trigger_time) " +
             "VALUES (@ReminderId, @TargetType, @TargetId, @TargetTime, @TriggerTime)",
@@ -737,6 +751,38 @@ public class SqliteStorage : IDisposable
         return (await _connection.QueryAsync<ReminderWithEvent>(
             query,
             new { TargetType = (int)TargetType.CalendarEvent, Now = now, FiredReminderIds = firedReminderIdsList },
+            commandTimeout: 30
+        )).ToList();
+    }
+
+    public async Task<List<ReminderWithEvent>> GetRemindersWithEventsAsync(IReadOnlyCollection<string> reminderIds)
+    {
+        if (reminderIds.Count == 0)
+        {
+            return [];
+        }
+
+        var query = @"
+            SELECT
+                r.reminder_id AS ReminderId,
+                r.target_type AS TargetType,
+                r.target_id AS TargetId,
+                r.target_time AS TargetTime,
+                r.trigger_time AS TriggerTime,
+                ce.title AS EventTitle,
+                c.name AS CalendarName,
+                c.color AS CalendarColor,
+                r.target_time AS StartTime,
+                a.type AS AccountType
+            FROM reminder r
+            INNER JOIN calendar_event ce ON r.target_id = ce.event_id
+            INNER JOIN calendar c ON ce.calendar_id = c.calendar_id
+            INNER JOIN account a ON c.account_id = a.account_id
+            WHERE r.reminder_id IN @ReminderIds";
+
+        return (await _connection.QueryAsync<ReminderWithEvent>(
+            query,
+            new { ReminderIds = reminderIds },
             commandTimeout: 30
         )).ToList();
     }

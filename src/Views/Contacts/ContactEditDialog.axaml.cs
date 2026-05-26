@@ -3,7 +3,7 @@ using Avalonia.Controls;
 
 namespace perinma.Views.Contacts;
 
-public partial class ContactEditDialog : Window
+public partial class ContactEditDialog : AtomUI.Desktop.Controls.Window
 {
     public ContactEditDialog()
     {

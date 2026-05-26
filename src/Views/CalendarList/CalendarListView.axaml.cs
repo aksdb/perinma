@@ -14,6 +14,8 @@ public partial class CalendarListView : UserControl
     private int _draggedItemIndex = -1;
     private bool _isDragging;
     private PointerPressedEventArgs? _dragPressedEventArgs;
+    private CalendarListViewModel? _calendarListViewModel;
+    private CalendarViewModelBase? _activeCalendarViewModel;
 
     public CalendarListView()
     {
@@ -21,30 +23,50 @@ public partial class CalendarListView : UserControl
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
         DataContextChanged += OnDataContextChanged;
-        SidebarCalendar.LayoutUpdated += OnSidebarLayoutUpdated;
-        SidebarCalendar.DisplayDateChanged += (_, _) => InvalidateHighlight();
     }
-
-    private void OnSidebarLayoutUpdated(object? sender, EventArgs e) => UpdateHighlight();
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
-        if (DataContext is CalendarListViewModel oldVm)
-            oldVm.PropertyChanged -= OnViewModelPropertyChanged;
+        if (_calendarListViewModel != null)
+        {
+            _calendarListViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        }
 
-        if (DataContext is CalendarListViewModel newVm)
-            newVm.PropertyChanged += OnViewModelPropertyChanged;
+        SetActiveCalendarViewModel(null);
 
-        UpdateHighlight();
+        _calendarListViewModel = DataContext as CalendarListViewModel;
+        if (_calendarListViewModel != null)
+        {
+            _calendarListViewModel.PropertyChanged += OnViewModelPropertyChanged;
+            SetActiveCalendarViewModel(_calendarListViewModel.ActiveCalendarViewModel);
+        }
+
+        SyncSidebarCalendarSelection();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(CalendarListViewModel.ActiveCalendarViewModel))
+        if (e.PropertyName != nameof(CalendarListViewModel.ActiveCalendarViewModel) || sender is not CalendarListViewModel viewModel)
         {
-            if (sender is CalendarListViewModel { ActiveCalendarViewModel: { } newBase })
-                newBase.PropertyChanged += OnActiveCalendarPropertyChanged;
-            UpdateHighlight();
+            return;
+        }
+
+        SetActiveCalendarViewModel(viewModel.ActiveCalendarViewModel);
+        SyncSidebarCalendarSelection();
+    }
+
+    private void SetActiveCalendarViewModel(CalendarViewModelBase? activeCalendarViewModel)
+    {
+        if (_activeCalendarViewModel != null)
+        {
+            _activeCalendarViewModel.PropertyChanged -= OnActiveCalendarPropertyChanged;
+        }
+
+        _activeCalendarViewModel = activeCalendarViewModel;
+
+        if (_activeCalendarViewModel != null)
+        {
+            _activeCalendarViewModel.PropertyChanged += OnActiveCalendarPropertyChanged;
         }
     }
 
@@ -53,65 +75,28 @@ public partial class CalendarListView : UserControl
         if (e.PropertyName is nameof(CalendarViewModelBase.ViewStart)
             or nameof(CalendarViewModelBase.HighlightStart)
             or nameof(CalendarViewModelBase.HighlightEnd))
-            UpdateHighlight();
-    }
-
-    private (DateTime? Start, DateTime? End) _lastHighlight;
-    private DateTime _lastDisplayMonth;
-
-    private void InvalidateHighlight()
-    {
-        _lastHighlight = default;
-        _lastDisplayMonth = default;
-        UpdateHighlight();
-    }
-
-    private void UpdateHighlight()
-    {
-        if (DataContext is not CalendarListViewModel { ActiveCalendarViewModel: { } activeVm })
-            return;
-
-        var highlightStart = activeVm.HighlightStart;
-        var highlightEnd = activeVm.HighlightEnd;
-        var displayMonth = new DateTime(SidebarCalendar.DisplayDate.Year, SidebarCalendar.DisplayDate.Month, 1);
-
-        if (highlightStart == _lastHighlight.Start && highlightEnd == _lastHighlight.End &&
-            displayMonth == _lastDisplayMonth)
-            return;
-
-        _lastHighlight = (highlightStart, highlightEnd);
-        _lastDisplayMonth = displayMonth;
-
-        if (highlightStart == null || highlightEnd == null)
         {
-            foreach (var child in SidebarCalendar.GetVisualDescendants())
-            {
-                if (child is CalendarDayButton dayButton)
-                    dayButton.Classes.Remove("highlighted");
-            }
+            SyncSidebarCalendarSelection();
+        }
+    }
 
+    private void SyncSidebarCalendarSelection()
+    {
+        SidebarCalendar.SelectedDates.Clear();
+
+        if (_activeCalendarViewModel == null)
+        {
             return;
         }
 
-        var start = highlightStart.Value.Date;
-        var end = highlightEnd.Value.Date;
-        var buttonIndex = 0;
-
-        foreach (var child in SidebarCalendar.GetVisualDescendants())
+        var selectionStart = (_activeCalendarViewModel.HighlightStart ?? _activeCalendarViewModel.ViewStart).Date;
+        var selectionEnd = (_activeCalendarViewModel.HighlightEnd ?? _activeCalendarViewModel.HighlightStart ?? _activeCalendarViewModel.ViewStart).Date;
+        if (selectionEnd < selectionStart)
         {
-            if (child is not CalendarDayButton { DataContext: DateTime buttonDateTime } dayButton)
-                continue;
-
-            if (buttonDateTime >= start && buttonDateTime <= end)
-                dayButton.Classes.Add("highlighted");
-            else
-                dayButton.Classes.Remove("highlighted");
-
-            buttonIndex++;
+            (selectionStart, selectionEnd) = (selectionEnd, selectionStart);
         }
 
-        if (buttonIndex == 0)
-            _lastHighlight = (null, null);
+        SidebarCalendar.SelectedDates.AddRange(selectionStart, selectionEnd);
     }
 
     private void AccountGroup_PointerPressed(object? sender, PointerPressedEventArgs e)

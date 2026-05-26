@@ -855,6 +855,52 @@ public class ReminderServiceTests
 
     #endregion
 
+    #region TriggerRemindersNowAsync Tests
+
+    [Test]
+    public async Task TriggerRemindersNowAsync_CreatesImmediateReminderRowsForExistingEvents()
+    {
+        _clock.Reset(Instant.FromUtc(2026, 1, 25, 10, 0));
+
+        var result = await _reminderService!.TriggerRemindersNowAsync([_eventId]);
+        var reminders = await _storage!.GetRemindersByEventAsync(_eventId);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Reminders, Has.Count.EqualTo(1));
+            Assert.That(result.MissingEventIds, Is.Empty);
+            Assert.That(reminders, Has.Count.EqualTo(1));
+            Assert.That(reminders[0].ReminderId, Is.EqualTo(result.Reminders[0].ReminderId));
+            Assert.That(reminders[0].TriggerTime, Is.EqualTo(_clock.GetCurrentInstant().ToUnixTimeSeconds()));
+            Assert.That(reminders[0].TargetTime, Is.EqualTo(new DateTimeOffset(new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc)).ToUnixTimeSeconds()));
+            Assert.That(result.Reminders[0].EventTitle, Is.EqualTo("Test Event"));
+        });
+    }
+
+    [Test]
+    public async Task TriggerRemindersNowAsync_ReusesExistingDueReminderAndReportsMissingIds()
+    {
+        _clock.Reset(Instant.FromUtc(2026, 1, 25, 10, 0));
+
+        var existingReminderId = Guid.NewGuid().ToString();
+        var eventStartTime = new DateTime(2026, 1, 25, 10, 0, 0, DateTimeKind.Utc);
+        await _storage!.CreateReminderAsync(existingReminderId, _eventId, eventStartTime, _clock.GetCurrentInstant().ToDateTimeUtc());
+
+        var result = await _reminderService!.TriggerRemindersNowAsync([_eventId, "missing-event-id", _eventId]);
+        var reminders = await _storage.GetRemindersByEventAsync(_eventId);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Reminders, Has.Count.EqualTo(1));
+            Assert.That(result.Reminders[0].ReminderId, Is.EqualTo(existingReminderId));
+            Assert.That(result.MissingEventIds, Is.EqualTo(new[] { "missing-event-id" }));
+            Assert.That(reminders, Has.Count.EqualTo(1));
+            Assert.That(reminders[0].ReminderId, Is.EqualTo(existingReminderId));
+        });
+    }
+
+    #endregion
+
     #region GetDueRemindersAsync Tests
 
     [Test]

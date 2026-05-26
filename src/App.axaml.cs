@@ -1,4 +1,6 @@
 using System;
+using AtomUI;
+using AtomUI.Theme;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -20,6 +22,12 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        this.UseAtomUI(builder =>
+        {
+            builder.WithDefaultTheme(IThemeManager.DEFAULT_THEME_ID);
+            AtomUI.Desktop.Controls.ThemeManagerBuilderExtensions.UseDesktopControls(builder);
+            AlibabaSansThemeManagerBuilderExtensions.UseAlibabaSansFont(builder);
+        });
     }
 
     public override void OnFrameworkInitializationCompleted()

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:callist="using:perinma.Views.CalendarList"
@@ -11,9 +12,11 @@
         <!-- Calendar Navigation -->
         <StackPanel DockPanel.Dock="Top">
             <Viewbox MaxHeight="250" Stretch="Uniform" HorizontalAlignment="Center" Margin="0, 0, 0, 10">
-                <Calendar x:Name="SidebarCalendar"
-                          SelectedDate="{Binding ActiveCalendarViewModel.ViewStart}" />
-
+                <atom:Calendar x:Name="SidebarCalendar"
+                               SelectionMode="SingleRange"
+                               FirstDayOfWeek="Monday"
+                               DisplayDate="{Binding Mode=OneWay, Path=ActiveCalendarViewModel.ViewStart}"
+                               SelectedDate="{Binding ActiveCalendarViewModel.ViewStart}" />
             </Viewbox>
 
             <TextBlock Text="Calendars"

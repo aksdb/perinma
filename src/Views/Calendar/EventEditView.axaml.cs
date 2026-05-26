@@ -27,7 +27,7 @@ public class DateTimeToTimeSpanConverter : IValueConverter
         return null;
     }
 }
-public partial class EventEditView : Window
+public partial class EventEditView : AtomUI.Desktop.Controls.Window
 {
     public EventEditView()
     {

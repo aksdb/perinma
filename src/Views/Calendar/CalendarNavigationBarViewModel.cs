@@ -5,48 +5,72 @@ namespace perinma.Views.Calendar;
 
 public partial class CalendarNavigationBarViewModel : ViewModelBase
 {
-    [ObservableProperty]
-    private string _dateRangeDisplay = string.Empty;
+    public enum CalendarNavigationViewMode
+    {
+        Month,
+        Week,
+        WorkWeek,
+        Day,
+        Agenda
+    }
 
     [ObservableProperty]
-    private IRelayCommand? _previousCommand;
+    public partial string DateRangeDisplay { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private IRelayCommand? _nextCommand;
+    public partial IRelayCommand? PreviousCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _todayCommand;
+    public partial IRelayCommand? NextCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _createNewEventCommand;
+    public partial IRelayCommand? TodayCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _showMonthViewCommand;
+    public partial IRelayCommand? CreateNewEventCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _showWeekViewCommand;
+    public partial IRelayCommand? ShowMonthViewCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _showFiveDaysViewCommand;
+    public partial IRelayCommand? ShowWeekViewCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _showDayViewCommand;
+    public partial IRelayCommand? ShowFiveDaysViewCommand { get; set; }
 
     [ObservableProperty]
-    private IRelayCommand? _showAgendaViewCommand;
+    public partial IRelayCommand? ShowDayViewCommand { get; set; }
 
     [ObservableProperty]
-    private bool _isMonthView;
+    public partial IRelayCommand? ShowAgendaViewCommand { get; set; }
 
     [ObservableProperty]
-    private bool _isWeekView;
+    public partial CalendarNavigationViewMode SelectedView { get; set; } = CalendarNavigationViewMode.Week;
 
-    [ObservableProperty]
-    private bool _isFiveDaysView;
+    public void SetSelectedViewMode(CalendarNavigationViewMode mode)
+    {
+        SelectedView = mode;
+    }
 
-    [ObservableProperty]
-    private bool _isDayView;
-
-    [ObservableProperty]
-    private bool _isAgendaView;
+    partial void OnSelectedViewChanged(CalendarNavigationViewMode value)
+    {
+        switch (value)
+        {
+            case CalendarNavigationViewMode.Month:
+                ShowMonthViewCommand?.Execute(null);
+                break;
+            case CalendarNavigationViewMode.Week:
+                ShowWeekViewCommand?.Execute(null);
+                break;
+            case CalendarNavigationViewMode.WorkWeek:
+                ShowFiveDaysViewCommand?.Execute(null);
+                break;
+            case CalendarNavigationViewMode.Day:
+                ShowDayViewCommand?.Execute(null);
+                break;
+            case CalendarNavigationViewMode.Agenda:
+                ShowAgendaViewCommand?.Execute(null);
+                break;
+        }
+    }
 }

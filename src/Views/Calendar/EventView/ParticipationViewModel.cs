@@ -8,6 +8,10 @@ namespace perinma.Views.Calendar.EventView;
 public partial class ParticipationViewModel(Participation participation) : ViewModelBase
 {
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAccepted))]
+    [NotifyPropertyChangedFor(nameof(IsDeclined))]
+    [NotifyPropertyChangedFor(nameof(IsTentative))]
+    [NotifyPropertyChangedFor(nameof(IsPending))]
     private EventResponseStatus _currentState = participation.CurrentState;
 
     public bool HasActions => participation.Actions != null;

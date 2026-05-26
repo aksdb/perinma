@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
+using AtomUI.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using perinma.Models;
 using perinma.Storage;
@@ -21,6 +22,9 @@ public partial class AccountDetailsStepViewModel : ObservableValidator
     private string? _nameValidationError;
 
     [ObservableProperty]
+    private FormValidateStatus _accountNameValidateStatus;
+
+    [ObservableProperty]
     private AccountType _selectedAccountType = AccountType.Google;
 
     public AccountDetailsStepViewModel(SqliteStorage storage)
@@ -28,27 +32,44 @@ public partial class AccountDetailsStepViewModel : ObservableValidator
         _storage = storage;
     }
 
+    partial void OnAccountNameChanged(string value)
+    {
+        ClearAccountNameValidation();
+    }
+
     public async Task<bool> ValidateAsync()
     {
-        // Validate basic property rules
         ValidateAllProperties();
         if (HasErrors)
         {
-            NameValidationError = GetErrors(nameof(AccountName))
-                .Cast<ValidationResult>()
-                .FirstOrDefault()?.ErrorMessage;
+            SetAccountNameValidationError(
+                GetErrors(nameof(AccountName))
+                    .Cast<ValidationResult>()
+                    .FirstOrDefault()?.ErrorMessage ?? "Account name is invalid");
             return false;
         }
 
-        // Check name uniqueness in database
         var isUnique = await _storage.IsAccountNameUniqueAsync(AccountName);
         if (!isUnique)
         {
-            NameValidationError = "An account with this name already exists";
+            SetAccountNameValidationError("An account with this name already exists");
             return false;
         }
 
         NameValidationError = null;
+        AccountNameValidateStatus = FormValidateStatus.Success;
         return true;
+    }
+
+    private void ClearAccountNameValidation()
+    {
+        NameValidationError = null;
+        AccountNameValidateStatus = FormValidateStatus.Default;
+    }
+
+    private void SetAccountNameValidationError(string message)
+    {
+        NameValidationError = message;
+        AccountNameValidateStatus = FormValidateStatus.Error;
     }
 }

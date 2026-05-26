@@ -1,85 +1,133 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:cal="using:perinma.Views.Calendar"
-        xmlns:callist="using:perinma.Views.CalendarList"
-        xmlns:contacts="using:perinma.Views.Contacts"
-        xmlns:main="using:perinma.Views.Main"
-        xmlns:debug="using:perinma.Views.Debug"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        Width="1200" Height="600"
-        x:Class="perinma.Views.Main.MainWindow"
-        x:DataType="main:MainWindowViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="perinma: Personal Information Manager">
+<atom:Window xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:cal="using:perinma.Views.Calendar"
+             xmlns:callist="using:perinma.Views.CalendarList"
+             xmlns:contacts="using:perinma.Views.Contacts"
+             xmlns:conv="using:perinma.Converters"
+             xmlns:main="using:perinma.Views.Main"
+             xmlns:debug="using:perinma.Views.Debug"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             Width="1200" Height="600"
+             x:Class="perinma.Views.Main.MainWindow"
+             x:DataType="main:MainWindowViewModel"
+             Icon="/Assets/avalonia-logo.ico"
+             Title="perinma: Personal Information Manager">
 
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <main:MainWindowViewModel/>
     </Design.DataContext>
+
+    <atom:Window.Resources>
+        <conv:EnumToIndexConverter x:Key="EnumToIndexConverter"/>
+    </atom:Window.Resources>
     
     <Grid x:Name="MainGrid" RowDefinitions="Auto,*,Auto">
         <!-- Menu Bar with View Switcher -->
         <DockPanel Grid.Row="0">
-            <Menu DockPanel.Dock="Left">
-                <MenuItem Header="_File">
-                    <MenuItem Header="_Settings" Name="MnuSettings" Command="{Binding ShowSettingsCommand}"/>
-                    <MenuItem Header="_Sync" Command="{Binding SyncCommand}"/>
-                    <MenuItem Header="_Exit" Name="MnuExit" Click="MnuExit_OnClick"/>
-                </MenuItem>
-                <MenuItem Header="_View">
-                    <MenuItem Header="_Calendar" Command="{Binding ShowCalendarViewCommand}">
-                        <MenuItem.Icon>
-                            <CheckBox IsChecked="{Binding IsCalendarViewActive}" IsHitTestVisible="False"/>
-                        </MenuItem.Icon>
-                    </MenuItem>
-                    <MenuItem Header="C_ontacts" Command="{Binding ShowContactsViewCommand}">
-                        <MenuItem.Icon>
-                            <CheckBox IsChecked="{Binding IsContactsViewActive}" IsHitTestVisible="False"/>
-                        </MenuItem.Icon>
-                    </MenuItem>
-                    <Separator/>
+            <atom:Menu DockPanel.Dock="Left" x:Name="MainMenu">
+                <atom:MenuItem>
+                    <atom:MenuItem.Header>
+                        <AccessText Text="_File"/>
+                    </atom:MenuItem.Header>
+                    <atom:MenuItem Name="MnuSettings" Command="{Binding ShowSettingsCommand}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Settings"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
+                    <atom:MenuItem Command="{Binding SyncCommand}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Sync"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
+                    <atom:MenuItem Name="MnuExit" Click="MnuExit_OnClick">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Exit"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
+                </atom:MenuItem>
+                <atom:MenuItem>
+                    <atom:MenuItem.Header>
+                        <AccessText Text="_View"/>
+                    </atom:MenuItem.Header>
+                    <atom:MenuItem Command="{Binding SelectCalendarMainViewCommand}" ToggleType="Radio" IsChecked="{Binding IsCalendarMainView}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Calendar"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
+                    <atom:MenuItem Command="{Binding SelectContactsMainViewCommand}" ToggleType="Radio" IsChecked="{Binding IsContactsMainView}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="C_ontacts"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
+                    <atom:MenuSeparator/>
 
-                    <MenuItem Header="_Theme">
-                        <MenuItem Header="_Light" Command="{Binding SetLightThemeCommand}">
-                            <MenuItem.Icon>
-                                <CheckBox IsChecked="{Binding IsLightTheme}" IsHitTestVisible="False"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="_Dark" Command="{Binding SetDarkThemeCommand}">
-                            <MenuItem.Icon>
-                                <CheckBox IsChecked="{Binding IsDarkTheme}" IsHitTestVisible="False"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                    </MenuItem>
-                </MenuItem>
-                <MenuItem Header="_Tools">
-                    <MenuItem Header="_Debug" Command="{Binding ShowDebugWindowCommand}"/>
-                </MenuItem>
-                <MenuItem Header="_Help">
-                    <MenuItem Header="_About" Command="{Binding ShowAboutCommand}"/>
-                </MenuItem>
-            </Menu>
+                    <atom:MenuItem>
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Theme"/>
+                        </atom:MenuItem.Header>
+                        <atom:MenuItem Command="{Binding SetLightThemeCommand}" ToggleType="Radio" IsChecked="{Binding IsLightTheme}">
+                            <atom:MenuItem.Header>
+                                <AccessText Text="_Light"/>
+                            </atom:MenuItem.Header>
+                        </atom:MenuItem>
+                        <atom:MenuItem Command="{Binding SetDarkThemeCommand}" ToggleType="Radio" IsChecked="{Binding IsDarkTheme}">
+                            <atom:MenuItem.Header>
+                                <AccessText Text="_Dark"/>
+                            </atom:MenuItem.Header>
+                        </atom:MenuItem>
+                    </atom:MenuItem>
+                </atom:MenuItem>
+                <atom:MenuItem>
+                    <atom:MenuItem.Header>
+                        <AccessText Text="_Tools"/>
+                    </atom:MenuItem.Header>
+                    <atom:MenuItem x:Name="EnableDebuggingMenuItem"
+                                   ToggleType="CheckBox"
+                                   Click="EnableDebuggingMenuItem_OnClick"
+                                   IsChecked="{Binding DebugFeatures.IsDebuggingEnabled, Mode=OneWay}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="Enable _Debugging"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
+                    <atom:MenuSeparator IsVisible="{Binding DebugFeatures.IsDebuggingEnabled}"/>
+                    <atom:MenuItem x:Name="OpenDebugWindowMenuItem"
+                                   Command="{Binding ShowDebugWindowCommand}"
+                                   IsVisible="{Binding DebugFeatures.IsDebuggingEnabled}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Debug Window"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
+                </atom:MenuItem>
+                <atom:MenuItem>
+                    <atom:MenuItem.Header>
+                        <AccessText Text="_Help"/>
+                    </atom:MenuItem.Header>
+                    <atom:MenuItem Command="{Binding ShowAboutCommand}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_About"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
+                </atom:MenuItem>
+            </atom:Menu>
 
-            <!-- View Switcher Buttons -->
-            <StackPanel DockPanel.Dock="Right" 
-                        Orientation="Horizontal" 
-                        Margin="0,0,10,0"
-                        VerticalAlignment="Center"
-                        Spacing="4">
-                <ToggleButton Content="Calendar" 
-                              IsChecked="{Binding IsCalendarViewActive}"
-                              Command="{Binding ShowCalendarViewCommand}"
-                              Padding="12,4"
-                              FontSize="12"/>
-                <ToggleButton Content="Contacts" 
-                              IsChecked="{Binding IsContactsViewActive}"
-                              Command="{Binding ShowContactsViewCommand}"
-                              Padding="12,4"
-                              FontSize="12"/>
-            </StackPanel>
+            <!-- View Switcher -->
+            <atom:Segmented DockPanel.Dock="Right"
+                            x:Name="MainModeGroup"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Center"
+                            SelectedIndex="{Binding SelectedMainView, Mode=TwoWay, Converter={StaticResource EnumToIndexConverter}}">
+                <atom:SegmentedItem x:Name="CalendarModeItem"
+                                    Content="Calendar"
+                                    FontSize="12"/>
+                <atom:SegmentedItem x:Name="ContactsModeItem"
+                                    Content="Contacts"
+                                    FontSize="12"/>
+            </atom:Segmented>
             
             <Border/> <!-- Spacer -->
         </DockPanel>
@@ -87,27 +135,19 @@
         <!-- Main Content Area -->
         <Panel Grid.Row="1">
             <!-- Calendar View -->
-            <Grid x:Name="CalendarViewGrid" IsVisible="{Binding IsCalendarViewActive}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="250" MinWidth="200"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                
-                <Border Grid.Column="0"
-                        BorderBrush="Gray"
-                        BorderThickness="0,0,1,0">
+            <atom:Splitter x:Name="CalendarViewSplitter"
+                           IsVisible="{Binding IsCalendarMainView}"
+                           Orientation="Vertical">
+                <Border x:Name="CalendarListPane"
+                        BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                        BorderThickness="0,0,1,0"
+                        atom:Splitter.DefaultSize="250"
+                        atom:Splitter.MinSize="200">
                     <callist:CalendarListView DataContext="{Binding CalendarListViewModel}"/>
                 </Border>
 
-                <GridSplitter Grid.Column="1"
-                              Width="4"
-                              Background="Transparent"
-                              ResizeDirection="Columns"
-                              ResizeBehavior="PreviousAndNext"/>
-
                 <!-- Calendar Views - switch based on ViewMode -->
-                <Grid Grid.Column="2" RowDefinitions="Auto,*">
+                <Grid RowDefinitions="Auto,*">
                     <!-- Navigation Bar -->
                     <cal:CalendarNavigationBar Grid.Row="0"
                                             DataContext="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).CalendarNavigationBarViewModel}"/>
@@ -127,41 +167,41 @@
                                                 IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsAgendaView}"/>
                     </Panel>
                 </Grid>
-            </Grid>
+            </atom:Splitter>
             
             <!-- Contacts View -->
-            <contacts:ContactsView IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsContactsViewActive}"
+            <contacts:ContactsView IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsContactsMainView}"
                                    DataContext="{Binding ContactsViewModel}"/>
         </Panel>
 
         <!-- Status Bar -->
         <Border Grid.Row="2"
-                Background="{DynamicResource SystemChromeMediumLowColor}"
-                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                Background="{DynamicResource AppPanelSubtleBrush}"
+                BorderBrush="{DynamicResource AppChromeBorderBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="12,8"
                 MinHeight="32">
 
             <Grid ColumnDefinitions="Auto,*">
                 <!-- Progress Indicator (only shows during sync) -->
-                <ProgressBar Grid.Column="0"
+                <atom:ProgressBar Grid.Column="0"
                             Width="80"
                             Height="3"
                             Margin="0,0,12,0"
                             IsIndeterminate="{Binding SyncProgressIsIndeterminate}"
                             Value="{Binding SyncProgress}"
                             IsVisible="{Binding IsSyncing}"
-                            Foreground="{DynamicResource SystemAccentColor}"
-                            Background="{DynamicResource SystemBaseLowColor}"/>
+                            Foreground="{DynamicResource AppAccentBrush}"
+                            Background="{DynamicResource AppPanelSubtleBrush}"/>
 
                 <!-- Status Text -->
                 <TextBlock Grid.Column="1"
                            Text="{Binding SyncStatusText, FallbackValue='Ready'}"
                            VerticalAlignment="Center"
                            FontSize="13"
-                           Foreground="{DynamicResource SystemBaseHighColor}"
+                           Foreground="{DynamicResource AppTextPrimaryBrush}"
                            TextTrimming="CharacterEllipsis"/>
             </Grid>
         </Border>
     </Grid>
-</Window>
+</atom:Window>

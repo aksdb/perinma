@@ -1,5 +1,4 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 
 namespace perinma.Views.Calendar.EventEdit;
 
@@ -13,10 +12,7 @@ public partial class FieldRow : ObservableObject
     public string Icon { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Chevron))]
     private bool _isExpanded;
-
-    public string Chevron => IsExpanded ? "▾" : "▸";
 
     public FieldRow(IEditableField field, string icon, bool startExpanded = false)
     {
@@ -24,7 +20,4 @@ public partial class FieldRow : ObservableObject
         Icon = icon;
         _isExpanded = startExpanded;
     }
-
-    [RelayCommand]
-    private void ToggleExpanded() => IsExpanded = !IsExpanded;
 }

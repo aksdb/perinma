@@ -14,6 +14,7 @@ using perinma.Services.CalDAV;
 using perinma.Services.CardDAV;
 using perinma.Services.Google;
 using perinma.Storage;
+using perinma.Storage.Models;
 using perinma.Views.MessageBox;
 using perinma.Views.Settings.AddAccountWizard;
 
@@ -36,9 +37,11 @@ public partial class AccountListViewModel : ViewModelBase
     private AvaloniaList<AccountViewModel> _accounts = [];
 
     [ObservableProperty]
-    private bool _canReauthenticate = true;
+    private partial bool CanReauthenticate { get; set; } = true;
 
-    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService, SyncService syncService, ContactSyncService contactSyncService, Window parentWindow)
+    public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager,
+        GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService,
+        SyncService syncService, ContactSyncService contactSyncService, Window parentWindow)
     {
         _storage = storage;
         _credentialManager = credentialManager;
@@ -60,7 +63,8 @@ public partial class AccountListViewModel : ViewModelBase
             return;
         }
 
-        var wizardVm = new AddAccountWizardViewModel(_storage, _credentialManager, _oauthService, _calDavService, _cardDavService);
+        var wizardVm = new AddAccountWizardViewModel(_storage, _credentialManager, _oauthService, _calDavService,
+            _cardDavService);
         wizardVm.AccountAdded += OnAccountAdded;
 
         _addAccountWindow = new AddAccountWindow
@@ -83,12 +87,7 @@ public partial class AccountListViewModel : ViewModelBase
             Accounts.Clear();
             foreach (var dbo in dbAccounts)
             {
-                Accounts.Add(new AccountViewModel
-                {
-                    Id = Guid.Parse(dbo.AccountId),
-                    Name = dbo.Name,
-                    Type = dbo.AccountTypeEnum
-                });
+                Accounts.Add(CreateAccountViewModel(dbo));
             }
         }
         catch (Exception ex)
@@ -103,12 +102,34 @@ public partial class AccountListViewModel : ViewModelBase
         }
     }
 
+    private AccountViewModel CreateAccountViewModel(AccountDbo dbo)
+    {
+        var accountId = Guid.Parse(dbo.AccountId);
+        return new AccountViewModel
+        {
+            Id = accountId,
+            Name = dbo.Name,
+            Type = dbo.AccountTypeEnum,
+            CanReauthenticate = CanReauthenticate,
+            ForceResyncCommand = new AsyncRelayCommand(() => ForceResync(accountId)),
+            ReauthenticateCommand = new AsyncRelayCommand(() => ReauthenticateAccount(accountId)),
+            DeleteCommand = new AsyncRelayCommand(() => DeleteAccount(accountId))
+        };
+    }
+
     private void OnAccountAdded(object? sender, EventArgs e)
     {
         _ = LoadAccountsAsync(); // Refresh list
     }
 
-    [RelayCommand]
+    partial void OnCanReauthenticateChanged(bool value)
+    {
+        foreach (var account in Accounts)
+        {
+            account.CanReauthenticate = value;
+        }
+    }
+
     private async Task DeleteAccount(Guid accountId)
     {
         var account = Accounts.FirstOrDefault(a => a.Id == accountId);
@@ -135,7 +156,7 @@ public partial class AccountListViewModel : ViewModelBase
             if (success)
             {
                 Accounts.Remove(account);
-                
+
                 WeakReferenceMessenger.Default.Send(new AccountsChangedMessage());
                 WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
             }
@@ -162,7 +183,6 @@ public partial class AccountListViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
     private async Task ReauthenticateAccount(Guid accountId)
     {
         if (_reauthenticateWindow != null)
@@ -192,7 +212,8 @@ public partial class AccountListViewModel : ViewModelBase
             return;
         }
 
-        var reauthVm = new ReauthenticateAccountViewModel(accountId.ToString(), account.Name, _credentialManager, _oauthService);
+        var reauthVm =
+            new ReauthenticateAccountViewModel(accountId.ToString(), account.Name, _credentialManager, _oauthService);
         EventHandler onReauthenticateFinished = (_, _) =>
         {
             // Optionally trigger a sync or show a success message
@@ -214,7 +235,6 @@ public partial class AccountListViewModel : ViewModelBase
         CanReauthenticate = false;
     }
 
-    [RelayCommand]
     private async Task ForceResync(Guid accountId)
     {
         var account = Accounts.FirstOrDefault(a => a.Id == accountId);

@@ -117,6 +117,65 @@ public class ReminderService(
         return reminders;
     }
 
+    public async Task<ReminderTriggerResult> TriggerRemindersNowAsync(IEnumerable<string> eventIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(eventIds);
+
+        var now = _clock.GetCurrentInstant();
+        var nowUnix = now.ToUnixTimeSeconds();
+        var distinctEventIds = eventIds
+            .Where(eventId => !string.IsNullOrWhiteSpace(eventId))
+            .Select(eventId => eventId.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var reminderIdsToShow = new List<string>(distinctEventIds.Count);
+        var missingEventIds = new List<string>();
+
+        foreach (var eventId in distinctEventIds)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var existingDueReminder = (await storage.GetRemindersByEventAsync(eventId))
+                .FirstOrDefault(reminder => reminder.TriggerTime <= nowUnix);
+            if (existingDueReminder != null)
+            {
+                reminderIdsToShow.Add(existingDueReminder.ReminderId);
+                continue;
+            }
+
+            var eventDbo = await storage.GetEventByIdAsync(eventId);
+            if (eventDbo?.StartTime == null)
+            {
+                missingEventIds.Add(eventId);
+                continue;
+            }
+
+            var reminderId = Guid.NewGuid().ToString();
+            await storage.CreateReminderAsync(
+                reminderId,
+                eventId,
+                DateTimeOffset.FromUnixTimeSeconds(eventDbo.StartTime.Value).UtcDateTime,
+                now.ToDateTimeUtc());
+            reminderIdsToShow.Add(reminderId);
+        }
+
+        var remindersById = (await storage.GetRemindersWithEventsAsync(reminderIdsToShow))
+            .ToDictionary(reminder => reminder.ReminderId);
+        var reminders = reminderIdsToShow
+            .Where(remindersById.ContainsKey)
+            .Select(reminderId => remindersById[reminderId])
+            .ToList();
+
+        foreach (var reminder in reminders)
+        {
+            _firedReminders.Add(reminder.ReminderId);
+        }
+
+        return new ReminderTriggerResult(reminders, missingEventIds);
+    }
+
     public async Task DismissReminderAsync(string reminderId, CancellationToken cancellationToken = default)
     {
         _firedReminders.Remove(reminderId);
@@ -288,3 +347,7 @@ public class RemindersRebuildResult
     public int EventsProcessed { get; set; }
     public List<string> Errors { get; set; } = new();
 }
+
+public sealed record ReminderTriggerResult(
+    IReadOnlyList<ReminderWithEvent> Reminders,
+    IReadOnlyList<string> MissingEventIds);

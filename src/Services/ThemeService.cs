@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using AtomUI.Theme;
 using Avalonia;
 using Avalonia.Styling;
 
@@ -14,14 +15,22 @@ public class ThemeService
         _settingsService = settingsService;
     }
 
-    public ThemeVariant CurrentTheme => Application.Current?.ActualThemeVariant ?? ThemeVariant.Light;
+    public ThemeVariant CurrentTheme => GetThemeManager()?.IsDarkThemeMode == true ? ThemeVariant.Dark : ThemeVariant.Light;
 
     public void SetTheme(ThemeVariant theme)
     {
-        if (Application.Current != null)
+        var isDarkTheme = theme == ThemeVariant.Dark;
+        var application = Application.Current;
+        if (application == null)
+            return;
+
+        var themeManager = GetThemeManager();
+        if (themeManager != null)
         {
-            Application.Current.RequestedThemeVariant = theme;
+            themeManager.IsDarkThemeMode = isDarkTheme;
         }
+
+        application.SetValue(IThemeManager.IsDarkThemeModeProperty, isDarkTheme);
     }
 
     public async Task LoadThemeAsync()
@@ -33,11 +42,7 @@ public class ThemeService
         SetTheme(themeVariant);
     }
 
-    public async Task SaveThemeAsync()
-    {
-        var theme = CurrentTheme == ThemeVariant.Dark ? "Dark" : "Light";
-        await _settingsService.SetThemeAsync(theme);
-    }
+    public Task SaveThemeAsync() => _settingsService.SetThemeAsync(CurrentTheme == ThemeVariant.Dark ? "Dark" : "Light");
 
     public void SetLightTheme() => SetTheme(ThemeVariant.Light);
 
@@ -46,4 +51,13 @@ public class ThemeService
     public bool IsLightTheme => CurrentTheme == ThemeVariant.Light;
 
     public bool IsDarkTheme => CurrentTheme == ThemeVariant.Dark;
+
+    private static IThemeManager? GetThemeManager()
+    {
+        var themeManagerType = typeof(IThemeManager).Assembly.GetType("AtomUI.Theme.ThemeManager");
+        var currentProperty = themeManagerType?.GetProperty(
+            "Current",
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+        return currentProperty?.GetValue(null) as IThemeManager;
+    }
 }

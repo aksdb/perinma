@@ -1,34 +1,85 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ev="clr-namespace:perinma.Views.Calendar.EventView"
              mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="60"
              x:Class="perinma.Views.Calendar.EventView.ParticipationView"
              x:DataType="ev:ParticipationViewModel">
+    <UserControl.Styles>
+        <Style Selector="atom|Button.participation">
+            <Setter Property="ButtonType" Value="Default"/>
+            <Setter Property="Shape" Value="Round"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <Style Selector="atom|Button.participation.accept">
+            <Setter Property="Foreground" Value="{DynamicResource ParticipationAcceptBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ParticipationAcceptBrush}"/>
+        </Style>
+        <Style Selector="atom|Button.participation.accept:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ParticipationAcceptHoverBrush}"/>
+        </Style>
+        <Style Selector="atom|Button.participation.accept.active">
+            <Setter Property="Background" Value="{DynamicResource ParticipationAcceptBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ParticipationAcceptBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ParticipationAcceptActiveForegroundBrush}"/>
+        </Style>
+
+        <Style Selector="atom|Button.participation.decline">
+            <Setter Property="Foreground" Value="{DynamicResource ParticipationDeclineBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ParticipationDeclineBrush}"/>
+        </Style>
+        <Style Selector="atom|Button.participation.decline:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ParticipationDeclineHoverBrush}"/>
+        </Style>
+        <Style Selector="atom|Button.participation.decline.active">
+            <Setter Property="Background" Value="{DynamicResource ParticipationDeclineBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ParticipationDeclineBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ParticipationDeclineActiveForegroundBrush}"/>
+        </Style>
+
+        <Style Selector="atom|Button.participation.tentative">
+            <Setter Property="Foreground" Value="{DynamicResource ParticipationTentativeBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ParticipationTentativeBrush}"/>
+        </Style>
+        <Style Selector="atom|Button.participation.tentative:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ParticipationTentativeHoverBrush}"/>
+        </Style>
+        <Style Selector="atom|Button.participation.tentative.active">
+            <Setter Property="Background" Value="{DynamicResource ParticipationTentativeBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ParticipationTentativeBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ParticipationTentativeActiveForegroundBrush}"/>
+        </Style>
+    </UserControl.Styles>
 
     <StackPanel Spacing="8" Margin="0,8,0,0">
         <TextBlock Text="Participate?" FontWeight="SemiBold" />
         <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Content="Yes"
-                    Command="{Binding AcceptCommand}"
-                    IsEnabled="{Binding CanAccept}"
-                    Width="60"
-                    Background="#E5E7EB"
-                    Foreground="#374151" />
-            <Button Content="No"
-                    Command="{Binding DeclineCommand}"
-                    IsEnabled="{Binding CanDecline}"
-                    Width="60"
-                    Background="#E5E7EB"
-                    Foreground="#374151" />
-            <Button Content="Maybe"
-                    Command="{Binding TentativeCommand}"
-                    IsEnabled="{Binding CanTentative}"
-                    Width="60"
-                    Background="#E5E7EB"
-                    Foreground="#374151" />
+            <atom:Button x:Name="AcceptButton"
+                         Classes="participation accept"
+                         Classes.active="{Binding IsAccepted}"
+                         Content="Yes"
+                         Command="{Binding AcceptCommand}"
+                         IsEnabled="{Binding CanAccept}"
+                         Width="72"/>
+            <atom:Button x:Name="DeclineButton"
+                         Classes="participation decline"
+                         Classes.active="{Binding IsDeclined}"
+                         Content="No"
+                         Command="{Binding DeclineCommand}"
+                         IsEnabled="{Binding CanDecline}"
+                         Width="72"/>
+            <atom:Button x:Name="TentativeButton"
+                         Classes="participation tentative"
+                         Classes.active="{Binding IsTentative}"
+                         Content="Maybe"
+                         Command="{Binding TentativeCommand}"
+                         IsEnabled="{Binding CanTentative}"
+                         Width="84"/>
         </StackPanel>
     </StackPanel>
-
 </UserControl>

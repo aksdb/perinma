@@ -1,3 +1,4 @@
+using AtomUI;
 using Avalonia;
 using Avalonia.Headless;
 
@@ -8,5 +9,6 @@ namespace tests;
 public class TestAppBuilder
 {
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
-        .UseHeadless(new AvaloniaHeadlessPlatformOptions());
+        .UseHeadless(new AvaloniaHeadlessPlatformOptions())
+        .WithAtomUIDefaultOptions();
 }

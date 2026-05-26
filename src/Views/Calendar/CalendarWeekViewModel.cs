@@ -65,8 +65,9 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
 
     public CalendarWeekViewModel(
         ICalendarSource calendarSource,
-        SettingsService? settingsService = null)
-        : base(calendarSource, settingsService)
+        SettingsService? settingsService = null,
+        DebugFeaturesService? debugFeatures = null)
+        : base(calendarSource, settingsService, debugFeatures)
     {
         DayColumns = 7;
         ViewStart = DateTime.Now;
@@ -225,20 +226,28 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         LoadTimeGridView();
     }
 
-    private void LoadTimeGridView()
+    public override IReadOnlyList<CalendarEvent> GetEventsInCurrentRange()
     {
         var start = ViewStart.ToLocalDateTime();
         var end = start.PlusDays(DayColumns);
         var interval = new Interval(start.ToInstant(), end.ToInstant());
+        return _calendarSource.GetCalendarEvents(interval)
+            .OrderBy(e => e.StartTime)
+            .ThenBy(e => e.Title)
+            .ToList();
+    }
 
+    private void LoadTimeGridView()
+    {
         var tieBreaker = 0;
 
-        // Build items
-        var allItems = _calendarSource.GetCalendarEvents(interval)
+        var allItems = GetEventsInCurrentRange()
             .SelectMany<CalendarEvent, EventItem>(e =>
             {
                 var viewModels = new List<EventItem>();
 
+                var start = ViewStart.ToLocalDateTime();
+                var end = start.PlusDays(DayColumns);
                 var effectiveStart = e.StartTime >= start ? e.StartTime : start;
                 var startDate = effectiveStart.Date;
                 var effectiveEnd = e.EndTime <= end ? e.EndTime : end;
@@ -307,6 +316,7 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
                             ? Color.FromArgb(0x99, 0x33, 0x99, 0xFF)
                             : Color.Parse(e.Reference.Calendar.Color),
                         TieBreaker = tieBreaker++,
+
                         ColumnSlot = 0,
                         TotalColumns = 1,
                         IsFullDay = isFullDay,
@@ -314,6 +324,9 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
                         EndTimeText = e.EndTime.ToString("HH:mm", null),
                         ShowInlineTimes = true,
                         CalendarEvent = e,
+                        EditEventCommand = EditEventCommand,
+                        DeleteEventCommand = DeleteEventCommand,
+                        TriggerReminderCommand = TriggerReminderCommand,
                         NeedsResponse = needsResponse,
                         IsDeclined = isDeclined,
                     };

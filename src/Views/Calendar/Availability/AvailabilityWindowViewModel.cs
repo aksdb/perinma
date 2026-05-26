@@ -112,7 +112,8 @@ public partial class AvailabilityWindowViewModel : ObservableObject
         _provider = provider;
         _accountId = accountId;
         _attendeeEmails = attendeeEmails;
-        _calendarSource = App.Services.GetRequiredService<ICalendarSource>();
+        _calendarSource = App.Services?.GetRequiredService<ICalendarSource>()
+            ?? throw new InvalidOperationException("ICalendarSource not available");
 
         // Display window: event date 07:00–22:00 local
         var eventDate = initialStart.Date;

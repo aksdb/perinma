@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cal="using:perinma.Views.Calendar"
@@ -8,99 +9,100 @@
              x:Class="perinma.Views.Calendar.CalendarAgendaView">
 
     <Grid RowDefinitions="*">
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-        <ItemsControl ItemsSource="{Binding AgendaDays}" Margin="10">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="cal:AgendaDayViewModel">
-                    <StackPanel Margin="0,0,0,16" IsVisible="{Binding HasEvents}">
-                        <!-- Day Header -->
-                        <Border Background="{DynamicResource SystemChromeMediumLowColor}"
-                                CornerRadius="4"
-                                Padding="12,8"
-                                Margin="0,0,0,8">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
-                                <TextBlock Text="{Binding DayOfWeek}"
-                                           FontWeight="SemiBold"
-                                           FontSize="14"/>
-                                <TextBlock Text="{Binding DateDisplay}"
-                                           FontSize="14"
-                                           Foreground="Gray"/>
-                                <TextBlock Text="Today"
-                                           FontWeight="Bold"
-                                           Foreground="{DynamicResource SystemAccentColor}"
-                                           IsVisible="{Binding IsToday}"/>
-                            </StackPanel>
-                        </Border>
-                        
-                        <!-- Events for this day -->
-                        <ItemsControl ItemsSource="{Binding Events}" Margin="8,0,0,0">
-                            <ItemsControl.ItemTemplate>
-                                     <DataTemplate x:DataType="cal:AgendaEventViewModel">
-                                     <Button Background="{Binding Background}"
-                                             CornerRadius="6"
-                                             Padding="12,8"
-                                             Margin="0,4"
-                                             HorizontalAlignment="Stretch"
-                                             HorizontalContentAlignment="Stretch"
-                                             BorderThickness="0"
-                                             Cursor="Hand"
-                                             Name="EventButton">
-                                         <Button.Styles>
-                                             <Style Selector="Button:pointerover /template/ ContentPresenter">
-                                                 <Setter Property="Background" Value="{Binding Background}"/>
-                                                 <Setter Property="Opacity" Value="0.8"/>
-                                             </Style>
-                                             <Style Selector="Button:pressed /template/ ContentPresenter">
-                                                 <Setter Property="Background" Value="{Binding Background}"/>
-                                                 <Setter Property="Opacity" Value="0.6"/>
-                                             </Style>
-                                          </Button.Styles>
-                                          <Button.ContextMenu>
-                                              <ContextMenu>
-                                                  <MenuItem Header="Edit" Command="{ReflectionBinding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
-                                                  <MenuItem Header="Delete" Command="{ReflectionBinding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
-                                              </ContextMenu>
-                                          </Button.ContextMenu>
-                                          <Button.Flyout>
-                                             <Flyout Placement="Right">
-                                                 <ContentControl Content="{Binding EventViewModel}"/>
-                                             </Flyout>
-                                         </Button.Flyout>
-                                         <Grid ColumnDefinitions="Auto,*">
-                                             <!-- Time Column -->
-                                             <StackPanel Grid.Column="0"
-                                                         Width="80"
-                                                         VerticalAlignment="Top">
-                                                 <TextBlock Text="{Binding TimeDisplay}"
-                                                            FontSize="13"
-                                                            Foreground="{Binding Foreground}"/>
-                                                 <TextBlock Text="{Binding DurationDisplay}"
-                                                            FontSize="11"
-                                                            Foreground="{Binding SecondaryForeground}"
-                                                            IsVisible="{Binding ShowDuration}"/>
-                                             </StackPanel>
+        <atom:ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding AgendaDays}" Margin="10">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="cal:AgendaDayViewModel">
+                        <StackPanel Margin="0,0,0,16" IsVisible="{Binding HasEvents}">
+                            <Border Background="{DynamicResource AppPanelSubtleBrush}"
+                                    CornerRadius="4"
+                                    Padding="12,8"
+                                    Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <TextBlock Text="{Binding DayOfWeek}"
+                                               FontWeight="SemiBold"
+                                               FontSize="14"/>
+                                    <TextBlock Text="{Binding DateDisplay}"
+                                               FontSize="14"
+                                               Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                                    <TextBlock Text="Today"
+                                               FontWeight="Bold"
+                                               Foreground="{DynamicResource AppAccentBrush}"
+                                               IsVisible="{Binding IsToday}"/>
+                                </StackPanel>
+                            </Border>
 
-                                             <!-- Event Details -->
-                                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                                 <TextBlock Text="{Binding Title}"
-                                                            FontWeight="SemiBold"
-                                                            FontSize="14"
-                                                            Foreground="{Binding Foreground}"
-                                                            TextWrapping="Wrap"/>
-                                                 <TextBlock Text="{Binding CalendarName}"
-                                                            FontSize="12"
-                                                            Foreground="{Binding SecondaryForeground}"
-                                                            Margin="0,2,0,0"/>
-                                             </StackPanel>
-                                         </Grid>
-                                     </Button>
-                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        </ScrollViewer>
+                            <ItemsControl ItemsSource="{Binding Events}" Margin="8,0,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="cal:AgendaEventViewModel">
+                                        <atom:Button x:Name="AgendaEventButton"
+                                                     Background="{Binding Background}"
+                                                     CornerRadius="6"
+                                                     Padding="12,8"
+                                                     Margin="0,4"
+                                                     HorizontalAlignment="Stretch"
+                                                     HorizontalContentAlignment="Stretch"
+                                                     BorderThickness="0"
+                                                     Cursor="Hand"
+                                                     Name="EventButton">
+                                            <Button.Styles>
+                                                <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                                    <Setter Property="Background" Value="{Binding Background}"/>
+                                                    <Setter Property="Opacity" Value="0.8"/>
+                                                </Style>
+                                                <Style Selector="Button:pressed /template/ ContentPresenter">
+                                                    <Setter Property="Background" Value="{Binding Background}"/>
+                                                    <Setter Property="Opacity" Value="0.6"/>
+                                                </Style>
+                                            </Button.Styles>
+                                            <Button.ContextMenu>
+                                                <atom:ContextMenu>
+                                                    <atom:MenuItem Header="Edit" Command="{ReflectionBinding $parent[UserControl].DataContext.EditEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                                    <atom:MenuItem Header="Delete" Command="{ReflectionBinding $parent[UserControl].DataContext.DeleteEventCommand}" CommandParameter="{Binding CalendarEvent}"/>
+                                                    <atom:MenuItem Header="Trigger Reminder"
+                                                                   Command="{ReflectionBinding $parent[UserControl].DataContext.TriggerReminderCommand}"
+                                                                   CommandParameter="{Binding CalendarEvent}"
+                                                                   IsVisible="{ReflectionBinding $parent[UserControl].DataContext.DebugFeatures.IsDebuggingEnabled}"/>
+                                                </atom:ContextMenu>
+                                            </Button.ContextMenu>
+                                            <Button.Flyout>
+                                                <atom:Flyout Placement="Right">
+                                                    <ContentControl Content="{Binding EventViewModel}"/>
+                                                </atom:Flyout>
+                                            </Button.Flyout>
+                                            <Grid ColumnDefinitions="Auto,*">
+                                                <StackPanel Grid.Column="0"
+                                                            Width="80"
+                                                            VerticalAlignment="Top">
+                                                    <TextBlock Text="{Binding TimeDisplay}"
+                                                               FontSize="13"
+                                                               Foreground="{Binding Foreground}"/>
+                                                    <TextBlock Text="{Binding DurationDisplay}"
+                                                               FontSize="11"
+                                                               Foreground="{Binding SecondaryForeground}"
+                                                               IsVisible="{Binding ShowDuration}"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                                    <TextBlock Text="{Binding Title}"
+                                                               FontWeight="SemiBold"
+                                                               FontSize="14"
+                                                               Foreground="{Binding Foreground}"
+                                                               TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding CalendarName}"
+                                                               FontSize="12"
+                                                               Foreground="{Binding SecondaryForeground}"
+                                                               Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </atom:Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </atom:ScrollViewer>
     </Grid>
 </UserControl>

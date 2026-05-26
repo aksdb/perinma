@@ -1,0 +1,30 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="AppShellSurfaceBrush" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="AppPanelSubtleBrush" Color="#FFF7F8FA" />
+    <SolidColorBrush x:Key="AppPanelMutedBrush" Color="#FFF0F2F5" />
+    <SolidColorBrush x:Key="AppPanelElevatedBrush" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="AppChromeBorderBrush" Color="#FFD9DFEA" />
+    <SolidColorBrush x:Key="AppChromeStrongBorderBrush" Color="#FFBFC8D6" />
+    <SolidColorBrush x:Key="AppTextPrimaryBrush" Color="#FF1F1F1F" />
+    <SolidColorBrush x:Key="AppTextSecondaryBrush" Color="#FF595959" />
+    <SolidColorBrush x:Key="AppTextTertiaryBrush" Color="#FF8C8C8C" />
+    <SolidColorBrush x:Key="AppTextOnAccentBrush" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="AppAccentBrush" Color="#FF1677FF" />
+    <SolidColorBrush x:Key="AppAccentHoverBrush" Color="#FF4096FF" />
+    <SolidColorBrush x:Key="AppAccentSubtleBrush" Color="#FFE6F4FF" />
+    <SolidColorBrush x:Key="AppSelectionSubtleBrush" Color="#FFF0F5FF" />
+    <SolidColorBrush x:Key="AppHoverBrush" Color="#FFF5F7FA" />
+    <SolidColorBrush x:Key="AppHyperlinkBrush" Color="#FF0958D9" />
+    <SolidColorBrush x:Key="AppErrorBrush" Color="#FFFF4D4F" />
+    <SolidColorBrush x:Key="AppErrorSurfaceBrush" Color="#FFFFF2F0" />
+    <SolidColorBrush x:Key="AppCalendarInactiveForegroundBrush" Color="#FF1F1F1F" />
+    <SolidColorBrush x:Key="AppCalendarGridLineBrush" Color="#FFE1E6ED" />
+    <SolidColorBrush x:Key="AppCalendarNonWorkingBrush" Color="#12000000" />
+    <LinearGradientBrush x:Key="AppCalendarHeaderShadowBrush" StartPoint="50%,0%" EndPoint="50%,100%">
+        <GradientStop Color="#FFFFFFFF" Offset="0" />
+        <GradientStop Color="#FFC6CCD6" Offset="0.22" />
+        <GradientStop Color="#FFFFFFFF" Offset="1" />
+    </LinearGradientBrush>
+
+</ResourceDictionary>

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:wizard="using:perinma.Views.Settings.AddAccountWizard"
@@ -15,19 +16,20 @@
                    TextWrapping="Wrap"
                    MinHeight="60" />
 
-        <Button Content="Connect to Google"
-                Command="{Binding ConnectCommand}"
-                IsEnabled="{Binding !IsConnecting}"
-                HorizontalAlignment="Left" />
+        <atom:Button x:Name="ConnectButton"
+                     Content="Connect to Google"
+                     Command="{Binding ConnectCommand}"
+                     IsEnabled="{Binding !IsConnecting}"
+                     HorizontalAlignment="Left" />
 
         <cm:Hyperlink Uri="{Binding OAuthUrl}"
                       DisplayText="Open authentication link in browser"
                       IsVisible="{Binding OAuthUrl, Converter={x:Static ObjectConverters.IsNotNull}}"
                       HorizontalAlignment="Left" />
 
-        <ProgressBar IsIndeterminate="True"
-                     IsVisible="{Binding IsConnecting}"
-                     Height="4" />
+        <atom:ProgressBar x:Name="ConnectProgressBar"
+                          IsIndeterminate="True"
+                          IsVisible="{Binding IsConnecting}"
+                          Height="4" />
     </StackPanel>
-
 </UserControl>

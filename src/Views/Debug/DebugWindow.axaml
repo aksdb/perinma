@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:atom="https://atomui.net"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:debug="using:perinma.Views.Debug"
@@ -16,27 +17,120 @@
     <Grid RowDefinitions="Auto,*">
         <!-- Header -->
         <Border Grid.Row="0"
-                Background="{DynamicResource SystemChromeMediumLowColor}"
-                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                Background="{DynamicResource AppPanelSubtleBrush}"
+                BorderBrush="{DynamicResource AppChromeBorderBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="16,12">
             <StackPanel Spacing="4">
                 <TextBlock Text="Debug Tools"
                            FontSize="18"
                            FontWeight="SemiBold"
-                           Foreground="{DynamicResource SystemBaseHighColor}"/>
+                           Foreground="{DynamicResource AppTextPrimaryBrush}"/>
                 <TextBlock Text="Developer utilities for troubleshooting and maintenance"
                            FontSize="13"
-                           Foreground="{DynamicResource SystemBaseMediumHighColor}"/>
+                           Foreground="{DynamicResource AppTextSecondaryBrush}"/>
             </StackPanel>
         </Border>
 
         <!-- Content Area -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <atom:ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="16" Spacing="20">
+                <Border Background="{DynamicResource AppPanelMutedBrush}"
+                        BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Trigger Reminder Window"
+                                   FontWeight="SemiBold"
+                                   FontSize="16"/>
+                        <TextBlock Text="Trigger the reminder window immediately for one or more events from the current calendar range. For single-event testing, use the calendar event context menu."
+                                   TextWrapping="Wrap"
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding TriggerRangeDescription}"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                   IsVisible="{Binding HasTriggerEvents}"/>
+                        <Border Background="{DynamicResource AppPanelSubtleBrush}"
+                                BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="12">
+                            <Grid>
+                                <TextBlock x:Name="TriggerReminderEmptyState"
+                                           Text="No events are available in the current calendar range."
+                                           FontSize="13"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                           IsVisible="{Binding HasNoTriggerEvents}"/>
+                                <atom:ScrollViewer x:Name="TriggerReminderEventList"
+                                                   MaxHeight="240"
+                                                   IsVisible="{Binding HasTriggerEvents}">
+                                    <ItemsControl ItemsSource="{Binding TriggerEvents}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="debug:DebugTriggerEventItemViewModel">
+                                                <Border BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                                                        BorderThickness="0,0,0,1"
+                                                        Padding="0,8">
+                                                    <atom:CheckBox IsChecked="{Binding IsSelected}">
+                                                        <StackPanel Spacing="2">
+                                                            <TextBlock Text="{Binding Title}"
+                                                                       FontWeight="SemiBold"
+                                                                       TextWrapping="Wrap"/>
+                                                            <TextBlock Text="{Binding ScheduleDescription}"
+                                                                       FontSize="12"
+                                                                       TextWrapping="Wrap"
+                                                                       Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                                                            <TextBlock Text="{Binding EventId}"
+                                                                       FontSize="11"
+                                                                       TextWrapping="Wrap"
+                                                                       Foreground="{DynamicResource AppTextTertiaryBrush}"/>
+                                                        </StackPanel>
+                                                    </atom:CheckBox>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </atom:ScrollViewer>
+                            </Grid>
+                        </Border>
+                        <TextBlock Text="{Binding TriggerStatusText}"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                        <atom:ScrollViewer MaxHeight="120"
+                                      IsVisible="{Binding HasTriggerErrors}">
+                            <ItemsControl ItemsSource="{Binding TriggerErrors}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource AppErrorBrush}"
+                                                CornerRadius="2"
+                                                Padding="8,4"
+                                                Margin="0,2">
+                                            <TextBlock Text="{Binding}"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="White"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </atom:ScrollViewer>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <atom:Button x:Name="TriggerRemindersButton"
+                                         Content="Trigger Selected Reminders"
+                                         Command="{Binding TriggerRemindersCommand}"
+                                         IsEnabled="{Binding IsTriggeringReminders, Converter={x:Static BoolConverters.Not}}"
+                                         Padding="20,8"
+                                         MinWidth="160"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- Rebuild Reminders Section -->
-                <Border Background="{DynamicResource SystemAltMediumColor}"
-                        BorderBrush="{DynamicResource SystemChromeLowColor}"
+                <Border Background="{DynamicResource AppPanelMutedBrush}"
+                        BorderBrush="{DynamicResource AppChromeBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="4"
                         Padding="16">
@@ -46,7 +140,7 @@
                                    FontSize="16"/>
                         <TextBlock Text="Rebuild all reminders from existing calendar events."
                                    TextWrapping="Wrap"
-                                   Foreground="{DynamicResource SystemBaseMediumHighColor}"/>
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}"/>
 
                         <TextBlock Text="This will:"
                                    Margin="0,4,0,0"
@@ -59,25 +153,25 @@
                         </TextBlock>
 
                         <TextBlock Text="Note: This operation may take a while depending on the number of events."
-                                   Foreground="{DynamicResource SystemAccentColor}"
+                                   Foreground="{DynamicResource AppAccentBrush}"
                                    FontSize="12"
                                    Margin="0,8,0,0"/>
 
                         <!-- Status Display -->
-                        <Border Background="{DynamicResource SystemBaseLowColor}"
-                                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                        <Border Background="{DynamicResource AppPanelSubtleBrush}"
+                                BorderBrush="{DynamicResource AppChromeBorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="4"
                                 Padding="12"
                                 IsVisible="{Binding IsProcessing}">
                             <StackPanel Spacing="8">
-                                <ProgressBar IsIndeterminate="False"
+                                <atom:ProgressBar IsIndeterminate="False"
                                             Value="{Binding Progress}"
                                             Height="4"
-                                            Foreground="{DynamicResource SystemAccentColor}"/>
+                                            Foreground="{DynamicResource AppAccentBrush}"/>
                                 <TextBlock Text="{Binding StatusText}"
                                            FontSize="13"
-                                           Foreground="{DynamicResource SystemBaseMediumHighColor}"/>
+                                           Foreground="{DynamicResource AppTextSecondaryBrush}"/>
                                 <TextBlock>
                                     <Run Text="Processed: "/>
                                     <Run Text="{Binding EventsProcessed}" FontWeight="SemiBold"/>
@@ -91,8 +185,8 @@
                         </Border>
 
                         <!-- Result Display -->
-                        <Border Background="{DynamicResource SystemBaseLowColor}"
-                                BorderBrush="{DynamicResource SystemChromeLowColor}"
+                        <Border Background="{DynamicResource AppPanelSubtleBrush}"
+                                BorderBrush="{DynamicResource AppChromeBorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="4"
                                 Padding="12"
@@ -100,7 +194,7 @@
                             <StackPanel Spacing="8">
                                 <TextBlock Text="Rebuild Complete!"
                                            FontWeight="SemiBold"
-                                           Foreground="{DynamicResource SystemAccentColorLight2}"/>
+                                           Foreground="{DynamicResource AppAccentBrushLight2}"/>
                                 <TextBlock>
                                     <Run Text="Processed "/>
                                     <Run Text="{Binding EventsProcessed}" FontWeight="SemiBold"/>
@@ -117,12 +211,12 @@
                         </Border>
 
                         <!-- Error Details -->
-                        <ScrollViewer MaxHeight="150"
+                        <atom:ScrollViewer MaxHeight="150"
                                       IsVisible="{Binding HasErrors}">
                             <ItemsControl ItemsSource="{Binding Errors}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{DynamicResource SystemErrorColor}"
+                                        <Border Background="{DynamicResource AppErrorBrush}"
                                                 CornerRadius="2"
                                                 Padding="8,4"
                                                 Margin="0,2">
@@ -134,16 +228,16 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </ScrollViewer>
+                        </atom:ScrollViewer>
 
                         <!-- Action Buttons -->
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="Rebuild Reminders"
+                            <atom:Button Content="Rebuild Reminders"
                                     Command="{Binding RebuildRemindersCommand}"
                                     IsEnabled="{Binding IsProcessing, Converter={x:Static BoolConverters.Not}}"
                                     Padding="20,8"
                                     MinWidth="120"/>
-                            <Button Content="Close"
+                            <atom:Button Content="Close"
                                     Command="{Binding CloseCommand}"
                                     Padding="20,8"
                                     MinWidth="120"/>
@@ -153,6 +247,6 @@
 
                 <!-- More debug features can be added here -->
             </StackPanel>
-        </ScrollViewer>
+        </atom:ScrollViewer>
     </Grid>
 </Window>

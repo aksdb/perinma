@@ -139,7 +139,7 @@
                                             IsEnabled="{Binding IsProtected, Converter={x:Static BoolConverters.Not}}">
                                         <TextBlock Text="&gt;"
                                                    FontSize="12"
-                                                   Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                   Foreground="{DynamicResource AppTextPrimaryBrush}"
                                                    VerticalAlignment="Center"
                                                    HorizontalAlignment="Center" />
                                     </Button>

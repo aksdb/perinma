@@ -10,8 +10,8 @@
 
     <StackPanel Spacing="4">
         <TextBlock Text="Conference" FontWeight="SemiBold" />
-        <StackPanel Orientation="Horizontal" Spacing="4">
-            <TextBlock Text="{Binding Name}" />
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="4">
+            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
             <ItemsControl ItemsSource="{Binding EntryPoints}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="ev:ConferenceEntryPointViewModel">
@@ -20,7 +20,7 @@
                 </ItemsControl.ItemTemplate>
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="4"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="4"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
             </ItemsControl>

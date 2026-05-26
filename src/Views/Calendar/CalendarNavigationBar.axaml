@@ -1,95 +1,97 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
+             xmlns:antdicons="https://atomui.net/icons/antdesign"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:cal="using:perinma.Views.Calendar"
+             xmlns:conv="using:perinma.Converters"
              x:DataType="cal:CalendarNavigationBarViewModel"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="60"
              x:Class="perinma.Views.Calendar.CalendarNavigationBar">
 
-    <Grid Margin="0, 10, 0, 10">
+    <UserControl.Resources>
+        <conv:EnumToIndexConverter x:Key="EnumToIndexConverter"/>
+    </UserControl.Resources>
+    
+    <Grid Margin="0, 10, 0, 10"
+          ClipToBounds="True">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        
+
         <!-- View Mode Switcher -->
-        <StackPanel Grid.Column="0"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Left"
-                    Margin="10, 0, 0, 0"
-                    Spacing="2">
-            <ToggleButton Content="Month"
-                          IsChecked="{Binding IsMonthView}"
-                          Command="{Binding ShowMonthViewCommand}"
-                          Padding="8, 4"
-                          FontSize="12"/>
-            <ToggleButton Content="Week"
-                          IsChecked="{Binding IsWeekView}"
-                          Command="{Binding ShowWeekViewCommand}"
-                          Padding="8, 4"
-                          FontSize="12"/>
-            <ToggleButton Content="Work Week"
-                          IsChecked="{Binding IsFiveDaysView}"
-                          Command="{Binding ShowFiveDaysViewCommand}"
-                          Padding="8, 4"
-                          FontSize="12"/>
-            <ToggleButton Content="Day"
-                          IsChecked="{Binding IsDayView}"
-                          Command="{Binding ShowDayViewCommand}"
-                          Padding="8, 4"
-                          FontSize="12"/>
-            <ToggleButton Content="Agenda"
-                          IsChecked="{Binding IsAgendaView}"
-                          Command="{Binding ShowAgendaViewCommand}"
-                          Padding="8, 4"
-                          FontSize="12"/>
-        </StackPanel>
+        <atom:Segmented Grid.Column="0"
+                        Name="ViewModeGroup"
+                        HorizontalAlignment="Left"
+                        Margin="10, 0, 16, 0"
+                        SelectedIndex="{Binding SelectedView, Mode=TwoWay, Converter={StaticResource EnumToIndexConverter}}">
+            <atom:SegmentedItem Name="MonthViewButton"
+                                Content="Month"
+                                FontSize="12"/>
+            <atom:SegmentedItem Name="WeekViewButton"
+                                Content="Week"
+                                FontSize="12"/>
+            <atom:SegmentedItem Name="WorkWeekViewButton"
+                                Content="Work Week"
+                                FontSize="12"/>
+            <atom:SegmentedItem Name="DayViewButton"
+                                Content="Day"
+                                FontSize="12"/>
+            <atom:SegmentedItem Name="AgendaViewButton"
+                                Content="Agenda"
+                                FontSize="12"/>
+        </atom:Segmented>
 
         <!-- Navigation Controls (Center) -->
-        <StackPanel Grid.Column="1"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Center"
-                    Spacing="8">
+        <Grid Grid.Column="1"
+              ClipToBounds="True"
+              Margin="0,0,0,0">
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Spacing="8">
+                <atom:Button Name="PreviousButton"
+                             Command="{Binding PreviousCommand}"
+                             Margin="0, 0, 8, 0"
+                             Padding="8, 4"
+                             atom:ToolTip.Tip="Previous"
+                             Icon="{antdicons:AntDesignIconProvider Kind=CaretLeftOutlined}"/>
 
-            <!-- Previous -->
-            <Button Command="{Binding PreviousCommand}"
-                    Margin="0, 0, 8, 0"
-                    Padding="8, 4"
-                    ToolTip.Tip="Previous">
-                ←
-            </Button>
+                <TextBlock Text="{Binding DateRangeDisplay}"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="0, 0, 8, 0"
+                           TextTrimming="CharacterEllipsis"/>
 
-            <!-- Date Range Display -->
-            <TextBlock Text="{Binding DateRangeDisplay}"
-                       FontSize="16"
-                       FontWeight="SemiBold"
-                       VerticalAlignment="Center"
-                       Margin="0, 0, 8, 0"/>
-            
-            <!-- Today -->
-            <Button Command="{Binding TodayCommand}"
-                    Margin="0, 0, 8, 0"
-                    Padding="8, 4"
-                    ToolTip.Tip="Today">
-                Today
-            </Button>
+                <atom:Button Name="NextButton"
+                             Command="{Binding NextCommand}"
+                             Padding="8, 4"
+                             atom:ToolTip.Tip="Next"
+                             Icon="{antdicons:AntDesignIconProvider Kind=CaretRightOutlined}"/>
+                
+                <atom:Button Name="TodayButton"
+                             Command="{Binding TodayCommand}"
+                             Margin="0, 0, 8, 0"
+                             Padding="8, 4"
+                             atom:ToolTip.Tip="Today"
+                             ButtonType="Link"
+                             FontSize="12"
+                             Content="Today"/>
+            </StackPanel>
+        </Grid>
 
-            <!-- Next -->
-            <Button Command="{Binding NextCommand}"
-                    Padding="8, 4"
-                    ToolTip.Tip="Next">
-                →
-            </Button>
-        </StackPanel>
-        
         <!-- Create Event (Right) -->
-        <Button Grid.Column="2"
-                Name="CreateEventButton"
-                Command="{Binding CreateNewEventCommand}"
-                Content="Create Event"
-                Padding="8, 4"
-                Margin="10, 0, 10, 0"/>
+        <atom:Button Grid.Column="2"
+                     Name="CreateEventButton"
+                     Command="{Binding CreateNewEventCommand}"
+                     Content="Create Event"
+                     ButtonType="Primary"
+                     FontSize="12"
+                     Padding="8, 4"
+                     HorizontalAlignment="Right"
+                     Margin="16, 0, 10, 0"/>
     </Grid>
 </UserControl>

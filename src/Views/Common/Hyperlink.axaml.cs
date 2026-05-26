@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using perinma.Utils;
@@ -32,17 +31,6 @@ public partial class Hyperlink : UserControl
         InitializeComponent();
     }
 
-    protected override void OnPointerPressed(PointerPressedEventArgs e)
-    {
-        if (!e.Handled && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-        {
-            PlatformUtil.OpenBrowser(Uri);
-            e.Handled = true;
-        }
-        
-        base.OnPointerPressed(e);
-    }
-    
     private void OnOpenClick(object sender, RoutedEventArgs e)
     {
         PlatformUtil.OpenBrowser(Uri);
@@ -52,5 +40,4 @@ public partial class Hyperlink : UserControl
     {
         PlatformUtil.Clipboard().SetTextAsync(Uri);
     }
-    
 }

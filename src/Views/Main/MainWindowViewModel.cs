@@ -42,6 +42,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private readonly CredentialManagerService _credentialManager;
     private readonly SyncService _syncService;
     private readonly ContactSyncService _contactSyncService;
+    private readonly ReminderService _reminderService;
+    private readonly DebugFeaturesService _debugFeatures;
     private readonly GoogleCalendarService _googleCalendarService;
     private readonly GoogleOAuthService _googleOAuthService;
     private readonly ICalDavService _calDavService;
@@ -49,28 +51,62 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private readonly ThemeService _themeService;
     private readonly SettingsService _settingsService;
     private readonly SqliteStorage _storage;
-    private readonly ICalendarSource _calendarSource;
     private DebugWindow? _debugWindow;
     private System.Threading.Timer? _autoSyncTimer;
 
-    [ObservableProperty]
-    private bool _isSyncing;
+    public DebugFeaturesService DebugFeatures => _debugFeatures;
 
     [ObservableProperty]
-    private string _syncStatusText = "Ready";
+    public partial bool IsSyncing { get; set; }
 
     [ObservableProperty]
-    private double _syncProgress = 0.0;
+    public partial string SyncStatusText { get; set; } = "Ready";
 
     [ObservableProperty]
-    private bool _syncProgressIsIndeterminate = true;
+    public partial double SyncProgress { get; set; } = 0.0;
+
+    [ObservableProperty]
+    public partial bool SyncProgressIsIndeterminate { get; set; } = true;
+
 
     // View switching
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsContactsViewActive))]
-    private bool _isCalendarViewActive = true;
+    public enum MainViewMode
+    {
+        Calendar,
+        Contacts
+    }
 
-    public bool IsContactsViewActive => !IsCalendarViewActive;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCalendarMainView))]
+    [NotifyPropertyChangedFor(nameof(IsContactsMainView))]
+    public partial MainViewMode SelectedMainView { get; set; } = MainViewMode.Calendar;
+
+    public bool IsCalendarMainView => SelectedMainView == MainViewMode.Calendar;
+    public bool IsContactsMainView => SelectedMainView == MainViewMode.Contacts;
+
+    partial void OnSelectedMainViewChanged(MainViewMode value)
+    {
+        if (value == MainViewMode.Calendar)
+        {
+            LoadCurrentCalendarView();
+        }
+    }
+
+    [RelayCommand]
+    private void SelectCalendarMainView()
+    {
+        SelectedMainView = MainViewMode.Calendar;
+    }
+
+    [RelayCommand]
+    private void SelectContactsMainView()
+    {
+        SelectedMainView = MainViewMode.Contacts;
+    }
+
+    [RelayCommand]
+    private Task ToggleDebuggingAsync() => _debugFeatures.ToggleDebuggingAsync();
+
 
     public enum CalendarView
     {
@@ -83,14 +119,11 @@ public partial class MainWindowViewModel : ObservableRecipient,
     [NotifyPropertyChangedFor(nameof(IsMonthView))]
     [NotifyPropertyChangedFor(nameof(IsWeekView))]
     [NotifyPropertyChangedFor(nameof(IsAgendaView))]
-    private CalendarView _calendarViewMode = CalendarView.Week;
+    public partial CalendarView CalendarViewMode { get; set; } = CalendarView.Week;
 
     public bool IsMonthView => CalendarViewMode == CalendarView.Month;
     public bool IsWeekView => CalendarViewMode == CalendarView.Week;
     public bool IsAgendaView => CalendarViewMode == CalendarView.Agenda;
-
-    public bool IsWorkWeekView { get; private set; }
-    public bool IsDayView { get; private set; }
 
     public CalendarMonthViewModel CalendarMonthViewModel { get; }
     public CalendarWeekViewModel CalendarWeekViewModel { get; }
@@ -100,7 +133,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     public ContactsViewModel ContactsViewModel { get; }
 
     [ObservableProperty]
-    private CalendarViewModelBase _activeCalendarViewModel = null!;
+    public partial CalendarViewModelBase ActiveCalendarViewModel { get; set; } = null!;
 
     private CalendarViewModelBase? _dateRangeSubscriptionTarget;
 
@@ -128,6 +161,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         CredentialManagerService credentialManager,
         SyncService syncService,
         ContactSyncService contactSyncService,
+        ReminderService reminderService,
         ICalDavService calDavService,
         ICardDavService cardDavService,
         ThemeService themeService,
@@ -135,26 +169,31 @@ public partial class MainWindowViewModel : ObservableRecipient,
         SqliteStorage storage,
         GoogleCalendarService googleCalendarService,
         GoogleOAuthService googleOAuthService,
-        ICalendarSource calendarSource)
+        ICalendarSource calendarSource,
+        DebugFeaturesService debugFeatures)
+
     {
         _databaseService = databaseService;
         _credentialManager = credentialManager;
         _syncService = syncService;
         _contactSyncService = contactSyncService;
+        _reminderService = reminderService;
+        _debugFeatures = debugFeatures;
         _calDavService = calDavService;
         _cardDavService = cardDavService;
         _themeService = themeService;
         _settingsService = settingsService;
         _storage = storage;
-        _calendarSource = calendarSource;
         _googleCalendarService = googleCalendarService;
         _googleOAuthService = googleOAuthService;
 
-        CalendarMonthViewModel = new CalendarMonthViewModel(calendarSource, _settingsService);
-        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, _settingsService);
-        CalendarAgendaViewModel = new CalendarAgendaViewModel(calendarSource, _settingsService);
+        CalendarMonthViewModel = new CalendarMonthViewModel(calendarSource, _settingsService, _debugFeatures);
+        CalendarWeekViewModel = new CalendarWeekViewModel(calendarSource, _settingsService, _debugFeatures);
+        CalendarAgendaViewModel = new CalendarAgendaViewModel(calendarSource, _settingsService, _debugFeatures);
+
         CalendarNavigationBarViewModel = new CalendarNavigationBarViewModel();
-        CalendarListViewModel = new CalendarListViewModel(_storage, calendarSource, _googleCalendarService, _credentialManager);
+        CalendarListViewModel =
+            new CalendarListViewModel(_storage, calendarSource, _googleCalendarService, _credentialManager);
         ContactsViewModel = new ContactsViewModel(_storage, _contactSyncService);
 
         CalendarWeekViewModel.PropertyChanged += (sender, args) =>
@@ -165,12 +204,11 @@ public partial class MainWindowViewModel : ObservableRecipient,
             }
         };
 
-        SetupNavigationBar();
-        Initialize();
-
         WeakReferenceMessenger.Default.Register<WorkingDaysChangedMessage>(this, (r, m) =>
         {
-            if (IsWorkWeekView)
+            if (ResolveNavigationViewMode(CalendarViewMode, CalendarWeekViewModel.DayColumns,
+                    CalendarWeekViewModel.WorkWeekDayCount)
+                == CalendarNavigationBarViewModel.CalendarNavigationViewMode.WorkWeek)
             {
                 CalendarWeekViewModel.DayColumns = CalendarWeekViewModel.WorkWeekDayCount;
                 LoadCurrentCalendarView();
@@ -178,11 +216,10 @@ public partial class MainWindowViewModel : ObservableRecipient,
         });
     }
 
-    [RelayCommand]
-    private void ShowCalendarView()
+    public void AfterLoad()
     {
-        IsCalendarViewActive = true;
-        LoadCurrentCalendarView();
+        SetupNavigationBar();
+        Initialize();
     }
 
     partial void OnCalendarViewModeChanged(CalendarView value)
@@ -198,16 +235,33 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _ => CalendarWeekViewModel
     };
 
+    private static CalendarNavigationBarViewModel.CalendarNavigationViewMode ResolveNavigationViewMode(
+        CalendarView calendarViewMode,
+        int dayColumns,
+        int workWeekDayCount)
+    {
+        return calendarViewMode switch
+        {
+            CalendarView.Month => CalendarNavigationBarViewModel.CalendarNavigationViewMode.Month,
+            CalendarView.Agenda => CalendarNavigationBarViewModel.CalendarNavigationViewMode.Agenda,
+            CalendarView.Week when dayColumns == 1 => CalendarNavigationBarViewModel.CalendarNavigationViewMode.Day,
+            CalendarView.Week when dayColumns == workWeekDayCount => CalendarNavigationBarViewModel
+                .CalendarNavigationViewMode.WorkWeek,
+            CalendarView.Week => CalendarNavigationBarViewModel.CalendarNavigationViewMode.Week,
+            _ => CalendarNavigationBarViewModel.CalendarNavigationViewMode.Week
+        };
+    }
+
     private void SetupNavigationBar()
     {
         ActiveCalendarViewModel = ResolveActiveViewModel();
         CalendarListViewModel.ActiveCalendarViewModel = ActiveCalendarViewModel;
 
-        CalendarNavigationBarViewModel.IsMonthView = IsMonthView;
-        CalendarNavigationBarViewModel.IsFiveDaysView = IsWorkWeekView;
-        CalendarNavigationBarViewModel.IsDayView = IsDayView;
-        CalendarNavigationBarViewModel.IsWeekView = IsWeekView && !IsWorkWeekView && !IsDayView;
-        CalendarNavigationBarViewModel.IsAgendaView = IsAgendaView;
+        CalendarNavigationBarViewModel.SetSelectedViewMode(
+            ResolveNavigationViewMode(
+                CalendarViewMode,
+                CalendarWeekViewModel.DayColumns,
+                CalendarWeekViewModel.WorkWeekDayCount));
 
         CalendarNavigationBarViewModel.ShowMonthViewCommand = ShowMonthViewCommand;
         CalendarNavigationBarViewModel.ShowWeekViewCommand = ShowWeekViewCommand;
@@ -249,8 +303,6 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private void ShowWeekView()
     {
         CalendarViewMode = CalendarView.Week;
-        IsWorkWeekView = false;
-        IsDayView = false;
         CalendarWeekViewModel.DayColumns = 7;
         LoadCurrentCalendarView();
     }
@@ -259,8 +311,6 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private void ShowFiveDaysView()
     {
         CalendarViewMode = CalendarView.Week;
-        IsWorkWeekView = true;
-        IsDayView = false;
         CalendarWeekViewModel.DayColumns = CalendarWeekViewModel.WorkWeekDayCount;
         LoadCurrentCalendarView();
     }
@@ -269,8 +319,6 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private void ShowDayView()
     {
         CalendarViewMode = CalendarView.Week;
-        IsWorkWeekView = false;
-        IsDayView = true;
         CalendarWeekViewModel.DayColumns = 1;
         LoadCurrentCalendarView();
     }
@@ -282,13 +330,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
         LoadCurrentCalendarView();
     }
 
-    [RelayCommand]
-    private void ShowContactsView()
-    {
-        IsCalendarViewActive = false;
-    }
-
     #region Settings
+
     private SettingsWindow? _settingsWindow;
 
     [RelayCommand]
@@ -301,13 +344,16 @@ public partial class MainWindowViewModel : ObservableRecipient,
         }
 
         _settingsWindow = new SettingsWindow();
-        _settingsWindow.DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService, _calDavService, _cardDavService, _syncService, _settingsWindow, _storage);
+        _settingsWindow.DataContext = new SettingsViewModel(_databaseService, _credentialManager, _googleOAuthService,
+            _calDavService, _cardDavService, _syncService, _settingsWindow, _storage);
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
     }
+
     #endregion
 
     #region About
+
     private AboutDialogWindow? _aboutWindow;
 
     [RelayCommand]
@@ -325,54 +371,72 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _aboutWindow.Closed += (_, _) => _aboutWindow = null;
         _aboutWindow.Show();
     }
+
     #endregion
 
     #region Debug
+
     [RelayCommand]
     private void ShowDebugWindow()
     {
-        if (_debugWindow != null)
+        if (!_debugFeatures.IsDebuggingEnabled)
         {
+            return;
+        }
+
+        if (_debugWindow?.DataContext is DebugWindowViewModel existingViewModel)
+        {
+            existingViewModel.RefreshTriggerEvents();
             _debugWindow.Activate();
             return;
         }
 
-        var reminderService = new ReminderService(_storage, _calendarSource, _syncService.Providers);
-
         _debugWindow = new DebugWindow();
-        _debugWindow.DataContext = new DebugWindowViewModel(reminderService);
+        _debugWindow.DataContext = new DebugWindowViewModel(
+            _reminderService,
+            () => ActiveCalendarViewModel.GetEventsInCurrentRange(),
+            () => ActiveCalendarViewModel.DateRangeDisplay);
         _debugWindow.Closed += (_, _) => _debugWindow = null;
         _debugWindow.Show();
     }
+
+
     #endregion
 
     #region Theme
-    [ObservableProperty]
-    private bool _isLightTheme = true;
 
     [ObservableProperty]
-    private bool _isDarkTheme;
+    public partial bool IsLightTheme { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool IsDarkTheme { get; set; }
 
     [RelayCommand]
     private void SetLightTheme()
     {
-        _themeService.SetTheme(ThemeVariant.Light);
-        IsLightTheme = true;
-        IsDarkTheme = false;
+        _themeService.SetLightTheme();
+        UpdateThemeFlags();
     }
 
     [RelayCommand]
     private void SetDarkTheme()
     {
-        _themeService.SetTheme(ThemeVariant.Dark);
-        IsLightTheme = false;
-        IsDarkTheme = true;
+        _themeService.SetDarkTheme();
+        UpdateThemeFlags();
     }
 
     public Task SaveThemeAsync() => _themeService.SaveThemeAsync();
+
+    private void UpdateThemeFlags()
+    {
+        IsLightTheme = _themeService.IsLightTheme;
+        IsDarkTheme = _themeService.IsDarkTheme;
+    }
+
     #endregion
 
     #region Sync
+
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task Sync(CancellationToken cancellationToken)
     {
@@ -389,17 +453,20 @@ public partial class MainWindowViewModel : ObservableRecipient,
             // Status updates are now handled by the Receive methods via messages
             if (calendarResult.Success)
             {
-                Console.WriteLine($"Calendar sync completed successfully. Synced {calendarResult.SyncedAccounts} accounts.");
+                Console.WriteLine(
+                    $"Calendar sync completed successfully. Synced {calendarResult.SyncedAccounts} accounts.");
                 await CalendarListViewModel.LoadCalendarsAsync();
                 CalendarWeekViewModel.Load();
             }
             else
             {
-                Console.WriteLine($"Calendar sync completed with errors. Synced: {calendarResult.SyncedAccounts}, Failed: {calendarResult.FailedAccounts}");
+                Console.WriteLine(
+                    $"Calendar sync completed with errors. Synced: {calendarResult.SyncedAccounts}, Failed: {calendarResult.FailedAccounts}");
                 foreach (var error in calendarResult.Errors)
                 {
                     Console.WriteLine($"  - {error}");
                 }
+
                 // Still refresh to show any events that were synced
                 await CalendarListViewModel.LoadCalendarsAsync();
                 CalendarWeekViewModel.Load();
@@ -411,16 +478,19 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
             if (contactResult.Success)
             {
-                Console.WriteLine($"Contact sync completed successfully. Synced {contactResult.SyncedAccounts} accounts.");
+                Console.WriteLine(
+                    $"Contact sync completed successfully. Synced {contactResult.SyncedAccounts} accounts.");
                 await ContactsViewModel.LoadAddressBooksAsync();
             }
             else
             {
-                Console.WriteLine($"Contact sync completed with errors. Synced: {contactResult.SyncedAccounts}, Failed: {contactResult.FailedAccounts}");
+                Console.WriteLine(
+                    $"Contact sync completed with errors. Synced: {contactResult.SyncedAccounts}, Failed: {contactResult.FailedAccounts}");
                 foreach (var error in contactResult.Errors)
                 {
                     Console.WriteLine($"  - {error}");
                 }
+
                 // Still refresh the contact list to show any contacts that were synced
                 await ContactsViewModel.LoadAddressBooksAsync();
             }
@@ -452,14 +522,16 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
     public void Receive(SyncAccountProgressMessage message)
     {
-        SyncStatusText = $"Syncing account {message.AccountIndex + 1} of {message.TotalAccounts}: {message.AccountName}";
+        SyncStatusText =
+            $"Syncing account {message.AccountIndex + 1} of {message.TotalAccounts}: {message.AccountName}";
         SyncProgress = message.ProgressPercentage;
         SyncProgressIsIndeterminate = false;
     }
 
     public void Receive(SyncCalendarProgressMessage message)
     {
-        SyncStatusText = $"  Syncing calendar {message.CalendarIndex + 1} of {message.TotalCalendars}: {message.CalendarName}";
+        SyncStatusText =
+            $"  Syncing calendar {message.CalendarIndex + 1} of {message.TotalCalendars}: {message.CalendarName}";
     }
 
     public void Receive(SyncEventsProgressMessage message)
@@ -494,9 +566,11 @@ public partial class MainWindowViewModel : ObservableRecipient,
     public async void Receive(ReAuthenticationRequiredMessage message)
     {
         // Get the main window reference
-        var mainWindow = Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            ? desktop.MainWindow
-            : null;
+        var mainWindow =
+            Application.Current?.ApplicationLifetime is
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
 
         if (mainWindow == null)
         {
@@ -559,7 +633,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
     public void Receive(SyncAddressBookProgressMessage message)
     {
-        SyncStatusText = $"  Syncing address book {message.AddressBookIndex + 1} of {message.TotalAddressBooks}: {message.AddressBookName}";
+        SyncStatusText =
+            $"  Syncing address book {message.AddressBookIndex + 1} of {message.TotalAddressBooks}: {message.AddressBookName}";
     }
 
     public void Receive(SyncContactsProgressMessage message)
@@ -569,10 +644,12 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
     public void Receive(SyncContactProcessingProgressMessage message)
     {
-        SyncStatusText = $"  Syncing contact {message.ContactIndex + 1} of {message.TotalContacts} for {message.AddressBookName}...";
+        SyncStatusText =
+            $"  Syncing contact {message.ContactIndex + 1} of {message.TotalContacts} for {message.AddressBookName}...";
         SyncProgress = message.ProgressPercentage;
         SyncProgressIsIndeterminate = false;
     }
+
     #endregion
 
     #region Window Settings
@@ -582,10 +659,11 @@ public partial class MainWindowViewModel : ObservableRecipient,
         // Enable message registration
         IsActive = true;
 
+        await _debugFeatures.LoadAsync();
+
         // Load and restore theme
         await _themeService.LoadThemeAsync();
-        IsLightTheme = _themeService.IsLightTheme;
-        IsDarkTheme = _themeService.IsDarkTheme;
+        UpdateThemeFlags();
 
         // Load and restore last view state
         await LoadViewStateAsync();
@@ -602,11 +680,11 @@ public partial class MainWindowViewModel : ObservableRecipient,
             var intervalMs = intervalMinutes * 60 * 1000;
 
             _autoSyncTimer = new System.Threading.Timer(
-                _ => 
+                _ =>
                 {
                     if (!IsSyncing)
                     {
-                        Dispatcher.UIThread.InvokeAsync(async () => 
+                        Dispatcher.UIThread.InvokeAsync(async () =>
                         {
                             try
                             {
@@ -637,16 +715,15 @@ public partial class MainWindowViewModel : ObservableRecipient,
             var lastActiveView = await _settingsService.GetLastActiveViewAsync();
             if (lastActiveView.Equals("contacts", StringComparison.OrdinalIgnoreCase))
             {
-                IsCalendarViewActive = false;
+                SelectedMainView = MainViewMode.Contacts;
             }
             else
             {
-                IsCalendarViewActive = true;
                 var lastCalendarView = await _settingsService.GetLastCalendarViewModeAsync();
                 if (Enum.TryParse<CalendarView>(lastCalendarView, out var viewMode))
                 {
                     CalendarViewMode = viewMode;
-                    
+
                     // Restore DayColumns when in Week view
                     if (CalendarViewMode == CalendarView.Week)
                     {
@@ -654,7 +731,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
                         CalendarWeekViewModel.DayColumns = lastDayColumns;
                     }
                 }
-                LoadCurrentCalendarView();
+
+                SelectedMainView = MainViewMode.Calendar;
             }
         }
         catch (Exception ex)
@@ -667,19 +745,22 @@ public partial class MainWindowViewModel : ObservableRecipient,
     {
         try
         {
-            // Save which view is active
-            await _settingsService.SetLastActiveViewAsync(IsCalendarViewActive ? "calendar" : "contacts");
-
-            // Save calendar view mode if in calendar view
-            if (IsCalendarViewActive)
+            switch (SelectedMainView)
             {
-                await _settingsService.SetLastCalendarViewModeAsync(CalendarViewMode.ToString());
-                
-                // Save DayColumns when in Week view
-                if (CalendarViewMode == CalendarView.Week)
-                {
-                    await _settingsService.SetLastCalendarDayColumnsAsync(CalendarWeekViewModel.DayColumns);
-                }
+                case MainViewMode.Contacts:
+                    await _settingsService.SetLastActiveViewAsync("contacts");
+                    break;
+                case MainViewMode.Calendar:
+                    await _settingsService.SetLastActiveViewAsync("calendar");
+                    await _settingsService.SetLastCalendarViewModeAsync(CalendarViewMode.ToString());
+
+                    // Save DayColumns when in Week view
+                    if (CalendarViewMode == CalendarView.Week)
+                    {
+                        await _settingsService.SetLastCalendarDayColumnsAsync(CalendarWeekViewModel.DayColumns);
+                    }
+
+                    break;
             }
         }
         catch (Exception ex)

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:wizard="using:perinma.Views.Settings.AddAccountWizard"
@@ -17,32 +18,33 @@
 
         <StackPanel Spacing="5">
             <TextBlock Text="Server URL" />
-            <TextBox Text="{Binding ServerUrl}" PlaceholderText="https://carddav.example.com" />
+            <atom:LineEdit x:Name="ServerUrlInput" Text="{Binding ServerUrl}" PlaceholderText="https://carddav.example.com" />
         </StackPanel>
 
         <StackPanel Spacing="5">
             <TextBlock Text="Username" />
-            <TextBox Text="{Binding Username}" PlaceholderText="user@example.com" />
+            <atom:LineEdit x:Name="UsernameInput" Text="{Binding Username}" PlaceholderText="user@example.com" />
         </StackPanel>
 
         <StackPanel Spacing="5">
             <TextBlock Text="Password" />
-            <TextBox Text="{Binding Password}" PasswordChar="•" />
+            <atom:LineEdit x:Name="PasswordInput" Text="{Binding Password}" PasswordChar="•" />
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Spacing="10">
-            <Button Content="Test Connection"
-                    Command="{Binding TestConnectionCommand}"
-                    IsEnabled="{Binding !IsLoading}" />
-            <ProgressBar IsIndeterminate="True"
-                         IsVisible="{Binding IsLoading}"
-                         Width="100"
-                         VerticalAlignment="Center" />
+            <atom:Button x:Name="TestConnectionButton"
+                         Content="Test Connection"
+                         Command="{Binding TestConnectionCommand}"
+                         IsEnabled="{Binding !IsLoading}" />
+            <atom:ProgressBar x:Name="ConnectionProgressBar"
+                              IsIndeterminate="True"
+                              IsVisible="{Binding IsLoading}"
+                              Width="100"
+                              VerticalAlignment="Center" />
         </StackPanel>
 
         <TextBlock Text="{Binding StatusMessage}"
                    IsVisible="{Binding !!StatusMessage}"
                    Foreground="{Binding IsConnectionSuccessful, Converter={StaticResource BoolToColorConverter}}" />
     </StackPanel>
-
 </UserControl>

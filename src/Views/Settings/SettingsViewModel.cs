@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
+using AtomUI.Controls;
+using AtomUI.Desktop.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,10 +20,23 @@ using perinma.Utils;
 
 namespace perinma.Views.Settings;
 
-public class SettingsPage
+public sealed class SettingsPage : INavMenuNode
 {
     public required string Name { get; init; }
     public required ViewModelBase ViewModel { get; init; }
+
+    public object Header => Name;
+    public PathIcon Icon => null!;
+    public bool IsEnabled => true;
+    public ITreeNode<INavMenuNode>? ParentNode { get; private set; }
+    public IEnumerable<INavMenuNode> Children => [];
+    public EntityKey? ItemKey => null;
+    public IDataTemplate? HeaderTemplate => null;
+
+    public void UpdateParentNode(INavMenuNode? parentNode)
+    {
+        ParentNode = parentNode;
+    }
 }
 
 public partial class SettingsViewModel : ObservableRecipient,
@@ -40,7 +56,7 @@ public partial class SettingsViewModel : ObservableRecipient,
     [ObservableProperty]
     private string _syncStatusText = string.Empty;
 
-    public SettingsViewModel(DatabaseService databaseService, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService, SyncService syncService, Window parentWindow, SqliteStorage storage)
+    public SettingsViewModel(DatabaseService databaseService, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService, SyncService syncService, Avalonia.Controls.Window parentWindow, SqliteStorage storage)
     {
         _storage = storage;
         var settingsService = new SettingsService(_storage);

@@ -2,23 +2,47 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="perinma.App"
              xmlns:local="using:perinma"
-             RequestedThemeVariant="Light">
-    <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             xmlns:theme="using:perinma.Theme">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <ResourceDictionary.MergedDictionaries>
+                        <MergeResourceInclude Source="avares://perinma/Resources/Theme/LightThemeResources.axaml" />
+                    </ResourceDictionary.MergedDictionaries>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="{x:Static theme:AppThemeVariants.DaybreakBlue}">
+                    <ResourceDictionary.MergedDictionaries>
+                        <MergeResourceInclude Source="avares://perinma/Resources/Theme/LightThemeResources.axaml" />
+                    </ResourceDictionary.MergedDictionaries>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <ResourceDictionary.MergedDictionaries>
+                        <MergeResourceInclude Source="avares://perinma/Resources/Theme/DarkThemeResources.axaml" />
+                    </ResourceDictionary.MergedDictionaries>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="{x:Static theme:AppThemeVariants.DaybreakBlueDark}">
+                    <ResourceDictionary.MergedDictionaries>
+                        <MergeResourceInclude Source="avares://perinma/Resources/Theme/DarkThemeResources.axaml" />
+                    </ResourceDictionary.MergedDictionaries>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
 
     <Application.DataTemplates>
         <local:ViewLocator />
     </Application.DataTemplates>
 
     <Application.Styles>
-        <FluentTheme />
         <Style Selector="CalendarDayButton.highlighted /template/ Border#Root">
-            <Setter Property="Background" Value="#330078D4" />
+            <Setter Property="Background" Value="#331677FF" />
         </Style>
         <Style Selector="CalendarDayButton.highlighted:inactive /template/ Border#Root">
-            <Setter Property="Background" Value="#330078D4" />
+            <Setter Property="Background" Value="#331677FF" />
         </Style>
         <Style Selector="CalendarDayButton.highlighted:inactive /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Foreground" Value="{DynamicResource CalendarViewCalendarItemForeground}" />
+            <Setter Property="Foreground" Value="{DynamicResource AppCalendarInactiveForegroundBrush}" />
         </Style>
     </Application.Styles>
 </Application>

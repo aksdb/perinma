@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -31,8 +32,9 @@ public partial class CalendarAgendaViewModel : CalendarViewModelBase, IRecipient
 
     public CalendarAgendaViewModel(
         ICalendarSource calendarSource,
-        SettingsService? settingsService = null)
-        : base(calendarSource, settingsService)
+        SettingsService? settingsService = null,
+        DebugFeaturesService? debugFeatures = null)
+        : base(calendarSource, settingsService, debugFeatures)
     {
         WeakReferenceMessenger.Default.Register<EventsChangedMessage>(this);
     }
@@ -59,16 +61,7 @@ public partial class CalendarAgendaViewModel : CalendarViewModelBase, IRecipient
     {
         AgendaDays.Clear();
 
-        var startDate = ViewStart.ToLocalDateTime();
-        var endDate = startDate.PlusDays(30);
-        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
-        var interval = new Interval(startDate.InZoneLeniently(zone).ToInstant(), endDate.InZoneLeniently(zone).ToInstant());
-
-        var events = _calendarSource.GetCalendarEvents(interval)
-            .Where(e => e.StartTime >= startDate && e.StartTime < endDate)
-            .OrderBy(e => e.StartTime)
-            .ThenBy(e => e.Title)
-            .ToList();
+        var events = GetEventsInCurrentRange();
 
         // Group events by date
         var groupedEvents = events
@@ -103,6 +96,20 @@ public partial class CalendarAgendaViewModel : CalendarViewModelBase, IRecipient
 
             AgendaDays.Add(dayVm);
         }
+    }
+
+    public override IReadOnlyList<CalendarEvent> GetEventsInCurrentRange()
+    {
+        var startDate = ViewStart.ToLocalDateTime();
+        var endDate = startDate.PlusDays(30);
+        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var interval = new Interval(startDate.InZoneLeniently(zone).ToInstant(), endDate.InZoneLeniently(zone).ToInstant());
+
+        return _calendarSource.GetCalendarEvents(interval)
+            .Where(e => e.StartTime >= startDate && e.StartTime < endDate)
+            .OrderBy(e => e.StartTime)
+            .ThenBy(e => e.Title)
+            .ToList();
     }
 
     public void Receive(EventsChangedMessage message)

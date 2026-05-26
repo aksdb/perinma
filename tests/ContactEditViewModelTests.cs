@@ -7,7 +7,7 @@ namespace tests;
 [TestFixture]
 public class ContactEditViewModelTests
 {
-    private static ContactAddressBookOption CreateAddressBookOption()
+    internal static ContactAddressBookOption CreateAddressBookOptionForTests()
     {
         return new ContactAddressBookOption(new AddressBook
         {
@@ -28,7 +28,7 @@ public class ContactEditViewModelTests
     [Test]
     public void Save_NoValues_SetsValidationError()
     {
-        var viewModel = new ContactEditViewModel([CreateAddressBookOption()]);
+        var viewModel = new ContactEditViewModel([CreateAddressBookOptionForTests()]);
 
         viewModel.SaveCommand.Execute(null);
 
@@ -38,7 +38,7 @@ public class ContactEditViewModelTests
     [Test]
     public void Save_WithValues_EmitsNormalizedResult()
     {
-        var option = CreateAddressBookOption();
+        var option = CreateAddressBookOptionForTests();
         var viewModel = new ContactEditViewModel([option]);
         ContactEditResult? result = null;
         viewModel.CloseRequested += value => result = value;

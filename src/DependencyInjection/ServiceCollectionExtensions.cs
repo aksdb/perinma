@@ -21,6 +21,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<SqliteStorage>();
         services.AddSingleton<ThemeService>();
         services.AddSingleton<SettingsService>();
+        services.AddSingleton<DebugFeaturesService>();
+
 
         // Google services
         services.AddSingleton<IGoogleCalendarService, GoogleCalendarService>();
@@ -87,6 +89,7 @@ public static class ServiceCollectionExtensions
             var credentialManager = sp.GetRequiredService<CredentialManagerService>();
             var syncService = sp.GetRequiredService<SyncService>();
             var contactSyncService = sp.GetRequiredService<ContactSyncService>();
+            var reminderService = sp.GetRequiredService<ReminderService>();
             var calDavService = sp.GetRequiredService<CalDavService>();
             var cardDavService = sp.GetRequiredService<CardDavService>();
             var themeService = sp.GetRequiredService<ThemeService>();
@@ -95,12 +98,15 @@ public static class ServiceCollectionExtensions
             var googleCalendarService = sp.GetRequiredService<GoogleCalendarService>();
             var googleOAuthService = sp.GetRequiredService<GoogleOAuthService>();
             var calendarSource = sp.GetRequiredService<ICalendarSource>();
+            var debugFeatures = sp.GetRequiredService<DebugFeaturesService>();
+
 
             return new Views.Main.MainWindowViewModel(
                 databaseService,
                 credentialManager,
                 syncService,
                 contactSyncService,
+                reminderService,
                 calDavService,
                 cardDavService,
                 themeService,
@@ -108,7 +114,8 @@ public static class ServiceCollectionExtensions
                 storage,
                 googleCalendarService,
                 googleOAuthService,
-                calendarSource);
+                calendarSource,
+                debugFeatures);
         });
 
         return services;

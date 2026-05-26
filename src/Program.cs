@@ -1,4 +1,5 @@
-﻿using Avalonia;
+using AtomUI;
+using Avalonia;
 using System;
 
 namespace perinma;
@@ -16,6 +17,6 @@ sealed class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
-            .WithInterFont()
+            .WithAtomUIDefaultOptions()
             .LogToTrace();
 }
