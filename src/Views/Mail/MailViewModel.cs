@@ -728,15 +728,17 @@ public partial class MailViewModel : ViewModelBase
             if (!string.Equals(Messages[index].MessageId, messageId, StringComparison.Ordinal))
                 continue;
 
-            Messages[index] = updatedMessage;
-            if (SelectedMessage?.MessageId == messageId)
-                SelectedMessage = updatedMessage;
+            var existingMessage = Messages[index];
+            existingMessage.UpdateFrom(updatedMessage);
+            if (SelectedMessage?.MessageId == messageId && !ReferenceEquals(SelectedMessage, existingMessage))
+                SelectedMessage = existingMessage;
             return;
         }
 
         if (SelectedMessage?.MessageId == messageId)
             SelectedMessage = updatedMessage;
     }
+
 
     private void ClearSelectedMessageDetails()
     {
@@ -1008,7 +1010,7 @@ public sealed class ThreadItemViewModel
     public string CompactTimestampText => TimestampText;
 }
 
-public sealed class MessageItemViewModel
+public sealed class MessageItemViewModel : ObservableObject
 {
     public MessageItemViewModel(MailMessageQueryResult message)
     {
@@ -1016,48 +1018,49 @@ public sealed class MessageItemViewModel
         ThreadId = message.ThreadId;
         AccountId = message.AccountId;
         AccountType = message.AccountTypeEnum;
-        ExternalId = message.ExternalId;
-        Subject = string.IsNullOrWhiteSpace(message.Subject) ? "(no subject)" : message.Subject;
-        SenderName = message.SenderName;
-        SenderAddress = message.SenderAddress;
-        Preview = message.Preview;
-        PlainTextBody = message.PlainTextBody;
-        HtmlBody = message.HtmlBody;
-        HasHtmlBody = message.MessageHasHtmlBody;
-        HasPlainTextBody = message.MessageHasPlainTextBody;
-        HasAttachments = message.MessageHasAttachments;
-        HasExternalResources = message.MessageHasExternalResources;
-        HasBlockedContent = message.MessageHasBlockedContent;
-        IsUnread = message.MessageIsUnread;
-        IsStarred = message.MessageIsStarred;
-        IsAnswered = message.MessageIsAnswered;
-        IsDraft = message.MessageIsDraft;
-        SentAt = message.SentAt.HasValue ? DateTimeOffset.FromUnixTimeSeconds(message.SentAt.Value) : null;
-        ReceivedAt = message.ReceivedAt.HasValue ? DateTimeOffset.FromUnixTimeSeconds(message.ReceivedAt.Value) : null;
+        Apply(
+            message.ExternalId,
+            string.IsNullOrWhiteSpace(message.Subject) ? "(no subject)" : message.Subject,
+            message.SenderName,
+            message.SenderAddress,
+            message.Preview,
+            message.PlainTextBody,
+            message.HtmlBody,
+            message.MessageHasHtmlBody,
+            message.MessageHasPlainTextBody,
+            message.MessageHasAttachments,
+            message.MessageHasExternalResources,
+            message.MessageHasBlockedContent,
+            message.MessageIsUnread,
+            message.MessageIsStarred,
+            message.MessageIsAnswered,
+            message.MessageIsDraft,
+            message.SentAt.HasValue ? DateTimeOffset.FromUnixTimeSeconds(message.SentAt.Value) : null,
+            message.ReceivedAt.HasValue ? DateTimeOffset.FromUnixTimeSeconds(message.ReceivedAt.Value) : null);
     }
 
     public string MessageId { get; }
     public string ThreadId { get; }
     public string AccountId { get; }
     public AccountType AccountType { get; }
-    public string? ExternalId { get; }
-    public string Subject { get; }
-    public string? SenderName { get; }
-    public string? SenderAddress { get; }
-    public string? Preview { get; }
-    public string? PlainTextBody { get; }
-    public string? HtmlBody { get; }
-    public bool HasHtmlBody { get; }
-    public bool HasPlainTextBody { get; }
-    public bool HasAttachments { get; }
-    public bool HasExternalResources { get; }
-    public bool HasBlockedContent { get; }
-    public bool IsUnread { get; }
-    public bool IsStarred { get; }
-    public bool IsAnswered { get; }
-    public bool IsDraft { get; }
-    public DateTimeOffset? SentAt { get; }
-    public DateTimeOffset? ReceivedAt { get; }
+    public string? ExternalId { get; private set; }
+    public string Subject { get; private set; } = string.Empty;
+    public string? SenderName { get; private set; }
+    public string? SenderAddress { get; private set; }
+    public string? Preview { get; private set; }
+    public string? PlainTextBody { get; private set; }
+    public string? HtmlBody { get; private set; }
+    public bool HasHtmlBody { get; private set; }
+    public bool HasPlainTextBody { get; private set; }
+    public bool HasAttachments { get; private set; }
+    public bool HasExternalResources { get; private set; }
+    public bool HasBlockedContent { get; private set; }
+    public bool IsUnread { get; private set; }
+    public bool IsStarred { get; private set; }
+    public bool IsAnswered { get; private set; }
+    public bool IsDraft { get; private set; }
+    public DateTimeOffset? SentAt { get; private set; }
+    public DateTimeOffset? ReceivedAt { get; private set; }
 
     public string SenderDisplay => string.IsNullOrWhiteSpace(SenderName)
         ? SenderAddress ?? "Unknown sender"
@@ -1067,6 +1070,95 @@ public sealed class MessageItemViewModel
 
     public string TimestampText => (ReceivedAt ?? SentAt)?.ToLocalTime().ToString("f") ?? string.Empty;
     public string CompactTimestampText => (ReceivedAt ?? SentAt)?.ToLocalTime().ToString("g") ?? string.Empty;
+
+    public void UpdateFrom(MessageItemViewModel message)
+    {
+        Apply(
+            message.ExternalId,
+            message.Subject,
+            message.SenderName,
+            message.SenderAddress,
+            message.Preview,
+            message.PlainTextBody,
+            message.HtmlBody,
+            message.HasHtmlBody,
+            message.HasPlainTextBody,
+            message.HasAttachments,
+            message.HasExternalResources,
+            message.HasBlockedContent,
+            message.IsUnread,
+            message.IsStarred,
+            message.IsAnswered,
+            message.IsDraft,
+            message.SentAt,
+            message.ReceivedAt);
+        RaiseChanged();
+    }
+
+    private void Apply(
+        string? externalId,
+        string subject,
+        string? senderName,
+        string? senderAddress,
+        string? preview,
+        string? plainTextBody,
+        string? htmlBody,
+        bool hasHtmlBody,
+        bool hasPlainTextBody,
+        bool hasAttachments,
+        bool hasExternalResources,
+        bool hasBlockedContent,
+        bool isUnread,
+        bool isStarred,
+        bool isAnswered,
+        bool isDraft,
+        DateTimeOffset? sentAt,
+        DateTimeOffset? receivedAt)
+    {
+        ExternalId = externalId;
+        Subject = subject;
+        SenderName = senderName;
+        SenderAddress = senderAddress;
+        Preview = preview;
+        PlainTextBody = plainTextBody;
+        HtmlBody = htmlBody;
+        HasHtmlBody = hasHtmlBody;
+        HasPlainTextBody = hasPlainTextBody;
+        HasAttachments = hasAttachments;
+        HasExternalResources = hasExternalResources;
+        HasBlockedContent = hasBlockedContent;
+        IsUnread = isUnread;
+        IsStarred = isStarred;
+        IsAnswered = isAnswered;
+        IsDraft = isDraft;
+        SentAt = sentAt;
+        ReceivedAt = receivedAt;
+    }
+
+    private void RaiseChanged()
+    {
+        OnPropertyChanged(nameof(ExternalId));
+        OnPropertyChanged(nameof(Subject));
+        OnPropertyChanged(nameof(SenderName));
+        OnPropertyChanged(nameof(SenderAddress));
+        OnPropertyChanged(nameof(Preview));
+        OnPropertyChanged(nameof(PlainTextBody));
+        OnPropertyChanged(nameof(HtmlBody));
+        OnPropertyChanged(nameof(HasHtmlBody));
+        OnPropertyChanged(nameof(HasPlainTextBody));
+        OnPropertyChanged(nameof(HasAttachments));
+        OnPropertyChanged(nameof(HasExternalResources));
+        OnPropertyChanged(nameof(HasBlockedContent));
+        OnPropertyChanged(nameof(IsUnread));
+        OnPropertyChanged(nameof(IsStarred));
+        OnPropertyChanged(nameof(IsAnswered));
+        OnPropertyChanged(nameof(IsDraft));
+        OnPropertyChanged(nameof(SentAt));
+        OnPropertyChanged(nameof(ReceivedAt));
+        OnPropertyChanged(nameof(SenderDisplay));
+        OnPropertyChanged(nameof(TimestampText));
+        OnPropertyChanged(nameof(CompactTimestampText));
+    }
 }
 
 public sealed class AttachmentItemViewModel
