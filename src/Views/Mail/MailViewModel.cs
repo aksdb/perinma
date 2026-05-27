@@ -451,9 +451,8 @@ public partial class MailViewModel : ViewModelBase
             if (hydratedMessage != null)
             {
                 if (SelectedMessage?.MessageId == message.MessageId)
-                {
-                    SelectedMessage = hydratedMessage;
-                }
+                    ReplaceMessage(message.MessageId, hydratedMessage);
+
 
                 return;
             }
@@ -720,6 +719,23 @@ public partial class MailViewModel : ViewModelBase
         mailbox.TotalCount = messages.Count;
         mailbox.UnreadCount = messages.Count(message => message.MessageIsUnread);
         await _storage.CreateOrUpdateMailboxAsync(mailbox);
+    }
+
+    private void ReplaceMessage(string messageId, MessageItemViewModel updatedMessage)
+    {
+        for (var index = 0; index < Messages.Count; index++)
+        {
+            if (!string.Equals(Messages[index].MessageId, messageId, StringComparison.Ordinal))
+                continue;
+
+            Messages[index] = updatedMessage;
+            if (SelectedMessage?.MessageId == messageId)
+                SelectedMessage = updatedMessage;
+            return;
+        }
+
+        if (SelectedMessage?.MessageId == messageId)
+            SelectedMessage = updatedMessage;
     }
 
     private void ClearSelectedMessageDetails()
