@@ -701,20 +701,45 @@ public class JmapMailService(HttpClient? httpClient = null)
             return primaryMailAccount.GetString()!;
         }
 
-        if (session.TryGetProperty("accounts", out var accounts) && accounts.ValueKind == JsonValueKind.Object)
+        if (!session.TryGetProperty("accounts", out var accounts) || accounts.ValueKind != JsonValueKind.Object)
+            throw new InvalidOperationException("JMAP session did not include any accounts.");
+
+        string? bestAccountId = null;
+        var bestRank = -1;
+
+        foreach (var accountProperty in accounts.EnumerateObject())
         {
-            foreach (var accountProperty in accounts.EnumerateObject())
-            {
-                if (accountProperty.Value.TryGetProperty("accountCapabilities", out var accountCapabilities)
-                    && accountCapabilities.ValueKind == JsonValueKind.Object
-                    && accountCapabilities.TryGetProperty(MailCapability, out _))
-                {
-                    return accountProperty.Name;
-                }
-            }
+            var rank = RankMailAccountCandidate(accountProperty.Value);
+            if (rank <= bestRank)
+                continue;
+
+            bestAccountId = accountProperty.Name;
+            bestRank = rank;
         }
 
-        throw new InvalidOperationException("JMAP session does not expose a mail-capable account.");
+        if (!string.IsNullOrWhiteSpace(bestAccountId))
+            return bestAccountId;
+
+        throw new InvalidOperationException("JMAP session does not expose any usable accounts.");
+    }
+
+    private static int RankMailAccountCandidate(JsonElement account)
+    {
+        var rank = 0;
+        if (account.TryGetProperty("accountCapabilities", out var accountCapabilities)
+            && accountCapabilities.ValueKind == JsonValueKind.Object
+            && accountCapabilities.TryGetProperty(MailCapability, out _))
+        {
+            rank += 4;
+        }
+
+        if (GetBoolean(account, "isPersonal") == true)
+            rank += 2;
+
+        if (GetBoolean(account, "isReadOnly") != true)
+            rank += 1;
+
+        return rank;
     }
 
     private static HttpRequestMessage CreateRequest(HttpMethod method, string url, JmapCredentials credentials, bool acceptJson = true)
