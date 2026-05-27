@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Net;
+
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -20,6 +22,8 @@ public class JmapMailService(HttpClient? httpClient = null)
     private const int QueryPageSize = 250;
     private const int GetBatchSize = 100;
     private const string MethodCallId = "c0";
+    private const int MaxRedirects = 10;
+
 
     private readonly HttpClient _httpClient = httpClient ?? CreateHttpClient();
 
@@ -117,11 +121,17 @@ public class JmapMailService(HttpClient? httpClient = null)
             fileName ?? blobId,
             mimeType ?? "application/octet-stream");
 
-        using var request = CreateRequest(HttpMethod.Get, downloadUrl, credentials, acceptJson: false);
-        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await SendRequestAsync(
+            HttpMethod.Get,
+            downloadUrl,
+            credentials,
+            acceptJson: false,
+            completionOption: HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken: cancellationToken);
         var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
             throw CreateHttpException("download JMAP blob", response, Encoding.UTF8.GetString(content));
+
 
         return content;
     }
@@ -254,11 +264,15 @@ public class JmapMailService(HttpClient? httpClient = null)
         JmapCredentials credentials,
         CancellationToken cancellationToken = default)
     {
-        using var request = CreateRequest(HttpMethod.Get, credentials.SessionUrl, credentials);
-        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        using var response = await SendRequestAsync(
+            HttpMethod.Get,
+            credentials.SessionUrl,
+            credentials,
+            cancellationToken: cancellationToken);
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
             throw CreateHttpException("discover JMAP session", response, content);
+
 
         using var document = JsonDocument.Parse(content);
         var root = document.RootElement;
@@ -601,13 +615,16 @@ public class JmapMailService(HttpClient? httpClient = null)
             }
         };
 
-        using var request = CreateRequest(HttpMethod.Post, session.ApiUrl, session.Credentials);
-        request.Content = new StringContent(requestBody.ToJsonString(), Encoding.UTF8, "application/json");
-
-        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        using var response = await SendRequestAsync(
+            HttpMethod.Post,
+            session.ApiUrl,
+            session.Credentials,
+            content: new StringContent(requestBody.ToJsonString(), Encoding.UTF8, "application/json"),
+            cancellationToken: cancellationToken);
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
             throw CreateHttpException($"invoke JMAP method '{methodName}'", response, content);
+
 
         using var document = JsonDocument.Parse(content);
         var root = document.RootElement;
@@ -765,9 +782,95 @@ public class JmapMailService(HttpClient? httpClient = null)
         throw new InvalidOperationException("JMAP credentials must include either a bearer token or username/password.");
     }
 
+    private async Task<HttpResponseMessage> SendRequestAsync(
+        HttpMethod method,
+        string url,
+        JmapCredentials credentials,
+        bool acceptJson = true,
+        HttpContent? content = null,
+        HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead,
+        CancellationToken cancellationToken = default)
+    {
+        byte[]? contentBytes = null;
+        List<KeyValuePair<string, string[]>>? contentHeaders = null;
+        if (content != null)
+        {
+            contentBytes = await content.ReadAsByteArrayAsync(cancellationToken);
+            contentHeaders = content.Headers
+                .Select(header => new KeyValuePair<string, string[]>(header.Key, header.Value.ToArray()))
+                .ToList();
+        }
+
+        var currentMethod = method;
+        var currentUrl = url;
+        for (var redirectCount = 0; redirectCount <= MaxRedirects; redirectCount++)
+        {
+            using var request = CreateRequest(currentMethod, currentUrl, credentials, acceptJson);
+            if (contentBytes != null && MethodAllowsContent(currentMethod))
+            {
+                var clonedContent = new ByteArrayContent(contentBytes);
+                foreach (var header in contentHeaders ?? [])
+                    clonedContent.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                request.Content = clonedContent;
+            }
+
+            var response = await _httpClient.SendAsync(request, completionOption, cancellationToken);
+            if (!IsRedirect(response.StatusCode) || response.Headers.Location == null)
+                return response;
+
+            currentUrl = ResolveRedirectUrl(currentUrl, response.Headers.Location);
+            currentMethod = GetRedirectMethod(currentMethod, response.StatusCode);
+            if (!MethodAllowsContent(currentMethod))
+            {
+                contentBytes = null;
+                contentHeaders = null;
+            }
+
+            response.Dispose();
+        }
+
+        throw new InvalidOperationException($"JMAP request exceeded {MaxRedirects} redirects.");
+    }
+
+    private static bool MethodAllowsContent(HttpMethod method) => method != HttpMethod.Get && method != HttpMethod.Head;
+
+    private static bool IsRedirect(HttpStatusCode statusCode)
+    {
+        return statusCode is HttpStatusCode.MovedPermanently
+            or HttpStatusCode.Found
+            or HttpStatusCode.RedirectMethod
+            or HttpStatusCode.TemporaryRedirect
+            or HttpStatusCode.PermanentRedirect;
+    }
+
+    private static string ResolveRedirectUrl(string currentUrl, Uri location)
+    {
+        if (location.IsAbsoluteUri)
+            return location.ToString();
+
+        return new Uri(new Uri(currentUrl), location).ToString();
+    }
+
+    private static HttpMethod GetRedirectMethod(HttpMethod method, HttpStatusCode statusCode)
+    {
+        if (statusCode == HttpStatusCode.SeeOther)
+            return HttpMethod.Get;
+
+        if ((statusCode == HttpStatusCode.MovedPermanently || statusCode == HttpStatusCode.Found)
+            && method == HttpMethod.Post)
+        {
+            return HttpMethod.Get;
+        }
+
+        return method;
+    }
+
     private static HttpClient CreateHttpClient()
     {
-        var client = new HttpClient();
+        var client = new HttpClient(new HttpClientHandler
+        {
+            AllowAutoRedirect = false
+        });
         client.DefaultRequestHeaders.UserAgent.ParseAdd("perinma/1.0");
         return client;
     }
