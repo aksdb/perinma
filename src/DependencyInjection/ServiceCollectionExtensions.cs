@@ -6,6 +6,7 @@ using perinma.Services;
 using perinma.Services.CalDAV;
 using perinma.Services.CardDAV;
 using perinma.Services.Google;
+using perinma.Services.Jmap;
 using perinma.Storage;
 
 namespace perinma.DependencyInjection;
@@ -16,7 +17,7 @@ public static class ServiceCollectionExtensions
     {
         // Core services
         services.AddSingleton<DatabaseService>();
-        services.AddSingleton<CredentialManagerService>(sp => 
+        services.AddSingleton<CredentialManagerService>(sp =>
             new CredentialManagerService(PlatformCredentialStore.Create("perinma")));
         services.AddSingleton<SqliteStorage>();
         services.AddSingleton<ThemeService>();
@@ -32,6 +33,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GooglePeopleService>();
         services.AddSingleton<GoogleCalendarProvider>();
         services.AddSingleton<GoogleContactProvider>();
+        services.AddSingleton<GoogleMailService>();
+        services.AddSingleton<GoogleMailProvider>();
 
         // CalDAV services
         services.AddSingleton<ICalDavService, CalDavService>();
@@ -43,11 +46,22 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CardDavService>();
         services.AddSingleton<CardDavContactProvider>();
 
+        // JMAP mail services
+        services.AddSingleton<JmapMailService>();
+        services.AddSingleton<JmapMailProvider>();
+
         services.AddSingleton<IReadOnlyDictionary<AccountType, ICalendarProvider>>(sp =>
             new Dictionary<AccountType, ICalendarProvider>
             {
                 [AccountType.Google] = sp.GetRequiredService<GoogleCalendarProvider>(),
                 [AccountType.CalDav] = sp.GetRequiredService<CalDavCalendarProvider>()
+            });
+
+        services.AddSingleton<IReadOnlyDictionary<AccountType, IMailProvider>>(sp =>
+            new Dictionary<AccountType, IMailProvider>
+            {
+                [AccountType.Google] = sp.GetRequiredService<GoogleMailProvider>(),
+                [AccountType.Jmap] = sp.GetRequiredService<JmapMailProvider>()
             });
 
         // ReminderService - requires calendar providers
@@ -64,6 +78,12 @@ public static class ServiceCollectionExtensions
                 sp.GetRequiredService<CredentialManagerService>(),
                 sp.GetRequiredService<IReadOnlyDictionary<AccountType, ICalendarProvider>>(),
                 sp.GetRequiredService<ReminderService>()));
+
+        // MailSyncService - requires mail providers
+        services.AddSingleton<MailSyncService>(sp =>
+            new MailSyncService(
+                sp.GetRequiredService<SqliteStorage>(),
+                sp.GetRequiredService<IReadOnlyDictionary<AccountType, IMailProvider>>()));
 
         // ContactSyncService - requires contact providers
         services.AddSingleton<ContactSyncService>(sp =>
@@ -89,6 +109,7 @@ public static class ServiceCollectionExtensions
             var credentialManager = sp.GetRequiredService<CredentialManagerService>();
             var syncService = sp.GetRequiredService<SyncService>();
             var contactSyncService = sp.GetRequiredService<ContactSyncService>();
+            var mailSyncService = sp.GetRequiredService<MailSyncService>();
             var reminderService = sp.GetRequiredService<ReminderService>();
             var calDavService = sp.GetRequiredService<CalDavService>();
             var cardDavService = sp.GetRequiredService<CardDavService>();
@@ -106,6 +127,7 @@ public static class ServiceCollectionExtensions
                 credentialManager,
                 syncService,
                 contactSyncService,
+                mailSyncService,
                 reminderService,
                 calDavService,
                 cardDavService,
