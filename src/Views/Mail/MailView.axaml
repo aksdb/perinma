@@ -1,0 +1,385 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:atom="https://atomui.net"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:mail="using:perinma.Views.Mail"
+             xmlns:models="using:perinma.Models"
+             x:Class="perinma.Views.Mail.MailView"
+             x:DataType="mail:MailViewModel"
+             mc:Ignorable="d"
+             d:DesignWidth="1200"
+             d:DesignHeight="700">
+
+    <Grid RowDefinitions="Auto,*,Auto"
+          ColumnDefinitions="260,Auto,340,Auto,*">
+        <Border Grid.RowSpan="3"
+                Grid.Column="0"
+                BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                BorderThickness="0,0,1,0">
+            <DockPanel Margin="10">
+                <StackPanel DockPanel.Dock="Top" Spacing="4">
+                    <DockPanel>
+                        <TextBlock Text="Mailboxes"
+                                   FontSize="16"
+                                   FontWeight="Bold"/>
+                        <TextBlock DockPanel.Dock="Right"
+                                   Text="{Binding Mailboxes.Count, StringFormat='({0})'}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                   VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <TextBlock Text="Local mailbox state from synced accounts"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                </StackPanel>
+
+                <atom:ListBox x:Name="MailboxListBox" ItemsSource="{Binding Mailboxes}"
+                              SelectedItem="{Binding SelectedMailbox}"
+                              Margin="0,10,0,0"
+                              Background="Transparent"
+                              BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="mail:MailboxItemViewModel">
+                            <Border Padding="6,8" Background="Transparent">
+                                <StackPanel Spacing="2">
+                                    <DockPanel>
+                                        <TextBlock Text="{Binding DisplayName}"
+                                                   FontWeight="Medium"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock DockPanel.Dock="Right"
+                                                   Text="{Binding CountText}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                                   Margin="8,0,0,0"/>
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding AccountContext}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding LastSyncText}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </atom:ListBox>
+            </DockPanel>
+        </Border>
+
+        <GridSplitter Grid.RowSpan="3"
+                      Grid.Column="1"
+                      Width="4"
+                      Background="Transparent"
+                      ResizeDirection="Columns"
+                      ResizeBehavior="PreviousAndNext"/>
+
+        <Border Grid.Row="0"
+                Grid.Column="2"
+                Grid.ColumnSpan="3"
+                Padding="10,10,10,8"
+                BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto,180"
+                  ColumnSpacing="8">
+                <atom:Button x:Name="RefreshMailButton" Grid.Column="0"
+                             Content="Refresh"
+                             Command="{Binding RefreshCommand}"
+                             Padding="10,4"/>
+                <atom:Button x:Name="MarkReadButton" Grid.Column="1"
+                             Content="Read"
+                             Command="{Binding MarkReadCommand}"
+                             IsEnabled="{Binding HasSelectedThread}"
+                             Padding="10,4"/>
+                <atom:Button x:Name="MarkUnreadButton" Grid.Column="2"
+                             Content="Unread"
+                             Command="{Binding MarkUnreadCommand}"
+                             IsEnabled="{Binding HasSelectedThread}"
+                             Padding="10,4"/>
+                <atom:Button x:Name="StarButton" Grid.Column="3"
+                             Content="Star"
+                             Command="{Binding StarCommand}"
+                             IsEnabled="{Binding HasSelectedThread}"
+                             Padding="10,4"/>
+                <atom:Button x:Name="UnstarButton" Grid.Column="4"
+                             Content="Unstar"
+                             Command="{Binding UnstarCommand}"
+                             IsEnabled="{Binding HasSelectedThread}"
+                             Padding="10,4"/>
+                <atom:Button x:Name="ArchiveMailButton" Grid.Column="5"
+                             Content="Archive"
+                             Command="{Binding ArchiveCommand}"
+                             IsEnabled="{Binding HasSelectedThread}"
+                             Padding="10,4"/>
+                <atom:Button x:Name="DeleteMailButton" Grid.Column="6"
+                             Content="Delete"
+                             Command="{Binding DeleteCommand}"
+                             IsEnabled="{Binding HasSelectedThread}"
+                             Padding="10,4"/>
+                <TextBlock Grid.Column="8"
+                           Text="Preview"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                <atom:ComboBox x:Name="BodyModeComboBox" Grid.Column="9"
+                               SelectedItem="{Binding SelectedBodyMode}">
+                    <ComboBox.Items>
+                        <models:MailBodyKind>Auto</models:MailBodyKind>
+                        <models:MailBodyKind>PlainText</models:MailBodyKind>
+                        <models:MailBodyKind>Html</models:MailBodyKind>
+                    </ComboBox.Items>
+                </atom:ComboBox>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1"
+                Grid.Column="2"
+                BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                BorderThickness="0,0,1,0">
+            <DockPanel Margin="10">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                    <TextBlock Text="Threads"
+                               FontSize="16"
+                               FontWeight="Bold"/>
+                    <TextBlock DockPanel.Dock="Right"
+                               Text="{Binding Threads.Count, StringFormat='({0})'}"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppTextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+                </DockPanel>
+
+                <atom:ListBox x:Name="ThreadListBox" ItemsSource="{Binding Threads}"
+                              SelectedItem="{Binding SelectedThread}"
+                              Background="Transparent"
+                              BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="mail:ThreadItemViewModel">
+                            <Border Padding="6,8" Background="Transparent">
+                                <StackPanel Spacing="3">
+                                    <DockPanel>
+                                        <TextBlock Text="{Binding Subject}"
+                                                   FontWeight="Medium"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock DockPanel.Dock="Right"
+                                                   Text="{Binding CompactTimestampText}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                                   Margin="8,0,0,0"/>
+                                    </DockPanel>
+                                    <DockPanel>
+                                        <TextBlock Text="{Binding ParticipantsSummary}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock DockPanel.Dock="Right"
+                                                   Text="{Binding CountText}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                                   Margin="8,0,0,0"/>
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding Preview}"
+                                               FontSize="11"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxLines="2"
+                                               Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </atom:ListBox>
+            </DockPanel>
+        </Border>
+
+        <GridSplitter Grid.RowSpan="2"
+                      Grid.Column="3"
+                      Width="4"
+                      Background="Transparent"
+                      ResizeDirection="Columns"
+                      ResizeBehavior="PreviousAndNext"/>
+
+        <Border Grid.Row="1"
+                Grid.Column="4">
+            <Grid RowDefinitions="Auto,220,*">
+                <StackPanel Grid.Row="0" Margin="12,10,12,8" Spacing="4">
+                    <TextBlock Text="{Binding SelectedThread.Subject, FallbackValue='Preview'}"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding SelectedThread.ParticipantsSummary}"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppTextSecondaryBrush}"
+                               TextTrimming="CharacterEllipsis"
+                               IsVisible="{Binding HasSelectedThread}"/>
+                    <TextBlock Text="Select a mailbox and thread to preview synced mail."
+                               FontSize="13"
+                               Foreground="{DynamicResource AppTextSecondaryBrush}"
+                               IsVisible="{Binding !HasSelectedThread}"/>
+                </StackPanel>
+
+                <Border Grid.Row="1"
+                        Margin="12,0,12,10"
+                        BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        IsVisible="{Binding HasSelectedThread}">
+                    <DockPanel Margin="8">
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="Messages"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+                        <atom:ListBox ItemsSource="{Binding Messages}"
+                                      SelectedItem="{Binding SelectedMessage}"
+                                      Background="Transparent"
+                                      BorderThickness="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="mail:MessageItemViewModel">
+                                    <Border Padding="4,6" Background="Transparent">
+                                        <StackPanel Spacing="2">
+                                            <DockPanel>
+                                                <TextBlock Text="{Binding SenderDisplay}"
+                                                           FontWeight="Medium"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock DockPanel.Dock="Right"
+                                                           Text="{Binding CompactTimestampText}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                                           Margin="8,0,0,0"/>
+                                            </DockPanel>
+                                            <DockPanel>
+                                                <TextBlock Text="{Binding Subject}"
+                                                           FontSize="11"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock DockPanel.Dock="Right"
+                                                           Text="★"
+                                                           Foreground="{DynamicResource AppAccentBrush}"
+                                                           IsVisible="{Binding IsStarred}"
+                                                           Margin="8,0,0,0"/>
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding Preview}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource AppTextSecondaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="2"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </atom:ListBox>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Row="2"
+                        Margin="12,0,12,12"
+                        BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        IsVisible="{Binding HasSelectedMessage}">
+                    <atom:ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="12" Spacing="10">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding SelectedMessage.Subject}"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding SelectedMessage.SenderDisplay}"
+                                           FontSize="13"
+                                           TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding SelectedMessage.TimestampText}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{Binding SelectedMessageToSummary, StringFormat='To: {0}'}"
+                                           TextWrapping="Wrap"
+                                           IsVisible="{Binding SelectedMessageToSummary.Length}"/>
+                                <TextBlock Text="{Binding SelectedMessageCcSummary, StringFormat='Cc: {0}'}"
+                                           TextWrapping="Wrap"
+                                           IsVisible="{Binding SelectedMessageCcSummary.Length}"/>
+                                <TextBlock Text="{Binding SelectedMessageReplyToSummary, StringFormat='Reply-To: {0}'}"
+                                           TextWrapping="Wrap"
+                                           IsVisible="{Binding SelectedMessageReplyToSummary.Length}"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="8">
+                                <Border Background="{DynamicResource AppWarningBrush}"
+                                        CornerRadius="4"
+                                        Padding="10,8"
+                                        IsVisible="{Binding SelectedMessageSecurityNotice.Length}">
+                                    <TextBlock Text="{Binding SelectedMessageSecurityNotice}"
+                                               TextWrapping="Wrap"
+                                               Foreground="White"/>
+                                </Border>
+
+                                <atom:Button Content="Load external resources for this message"
+                                             Command="{Binding EnableExternalResourcesCommand}"
+                                             IsVisible="{Binding CanEnableSelectedMessageExternalResources}"
+                                             HorizontalAlignment="Left"
+                                             Padding="10,4"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="6" IsVisible="{Binding SelectedMessageAttachments.Count}">
+                                <TextBlock Text="Attachments"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"/>
+                                <ItemsControl ItemsSource="{Binding SelectedMessageAttachments}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="mail:AttachmentItemViewModel">
+                                            <Border BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Padding="8,6"
+                                                    Margin="0,0,0,6">
+                                                <DockPanel>
+                                                    <atom:Button DockPanel.Dock="Right"
+                                                                 Content="Open"
+                                                                 Command="{Binding OpenCommand}"
+                                                                 Padding="10,4"
+                                                                 Margin="8,0,0,0" />
+                                                    <StackPanel Spacing="2">
+                                                        <TextBlock Text="{Binding FileName}"
+                                                                   FontWeight="Medium"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding Summary}"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding SelectedMessageBodyText}"
+                                       TextWrapping="Wrap"
+                                       FontFamily="Cascadia Code,Consolas,Monospace"
+                                       IsVisible="{Binding ShowBodyText}"/>
+
+                            <mail:SecureMailHtmlView x:Name="SecureMailHtmlPreview" Html="{Binding SelectedMessageHtmlContent}"
+                                                     PlaceholderText="{Binding SelectedMessageHtmlFallbackText}"
+                                                     Height="520"
+                                                     IsVisible="{Binding ShowHtmlPreview}"/>
+                        </StackPanel>
+                    </atom:ScrollViewer>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
+                Grid.Column="2"
+                Grid.ColumnSpan="3"
+                Padding="12,8"
+                BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                BorderThickness="0,1,0,0"
+                Background="{DynamicResource AppPanelSubtleBrush}">
+            <TextBlock Text="{Binding StatusText}"
+                       FontSize="12"
+                       Foreground="{DynamicResource AppTextSecondaryBrush}"
+                       TextTrimming="CharacterEllipsis"/>
+        </Border>
+    </Grid>
+</UserControl>

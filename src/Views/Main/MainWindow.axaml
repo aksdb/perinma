@@ -6,6 +6,7 @@
              xmlns:cal="using:perinma.Views.Calendar"
              xmlns:callist="using:perinma.Views.CalendarList"
              xmlns:contacts="using:perinma.Views.Contacts"
+             xmlns:mail="using:perinma.Views.Mail"
              xmlns:conv="using:perinma.Converters"
              xmlns:main="using:perinma.Views.Main"
              xmlns:debug="using:perinma.Views.Debug"
@@ -62,6 +63,11 @@
                     <atom:MenuItem Command="{Binding SelectContactsMainViewCommand}" ToggleType="Radio" IsChecked="{Binding IsContactsMainView}">
                         <atom:MenuItem.Header>
                             <AccessText Text="C_ontacts"/>
+                        </atom:MenuItem.Header>
+                    </atom:MenuItem>
+                    <atom:MenuItem Command="{Binding SelectMailMainViewCommand}" ToggleType="Radio" IsChecked="{Binding IsMailMainView}">
+                        <atom:MenuItem.Header>
+                            <AccessText Text="_Mail"/>
                         </atom:MenuItem.Header>
                     </atom:MenuItem>
                     <atom:MenuSeparator/>
@@ -127,6 +133,9 @@
                 <atom:SegmentedItem x:Name="ContactsModeItem"
                                     Content="Contacts"
                                     FontSize="12"/>
+                <atom:SegmentedItem x:Name="MailModeItem"
+                                    Content="Mail"
+                                    FontSize="12"/>
             </atom:Segmented>
             
             <Border/> <!-- Spacer -->
@@ -172,6 +181,8 @@
             <!-- Contacts View -->
             <contacts:ContactsView IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsContactsMainView}"
                                    DataContext="{Binding ContactsViewModel}"/>
+            <mail:MailView IsVisible="{Binding $parent[Window].((main:MainWindowViewModel)DataContext).IsMailMainView}"
+                           DataContext="{Binding MailViewModel}"/>
         </Panel>
 
         <!-- Status Bar -->

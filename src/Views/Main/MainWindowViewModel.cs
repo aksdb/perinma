@@ -18,6 +18,7 @@ using perinma.Views.Calendar;
 using perinma.Views.CalendarList;
 using perinma.Views.Contacts;
 using perinma.Views.Debug;
+using perinma.Views.Mail;
 using perinma.Views.MessageBox;
 using perinma.Views.Settings;
 
@@ -36,12 +37,19 @@ public partial class MainWindowViewModel : ObservableRecipient,
     IRecipient<ContactSyncEndedMessage>,
     IRecipient<SyncAddressBookProgressMessage>,
     IRecipient<SyncContactsProgressMessage>,
-    IRecipient<SyncContactProcessingProgressMessage>
+    IRecipient<SyncContactProcessingProgressMessage>,
+    IRecipient<MailSyncStartedMessage>,
+    IRecipient<MailSyncEndedMessage>,
+    IRecipient<SyncMailAccountProgressMessage>,
+    IRecipient<SyncMailboxProgressMessage>,
+    IRecipient<SyncMailMessageProcessingProgressMessage>,
+    IRecipient<SyncMailMessagesProgressMessage>
 {
     private readonly DatabaseService _databaseService;
     private readonly CredentialManagerService _credentialManager;
     private readonly SyncService _syncService;
     private readonly ContactSyncService _contactSyncService;
+    private readonly MailSyncService _mailSyncService;
     private readonly ReminderService _reminderService;
     private readonly DebugFeaturesService _debugFeatures;
     private readonly GoogleCalendarService _googleCalendarService;
@@ -73,16 +81,19 @@ public partial class MainWindowViewModel : ObservableRecipient,
     public enum MainViewMode
     {
         Calendar,
-        Contacts
+        Contacts,
+        Mail
     }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCalendarMainView))]
     [NotifyPropertyChangedFor(nameof(IsContactsMainView))]
+    [NotifyPropertyChangedFor(nameof(IsMailMainView))]
     public partial MainViewMode SelectedMainView { get; set; } = MainViewMode.Calendar;
 
     public bool IsCalendarMainView => SelectedMainView == MainViewMode.Calendar;
     public bool IsContactsMainView => SelectedMainView == MainViewMode.Contacts;
+    public bool IsMailMainView => SelectedMainView == MainViewMode.Mail;
 
     partial void OnSelectedMainViewChanged(MainViewMode value)
     {
@@ -102,6 +113,12 @@ public partial class MainWindowViewModel : ObservableRecipient,
     private void SelectContactsMainView()
     {
         SelectedMainView = MainViewMode.Contacts;
+    }
+
+    [RelayCommand]
+    private void SelectMailMainView()
+    {
+        SelectedMainView = MainViewMode.Mail;
     }
 
     [RelayCommand]
@@ -131,6 +148,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
     public CalendarNavigationBarViewModel CalendarNavigationBarViewModel { get; }
     public CalendarListViewModel CalendarListViewModel { get; }
     public ContactsViewModel ContactsViewModel { get; }
+    public MailViewModel MailViewModel { get; }
 
     [ObservableProperty]
     public partial CalendarViewModelBase ActiveCalendarViewModel { get; set; } = null!;
@@ -161,6 +179,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         CredentialManagerService credentialManager,
         SyncService syncService,
         ContactSyncService contactSyncService,
+        MailSyncService mailSyncService,
         ReminderService reminderService,
         ICalDavService calDavService,
         ICardDavService cardDavService,
@@ -177,6 +196,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         _credentialManager = credentialManager;
         _syncService = syncService;
         _contactSyncService = contactSyncService;
+        _mailSyncService = mailSyncService;
         _reminderService = reminderService;
         _debugFeatures = debugFeatures;
         _calDavService = calDavService;
@@ -195,6 +215,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         CalendarListViewModel =
             new CalendarListViewModel(_storage, calendarSource, _googleCalendarService, _credentialManager);
         ContactsViewModel = new ContactsViewModel(_storage, _contactSyncService);
+        MailViewModel = new MailViewModel(_storage, _mailSyncService);
 
         CalendarWeekViewModel.PropertyChanged += (sender, args) =>
         {
@@ -495,6 +516,28 @@ public partial class MainWindowViewModel : ObservableRecipient,
                 await ContactsViewModel.LoadAddressBooksAsync();
             }
 
+            // Sync mail
+            Console.WriteLine("Starting mail sync...");
+            var mailResult = await _mailSyncService.SyncAllAccountsAsync(cancellationToken);
+
+            if (mailResult.Success)
+            {
+                Console.WriteLine(
+                    $"Mail sync completed successfully. Synced {mailResult.SyncedAccounts} accounts.");
+                await MailViewModel.ReloadAsync();
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"Mail sync completed with errors. Synced: {mailResult.SyncedAccounts}, Failed: {mailResult.FailedAccounts}");
+                foreach (var error in mailResult.Errors)
+                {
+                    Console.WriteLine($"  - {error}");
+                }
+
+                await MailViewModel.ReloadAsync();
+            }
+
             SyncStatusText = "Ready";
         }
         catch (Exception ex)
@@ -506,66 +549,90 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
     public void Receive(SyncStartedMessage message)
     {
-        IsSyncing = true;
-        SyncProgress = 0.0;
-        SyncProgressIsIndeterminate = true;
-        SyncStatusText = "Starting sync...";
+        RunOnUiThread(() =>
+        {
+            IsSyncing = true;
+            SyncProgress = 0.0;
+            SyncProgressIsIndeterminate = true;
+            SyncStatusText = "Starting sync...";
+        });
     }
 
     public void Receive(SyncEndedMessage message)
     {
-        // Only reset syncing state - status text is managed by the Sync() method
-        // to show completion/error messages before resetting to "Ready"
-        IsSyncing = false;
-        SyncProgress = 0.0;
+        RunOnUiThread(() =>
+        {
+            IsSyncing = false;
+            SyncProgress = 0.0;
+        });
     }
 
     public void Receive(SyncAccountProgressMessage message)
     {
-        SyncStatusText =
-            $"Syncing account {message.AccountIndex + 1} of {message.TotalAccounts}: {message.AccountName}";
-        SyncProgress = message.ProgressPercentage;
-        SyncProgressIsIndeterminate = false;
+        RunOnUiThread(() =>
+        {
+            SyncStatusText = $"Syncing account {message.AccountIndex + 1} of {message.TotalAccounts}: {message.AccountName}";
+            SyncProgress = message.ProgressPercentage;
+            SyncProgressIsIndeterminate = false;
+        });
     }
 
     public void Receive(SyncCalendarProgressMessage message)
     {
-        SyncStatusText =
-            $"  Syncing calendar {message.CalendarIndex + 1} of {message.TotalCalendars}: {message.CalendarName}";
+        RunOnUiThread(() =>
+        {
+            SyncStatusText = $"  Syncing calendar {message.CalendarIndex + 1} of {message.TotalCalendars}: {message.CalendarName}";
+        });
     }
 
     public void Receive(SyncEventsProgressMessage message)
     {
-        SyncStatusText = $"  Syncing events for {message.CalendarName} ({message.EventCount} events)...";
+        RunOnUiThread(() =>
+        {
+            SyncStatusText = $"  Syncing events for {message.CalendarName} ({message.EventCount} events)...";
+        });
     }
 
     public void Receive(SyncCompletedMessage message)
     {
-        SyncStatusText = $"Sync completed successfully. Synced {message.SyncedAccounts} accounts.";
+        RunOnUiThread(() =>
+        {
+            SyncStatusText = $"Sync completed successfully. Synced {message.SyncedAccounts} accounts.";
+        });
+
         Task.Run(async () =>
         {
             await Task.Delay(2000);
-            IsSyncing = false;
-            SyncProgress = 0.0;
-            SyncStatusText = "Ready";
+            RunOnUiThread(() =>
+            {
+                IsSyncing = false;
+                SyncProgress = 0.0;
+                SyncStatusText = "Ready";
+            });
         });
     }
 
     public void Receive(SyncFailedMessage message)
     {
-        SyncStatusText = $"Sync completed with {message.FailedAccounts} error(s).";
+        RunOnUiThread(() =>
+        {
+            SyncStatusText = $"Sync completed with {message.FailedAccounts} error(s).";
+        });
+
         Task.Run(async () =>
         {
             await Task.Delay(3000);
-            IsSyncing = false;
-            SyncProgress = 0.0;
-            SyncStatusText = "Ready";
+            RunOnUiThread(() =>
+            {
+                IsSyncing = false;
+                SyncProgress = 0.0;
+                SyncStatusText = "Ready";
+            });
         });
     }
 
     public async void Receive(ReAuthenticationRequiredMessage message)
     {
-        // Get the main window reference
         var mainWindow =
             Application.Current?.ApplicationLifetime is
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
@@ -582,7 +649,6 @@ public partial class MainWindowViewModel : ObservableRecipient,
         {
             if (message.ProviderType.Equals("Google", StringComparison.OrdinalIgnoreCase))
             {
-                // Get the account details
                 var account = await _storage.GetAccountByIdAsync(message.AccountId);
 
                 if (account != null)
@@ -623,31 +689,109 @@ public partial class MainWindowViewModel : ObservableRecipient,
 
     public void Receive(ContactSyncStartedMessage message)
     {
-        SyncStatusText = "Syncing contacts...";
+        RunOnUiThread(() =>
+        {
+            IsSyncing = true;
+            SyncProgressIsIndeterminate = true;
+            SyncStatusText = "Syncing contacts...";
+        });
     }
 
     public void Receive(ContactSyncEndedMessage message)
     {
-        // Contact sync ended - status will be updated by calendar sync completion
     }
 
     public void Receive(SyncAddressBookProgressMessage message)
     {
-        SyncStatusText =
-            $"  Syncing address book {message.AddressBookIndex + 1} of {message.TotalAddressBooks}: {message.AddressBookName}";
+        RunOnUiThread(() =>
+        {
+            SyncStatusText = $"  Syncing address book {message.AddressBookIndex + 1} of {message.TotalAddressBooks}: {message.AddressBookName}";
+        });
     }
 
     public void Receive(SyncContactsProgressMessage message)
     {
-        SyncStatusText = $"  Syncing contacts for {message.AddressBookName} ({message.ContactCount} contacts)...";
+        RunOnUiThread(() =>
+        {
+            SyncStatusText = $"  Syncing contacts for {message.AddressBookName} ({message.ContactCount} contacts)...";
+        });
     }
 
     public void Receive(SyncContactProcessingProgressMessage message)
     {
-        SyncStatusText =
-            $"  Syncing contact {message.ContactIndex + 1} of {message.TotalContacts} for {message.AddressBookName}...";
-        SyncProgress = message.ProgressPercentage;
-        SyncProgressIsIndeterminate = false;
+        RunOnUiThread(() =>
+        {
+            SyncStatusText = $"  Syncing contact {message.ContactIndex + 1} of {message.TotalContacts} for {message.AddressBookName}...";
+            SyncProgress = message.ProgressPercentage;
+            SyncProgressIsIndeterminate = false;
+        });
+    }
+
+    public void Receive(MailSyncStartedMessage message)
+    {
+        RunOnUiThread(() =>
+        {
+            IsSyncing = true;
+            SyncProgress = 0.0;
+            SyncProgressIsIndeterminate = true;
+            SyncStatusText = "Syncing mail...";
+        });
+    }
+
+    public void Receive(MailSyncEndedMessage message)
+    {
+        RunOnUiThread(() =>
+        {
+            IsSyncing = false;
+            SyncProgress = 0.0;
+        });
+    }
+
+    public void Receive(SyncMailAccountProgressMessage message)
+    {
+        RunOnUiThread(() =>
+        {
+            SyncStatusText = $"Syncing mail account {message.AccountIndex + 1} of {message.TotalAccounts}: {message.AccountName}";
+            SyncProgress = message.ProgressPercentage;
+            SyncProgressIsIndeterminate = false;
+        });
+    }
+
+    public void Receive(SyncMailboxProgressMessage message)
+    {
+        RunOnUiThread(() =>
+        {
+            SyncStatusText = $"  Syncing mailbox {message.MailboxIndex + 1} of {message.TotalMailboxes}: {message.MailboxName}";
+        });
+    }
+
+    public void Receive(SyncMailMessageProcessingProgressMessage message)
+    {
+        RunOnUiThread(() =>
+        {
+            SyncStatusText = $"  Syncing message {message.MessageIndex + 1} of {message.TotalMessages} for {message.MailboxName}...";
+            SyncProgress = message.ProgressPercentage;
+            SyncProgressIsIndeterminate = false;
+        });
+    }
+
+    public void Receive(SyncMailMessagesProgressMessage message)
+    {
+        RunOnUiThread(() =>
+        {
+            SyncStatusText = $"  Synced {message.MessageCount} messages for {message.MailboxName}.";
+        });
+    }
+
+    private static void RunOnUiThread(Action action)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        Dispatcher.UIThread.Post(action);
     }
 
     #endregion
@@ -717,6 +861,10 @@ public partial class MainWindowViewModel : ObservableRecipient,
             {
                 SelectedMainView = MainViewMode.Contacts;
             }
+            else if (lastActiveView.Equals("mail", StringComparison.OrdinalIgnoreCase))
+            {
+                SelectedMainView = MainViewMode.Mail;
+            }
             else
             {
                 var lastCalendarView = await _settingsService.GetLastCalendarViewModeAsync();
@@ -749,6 +897,9 @@ public partial class MainWindowViewModel : ObservableRecipient,
             {
                 case MainViewMode.Contacts:
                     await _settingsService.SetLastActiveViewAsync("contacts");
+                    break;
+                case MainViewMode.Mail:
+                    await _settingsService.SetLastActiveViewAsync("mail");
                     break;
                 case MainViewMode.Calendar:
                     await _settingsService.SetLastActiveViewAsync("calendar");
