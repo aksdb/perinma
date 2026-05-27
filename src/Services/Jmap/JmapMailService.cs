@@ -448,25 +448,7 @@ public class JmapMailService(HttpClient? httpClient = null)
         {
             ["accountId"] = accountId,
             ["ids"] = CreateStringArray(ids),
-            ["properties"] = CreateStringArray(
-                "id",
-                "threadId",
-                "messageId",
-                "mailboxIds",
-                "keywords",
-                "from",
-                "to",
-                "cc",
-                "bcc",
-                "replyTo",
-                "subject",
-                "sentAt",
-                "receivedAt",
-                "preview",
-                "textBody",
-                "htmlBody",
-                "bodyStructure",
-                "hasAttachment"),
+            ["properties"] = CreateEmailGetProperties(fetchBodies),
             ["bodyProperties"] = CreateStringArray(
                 "partId",
                 "blobId",
@@ -883,6 +865,34 @@ public class JmapMailService(HttpClient? httpClient = null)
         foreach (var value in values)
             array.Add(value);
         return array;
+    }
+
+    private static JsonArray CreateEmailGetProperties(bool fetchBodies)
+    {
+        var properties = CreateStringArray(
+            "id",
+            "threadId",
+            "messageId",
+            "mailboxIds",
+            "keywords",
+            "from",
+            "to",
+            "cc",
+            "bcc",
+            "replyTo",
+            "subject",
+            "sentAt",
+            "receivedAt",
+            "preview",
+            "textBody",
+            "htmlBody",
+            "bodyStructure",
+            "hasAttachment");
+
+        if (fetchBodies)
+            properties.Add("bodyValues");
+
+        return properties;
     }
 
     private static JsonObject CreateTrueMap(IEnumerable<string> values)
