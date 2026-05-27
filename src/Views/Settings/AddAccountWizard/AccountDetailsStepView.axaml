@@ -21,11 +21,11 @@
                            Help="{Binding NameValidationError}">
                 <atom:LineEdit x:Name="AccountNameInput"
                                Text="{Binding AccountName}"
-                               PlaceholderText="My Calendar Account" />
+                               PlaceholderText="My Account" />
             </atom:FormItem>
 
             <atom:FormItem x:Name="AccountTypeFormItem"
-                           LabelText="Account Type">
+                           LabelText="Provider">
                 <atom:ComboBox x:Name="AccountTypeComboBox"
                                SelectedItem="{Binding SelectedAccountType}"
                                HorizontalAlignment="Stretch">
@@ -33,9 +33,39 @@
                         <models:AccountType>Google</models:AccountType>
                         <models:AccountType>CalDav</models:AccountType>
                         <models:AccountType>CardDav</models:AccountType>
+                        <models:AccountType>Jmap</models:AccountType>
                     </ComboBox.Items>
                 </atom:ComboBox>
             </atom:FormItem>
+
+            <atom:FormItem x:Name="AccountCapabilitiesFormItem"
+                           LabelText="Capabilities"
+                           ValidateStatus="{Binding CapabilityValidateStatus}"
+                           Help="{Binding CapabilityValidationError}">
+                <atom:CheckBox x:Name="CalendarCapabilityCheckBox"
+                               Content="Calendar"
+                               IsChecked="{Binding IncludeCalendar}"
+                               IsEnabled="{Binding CanEditCapabilities}" />
+            </atom:FormItem>
+
+            <atom:FormItem LabelText=" ">
+                <atom:CheckBox x:Name="ContactsCapabilityCheckBox"
+                               Content="Contacts"
+                               IsChecked="{Binding IncludeContacts}"
+                               IsEnabled="{Binding CanEditCapabilities}" />
+            </atom:FormItem>
+
+            <atom:FormItem LabelText=" ">
+                <atom:CheckBox x:Name="MailCapabilityCheckBox"
+                               Content="Mail"
+                               IsChecked="{Binding IncludeMail}"
+                               IsEnabled="{Binding CanEditCapabilities}" />
+            </atom:FormItem>
         </atom:Form>
+
+        <TextBlock Text="Google accounts can enable any combination. CalDAV, CardDAV, and JMAP use the fixed capability shown above."
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource AppTextSecondaryBrush}"
+                   FontSize="12" />
     </StackPanel>
 </UserControl>

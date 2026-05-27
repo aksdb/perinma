@@ -29,6 +29,7 @@ public partial class AccountListViewModel : ViewModelBase
     private readonly ICardDavService _cardDavService;
     private readonly SyncService _syncService;
     private readonly ContactSyncService _contactSyncService;
+    private readonly MailSyncService _mailSyncService;
     private readonly Window _parentWindow;
     private AddAccountWindow? _addAccountWindow;
     private ReauthenticateAccountWindow? _reauthenticateWindow;
@@ -41,7 +42,7 @@ public partial class AccountListViewModel : ViewModelBase
 
     public AccountListViewModel(SqliteStorage storage, CredentialManagerService credentialManager,
         GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService,
-        SyncService syncService, ContactSyncService contactSyncService, Window parentWindow)
+        SyncService syncService, ContactSyncService contactSyncService, MailSyncService mailSyncService, Window parentWindow)
     {
         _storage = storage;
         _credentialManager = credentialManager;
@@ -50,8 +51,9 @@ public partial class AccountListViewModel : ViewModelBase
         _cardDavService = cardDavService;
         _syncService = syncService;
         _contactSyncService = contactSyncService;
+        _mailSyncService = mailSyncService;
         _parentWindow = parentWindow;
-        _ = LoadAccountsAsync(); // Fire and forget initial load
+        _ = LoadAccountsAsync();
     }
 
     [RelayCommand]
@@ -110,6 +112,7 @@ public partial class AccountListViewModel : ViewModelBase
             Id = accountId,
             Name = dbo.Name,
             Type = dbo.AccountTypeEnum,
+            Capabilities = dbo.AccountCapabilities,
             CanReauthenticate = CanReauthenticate,
             ForceResyncCommand = new AsyncRelayCommand(() => ForceResync(accountId)),
             ReauthenticateCommand = new AsyncRelayCommand(() => ReauthenticateAccount(accountId)),
@@ -212,12 +215,27 @@ public partial class AccountListViewModel : ViewModelBase
             return;
         }
 
-        var reauthVm =
-            new ReauthenticateAccountViewModel(accountId.ToString(), account.Name, _credentialManager, _oauthService);
-        EventHandler onReauthenticateFinished = (_, _) =>
+        var needsMailUpgrade = account.NeedsMailUpgrade;
+        var reauthVm = new ReauthenticateAccountViewModel(
+            accountId.ToString(),
+            account.Name,
+            _credentialManager,
+            _oauthService,
+            needsMailUpgrade);
+        EventHandler onReauthenticateFinished = async (_, _) =>
         {
-            // Optionally trigger a sync or show a success message
             Console.WriteLine($"Account {account.Name} has been reauthenticated");
+            if (!needsMailUpgrade)
+            {
+                return;
+            }
+
+            var updatedCapabilities = account.Capabilities | AccountCapability.Mail;
+            var updated = await _storage.UpdateAccountCapabilitiesAsync(accountId.ToString(), updatedCapabilities);
+            if (updated)
+            {
+                account.Capabilities = updatedCapabilities;
+            }
         };
         reauthVm.ReauthenticationCompleted += onReauthenticateFinished;
 
@@ -259,6 +277,12 @@ public partial class AccountListViewModel : ViewModelBase
             else if (_contactSyncService.Providers.ContainsKey(account.Type))
             {
                 var syncResult = await _contactSyncService.ForceResyncAccountAsync(accountId.ToString());
+                success = syncResult.Success;
+                errors = syncResult.Errors;
+            }
+            else if (_mailSyncService.Providers.ContainsKey(account.Type))
+            {
+                var syncResult = await _mailSyncService.ForceResyncAccountAsync(accountId.ToString());
                 success = syncResult.Success;
                 errors = syncResult.Errors;
             }

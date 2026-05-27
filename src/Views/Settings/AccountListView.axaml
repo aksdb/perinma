@@ -35,7 +35,7 @@
                                             Header="Force Resync"
                                             Command="{Binding ForceResyncCommand}" />
                                         <atom:MenuItem
-                                            Header="Reauthenticate"
+                                            Header="{Binding ReauthenticateLabel}"
                                             Command="{Binding ReauthenticateCommand}"
                                             IsVisible="{Binding SupportsReauthentication}"
                                             IsEnabled="{Binding CanReauthenticate}" />
@@ -49,6 +49,8 @@
                             <StackPanel>
                                 <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" />
                                 <TextBlock Text="{Binding Type}" FontSize="12"
+                                           Foreground="{DynamicResource AppTextSecondaryBrush}" />
+                                <TextBlock Text="{Binding CapabilitiesSummary}" FontSize="12"
                                            Foreground="{DynamicResource AppTextSecondaryBrush}" />
                             </StackPanel>
                         </DockPanel>

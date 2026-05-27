@@ -113,6 +113,61 @@ public class ContactSyncEndedMessage
 }
 
 /// <summary>
+/// Message sent when mail sync starts
+/// </summary>
+public class MailSyncStartedMessage
+{
+}
+
+/// <summary>
+/// Message sent when syncing a mail account
+/// </summary>
+public class SyncMailAccountProgressMessage
+{
+    public required string AccountName { get; init; }
+    public required int AccountIndex { get; init; }
+    public required int TotalAccounts { get; init; }
+    public double ProgressPercentage => TotalAccounts > 0 ? (double)AccountIndex / TotalAccounts * 100 : 0;
+}
+
+/// <summary>
+/// Message sent when syncing a mailbox
+/// </summary>
+public class SyncMailboxProgressMessage
+{
+    public required string MailboxName { get; init; }
+    public required int MailboxIndex { get; init; }
+    public required int TotalMailboxes { get; init; }
+}
+
+/// <summary>
+/// Message sent when processing individual messages for a mailbox
+/// </summary>
+public class SyncMailMessageProcessingProgressMessage
+{
+    public required string MailboxName { get; init; }
+    public required int MessageIndex { get; init; }
+    public required int TotalMessages { get; init; }
+    public double ProgressPercentage => TotalMessages > 0 ? (double)MessageIndex / TotalMessages * 100 : 0;
+}
+
+/// <summary>
+/// Message sent when message sync completes for a mailbox
+/// </summary>
+public class SyncMailMessagesProgressMessage
+{
+    public required string MailboxName { get; init; }
+    public required int MessageCount { get; init; }
+}
+
+/// <summary>
+/// Message sent when mail sync completes
+/// </summary>
+public class MailSyncEndedMessage
+{
+}
+
+/// <summary>
 /// Message sent when calendar events are changed (created, updated, or deleted)
 /// </summary>
 public class EventsChangedMessage

@@ -7,7 +7,7 @@
              x:DataType="settings:ReauthenticateAccountViewModel"
              mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
              x:Class="perinma.Views.Settings.ReauthenticateAccountWindow"
-             Title="Reauthenticate Account"
+             Title="{Binding WindowTitle}"
              Width="600"
              Height="400"
              CanResize="False">
@@ -15,17 +15,17 @@
     <DockPanel>
         <Border DockPanel.Dock="Top" Background="{DynamicResource AppPanelMutedBrush}" Padding="20">
             <StackPanel Spacing="10">
-                <TextBlock Text="Reauthenticate Account" FontSize="20" FontWeight="Bold" />
-                <TextBlock Text="Google Account" FontSize="14" Foreground="{DynamicResource AppTextSecondaryBrush}" />
+                <TextBlock Text="{Binding WindowTitle}" FontSize="20" FontWeight="Bold" />
+                <TextBlock Text="{Binding AccountName}" FontSize="14" Foreground="{DynamicResource AppTextSecondaryBrush}" />
             </StackPanel>
         </Border>
 
         <ContentControl DockPanel.Dock="Top" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel Spacing="20" MaxWidth="500">
                 <TextBlock TextWrapping="Wrap" TextAlignment="Center">
-                    <Run Text="You need to reauthenticate your Google account." />
+                    <Run Text="{Binding IntroText}" />
                     <LineBreak />
-                    <Run Text="This may be necessary if your access token expired or if you need to adjust permissions." />
+                    <Run Text="{Binding DetailText}" />
                 </TextBlock>
 
                 <TextBlock Text="{Binding StatusMessage}"
@@ -35,7 +35,7 @@
                            MinHeight="80" />
 
                 <atom:Button x:Name="ReauthenticateButton"
-                             Content="Reauthenticate"
+                             Content="{Binding ActionLabel}"
                              Command="{Binding ReauthenticateCommand}"
                              IsEnabled="{Binding !IsConnecting}"
                              HorizontalAlignment="Center"
