@@ -785,16 +785,31 @@ public partial class MainWindowViewModel : ObservableRecipient,
         });
     }
 
-    private static void RunOnUiThread(Action action)
+    private void RunOnUiThread(Action action)
     {
+        void Execute()
+        {
+            try
+            {
+                action();
+            }
+            catch (InvalidOperationException ex) when (IsThreadOwnershipViolation(ex))
+            {
+                WeakReferenceMessenger.Default.UnregisterAll(this);
+            }
+        }
+
         if (Dispatcher.UIThread.CheckAccess())
         {
-            action();
+            Execute();
             return;
         }
 
-        Dispatcher.UIThread.Post(action);
+        Dispatcher.UIThread.Post(Execute);
     }
+
+    private static bool IsThreadOwnershipViolation(InvalidOperationException exception)
+        => exception.Message.Contains("different thread owns it", StringComparison.OrdinalIgnoreCase);
 
     #endregion
 

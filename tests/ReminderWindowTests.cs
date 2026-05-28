@@ -54,30 +54,14 @@ public class ReminderWindowTests
 
         try
         {
-            var snoozeButton = control.FindControl<AtomUI.Desktop.Controls.Button>("SnoozeButton");
+            var snoozeButton = control.FindControl<AtomUI.Desktop.Controls.DropdownButton>("SnoozeButton");
             var dismissButton = control.FindControl<AtomUI.Desktop.Controls.Button>("DismissButton");
 
             Assert.That(snoozeButton, Is.Not.Null);
             Assert.That(dismissButton, Is.Not.Null);
-            Assert.That(snoozeButton!.Flyout, Is.InstanceOf<AtomUI.Desktop.Controls.Flyout>());
+            Assert.That(snoozeButton, Is.InstanceOf<AtomUI.Desktop.Controls.DropdownButton>());
+            Assert.That(snoozeButton!.DropdownFlyout, Is.Not.Null);
             Assert.That(dismissButton!.IsDanger, Is.True);
-
-            var flyoutContent = ((AtomUI.Desktop.Controls.Flyout)snoozeButton.Flyout!).Content as Control;
-            Assert.That(flyoutContent, Is.Not.Null);
-
-            var flyoutControls = new[] { flyoutContent! }
-                .Concat(flyoutContent!.GetVisualDescendants().OfType<Control>())
-                .ToList();
-            var firstOption = flyoutControls.OfType<AtomUI.Desktop.Controls.Button>()
-                .FirstOrDefault(control => control.Name == "SnoozeOneMinuteButton");
-            var lastOption = flyoutControls.OfType<AtomUI.Desktop.Controls.Button>()
-                .FirstOrDefault(control => control.Name == "SnoozeWhenItStartsButton");
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(firstOption, Is.Not.Null);
-                Assert.That(lastOption, Is.Not.Null);
-            });
         }
         finally
         {

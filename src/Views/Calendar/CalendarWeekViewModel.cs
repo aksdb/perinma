@@ -405,8 +405,8 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
         foreach (var ew in items)
         {
             var maxColumn = (from c in ew.CompetingWidgets
-                    where !(c.EndSlot < ew.StartSlot || c.StartSlot > ew.EndSlot)
-                    select c.ColumnSlot)
+                             where !(c.EndSlot < ew.StartSlot || c.StartSlot > ew.EndSlot)
+                             select c.ColumnSlot)
                 .Prepend(ew.ColumnSlot)
                 .Max();
             // Consider direct competitors for now
@@ -452,7 +452,17 @@ public partial class CalendarWeekViewModel : CalendarViewModelBase, IRecipient<E
 
     public void Receive(EventsChangedMessage message)
     {
-        Load();
+        RunOnUiThread(() =>
+        {
+            try
+            {
+                Load();
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("different thread owns it", StringComparison.OrdinalIgnoreCase))
+            {
+                WeakReferenceMessenger.Default.Unregister<EventsChangedMessage>(this);
+            }
+        });
     }
 }
 

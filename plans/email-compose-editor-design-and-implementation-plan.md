@@ -366,6 +366,7 @@ Recommended test layers:
 - [x] Add draft conflict detection and recovery UI
 - [x] Add cleanup for staged draft attachments on discard/send
 - [x] Add targeted unit/storage/UI/provider tests
+- [x] Run broader solution regression suite
 
 ## References
 - Avalonia `NativeWebView` docs: https://docs.avaloniaui.net/controls/web/nativewebview

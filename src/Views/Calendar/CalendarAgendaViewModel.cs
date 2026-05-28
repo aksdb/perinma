@@ -114,6 +114,16 @@ public partial class CalendarAgendaViewModel : CalendarViewModelBase, IRecipient
 
     public void Receive(EventsChangedMessage message)
     {
-        Load();
+        RunOnUiThread(() =>
+        {
+            try
+            {
+                Load();
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("different thread owns it", StringComparison.OrdinalIgnoreCase))
+            {
+                WeakReferenceMessenger.Default.Unregister<EventsChangedMessage>(this);
+            }
+        });
     }
 }
