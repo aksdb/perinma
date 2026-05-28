@@ -3106,6 +3106,45 @@ public class SqliteStorage : IDisposable
         return rowsAffected > 0;
     }
 
+    public async Task<bool> SetMailComposeDraftDataAsync(string draftId, string key, string value)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            """
+                UPDATE mail_compose_draft
+                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, @value)
+                WHERE draft_id = @draft_id
+            """,
+            param: new { key = $"$.{key}", value, draft_id = draftId },
+            commandTimeout: 30);
+
+        return rowsAffected > 0;
+    }
+
+    public async Task<bool> SetMailComposeDraftDataJsonAsync(string draftId, string key, string jsonValue)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            """
+                UPDATE mail_compose_draft
+                SET data = jsonb_set(coalesce(data, jsonb_object()), @key, jsonb(@jsonValue))
+                WHERE draft_id = @draft_id
+            """,
+            param: new { key = $"$.{key}", jsonValue, draft_id = draftId },
+            commandTimeout: 30);
+
+        return rowsAffected > 0;
+    }
+
+    public async Task<string?> GetMailComposeDraftDataAsync(string draftId, string key)
+    {
+        return await _connection.QuerySingleAsync<string?>(
+            """
+            SELECT coalesce(data ->> @key, '') as value
+            FROM mail_compose_draft
+            WHERE draft_id = @draft_id
+            """,
+            param: new { key = $"$.{key}", draft_id = draftId });
+    }
+
     private async Task ReplaceMailComposeRecipientsAsync(string draftId, IEnumerable<MailComposeRecipientDbo> recipients, SqliteTransaction transaction)
     {
         await _connection.ExecuteAsync(

@@ -42,6 +42,9 @@ public sealed class MailComposeDraft
     public string? SelectedIdentityDisplayName { get; set; }
     public string? SelectedIdentityAddress { get; set; }
     public string Subject { get; set; } = string.Empty;
+    public string ToText { get; set; } = string.Empty;
+    public string CcText { get; set; } = string.Empty;
+    public string BccText { get; set; } = string.Empty;
     public string HtmlBody { get; set; } = string.Empty;
     public string PlainTextBody { get; set; } = string.Empty;
     public MailComposeDraftStatus Status { get; set; } = MailComposeDraftStatus.LocalOnly;
@@ -73,6 +76,36 @@ public sealed class MailComposeAttachment
     public string? Hash { get; set; }
     public string? ProviderReferenceJson { get; set; }
     public int SortOrder { get; set; }
+}
+
+public sealed class MailComposeSourceMessage
+{
+    public required Guid AccountId { get; set; }
+    public required AccountType AccountType { get; set; }
+    public Guid? MessageId { get; set; }
+    public string? MessageExternalId { get; set; }
+    public Guid? ThreadId { get; set; }
+    public string? ThreadExternalId { get; set; }
+    public string? InternetMessageId { get; set; }
+    public string Subject { get; set; } = string.Empty;
+    public MailAddress? Sender { get; set; }
+    public List<MailAddress> To { get; set; } = [];
+    public List<MailAddress> Cc { get; set; } = [];
+    public List<MailAddress> ReplyTo { get; set; } = [];
+    public DateTimeOffset? SentAt { get; set; }
+    public string HtmlBody { get; set; } = string.Empty;
+    public string PlainTextBody { get; set; } = string.Empty;
+    public List<MailComposeSourceAttachment> Attachments { get; set; } = [];
+}
+
+public sealed class MailComposeSourceAttachment
+{
+    public string? AttachmentId { get; set; }
+    public string? ExternalId { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string MimeType { get; set; } = "application/octet-stream";
+    public string? ContentPath { get; set; }
+    public bool IsInline { get; set; }
 }
 
 public sealed class MailIdentity

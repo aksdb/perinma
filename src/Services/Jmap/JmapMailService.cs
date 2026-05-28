@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
-
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -11,6 +11,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
+using perinma.Models;
 using perinma.Storage.Models;
 
 namespace perinma.Services.Jmap;
@@ -19,9 +20,12 @@ public class JmapMailService(HttpClient? httpClient = null)
 {
     private const string CoreCapability = "urn:ietf:params:jmap:core";
     private const string MailCapability = "urn:ietf:params:jmap:mail";
+    private const string SubmissionCapability = "urn:ietf:params:jmap:submission";
     private const int QueryPageSize = 250;
     private const int GetBatchSize = 100;
     private const string MethodCallId = "c0";
+    private const string DraftCreationId = "draft";
+    private const string SubmissionCreationId = "submission";
     private const int MaxRedirects = 10;
 
 
@@ -134,6 +138,239 @@ public class JmapMailService(HttpClient? httpClient = null)
 
 
         return content;
+    }
+
+    public async Task<MailComposeCapabilities> GetComposeCapabilitiesAsync(
+        JmapCredentials credentials,
+        CancellationToken cancellationToken = default)
+    {
+        var session = await DiscoverSessionAsync(credentials, cancellationToken);
+        if (!session.SupportsSubmission)
+        {
+            return new MailComposeCapabilities
+            {
+                SupportsDrafts = false,
+                SupportsRemoteDrafts = false,
+                SupportsSend = false,
+                SupportsSenderIdentities = false,
+                SupportsInlineAttachments = false
+            };
+        }
+
+        var composeMailboxes = await GetComposeMailboxIdsAsync(session, cancellationToken);
+        var supportsDrafts = !string.IsNullOrWhiteSpace(composeMailboxes.DraftsMailboxId);
+        return new MailComposeCapabilities
+        {
+            SupportsDrafts = supportsDrafts,
+            SupportsRemoteDrafts = supportsDrafts,
+            SupportsSend = true,
+            SupportsSenderIdentities = true,
+            SupportsInlineAttachments = !string.IsNullOrWhiteSpace(session.UploadUrlTemplate)
+        };
+    }
+
+    public async Task<IReadOnlyList<MailIdentity>> GetSenderIdentitiesAsync(
+        JmapCredentials credentials,
+        CancellationToken cancellationToken = default)
+    {
+        var session = await DiscoverSessionAsync(credentials, cancellationToken);
+        if (!session.SupportsSubmission)
+            return [];
+
+        var response = await CallAsync(
+            session,
+            "Identity/get",
+            new JsonObject
+            {
+                ["accountId"] = session.AccountId
+            },
+            cancellationToken);
+
+        var identities = new List<MailIdentity>();
+        foreach (var item in GetArray(response, "list"))
+        {
+            var id = GetString(item, "id");
+            var address = GetString(item, "email");
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(address))
+                continue;
+
+            identities.Add(new MailIdentity
+            {
+                Id = id,
+                DisplayName = GetString(item, "name") ?? string.Empty,
+                Address = address,
+                IsPrimary = false,
+                CanSend = true
+            });
+        }
+
+        if (identities.Count == 0)
+            return identities;
+
+        var primaryIdentity = identities.FirstOrDefault(identity =>
+            !string.IsNullOrWhiteSpace(session.Username)
+            && string.Equals(identity.Address, session.Username, StringComparison.OrdinalIgnoreCase));
+        (primaryIdentity ?? identities[0]).IsPrimary = true;
+        return identities;
+    }
+
+    public async Task<JmapUploadedBlob> UploadAttachmentAsync(
+        JmapCredentials credentials,
+        ProviderComposeAttachment attachment,
+        CancellationToken cancellationToken = default)
+    {
+        var session = await DiscoverSessionAsync(credentials, cancellationToken);
+        return await UploadAttachmentAsync(session, attachment, cancellationToken);
+    }
+
+    public async Task<ProviderDraftReference> SaveDraftAsync(
+        JmapCredentials credentials,
+        ProviderComposedMessage message,
+        ProviderDraftReference? existingDraft = null,
+        CancellationToken cancellationToken = default)
+    {
+        var session = await DiscoverSessionAsync(credentials, cancellationToken);
+        EnsureSubmissionSupported(session);
+
+        var composeMailboxes = await GetComposeMailboxIdsAsync(session, cancellationToken);
+        var draftMailboxId = existingDraft?.MailboxExternalId ?? composeMailboxes.DraftsMailboxId;
+        if (string.IsNullOrWhiteSpace(draftMailboxId))
+            throw new InvalidOperationException("JMAP account does not expose a drafts mailbox.");
+
+        var email = await BuildDraftEmailAsync(session, message, draftMailboxId, cancellationToken);
+        var arguments = new JsonObject
+        {
+            ["accountId"] = session.AccountId
+        };
+
+        if (!string.IsNullOrWhiteSpace(existingDraft?.StateToken))
+            arguments["ifInState"] = existingDraft.StateToken;
+
+        if (!string.IsNullOrWhiteSpace(existingDraft?.ProviderDraftId))
+        {
+            arguments["update"] = new JsonObject
+            {
+                [existingDraft.ProviderDraftId] = email
+            };
+        }
+        else
+        {
+            arguments["create"] = new JsonObject
+            {
+                [DraftCreationId] = email
+            };
+        }
+
+        var response = await CallAsync(session, "Email/set", arguments, cancellationToken);
+        var stateToken = GetString(response, "newState");
+        if (!string.IsNullOrWhiteSpace(existingDraft?.ProviderDraftId))
+        {
+            EnsureUpdated(response, existingDraft.ProviderDraftId!);
+            return new ProviderDraftReference
+            {
+                ProviderDraftId = existingDraft.ProviderDraftId,
+                MessageExternalId = existingDraft.MessageExternalId ?? existingDraft.ProviderDraftId,
+                ThreadExternalId = existingDraft.ThreadExternalId,
+                MailboxExternalId = draftMailboxId,
+                IdentityId = message.SenderIdentity.Id,
+                StateToken = stateToken,
+                RawDataJson = response.GetRawText()
+            };
+        }
+
+        var created = GetCreatedItem(response, DraftCreationId, "draft");
+        var providerDraftId = GetRequiredString(created, "id");
+        return new ProviderDraftReference
+        {
+            ProviderDraftId = providerDraftId,
+            MessageExternalId = providerDraftId,
+            ThreadExternalId = GetString(created, "threadId"),
+            MailboxExternalId = draftMailboxId,
+            IdentityId = message.SenderIdentity.Id,
+            StateToken = stateToken,
+            RawDataJson = response.GetRawText()
+        };
+    }
+
+    public async Task DeleteDraftAsync(
+        JmapCredentials credentials,
+        ProviderDraftReference draft,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(draft.ProviderDraftId))
+            throw new InvalidOperationException("JMAP draft reference does not include a provider draft id.");
+
+        var session = await DiscoverSessionAsync(credentials, cancellationToken);
+        EnsureSubmissionSupported(session);
+
+        var arguments = new JsonObject
+        {
+            ["accountId"] = session.AccountId,
+            ["destroy"] = CreateStringArray(draft.ProviderDraftId)
+        };
+        if (!string.IsNullOrWhiteSpace(draft.StateToken))
+            arguments["ifInState"] = draft.StateToken;
+
+        var response = await CallAsync(session, "Email/set", arguments, cancellationToken);
+        EnsureDestroyed(response, draft.ProviderDraftId);
+    }
+
+    public async Task<ProviderSendResult> SendAsync(
+        JmapCredentials credentials,
+        ProviderComposedMessage message,
+        ProviderDraftReference? existingDraft = null,
+        CancellationToken cancellationToken = default)
+    {
+        var draft = await SaveDraftAsync(credentials, message, existingDraft, cancellationToken);
+        if (string.IsNullOrWhiteSpace(draft.ProviderDraftId))
+            throw new InvalidOperationException("JMAP draft reference does not include a provider draft id.");
+
+        var session = await DiscoverSessionAsync(credentials, cancellationToken);
+        EnsureSubmissionSupported(session);
+
+        var composeMailboxes = await GetComposeMailboxIdsAsync(session, cancellationToken);
+        var updateEmail = new JsonObject
+        {
+            ["keywords/$draft"] = null
+        };
+        if (!string.IsNullOrWhiteSpace(composeMailboxes.SentMailboxId))
+        {
+            updateEmail[$"mailboxIds/{composeMailboxes.SentMailboxId}"] = true;
+            if (!string.IsNullOrWhiteSpace(draft.MailboxExternalId)
+                && !string.Equals(draft.MailboxExternalId, composeMailboxes.SentMailboxId, StringComparison.Ordinal))
+            {
+                updateEmail[$"mailboxIds/{draft.MailboxExternalId}"] = null;
+            }
+        }
+
+        var response = await CallAsync(
+            session,
+            "EmailSubmission/set",
+            new JsonObject
+            {
+                ["accountId"] = session.AccountId,
+                ["create"] = new JsonObject
+                {
+                    [SubmissionCreationId] = new JsonObject
+                    {
+                        ["identityId"] = draft.IdentityId ?? message.SenderIdentity.Id,
+                        ["emailId"] = draft.ProviderDraftId
+                    }
+                },
+                ["onSuccessUpdateEmail"] = new JsonObject
+                {
+                    [$"#{SubmissionCreationId}"] = updateEmail
+                }
+            },
+            cancellationToken);
+
+        _ = GetCreatedItem(response, SubmissionCreationId, "submission");
+        return new ProviderSendResult
+        {
+            SentMessageExternalId = draft.ProviderDraftId,
+            SentThreadExternalId = draft.ThreadExternalId,
+            RawDataJson = response.GetRawText()
+        };
     }
 
     public async Task SetReadStateAsync(
@@ -273,13 +510,14 @@ public class JmapMailService(HttpClient? httpClient = null)
         if (!response.IsSuccessStatusCode)
             throw CreateHttpException("discover JMAP session", response, content);
 
-
         using var document = JsonDocument.Parse(content);
         var root = document.RootElement;
 
         var apiUrl = GetRequiredString(root, "apiUrl");
         var downloadUrl = GetString(root, "downloadUrl");
+        var uploadUrl = GetString(root, "uploadUrl");
         var sessionState = GetString(root, "state");
+        var username = GetString(root, "username");
         var capabilities = root.TryGetProperty("capabilities", out var capabilitiesElement)
             ? capabilitiesElement.EnumerateObject().Select(property => property.Name).ToHashSet(StringComparer.Ordinal)
             : new HashSet<string>(StringComparer.Ordinal);
@@ -288,14 +526,27 @@ public class JmapMailService(HttpClient? httpClient = null)
             throw new InvalidOperationException("JMAP session does not advertise mail capability.");
 
         var accountId = ResolveMailAccountId(root);
+        var supportsSubmission = AccountSupportsCapability(root, accountId, SubmissionCapability)
+            && capabilities.Contains(SubmissionCapability);
+        var requestCapabilities = new List<string>
+        {
+            CoreCapability,
+            MailCapability
+        };
+        if (supportsSubmission)
+            requestCapabilities.Add(SubmissionCapability);
+
         return new JmapSession
         {
             AccountId = accountId,
             ApiUrl = apiUrl,
-            DownloadUrlTemplate = downloadUrl,
-            SessionState = sessionState,
             Credentials = credentials,
-            Capabilities = [CoreCapability, MailCapability]
+            Capabilities = requestCapabilities,
+            DownloadUrlTemplate = downloadUrl,
+            UploadUrlTemplate = uploadUrl,
+            SessionState = sessionState,
+            Username = username,
+            SupportsSubmission = supportsSubmission
         };
     }
 
@@ -643,6 +894,27 @@ public class JmapMailService(HttpClient? httpClient = null)
             $"Failed to {operation}: {(int)response.StatusCode} {response.ReasonPhrase}. Response: {content}");
     }
 
+    private static JsonElement GetCreatedItem(JsonElement response, string creationId, string entityName)
+    {
+        if (response.TryGetProperty("created", out var created)
+            && created.ValueKind == JsonValueKind.Object
+            && created.TryGetProperty(creationId, out var createdItem))
+        {
+            return createdItem.Clone();
+        }
+
+        if (response.TryGetProperty("notCreated", out var notCreated)
+            && notCreated.ValueKind == JsonValueKind.Object
+            && notCreated.TryGetProperty(creationId, out var error))
+        {
+            var type = GetString(error, "type") ?? "unknown";
+            var description = GetString(error, "description") ?? error.GetRawText();
+            throw new InvalidOperationException($"JMAP create failed for {entityName} '{creationId}' with error '{type}': {description}");
+        }
+
+        throw new InvalidOperationException($"JMAP mutation did not report success for {entityName} '{creationId}'.");
+    }
+
     private static void EnsureUpdated(JsonElement response, string messageExternalId)
     {
         if (HasStringProperty(response, "updated", messageExternalId))
@@ -661,10 +933,15 @@ public class JmapMailService(HttpClient? httpClient = null)
 
     private static bool HasStringProperty(JsonElement response, string propertyName, string target)
     {
-        if (!response.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
+        if (!response.TryGetProperty(propertyName, out var property))
             return false;
 
-        return property.EnumerateArray().Any(item => string.Equals(item.GetString(), target, StringComparison.Ordinal));
+        return property.ValueKind switch
+        {
+            JsonValueKind.Array => property.EnumerateArray().Any(item => string.Equals(item.GetString(), target, StringComparison.Ordinal)),
+            JsonValueKind.Object => property.TryGetProperty(target, out _),
+            _ => false
+        };
     }
 
     private static string BuildSetFailureMessage(JsonElement response, string messageExternalId)
@@ -739,6 +1016,235 @@ public class JmapMailService(HttpClient? httpClient = null)
             rank += 1;
 
         return rank;
+    }
+
+    private static bool AccountSupportsCapability(JsonElement session, string accountId, string capability)
+    {
+        if (!session.TryGetProperty("accounts", out var accounts) || accounts.ValueKind != JsonValueKind.Object)
+            return false;
+        if (!accounts.TryGetProperty(accountId, out var account) || account.ValueKind != JsonValueKind.Object)
+            return false;
+        if (!account.TryGetProperty("accountCapabilities", out var accountCapabilities)
+            || accountCapabilities.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        return accountCapabilities.TryGetProperty(capability, out _);
+    }
+
+    private static void EnsureSubmissionSupported(JmapSession session)
+    {
+        if (!session.SupportsSubmission)
+            throw new InvalidOperationException("JMAP account does not advertise submission capability.");
+    }
+
+    private async Task<JmapComposeMailboxIds> GetComposeMailboxIdsAsync(
+        JmapSession session,
+        CancellationToken cancellationToken)
+    {
+        var response = await CallAsync(
+            session,
+            "Mailbox/get",
+            new JsonObject
+            {
+                ["accountId"] = session.AccountId,
+                ["properties"] = CreateStringArray("id", "role")
+            },
+            cancellationToken);
+
+        string? draftsMailboxId = null;
+        string? sentMailboxId = null;
+        foreach (var mailbox in GetArray(response, "list"))
+        {
+            var mailboxId = GetString(mailbox, "id");
+            var role = GetString(mailbox, "role");
+            if (string.IsNullOrWhiteSpace(mailboxId) || string.IsNullOrWhiteSpace(role))
+                continue;
+
+            if (draftsMailboxId == null && string.Equals(role, "drafts", StringComparison.OrdinalIgnoreCase))
+                draftsMailboxId = mailboxId;
+            else if (sentMailboxId == null && string.Equals(role, "sent", StringComparison.OrdinalIgnoreCase))
+                sentMailboxId = mailboxId;
+        }
+
+        return new JmapComposeMailboxIds
+        {
+            DraftsMailboxId = draftsMailboxId,
+            SentMailboxId = sentMailboxId
+        };
+    }
+
+    private async Task<JsonObject> BuildDraftEmailAsync(
+        JmapSession session,
+        ProviderComposedMessage message,
+        string draftMailboxId,
+        CancellationToken cancellationToken)
+    {
+        var bodyValues = new JsonObject();
+        var email = new JsonObject
+        {
+            ["mailboxIds"] = CreateTrueMap([draftMailboxId]),
+            ["keywords"] = CreateTrueMap(["$draft"]),
+            ["from"] = CreateAddressArray(message.SenderIdentity.DisplayName, message.SenderIdentity.Address),
+            ["to"] = CreateAddressArray(message.To),
+            ["cc"] = CreateAddressArray(message.Cc),
+            ["bcc"] = CreateAddressArray(message.Bcc),
+            ["subject"] = message.Subject,
+            ["bodyValues"] = bodyValues,
+            ["textBody"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["partId"] = "textBody",
+                    ["type"] = "text/plain"
+                }
+            }
+        };
+        bodyValues["textBody"] = new JsonObject
+        {
+            ["value"] = message.PlainTextBody
+        };
+
+        if (!string.IsNullOrWhiteSpace(message.HtmlBody))
+        {
+            email["htmlBody"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["partId"] = "htmlBody",
+                    ["type"] = "text/html"
+                }
+            };
+            bodyValues["htmlBody"] = new JsonObject
+            {
+                ["value"] = message.HtmlBody
+            };
+        }
+
+        if (!string.IsNullOrWhiteSpace(message.InReplyTo))
+            email["inReplyTo"] = CreateStringArray(message.InReplyTo);
+
+        var references = message.References.Where(value => !string.IsNullOrWhiteSpace(value)).ToList();
+        if (references.Count > 0)
+            email["references"] = CreateStringArray(references);
+
+        if (message.Attachments.Count > 0)
+        {
+            var attachments = new JsonArray();
+            foreach (var attachment in message.Attachments)
+            {
+                var uploadedBlob = await ResolveAttachmentBlobAsync(session, attachment, cancellationToken);
+                var emailAttachment = new JsonObject
+                {
+                    ["blobId"] = uploadedBlob.BlobId,
+                    ["type"] = attachment.MimeType,
+                    ["name"] = attachment.FileName,
+                    ["disposition"] = attachment.IsInline ? "inline" : "attachment"
+                };
+                var contentId = NormalizeContentId(attachment.ContentId);
+                if (!string.IsNullOrWhiteSpace(contentId))
+                    emailAttachment["cid"] = contentId;
+                attachments.Add(emailAttachment);
+            }
+
+            email["attachments"] = attachments;
+        }
+
+        return email;
+    }
+
+    private async Task<JmapUploadedBlob> ResolveAttachmentBlobAsync(
+        JmapSession session,
+        ProviderComposeAttachment attachment,
+        CancellationToken cancellationToken)
+    {
+        var reference = ParseAttachmentReference(attachment.ProviderReferenceJson);
+        if (!string.IsNullOrWhiteSpace(reference?.BlobId)
+            && (string.IsNullOrWhiteSpace(reference.AccountId)
+                || string.Equals(reference.AccountId, session.AccountId, StringComparison.Ordinal)))
+        {
+            return new JmapUploadedBlob
+            {
+                AccountId = reference.AccountId ?? session.AccountId,
+                BlobId = reference.BlobId,
+                Type = reference.Type ?? attachment.MimeType,
+                Size = reference.Size ?? attachment.Size,
+                RawDataJson = attachment.ProviderReferenceJson!
+            };
+        }
+
+        return await UploadAttachmentAsync(session, attachment, cancellationToken);
+    }
+
+    private async Task<JmapUploadedBlob> UploadAttachmentAsync(
+        JmapSession session,
+        ProviderComposeAttachment attachment,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(session.UploadUrlTemplate))
+            throw new InvalidOperationException("JMAP session did not provide an upload URL template.");
+
+        var content = await File.ReadAllBytesAsync(attachment.ContentPath, cancellationToken);
+        return await UploadBlobAsync(session, attachment.MimeType, content, cancellationToken);
+    }
+
+    private async Task<JmapUploadedBlob> UploadBlobAsync(
+        JmapSession session,
+        string? mimeType,
+        byte[] content,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(session.UploadUrlTemplate))
+            throw new InvalidOperationException("JMAP session did not provide an upload URL template.");
+
+        using var requestContent = new ByteArrayContent(content);
+        requestContent.Headers.ContentType = MediaTypeHeaderValue.Parse(
+            string.IsNullOrWhiteSpace(mimeType) ? "application/octet-stream" : mimeType);
+
+        using var response = await SendRequestAsync(
+            HttpMethod.Post,
+            ExpandAccountUrl(session.UploadUrlTemplate, session.AccountId),
+            session.Credentials,
+            content: requestContent,
+            cancellationToken: cancellationToken);
+        var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            throw CreateHttpException("upload JMAP blob", response, responseContent);
+
+        using var document = JsonDocument.Parse(responseContent);
+        var root = document.RootElement;
+        return new JmapUploadedBlob
+        {
+            AccountId = GetRequiredString(root, "accountId"),
+            BlobId = GetRequiredString(root, "blobId"),
+            Type = GetString(root, "type") ?? requestContent.Headers.ContentType?.MediaType ?? "application/octet-stream",
+            Size = GetInt64(root, "size") ?? content.LongLength,
+            RawDataJson = root.GetRawText()
+        };
+    }
+
+    private static JmapAttachmentReference? ParseAttachmentReference(string? providerReferenceJson)
+    {
+        if (string.IsNullOrWhiteSpace(providerReferenceJson))
+            return null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(providerReferenceJson);
+            var root = document.RootElement;
+            return new JmapAttachmentReference
+            {
+                AccountId = GetString(root, "accountId"),
+                BlobId = GetString(root, "blobId"),
+                Type = GetString(root, "type"),
+                Size = GetInt64(root, "size")
+            };
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static HttpRequestMessage CreateRequest(HttpMethod method, string url, JmapCredentials credentials, bool acceptJson = true)
@@ -1025,6 +1531,38 @@ public class JmapMailService(HttpClient? httpClient = null)
             .Replace("{type}", Uri.EscapeDataString(mimeType), StringComparison.Ordinal);
     }
 
+    private static string ExpandAccountUrl(string template, string accountId)
+    {
+        return template.Replace("{accountId}", Uri.EscapeDataString(accountId), StringComparison.Ordinal);
+    }
+
+    private static JsonArray CreateAddressArray(IEnumerable<MailAddress> addresses)
+    {
+        var array = new JsonArray();
+        foreach (var address in addresses.Where(address => !string.IsNullOrWhiteSpace(address.Address)))
+        {
+            array.Add(new JsonObject
+            {
+                ["name"] = string.IsNullOrWhiteSpace(address.Name) ? null : address.Name,
+                ["email"] = address.Address
+            });
+        }
+
+        return array;
+    }
+
+    private static JsonArray CreateAddressArray(string? name, string address)
+    {
+        return new JsonArray
+        {
+            new JsonObject
+            {
+                ["name"] = string.IsNullOrWhiteSpace(name) ? null : name,
+                ["email"] = address
+            }
+        };
+    }
+
     private static IReadOnlyList<JsonElement> GetArray(JsonElement element, string propertyName)
     {
         if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
@@ -1081,6 +1619,17 @@ public class JmapMailService(HttpClient? httpClient = null)
         return null;
     }
 
+    private static long? GetInt64(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var property))
+            return null;
+
+        if (property.ValueKind == JsonValueKind.Number && property.TryGetInt64(out var value))
+            return value;
+
+        return null;
+    }
+
     private static long? ParseUnixTimeSeconds(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -1126,7 +1675,10 @@ public sealed class JmapSession
     public required JmapCredentials Credentials { get; init; }
     public required IReadOnlyList<string> Capabilities { get; init; }
     public string? DownloadUrlTemplate { get; init; }
+    public string? UploadUrlTemplate { get; init; }
     public string? SessionState { get; init; }
+    public string? Username { get; init; }
+    public bool SupportsSubmission { get; init; }
 }
 
 public sealed class JmapMailboxSyncResult
@@ -1200,4 +1752,27 @@ public sealed class JmapMailAddress
 {
     public string? Name { get; init; }
     public required string Address { get; init; }
+}
+
+public sealed class JmapComposeMailboxIds
+{
+    public string? DraftsMailboxId { get; init; }
+    public string? SentMailboxId { get; init; }
+}
+
+public sealed class JmapUploadedBlob
+{
+    public required string AccountId { get; init; }
+    public required string BlobId { get; init; }
+    public required string Type { get; init; }
+    public long Size { get; init; }
+    public required string RawDataJson { get; init; }
+}
+
+public sealed class JmapAttachmentReference
+{
+    public string? AccountId { get; init; }
+    public string? BlobId { get; init; }
+    public string? Type { get; init; }
+    public long? Size { get; init; }
 }

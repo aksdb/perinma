@@ -24,6 +24,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<SettingsService>();
         services.AddSingleton<DebugFeaturesService>();
         services.AddSingleton<MailComposeAttachmentService>();
+        services.AddSingleton<MailComposerService>();
+
 
 
         // Google services
@@ -65,6 +67,14 @@ public static class ServiceCollectionExtensions
                 [AccountType.Jmap] = sp.GetRequiredService<JmapMailProvider>()
             });
 
+        services.AddSingleton<IReadOnlyDictionary<AccountType, IMailComposeProvider>>(sp =>
+            new Dictionary<AccountType, IMailComposeProvider>
+            {
+                [AccountType.Google] = sp.GetRequiredService<GoogleMailProvider>(),
+                [AccountType.Jmap] = sp.GetRequiredService<JmapMailProvider>()
+            });
+
+
         // ReminderService - requires calendar providers
         services.AddSingleton<ReminderService>(sp =>
             new ReminderService(
@@ -84,6 +94,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<MailSyncService>(sp =>
             new MailSyncService(
                 sp.GetRequiredService<SqliteStorage>(),
+                sp.GetRequiredService<IReadOnlyDictionary<AccountType, IMailProvider>>()));
+        services.AddSingleton<MailComposeService>(sp =>
+            new MailComposeService(
+                sp.GetRequiredService<SqliteStorage>(),
+                sp.GetRequiredService<MailComposeAttachmentService>(),
+                sp.GetRequiredService<MailComposerService>(),
+                sp.GetRequiredService<IReadOnlyDictionary<AccountType, IMailComposeProvider>>(),
                 sp.GetRequiredService<IReadOnlyDictionary<AccountType, IMailProvider>>()));
 
         // ContactSyncService - requires contact providers

@@ -17,14 +17,111 @@ namespace perinma.Services.Google;
 public class GoogleMailProvider(
     GoogleMailService googleMailService,
     CredentialManagerService credentialManager)
-    : IMailProvider
+    : IMailProvider, IMailComposeProvider
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
+    private static readonly MailComposeCapabilities ComposeCapabilities = new()
+    {
+        SupportsDrafts = true,
+        SupportsRemoteDrafts = true,
+        SupportsSend = true,
+        SupportsSenderIdentities = true,
+        SupportsInlineAttachments = true
+    };
+
     public CredentialManagerService CredentialManager => credentialManager;
+
+    public Task<MailComposeCapabilities> GetComposeCapabilitiesAsync(
+        string accountId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(ComposeCapabilities);
+
+    public async Task<IReadOnlyList<MailIdentity>> GetSenderIdentitiesAsync(
+        string accountId,
+        CancellationToken cancellationToken = default)
+    {
+        return await WithGoogleCredentialsAsync(accountId, async credentials =>
+        {
+            var identities = await googleMailService.GetSenderIdentitiesAsync(credentials, cancellationToken, accountId);
+            return identities
+                .Where(identity => !string.IsNullOrWhiteSpace(identity.SendAsEmail))
+                .OrderByDescending(static identity => identity.IsPrimary || identity.IsDefault)
+                .ThenBy(identity => identity.SendAsEmail, StringComparer.OrdinalIgnoreCase)
+                .Select(MapIdentity)
+                .ToList();
+        });
+    }
+
+    public async Task<ProviderDraftReference> SaveDraftAsync(
+        string accountId,
+        ProviderComposedMessage message,
+        ProviderDraftReference? existingDraft = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await WithGoogleCredentialsAsync(accountId, async credentials =>
+        {
+            var draftData = ResolveDraftReferenceData(existingDraft);
+            var gmailDraft = await googleMailService.SaveDraftAsync(
+                credentials,
+                MapComposeRequest(message, existingDraft, draftData),
+                ResolveDraftId(existingDraft, draftData),
+                cancellationToken,
+                accountId);
+
+            return MapDraftReference(gmailDraft, message.SenderIdentity.Id);
+        });
+    }
+
+    public Task DeleteDraftAsync(
+        string accountId,
+        ProviderDraftReference draft,
+        CancellationToken cancellationToken = default) =>
+        WithGoogleCredentialsAsync(
+            accountId,
+            credentials => googleMailService.DeleteDraftAsync(
+                credentials,
+                RequireDraftId(draft),
+                cancellationToken,
+                accountId));
+
+    public async Task<ProviderSendResult> SendAsync(
+        string accountId,
+        ProviderComposedMessage message,
+        ProviderDraftReference? existingDraft = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await WithGoogleCredentialsAsync(accountId, async credentials =>
+        {
+            var draftData = ResolveDraftReferenceData(existingDraft);
+            var sentMessage = await googleMailService.SendAsync(
+                credentials,
+                MapComposeRequest(message, existingDraft, draftData),
+                ResolveDraftId(existingDraft, draftData),
+                cancellationToken,
+                accountId);
+
+            return new ProviderSendResult
+            {
+                SentMessageExternalId = sentMessage.Id,
+                SentThreadExternalId = sentMessage.ThreadId
+                    ?? message.ThreadExternalId
+                    ?? existingDraft?.ThreadExternalId
+                    ?? draftData?.ThreadId,
+                RawDataJson = JsonSerializer.Serialize(
+                    new GoogleSentReferenceData
+                    {
+                        MessageId = sentMessage.Id,
+                        ThreadId = sentMessage.ThreadId,
+                        HistoryId = sentMessage.HistoryId
+                    },
+                    JsonOptions)
+            };
+        });
+    }
 
     public async Task<MailboxSyncResult> GetMailboxesAsync(
         string accountId,
@@ -237,6 +334,107 @@ public class GoogleMailProvider(
         finally
         {
             credentialManager.StoreGoogleCredentials(accountId, credentials);
+        }
+    }
+
+    private static MailIdentity MapIdentity(GoogleMailService.GmailSendAs identity)
+    {
+        var verificationStatus = identity.VerificationStatus;
+        return new MailIdentity
+        {
+            Id = identity.SendAsEmail!,
+            DisplayName = identity.DisplayName ?? string.Empty,
+            Address = identity.SendAsEmail!,
+            IsPrimary = identity.IsPrimary || identity.IsDefault,
+            CanSend = identity.IsPrimary
+                      || identity.IsDefault
+                      || string.IsNullOrWhiteSpace(verificationStatus)
+                      || string.Equals(verificationStatus, "accepted", StringComparison.OrdinalIgnoreCase)
+        };
+    }
+
+    private static GoogleMailService.GmailComposeRequest MapComposeRequest(
+        ProviderComposedMessage message,
+        ProviderDraftReference? existingDraft,
+        GoogleDraftReferenceData? draftData)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        return new GoogleMailService.GmailComposeRequest
+        {
+            SenderAddress = message.SenderIdentity.Address,
+            SenderDisplayName = message.SenderIdentity.DisplayName,
+            To = message.To,
+            Cc = message.Cc,
+            Bcc = message.Bcc,
+            Subject = message.Subject,
+            PlainTextBody = message.PlainTextBody,
+            HtmlBody = message.HtmlBody,
+            InReplyTo = message.InReplyTo,
+            References = message.References,
+            ThreadId = message.ThreadExternalId
+                ?? existingDraft?.ThreadExternalId
+                ?? draftData?.ThreadId,
+            Attachments = message.Attachments
+                .Select(attachment => new GoogleMailService.GmailComposeAttachment
+                {
+                    AttachmentId = attachment.AttachmentId,
+                    FileName = attachment.FileName,
+                    MimeType = attachment.MimeType,
+                    ContentPath = attachment.ContentPath,
+                    IsInline = attachment.IsInline,
+                    ContentId = attachment.ContentId
+                })
+                .ToList()
+        };
+    }
+
+    private static ProviderDraftReference MapDraftReference(GoogleMailService.GmailDraft draft, string senderIdentityId)
+    {
+        var data = new GoogleDraftReferenceData
+        {
+            DraftId = draft.Id,
+            MessageId = draft.Message?.Id,
+            ThreadId = draft.Message?.ThreadId,
+            IdentityId = senderIdentityId,
+            HistoryId = draft.Message?.HistoryId
+        };
+
+        return new ProviderDraftReference
+        {
+            ProviderDraftId = data.DraftId,
+            MessageExternalId = data.MessageId,
+            ThreadExternalId = data.ThreadId,
+            MailboxExternalId = "DRAFT",
+            IdentityId = data.IdentityId,
+            StateToken = data.HistoryId,
+            RawDataJson = JsonSerializer.Serialize(data, JsonOptions)
+        };
+    }
+
+    private static string RequireDraftId(ProviderDraftReference draft)
+    {
+        var draftId = ResolveDraftId(draft, ResolveDraftReferenceData(draft));
+        if (!string.IsNullOrWhiteSpace(draftId))
+            return draftId;
+        throw new InvalidOperationException("Google draft reference is missing a provider draft id");
+    }
+
+    private static string? ResolveDraftId(ProviderDraftReference? draft, GoogleDraftReferenceData? draftData) =>
+        !string.IsNullOrWhiteSpace(draft?.ProviderDraftId) ? draft.ProviderDraftId : draftData?.DraftId;
+
+    private static GoogleDraftReferenceData? ResolveDraftReferenceData(ProviderDraftReference? draft)
+    {
+        if (string.IsNullOrWhiteSpace(draft?.RawDataJson))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<GoogleDraftReferenceData>(draft.RawDataJson, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 
@@ -557,4 +755,20 @@ public class GoogleMailProvider(
     {
         ["rawData"] = new DataAttribute.JsonText(JsonSerializer.Serialize(value, JsonOptions))
     };
+
+    private sealed class GoogleDraftReferenceData
+    {
+        public string? DraftId { get; init; }
+        public string? MessageId { get; init; }
+        public string? ThreadId { get; init; }
+        public string? IdentityId { get; init; }
+        public string? HistoryId { get; init; }
+    }
+
+    private sealed class GoogleSentReferenceData
+    {
+        public string? MessageId { get; init; }
+        public string? ThreadId { get; init; }
+        public string? HistoryId { get; init; }
+    }
 }

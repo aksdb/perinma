@@ -11,7 +11,7 @@ namespace perinma.Services.Jmap;
 public class JmapMailProvider(
     JmapMailService jmapMailService,
     CredentialManagerService credentialManager)
-    : IMailProvider
+    : IMailProvider, IMailComposeProvider
 {
     public CredentialManagerService CredentialManager => credentialManager;
 
@@ -129,6 +129,36 @@ public class JmapMailProvider(
         string accountId,
         CancellationToken cancellationToken = default) =>
         jmapMailService.TestConnectionAsync(GetCredentials(accountId), cancellationToken);
+
+    public Task<MailComposeCapabilities> GetComposeCapabilitiesAsync(
+        string accountId,
+        CancellationToken cancellationToken = default) =>
+        jmapMailService.GetComposeCapabilitiesAsync(GetCredentials(accountId), cancellationToken);
+
+    public Task<IReadOnlyList<MailIdentity>> GetSenderIdentitiesAsync(
+        string accountId,
+        CancellationToken cancellationToken = default) =>
+        jmapMailService.GetSenderIdentitiesAsync(GetCredentials(accountId), cancellationToken);
+
+    public Task<ProviderDraftReference> SaveDraftAsync(
+        string accountId,
+        ProviderComposedMessage message,
+        ProviderDraftReference? existingDraft = null,
+        CancellationToken cancellationToken = default) =>
+        jmapMailService.SaveDraftAsync(GetCredentials(accountId), message, existingDraft, cancellationToken);
+
+    public Task DeleteDraftAsync(
+        string accountId,
+        ProviderDraftReference draft,
+        CancellationToken cancellationToken = default) =>
+        jmapMailService.DeleteDraftAsync(GetCredentials(accountId), draft, cancellationToken);
+
+    public Task<ProviderSendResult> SendAsync(
+        string accountId,
+        ProviderComposedMessage message,
+        ProviderDraftReference? existingDraft = null,
+        CancellationToken cancellationToken = default) =>
+        jmapMailService.SendAsync(GetCredentials(accountId), message, existingDraft, cancellationToken);
 
     private JmapCredentials GetCredentials(string accountId)
     {

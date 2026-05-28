@@ -56,11 +56,12 @@ public sealed class MailComposeAttachmentService
             cancellationToken);
     }
 
-    public async Task<MailComposeAttachment> StageInlineBytesAsync(
+    public Task<MailComposeAttachment> StageBytesAsync(
         string draftId,
         string fileName,
         string mimeType,
         byte[] content,
+        bool isInline = false,
         string? contentId = null,
         int sortOrder = 0,
         CancellationToken cancellationToken = default)
@@ -72,18 +73,27 @@ public sealed class MailComposeAttachmentService
             throw new ArgumentException("Mime type is required.", nameof(mimeType));
 
         var extension = Path.GetExtension(fileName);
-        await using var sourceStream = new MemoryStream(content, writable: false);
-        return await StageStreamCoreAsync(
+        return StageBytesCoreAsync(
             draftId,
             fileName,
             extension,
             mimeType,
-            sourceStream,
-            isInline: true,
+            content,
+            isInline,
             contentId,
             sortOrder,
             cancellationToken);
     }
+
+    public Task<MailComposeAttachment> StageInlineBytesAsync(
+        string draftId,
+        string fileName,
+        string mimeType,
+        byte[] content,
+        string? contentId = null,
+        int sortOrder = 0,
+        CancellationToken cancellationToken = default)
+        => StageBytesAsync(draftId, fileName, mimeType, content, true, contentId, sortOrder, cancellationToken);
 
     public Task DeleteDraftFilesAsync(string draftId, CancellationToken cancellationToken = default)
     {
@@ -92,6 +102,30 @@ public sealed class MailComposeAttachmentService
         if (Directory.Exists(draftDirectory))
             Directory.Delete(draftDirectory, recursive: true);
         return Task.CompletedTask;
+    }
+
+    private async Task<MailComposeAttachment> StageBytesCoreAsync(
+        string draftId,
+        string fileName,
+        string extension,
+        string mimeType,
+        byte[] content,
+        bool isInline,
+        string? contentId,
+        int sortOrder,
+        CancellationToken cancellationToken)
+    {
+        await using var sourceStream = new MemoryStream(content, writable: false);
+        return await StageStreamCoreAsync(
+            draftId,
+            fileName,
+            extension,
+            mimeType,
+            sourceStream,
+            isInline,
+            contentId,
+            sortOrder,
+            cancellationToken);
     }
 
     private async Task<MailComposeAttachment> StageStreamCoreAsync(

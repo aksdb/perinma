@@ -356,12 +356,12 @@ Recommended test layers:
 - [x] Add `IMailComposeProvider` and compose capability/identity contracts
 - [x] Add local draft repository/storage APIs and migration
 - [x] Add attachment staging service for compose drafts
-- [ ] Add compose HTML sanitizer + plain-text exporter
-- [ ] Add `MailComposerService` and provider-neutral compose model
+- [x] Add compose HTML sanitizer + plain-text exporter
+- [x] Add `MailComposerService` and provider-neutral compose model
 - [ ] Add `ComposeMailWindow`, `ComposeMailViewModel`, and `ComposeMailEditorView`
 - [ ] Add local editor asset bundle and JS bridge
-- [ ] Add Gmail alias loading + draft create/update/send support
-- [ ] Add JMAP identity discovery + upload + draft save/send support
+- [x] Add Gmail alias loading + draft create/update/send support
+- [x] Add JMAP identity discovery + upload + draft save/send support
 - [ ] Add compose/reply/reply-all/forward actions in `MailView`
 - [ ] Add draft conflict detection and recovery UI
 - [ ] Add cleanup for staged draft attachments on discard/send
