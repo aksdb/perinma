@@ -1,3 +1,6 @@
+using System.Linq;
+using Avalonia.VisualTree;
+
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using NUnit.Framework;
@@ -23,6 +26,21 @@ public class MailViewAtomUiTests
 
         var htmlView = view.FindControl<SecureMailHtmlView>("SecureMailHtmlPreview");
         Assert.That(htmlView, Is.Not.Null, "Missing secure mail HTML preview control.");
+    }
+
+    [AvaloniaTest]
+    public void MailView_HtmlPreview_IsNotNestedInsideScrollViewer()
+    {
+        var view = new MailView();
+
+        var htmlView = view.FindControl<SecureMailHtmlView>("SecureMailHtmlPreview");
+        var bodyScrollViewer = view.FindControl<Control>("MessageBodyScrollViewer");
+        Assert.That(htmlView, Is.Not.Null);
+        Assert.That(bodyScrollViewer, Is.Not.Null);
+        Assert.That(bodyScrollViewer!.GetType().Namespace, Does.StartWith("AtomUI."));
+
+        var scrollViewerAncestor = htmlView!.GetVisualAncestors().OfType<ScrollViewer>().FirstOrDefault();
+        Assert.That(scrollViewerAncestor, Is.Null, "Native HTML preview must not be hosted inside a ScrollViewer.");
     }
 
     private static void AssertAtomControl(Control root, string name, string typeName)

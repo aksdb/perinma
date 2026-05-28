@@ -277,95 +277,107 @@
                         BorderThickness="1"
                         CornerRadius="6"
                         IsVisible="{Binding HasSelectedMessage}">
-                    <atom:ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                                      VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="12" Spacing="10">
-                            <StackPanel Spacing="2">
-                                <TextBlock Text="{Binding SelectedMessage.Subject}"
-                                           FontSize="16"
-                                           FontWeight="SemiBold"
-                                           TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding SelectedMessage.SenderDisplay}"
-                                           FontSize="13"
-                                           TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding SelectedMessage.TimestampText}"
-                                           FontSize="11"
-                                           Foreground="{DynamicResource AppTextSecondaryBrush}"/>
-                            </StackPanel>
+                    <Grid RowDefinitions="Auto,*">
+                        <atom:ScrollViewer x:Name="MessageDetailsScrollViewer"
+                                           HorizontalScrollBarVisibility="Disabled"
+                                           VerticalScrollBarVisibility="Auto"
+                                           MaxHeight="260">
+                            <StackPanel Margin="12,12,12,0" Spacing="10">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding SelectedMessage.Subject}"
+                                               FontSize="16"
+                                               FontWeight="SemiBold"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding SelectedMessage.SenderDisplay}"
+                                               FontSize="13"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding SelectedMessage.TimestampText}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                                </StackPanel>
 
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="{Binding SelectedMessageToSummary, StringFormat='To: {0}'}"
-                                           TextWrapping="Wrap"
-                                           IsVisible="{Binding SelectedMessageToSummary.Length}"/>
-                                <TextBlock Text="{Binding SelectedMessageCcSummary, StringFormat='Cc: {0}'}"
-                                           TextWrapping="Wrap"
-                                           IsVisible="{Binding SelectedMessageCcSummary.Length}"/>
-                                <TextBlock Text="{Binding SelectedMessageReplyToSummary, StringFormat='Reply-To: {0}'}"
-                                           TextWrapping="Wrap"
-                                           IsVisible="{Binding SelectedMessageReplyToSummary.Length}"/>
-                            </StackPanel>
-
-                            <StackPanel Spacing="8">
-                                <Border Background="{DynamicResource AppWarningBrush}"
-                                        CornerRadius="4"
-                                        Padding="10,8"
-                                        IsVisible="{Binding SelectedMessageSecurityNotice.Length}">
-                                    <TextBlock Text="{Binding SelectedMessageSecurityNotice}"
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="{Binding SelectedMessageToSummary, StringFormat='To: {0}'}"
                                                TextWrapping="Wrap"
-                                               Foreground="White"/>
-                                </Border>
+                                               IsVisible="{Binding SelectedMessageToSummary.Length}"/>
+                                    <TextBlock Text="{Binding SelectedMessageCcSummary, StringFormat='Cc: {0}'}"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding SelectedMessageCcSummary.Length}"/>
+                                    <TextBlock Text="{Binding SelectedMessageReplyToSummary, StringFormat='Reply-To: {0}'}"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding SelectedMessageReplyToSummary.Length}"/>
+                                </StackPanel>
 
-                                <atom:Button Content="Load external resources for this message"
-                                             Command="{Binding EnableExternalResourcesCommand}"
-                                             IsVisible="{Binding CanEnableSelectedMessageExternalResources}"
-                                             HorizontalAlignment="Left"
-                                             Padding="10,4"/>
+                                <StackPanel Spacing="8">
+                                    <Border Background="{DynamicResource AppWarningBrush}"
+                                            CornerRadius="4"
+                                            Padding="10,8"
+                                            IsVisible="{Binding SelectedMessageSecurityNotice.Length}">
+                                        <TextBlock Text="{Binding SelectedMessageSecurityNotice}"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="White"/>
+                                    </Border>
+
+                                    <atom:Button Content="Load external resources for this message"
+                                                 Command="{Binding EnableExternalResourcesCommand}"
+                                                 IsVisible="{Binding CanEnableSelectedMessageExternalResources}"
+                                                 HorizontalAlignment="Left"
+                                                 Padding="10,4"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6" IsVisible="{Binding SelectedMessageAttachments.Count}">
+                                    <TextBlock Text="Attachments"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"/>
+                                    <ItemsControl ItemsSource="{Binding SelectedMessageAttachments}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="mail:AttachmentItemViewModel">
+                                                <Border BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4"
+                                                        Padding="8,6"
+                                                        Margin="0,0,0,6">
+                                                    <DockPanel>
+                                                        <atom:Button DockPanel.Dock="Right"
+                                                                     Content="Open"
+                                                                     Command="{Binding OpenCommand}"
+                                                                     Padding="10,4"
+                                                                     Margin="8,0,0,0" />
+                                                        <StackPanel Spacing="2">
+                                                            <TextBlock Text="{Binding FileName}"
+                                                                       FontWeight="Medium"
+                                                                       TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Text="{Binding Summary}"
+                                                                       FontSize="11"
+                                                                       Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                                                        </StackPanel>
+                                                    </DockPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
                             </StackPanel>
+                        </atom:ScrollViewer>
 
-                            <StackPanel Spacing="6" IsVisible="{Binding SelectedMessageAttachments.Count}">
-                                <TextBlock Text="Attachments"
-                                           FontSize="13"
-                                           FontWeight="SemiBold"/>
-                                <ItemsControl ItemsSource="{Binding SelectedMessageAttachments}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="mail:AttachmentItemViewModel">
-                                            <Border BorderBrush="{DynamicResource AppChromeBorderBrush}"
-                                                    BorderThickness="1"
-                                                    CornerRadius="4"
-                                                    Padding="8,6"
-                                                    Margin="0,0,0,6">
-                                                <DockPanel>
-                                                    <atom:Button DockPanel.Dock="Right"
-                                                                 Content="Open"
-                                                                 Command="{Binding OpenCommand}"
-                                                                 Padding="10,4"
-                                                                 Margin="8,0,0,0" />
-                                                    <StackPanel Spacing="2">
-                                                        <TextBlock Text="{Binding FileName}"
-                                                                   FontWeight="Medium"
-                                                                   TextTrimming="CharacterEllipsis"/>
-                                                        <TextBlock Text="{Binding Summary}"
-                                                                   FontSize="11"
-                                                                   Foreground="{DynamicResource AppTextSecondaryBrush}"/>
-                                                    </StackPanel>
-                                                </DockPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-
+                        <atom:ScrollViewer x:Name="MessageBodyScrollViewer"
+                                           Grid.Row="1"
+                                           Margin="12,10,12,12"
+                                           HorizontalScrollBarVisibility="Disabled"
+                                           VerticalScrollBarVisibility="Auto"
+                                           IsVisible="{Binding ShowBodyText}">
                             <TextBlock Text="{Binding SelectedMessageBodyText}"
                                        TextWrapping="Wrap"
-                                       FontFamily="Cascadia Code,Consolas,Monospace"
-                                       IsVisible="{Binding ShowBodyText}"/>
+                                       FontFamily="Cascadia Code,Consolas,Monospace"/>
+                        </atom:ScrollViewer>
 
-                            <mail:SecureMailHtmlView x:Name="SecureMailHtmlPreview" Html="{Binding SelectedMessageHtmlContent}"
-                                                     PlaceholderText="{Binding SelectedMessageHtmlFallbackText}"
-                                                     Height="520"
-                                                     IsVisible="{Binding ShowHtmlPreview}"/>
-                        </StackPanel>
-                    </atom:ScrollViewer>
+                        <mail:SecureMailHtmlView x:Name="SecureMailHtmlPreview"
+                                                 Grid.Row="1"
+                                                 Margin="12,10,12,12"
+                                                 Html="{Binding SelectedMessageHtmlContent}"
+                                                 PlaceholderText="{Binding SelectedMessageHtmlFallbackText}"
+                                                 IsVisible="{Binding ShowHtmlPreview}"/>
+                    </Grid>
                 </Border>
             </Grid>
         </Border>

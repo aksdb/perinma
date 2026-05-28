@@ -10,8 +10,8 @@
              d:DesignWidth="800"
              d:DesignHeight="480">
 
-    <Grid>
-        <web:NativeWebView x:Name="PreviewWebView"/>
+    <Panel>
+        <web:NativeWebView x:Name="PreviewWebView" />
 
         <Border x:Name="PlaceholderBorder"
                 Background="{DynamicResource AppPanelSubtleBrush}"
@@ -21,5 +21,5 @@
             <TextBlock x:Name="PlaceholderTextBlock"
                        TextWrapping="Wrap"/>
         </Border>
-    </Grid>
+    </Panel>
 </UserControl>
