@@ -1,3 +1,5 @@
+using System.Net;
+
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -24,11 +26,14 @@ public partial class MailViewModel : ViewModelBase
 
     private readonly SqliteStorage _storage;
     private readonly MailSyncService _mailSyncService;
+    private readonly MailComposeService _mailComposeService;
+    private readonly Dictionary<string, ComposeMailWindow> _composeWindows = new(StringComparer.Ordinal);
     private readonly HashSet<string> _externalResourceEnabledMessageIds = new(StringComparer.Ordinal);
     private SanitizedMailHtml _selectedMessageHtmlPreview = SanitizedMailHtml.Empty;
     private int _threadLoadVersion;
     private int _messageLoadVersion;
     private int _detailLoadVersion;
+
 
     [ObservableProperty]
     private bool _isLoading;
@@ -106,10 +111,11 @@ public partial class MailViewModel : ViewModelBase
         ? SelectedMessagePlainTextContent
         : string.Empty;
 
-    public MailViewModel(SqliteStorage storage, MailSyncService mailSyncService)
+    public MailViewModel(SqliteStorage storage, MailSyncService mailSyncService, MailComposeService mailComposeService)
     {
         _storage = storage;
         _mailSyncService = mailSyncService;
+        _mailComposeService = mailComposeService;
         _ = LoadDataAsync(preserveSelection: false);
     }
 
@@ -160,6 +166,24 @@ public partial class MailViewModel : ViewModelBase
     private Task DeleteAsync() => ApplyActionAsync(MailActionType.Delete);
 
     [RelayCommand]
+    private Task ComposeAsync() => OpenComposeAsync(MailComposeKind.New);
+
+    [RelayCommand]
+    private Task ReplyAsync() => OpenComposeAsync(MailComposeKind.Reply);
+
+    [RelayCommand]
+    private Task ReplyAllAsync() => OpenComposeAsync(MailComposeKind.ReplyAll);
+
+    [RelayCommand]
+    private Task ForwardAsync() => OpenComposeAsync(MailComposeKind.Forward);
+
+    [RelayCommand]
+    private Task EditDraftAsync() => OpenExistingDraftAsync();
+
+    [RelayCommand]
+    private Task OpenLocalDraftsAsync() => ShowLocalDraftsAsync();
+
+    [RelayCommand]
     private void EnableExternalResources()
     {
         if (SelectedMessage == null)
@@ -168,6 +192,233 @@ public partial class MailViewModel : ViewModelBase
         _externalResourceEnabledMessageIds.Add(SelectedMessage.MessageId);
         RefreshSelectedMessagePreview();
         RaisePreviewPropertiesChanged();
+    }
+
+    private async Task OpenComposeAsync(MailComposeKind kind)
+    {
+        var accountId = SelectedMailbox?.AccountId ?? Mailboxes.FirstOrDefault()?.AccountId;
+        if (string.IsNullOrWhiteSpace(accountId))
+        {
+            StatusText = "Add and sync a mail account before composing mail.";
+            return;
+        }
+
+        if (kind == MailComposeKind.New)
+        {
+            var draft = await _mailComposeService.CreateDraftAsync(accountId, kind);
+            await OpenComposeWindowAsync(draft);
+            return;
+        }
+
+        var source = await BuildSelectedSourceMessageAsync();
+        if (source == null)
+            return;
+
+        var draftFromSource = await _mailComposeService.CreateDraftAsync(accountId, kind, source);
+        await OpenComposeWindowAsync(draftFromSource);
+    }
+
+    private async Task OpenExistingDraftAsync()
+    {
+        var draft = await BuildEditableDraftFromSelectedMessageAsync();
+        if (draft == null)
+            return;
+
+        await _mailComposeService.SaveLocalDraftAsync(draft);
+        await OpenComposeWindowAsync(draft);
+    }
+
+    private async Task ShowLocalDraftsAsync()
+    {
+        var owner = App.MainWindow;
+        if (owner == null)
+        {
+            StatusText = "Main window is not available.";
+            return;
+        }
+
+        var draftId = await LocalDraftsWindow.ShowAsync(owner, new LocalDraftsViewModel(_mailComposeService));
+        if (string.IsNullOrWhiteSpace(draftId))
+            return;
+
+        var draft = await _mailComposeService.GetDraftAsync(draftId);
+        if (draft != null)
+            await OpenComposeWindowAsync(draft);
+    }
+
+    private async Task OpenComposeWindowAsync(MailComposeDraft draft)
+    {
+        var draftId = draft.Id.ToString();
+        if (_composeWindows.TryGetValue(draftId, out var existingWindow))
+        {
+            existingWindow.Activate();
+            return;
+        }
+
+        var composeViewModel = new ComposeMailViewModel(_mailComposeService, draft);
+        var composeWindow = new ComposeMailWindow
+        {
+            DataContext = composeViewModel
+        };
+
+        _composeWindows[draftId] = composeWindow;
+        composeViewModel.CloseRequested += OnCloseRequested;
+        composeViewModel.DraftChanged += OnDraftChanged;
+        composeWindow.Closed += OnClosed;
+
+        await composeViewModel.InitializeAsync();
+        var owner = App.MainWindow;
+        if (owner != null)
+            composeWindow.Show(owner);
+        else
+            composeWindow.Show();
+
+        return;
+
+        async void OnDraftChanged(bool refreshMail)
+        {
+            await RefreshMailAfterComposeAsync(refreshMail);
+        }
+
+        void OnCloseRequested(bool refreshMail)
+        {
+            _ = RefreshMailAfterComposeAsync(refreshMail);
+            composeWindow.Close();
+        }
+
+        void OnClosed(object? sender, EventArgs args)
+        {
+            composeViewModel.CloseRequested -= OnCloseRequested;
+            composeViewModel.DraftChanged -= OnDraftChanged;
+            composeWindow.Closed -= OnClosed;
+            _composeWindows.Remove(draftId);
+        }
+    }
+
+    private async Task RefreshMailAfterComposeAsync(bool refreshMail)
+    {
+        if (!refreshMail)
+            return;
+
+        await RefreshCoreAsync();
+    }
+
+    private async Task<MailComposeSourceMessage?> BuildSelectedSourceMessageAsync()
+    {
+        var currentMessage = SelectedMessage;
+        if (currentMessage == null)
+            return null;
+
+        var hydratedMessage = await EnsureMessageHydratedAsync(currentMessage);
+        if (hydratedMessage != null)
+        {
+            if (SelectedMessage?.MessageId == currentMessage.MessageId)
+                ReplaceMessage(currentMessage.MessageId, hydratedMessage);
+            currentMessage = SelectedMessage ?? hydratedMessage;
+        }
+
+        var toTask = LoadAddressesAsync(currentMessage.MessageId, "to");
+        var ccTask = LoadAddressesAsync(currentMessage.MessageId, "cc");
+        var replyToTask = LoadAddressesAsync(currentMessage.MessageId, "replyTo");
+        var attachmentsTask = _storage.GetAttachmentsByMessageAsync(currentMessage.MessageId);
+        var threadTask = _storage.GetMailThreadByIdAsync(currentMessage.ThreadId);
+        var messageTask = _storage.GetMailMessageQueryByIdAsync(currentMessage.MessageId);
+        await Task.WhenAll(toTask, ccTask, replyToTask, attachmentsTask, threadTask, messageTask);
+
+        return new MailComposeSourceMessage
+        {
+            AccountId = Guid.Parse(currentMessage.AccountId),
+            AccountType = currentMessage.AccountType,
+            MessageId = Guid.Parse(currentMessage.MessageId),
+            MessageExternalId = currentMessage.ExternalId,
+            ThreadId = Guid.Parse(currentMessage.ThreadId),
+            ThreadExternalId = threadTask.Result?.ExternalId,
+            InternetMessageId = messageTask.Result?.InternetMessageId,
+            Subject = currentMessage.Subject,
+            Sender = string.IsNullOrWhiteSpace(currentMessage.SenderAddress)
+                ? null
+                : new MailAddress
+                {
+                    Name = currentMessage.SenderName ?? string.Empty,
+                    Address = currentMessage.SenderAddress
+                },
+            To = toTask.Result,
+            Cc = ccTask.Result,
+            ReplyTo = replyToTask.Result,
+            SentAt = currentMessage.SentAt,
+            HtmlBody = currentMessage.HtmlBody ?? string.Empty,
+            PlainTextBody = currentMessage.PlainTextBody ?? string.Empty,
+            Attachments = attachmentsTask.Result
+                .Select(attachment => new MailComposeSourceAttachment
+                {
+                    AttachmentId = attachment.AttachmentId,
+                    ExternalId = attachment.ExternalId,
+                    FileName = string.IsNullOrWhiteSpace(attachment.FileName) ? "Attachment" : attachment.FileName,
+                    MimeType = string.IsNullOrWhiteSpace(attachment.MimeType) ? "application/octet-stream" : attachment.MimeType,
+                    ContentPath = attachment.ContentPath,
+                    ContentId = attachment.ContentId,
+                    IsInline = attachment.IsInline == 1
+                })
+                .ToList()
+        };
+    }
+
+    private async Task<MailComposeDraft?> BuildEditableDraftFromSelectedMessageAsync()
+    {
+        var currentMessage = SelectedMessage;
+        if (currentMessage == null || !currentMessage.IsDraft || string.IsNullOrWhiteSpace(currentMessage.ExternalId))
+            return null;
+
+        var source = await BuildSelectedSourceMessageAsync();
+        if (source == null)
+            return null;
+
+        var bcc = await LoadAddressesAsync(currentMessage.MessageId, "bcc");
+        var mailboxExternalId = await ResolveDraftMailboxExternalIdAsync(currentMessage.MessageId);
+        var rawData = await _storage.GetMailMessageRawDataAsync(currentMessage.MessageId);
+        var draft = new MailComposeDraft
+        {
+            Id = Guid.NewGuid(),
+            AccountId = Guid.Parse(currentMessage.AccountId),
+            Kind = MailComposeKind.New,
+            SourceMessageId = source.MessageId,
+            SourceMessageExternalId = source.MessageExternalId,
+            SourceThreadId = source.ThreadId,
+            SourceThreadExternalId = source.ThreadExternalId,
+            SourceInternetMessageId = source.InternetMessageId,
+            RemoteDraftReferenceJson = JsonSerializer.Serialize(new ProviderDraftReference
+            {
+                ProviderDraftId = currentMessage.ExternalId,
+                MessageExternalId = currentMessage.ExternalId,
+                ThreadExternalId = source.ThreadExternalId,
+                MailboxExternalId = mailboxExternalId,
+                RawDataJson = rawData
+            }),
+            Subject = currentMessage.Subject,
+            ToText = FormatAddressList(source.To),
+            CcText = FormatAddressList(source.Cc),
+            BccText = FormatAddressList(bcc),
+            HtmlBody = !string.IsNullOrWhiteSpace(source.HtmlBody) ? source.HtmlBody : ConvertPlainTextToHtml(source.PlainTextBody),
+            PlainTextBody = !string.IsNullOrWhiteSpace(source.PlainTextBody) ? source.PlainTextBody : SelectedMessagePlainTextContent,
+            Status = MailComposeDraftStatus.Synced,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        draft.Attachments = await _mailComposeService.ImportSourceAttachmentsAsync(draft, source, includeInline: true);
+        draft.HtmlBody = RestoreInlineImageSources(draft.HtmlBody, draft.Attachments);
+        return draft;
+    }
+
+    private async Task<string?> ResolveDraftMailboxExternalIdAsync(string messageId)
+    {
+        var mailboxIds = await _storage.GetMailboxIdsByMessageAsync(messageId);
+        foreach (var mailboxId in mailboxIds)
+        {
+            var mailbox = await _storage.GetMailboxByIdAsync(mailboxId);
+            if (mailbox != null && string.Equals(mailbox.Role, "drafts", StringComparison.OrdinalIgnoreCase))
+                return mailbox.ExternalId;
+        }
+
+        return null;
     }
 
     private async Task LoadDataAsync(bool preserveSelection)
@@ -922,6 +1173,28 @@ public partial class MailViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(address))
             return name;
         return $"{name} <{address}>";
+    }
+
+    private static string ConvertPlainTextToHtml(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "<p><br></p>";
+
+        var encoded = WebUtility.HtmlEncode(text);
+        return $"<p>{encoded.Replace("\r\n", "\n", StringComparison.Ordinal).Replace("\n", "<br>", StringComparison.Ordinal)}</p>";
+    }
+
+    private static string RestoreInlineImageSources(string html, IEnumerable<MailComposeAttachment> attachments)
+    {
+        var updatedHtml = html;
+        foreach (var attachment in attachments.Where(attachment => attachment.IsInline && !string.IsNullOrWhiteSpace(attachment.ContentId) && !string.IsNullOrWhiteSpace(attachment.ContentPath)))
+        {
+            var fileUri = new Uri(Path.GetFullPath(attachment.ContentPath!)).AbsoluteUri;
+            updatedHtml = updatedHtml.Replace($"cid:{attachment.ContentId}", fileUri, StringComparison.OrdinalIgnoreCase);
+            updatedHtml = updatedHtml.Replace($"cid:<{attachment.ContentId}>", fileUri, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return updatedHtml;
     }
 
     private static TItem? SelectItem<TItem>(IReadOnlyList<TItem> items, string? preferredId, Func<TItem, string> idSelector)

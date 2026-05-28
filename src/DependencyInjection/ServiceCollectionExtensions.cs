@@ -128,6 +128,8 @@ public static class ServiceCollectionExtensions
             var syncService = sp.GetRequiredService<SyncService>();
             var contactSyncService = sp.GetRequiredService<ContactSyncService>();
             var mailSyncService = sp.GetRequiredService<MailSyncService>();
+            var mailComposeService = sp.GetRequiredService<MailComposeService>();
+
             var reminderService = sp.GetRequiredService<ReminderService>();
             var calDavService = sp.GetRequiredService<CalDavService>();
             var cardDavService = sp.GetRequiredService<CardDavService>();
@@ -146,6 +148,7 @@ public static class ServiceCollectionExtensions
                 syncService,
                 contactSyncService,
                 mailSyncService,
+                mailComposeService,
                 reminderService,
                 calDavService,
                 cardDavService,

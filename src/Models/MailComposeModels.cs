@@ -105,6 +105,7 @@ public sealed class MailComposeSourceAttachment
     public string FileName { get; set; } = string.Empty;
     public string MimeType { get; set; } = "application/octet-stream";
     public string? ContentPath { get; set; }
+    public string? ContentId { get; set; }
     public bool IsInline { get; set; }
 }
 

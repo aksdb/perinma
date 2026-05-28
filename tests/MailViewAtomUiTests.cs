@@ -18,7 +18,13 @@ public class MailViewAtomUiTests
 
         AssertAtomControl(view, "MailboxListBox", "ListBox");
         AssertAtomControl(view, "ThreadListBox", "ListBox");
+        AssertAtomControl(view, "ComposeMailButton", "Button");
+        AssertAtomControl(view, "LocalDraftsButton", "Button");
         AssertAtomControl(view, "RefreshMailButton", "Button");
+        AssertAtomControl(view, "ReplyMailButton", "Button");
+        AssertAtomControl(view, "ReplyAllMailButton", "Button");
+        AssertAtomControl(view, "ForwardMailButton", "Button");
+        AssertAtomControl(view, "EditDraftMailButton", "Button");
         AssertAtomControl(view, "MarkReadButton", "Button");
         AssertAtomControl(view, "ArchiveMailButton", "Button");
         AssertAtomControl(view, "DeleteMailButton", "Button");

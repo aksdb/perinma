@@ -82,47 +82,75 @@
                 Padding="10,10,10,8"
                 BorderBrush="{DynamicResource AppChromeBorderBrush}"
                 BorderThickness="0,0,0,1">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto,180"
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto,180"
                   ColumnSpacing="8">
-                <atom:Button x:Name="RefreshMailButton" Grid.Column="0"
+                <atom:Button x:Name="ComposeMailButton" Grid.Column="0"
+                             Content="Compose"
+                             Command="{Binding ComposeCommand}"
+                             Padding="10,4"/>
+                <atom:Button x:Name="LocalDraftsButton" Grid.Column="1"
+                             Content="Local Drafts"
+                             Command="{Binding OpenLocalDraftsCommand}"
+                             Padding="10,4"/>
+                <atom:Button x:Name="RefreshMailButton" Grid.Column="2"
                              Content="Refresh"
                              Command="{Binding RefreshCommand}"
                              Padding="10,4"/>
-                <atom:Button x:Name="MarkReadButton" Grid.Column="1"
+                <atom:Button x:Name="ReplyMailButton" Grid.Column="3"
+                             Content="Reply"
+                             Command="{Binding ReplyCommand}"
+                             IsEnabled="{Binding HasSelectedMessage}"
+                             Padding="10,4"/>
+                <atom:Button x:Name="ReplyAllMailButton" Grid.Column="4"
+                             Content="Reply all"
+                             Command="{Binding ReplyAllCommand}"
+                             IsEnabled="{Binding HasSelectedMessage}"
+                             Padding="10,4"/>
+                <atom:Button x:Name="ForwardMailButton" Grid.Column="5"
+                             Content="Forward"
+                             Command="{Binding ForwardCommand}"
+                             IsEnabled="{Binding HasSelectedMessage}"
+                             Padding="10,4"/>
+                <atom:Button x:Name="EditDraftMailButton" Grid.Column="6"
+                             Content="Edit Draft"
+                             Command="{Binding EditDraftCommand}"
+                             IsEnabled="{Binding HasSelectedMessage}"
+                             Padding="10,4"/>
+                <atom:Button x:Name="MarkReadButton" Grid.Column="7"
                              Content="Read"
                              Command="{Binding MarkReadCommand}"
                              IsEnabled="{Binding HasSelectedThread}"
                              Padding="10,4"/>
-                <atom:Button x:Name="MarkUnreadButton" Grid.Column="2"
+                <atom:Button x:Name="MarkUnreadButton" Grid.Column="8"
                              Content="Unread"
                              Command="{Binding MarkUnreadCommand}"
                              IsEnabled="{Binding HasSelectedThread}"
                              Padding="10,4"/>
-                <atom:Button x:Name="StarButton" Grid.Column="3"
+                <atom:Button x:Name="StarButton" Grid.Column="9"
                              Content="Star"
                              Command="{Binding StarCommand}"
                              IsEnabled="{Binding HasSelectedThread}"
                              Padding="10,4"/>
-                <atom:Button x:Name="UnstarButton" Grid.Column="4"
+                <atom:Button x:Name="UnstarButton" Grid.Column="10"
                              Content="Unstar"
                              Command="{Binding UnstarCommand}"
                              IsEnabled="{Binding HasSelectedThread}"
                              Padding="10,4"/>
-                <atom:Button x:Name="ArchiveMailButton" Grid.Column="5"
+                <atom:Button x:Name="ArchiveMailButton" Grid.Column="11"
                              Content="Archive"
                              Command="{Binding ArchiveCommand}"
                              IsEnabled="{Binding HasSelectedThread}"
                              Padding="10,4"/>
-                <atom:Button x:Name="DeleteMailButton" Grid.Column="6"
+                <atom:Button x:Name="DeleteMailButton" Grid.Column="12"
                              Content="Delete"
                              Command="{Binding DeleteCommand}"
                              IsEnabled="{Binding HasSelectedThread}"
                              Padding="10,4"/>
-                <TextBlock Grid.Column="8"
+                <TextBlock Grid.Column="14"
                            Text="Preview"
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource AppTextSecondaryBrush}"/>
-                <atom:ComboBox x:Name="BodyModeComboBox" Grid.Column="9"
+                <atom:ComboBox x:Name="BodyModeComboBox" Grid.Column="15"
                                SelectedItem="{Binding SelectedBodyMode}">
                     <ComboBox.Items>
                         <models:MailBodyKind>Auto</models:MailBodyKind>

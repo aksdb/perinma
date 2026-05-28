@@ -1,3 +1,5 @@
+using System.IO;
+
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -82,8 +84,18 @@ public class MailPreviewInteractionTests
         {
             [AccountType.Jmap] = provider
         });
+        var composeService = new MailComposeService(
+            storage,
+            new MailComposeAttachmentService(Path.Combine(Path.GetTempPath(), "perinma-compose-tests", Guid.NewGuid().ToString("N"))),
+            new MailComposerService(),
+            new Dictionary<AccountType, IMailComposeProvider>(),
+            new Dictionary<AccountType, IMailProvider>
+            {
+                [AccountType.Jmap] = provider
+            });
 
-        var viewModel = new MailViewModel(storage, mailSyncService);
+
+        var viewModel = new MailViewModel(storage, mailSyncService, composeService);
         var view = new MailView { DataContext = viewModel };
         var window = new Window { Content = view };
         window.Show();

@@ -1,0 +1,168 @@
+<atom:Window xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:atom="https://atomui.net"
+             xmlns:mail="using:perinma.Views.Mail"
+             x:Class="perinma.Views.Mail.ComposeMailWindow"
+             x:DataType="mail:ComposeMailViewModel"
+             mc:Ignorable="d"
+             Width="920"
+             Height="760"
+             MinWidth="760"
+             MinHeight="600"
+             Title="{Binding WindowTitle}">
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto"
+          Margin="14"
+          RowSpacing="10">
+        <Grid ColumnDefinitions="Auto,*"
+              RowDefinitions="Auto,Auto,Auto,Auto"
+              ColumnSpacing="10"
+              RowSpacing="8">
+            <TextBlock Grid.Row="0" Grid.Column="0"
+                       Text="From"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"/>
+            <atom:ComboBox Grid.Row="0" Grid.Column="1"
+                           ItemsSource="{Binding AvailableIdentities}"
+                           SelectedItem="{Binding SelectedIdentity}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding DisplayAddress}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </atom:ComboBox>
+
+            <TextBlock Grid.Row="1" Grid.Column="0"
+                       Text="To"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"/>
+            <atom:TextBox Grid.Row="1" Grid.Column="1"
+                          Text="{Binding ToText}"
+                          PlaceholderText="recipient@example.com, another@example.com"/>
+
+            <TextBlock Grid.Row="2" Grid.Column="0"
+                       Text="Cc"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       IsVisible="{Binding ShowCc}"/>
+            <atom:TextBox Grid.Row="2" Grid.Column="1"
+                          Text="{Binding CcText}"
+                          PlaceholderText="cc@example.com"
+                          IsVisible="{Binding ShowCc}"/>
+
+            <TextBlock Grid.Row="3" Grid.Column="0"
+                       Text="Bcc"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       IsVisible="{Binding ShowBcc}"/>
+            <atom:TextBox Grid.Row="3" Grid.Column="1"
+                          Text="{Binding BccText}"
+                          PlaceholderText="bcc@example.com"
+                          IsVisible="{Binding ShowBcc}"/>
+        </Grid>
+
+        <Grid Grid.Row="1"
+              ColumnDefinitions="*,Auto,Auto,Auto,Auto"
+              ColumnSpacing="8">
+            <atom:TextBox Grid.Column="0"
+                          Text="{Binding Subject}"
+                          PlaceholderText="Subject"
+                          FontSize="15"
+                          FontWeight="SemiBold"/>
+            <atom:Button Grid.Column="1"
+                         Content="Cc"
+                         Command="{Binding ToggleCcCommand}"
+                         Padding="10,4"/>
+            <atom:Button Grid.Column="2"
+                         Content="Bcc"
+                         Command="{Binding ToggleBccCommand}"
+                         Padding="10,4"/>
+            <atom:Button x:Name="AddAttachmentButton"
+                         Grid.Column="3"
+                         Content="Attach"
+                         Click="OnAddAttachmentClicked"
+                         Padding="10,4"/>
+            <atom:Button x:Name="InsertImageButton"
+                         Grid.Column="4"
+                         Content="Inline image"
+                         Click="OnInsertImageClicked"
+                         Padding="10,4"/>
+        </Grid>
+
+        <Border Grid.Row="2"
+                BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6">
+            <mail:ComposeMailEditorView x:Name="EditorView"
+                                        Html="{Binding HtmlBody}"
+                                        PlainText="{Binding PlainTextBody}"/>
+        </Border>
+
+        <Border Grid.Row="3"
+                BorderBrush="{DynamicResource AppChromeBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="10,8"
+                IsVisible="{Binding Attachments.Count}">
+            <StackPanel Spacing="6">
+                <TextBlock Text="Attachments"
+                           FontWeight="SemiBold"/>
+                <ItemsControl ItemsSource="{Binding Attachments}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="mail:ComposeAttachmentItemViewModel">
+                            <Grid ColumnDefinitions="*,Auto"
+                                  ColumnSpacing="8">
+                                <StackPanel Grid.Column="0"
+                                            Spacing="2">
+                                    <TextBlock Text="{Binding FileName}"
+                                               FontWeight="Medium"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Summary}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+                                </StackPanel>
+                                <atom:Button Grid.Column="1"
+                                             Content="Remove"
+                                             Command="{Binding RemoveCommand}"
+                                             CommandParameter="{Binding .}"
+                                             Padding="10,4"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="4"
+              ColumnDefinitions="*,Auto,Auto,Auto,Auto"
+              ColumnSpacing="8">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding StatusText}"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource AppTextSecondaryBrush}"/>
+            <atom:Button Grid.Column="1"
+                         Content="Save draft"
+                         Command="{Binding SaveDraftCommand}"
+                         IsEnabled="{Binding !IsBusy}"
+                         Padding="12,6"/>
+            <atom:Button Grid.Column="2"
+                         Content="Save as New"
+                         Command="{Binding SaveAsNewDraftCommand}"
+                         IsVisible="{Binding HasConflict}"
+                         IsEnabled="{Binding !IsBusy}"
+                         Padding="12,6"/>
+            <atom:Button Grid.Column="3"
+                         Content="Discard"
+                         Command="{Binding DiscardCommand}"
+                         IsEnabled="{Binding !IsBusy}"
+                         Padding="12,6"/>
+            <atom:Button Grid.Column="4"
+                         Content="Send"
+                         Command="{Binding SendCommand}"
+                         IsEnabled="{Binding CanSend}"
+                         Padding="16,6"/>
+        </Grid>
+    </Grid>
+</atom:Window>

@@ -50,7 +50,8 @@ public sealed class MailComposeService
         var identities = await GetSenderIdentitiesAsync(accountId, cancellationToken);
         var draft = _composerService.CreateDraft(Guid.Parse(accountId), account.AccountTypeEnum, kind, identities, source);
         if (kind == MailComposeKind.Forward && source != null)
-            draft.Attachments = await PrepareForwardAttachmentsAsync(draft.Id.ToString(), source, cancellationToken);
+            draft.Attachments = await ImportSourceAttachmentsAsync(draft, source, includeInline: false, cancellationToken);
+
 
         await SaveLocalDraftAsync(draft, cancellationToken);
         return draft;
@@ -181,6 +182,14 @@ public sealed class MailComposeService
         return Task.CompletedTask;
     }
 
+    public Task<List<MailComposeAttachment>> ImportSourceAttachmentsAsync(
+        MailComposeDraft draft,
+        MailComposeSourceMessage source,
+        bool includeInline,
+        CancellationToken cancellationToken = default)
+        => PrepareSourceAttachmentsAsync(draft.Id.ToString(), source, includeInline, cancellationToken);
+
+
     public async Task SaveRemoteDraftAsync(MailComposeDraft draft, CancellationToken cancellationToken = default)
     {
         var account = await GetAccountAsync(draft.AccountId.ToString());
@@ -189,18 +198,34 @@ public sealed class MailComposeService
         if (!capabilities.SupportsDrafts || !capabilities.SupportsRemoteDrafts)
             throw new InvalidOperationException($"Provider '{account.AccountTypeEnum}' does not support remote drafts.");
 
-        await PersistDraftAsync(draft, updateLocalSaveTimestamp: true, cancellationToken);
-        var composedMessage = _composerService.BuildProviderMessage(draft);
-        var remoteDraft = await provider.SaveDraftAsync(
-            account.AccountId,
-            composedMessage,
-            DeserializeDraftReference(draft.RemoteDraftReferenceJson),
-            cancellationToken);
+        try
+        {
+            await PersistDraftAsync(draft, updateLocalSaveTimestamp: true, cancellationToken);
+            var composedMessage = _composerService.BuildProviderMessage(draft);
+            var remoteDraft = await provider.SaveDraftAsync(
+                account.AccountId,
+                composedMessage,
+                DeserializeDraftReference(draft.RemoteDraftReferenceJson),
+                cancellationToken);
 
-        draft.RemoteDraftReferenceJson = JsonSerializer.Serialize(remoteDraft, JsonOptions);
-        draft.Status = MailComposeDraftStatus.Synced;
-        draft.LastRemoteSaveAt = DateTimeOffset.UtcNow;
-        await PersistDraftAsync(draft, updateLocalSaveTimestamp: false, cancellationToken);
+            draft.RemoteDraftReferenceJson = JsonSerializer.Serialize(remoteDraft, JsonOptions);
+            draft.Status = MailComposeDraftStatus.Synced;
+            draft.LastRemoteSaveAt = DateTimeOffset.UtcNow;
+            await PersistDraftAsync(draft, updateLocalSaveTimestamp: false, cancellationToken);
+        }
+        catch (InvalidOperationException ex) when (!string.IsNullOrWhiteSpace(draft.RemoteDraftReferenceJson) && IsRemoteConflict(ex))
+        {
+            draft.Status = MailComposeDraftStatus.Conflict;
+            await PersistDraftAsync(draft, updateLocalSaveTimestamp: false, cancellationToken);
+            throw new MailComposeConflictException("Remote draft changed. Local draft was kept; use 'Save as New' to create a fresh remote draft.", ex);
+        }
+    }
+
+    public async Task SaveAsNewRemoteDraftAsync(MailComposeDraft draft, CancellationToken cancellationToken = default)
+    {
+        draft.RemoteDraftReferenceJson = null;
+        draft.Status = MailComposeDraftStatus.LocalOnly;
+        await SaveRemoteDraftAsync(draft, cancellationToken);
     }
 
     public async Task<ProviderSendResult> SendAsync(MailComposeDraft draft, CancellationToken cancellationToken = default)
@@ -270,9 +295,10 @@ public sealed class MailComposeService
         await _storage.SetMailComposeDraftDataAsync(draftId, "bccText", draft.BccText ?? string.Empty);
     }
 
-    private async Task<List<MailComposeAttachment>> PrepareForwardAttachmentsAsync(
+    private async Task<List<MailComposeAttachment>> PrepareSourceAttachmentsAsync(
         string draftId,
         MailComposeSourceMessage source,
+        bool includeInline,
         CancellationToken cancellationToken)
     {
         var attachments = new List<MailComposeAttachment>();
@@ -280,7 +306,7 @@ public sealed class MailComposeService
             return attachments;
 
         var sortOrder = 0;
-        foreach (var sourceAttachment in source.Attachments.Where(attachment => !attachment.IsInline))
+        foreach (var sourceAttachment in source.Attachments.Where(attachment => includeInline || !attachment.IsInline))
         {
             MailComposeAttachment? stagedAttachment = null;
             if (!string.IsNullOrWhiteSpace(sourceAttachment.ContentPath) && File.Exists(sourceAttachment.ContentPath))
@@ -288,8 +314,11 @@ public sealed class MailComposeService
                 stagedAttachment = await _attachmentService.StageFileAsync(
                     draftId,
                     sourceAttachment.ContentPath,
-                    sortOrder: sortOrder,
-                    cancellationToken: cancellationToken);
+                    sourceAttachment.IsInline,
+                    sourceAttachment.ContentId,
+                    sortOrder,
+                    cancellationToken);
+
             }
             else if (!string.IsNullOrWhiteSpace(source.MessageExternalId)
                      && !string.IsNullOrWhiteSpace(sourceAttachment.ExternalId))
@@ -304,8 +333,10 @@ public sealed class MailComposeService
                     string.IsNullOrWhiteSpace(downloadedAttachment.FileName) ? sourceAttachment.FileName : downloadedAttachment.FileName,
                     string.IsNullOrWhiteSpace(downloadedAttachment.MimeType) ? sourceAttachment.MimeType : downloadedAttachment.MimeType,
                     downloadedAttachment.Content,
-                    sortOrder: sortOrder,
-                    cancellationToken: cancellationToken);
+                    sourceAttachment.IsInline,
+                    sourceAttachment.ContentId,
+                    sortOrder,
+                    cancellationToken);
             }
 
             if (stagedAttachment != null)
@@ -439,6 +470,10 @@ public sealed class MailComposeService
 
     private static ProviderDraftReference? DeserializeDraftReference(string? json)
         => string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<ProviderDraftReference>(json, JsonOptions);
+
+    private static bool IsRemoteConflict(Exception exception)
+        => exception.Message.Contains("state", StringComparison.OrdinalIgnoreCase)
+           || exception.Message.Contains("conflict", StringComparison.OrdinalIgnoreCase);
 
     private static Guid? ParseNullableGuid(string? value)
         => Guid.TryParse(value, out var parsedValue) ? parsedValue : null;

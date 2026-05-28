@@ -133,6 +133,13 @@ public class MainMenuTests
         var syncService = new SyncService(storage, credentialManager, providers, reminderService);
         var contactSyncService = new ContactSyncService(storage, new Dictionary<AccountType, IContactProvider>());
         var mailSyncService = new MailSyncService(storage, new Dictionary<AccountType, IMailProvider>());
+        var mailComposeService = new MailComposeService(
+            storage,
+            new MailComposeAttachmentService(Path.Combine(Path.GetTempPath(), "perinma-compose-tests", Guid.NewGuid().ToString("N"))),
+            new MailComposerService(),
+            new Dictionary<AccountType, IMailComposeProvider>(),
+            new Dictionary<AccountType, IMailProvider>());
+
 
         perinma.App.Services = new ServiceCollection()
             .AddSingleton(storage)
@@ -151,6 +158,7 @@ public class MainMenuTests
                 syncService,
                 contactSyncService,
                 mailSyncService,
+                mailComposeService,
                 reminderService,
                 new CalDavServiceStub(),
                 new CardDavServiceStub(),

@@ -180,6 +180,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         SyncService syncService,
         ContactSyncService contactSyncService,
         MailSyncService mailSyncService,
+        MailComposeService mailComposeService,
         ReminderService reminderService,
         ICalDavService calDavService,
         ICardDavService cardDavService,
@@ -190,6 +191,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         GoogleOAuthService googleOAuthService,
         ICalendarSource calendarSource,
         DebugFeaturesService debugFeatures)
+
 
     {
         _databaseService = databaseService;
@@ -215,7 +217,7 @@ public partial class MainWindowViewModel : ObservableRecipient,
         CalendarListViewModel =
             new CalendarListViewModel(_storage, calendarSource, _googleCalendarService, _credentialManager);
         ContactsViewModel = new ContactsViewModel(_storage, _contactSyncService);
-        MailViewModel = new MailViewModel(_storage, _mailSyncService);
+        MailViewModel = new MailViewModel(_storage, _mailSyncService, mailComposeService);
 
         CalendarWeekViewModel.PropertyChanged += (sender, args) =>
         {

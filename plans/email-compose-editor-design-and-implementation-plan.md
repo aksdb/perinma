@@ -358,14 +358,14 @@ Recommended test layers:
 - [x] Add attachment staging service for compose drafts
 - [x] Add compose HTML sanitizer + plain-text exporter
 - [x] Add `MailComposerService` and provider-neutral compose model
-- [ ] Add `ComposeMailWindow`, `ComposeMailViewModel`, and `ComposeMailEditorView`
-- [ ] Add local editor asset bundle and JS bridge
+- [x] Add `ComposeMailWindow`, `ComposeMailViewModel`, and `ComposeMailEditorView`
+- [x] Add local editor asset bundle and JS bridge
 - [x] Add Gmail alias loading + draft create/update/send support
 - [x] Add JMAP identity discovery + upload + draft save/send support
-- [ ] Add compose/reply/reply-all/forward actions in `MailView`
-- [ ] Add draft conflict detection and recovery UI
-- [ ] Add cleanup for staged draft attachments on discard/send
-- [ ] Add targeted unit/storage/UI/provider tests
+- [x] Add compose/reply/reply-all/forward actions in `MailView`
+- [x] Add draft conflict detection and recovery UI
+- [x] Add cleanup for staged draft attachments on discard/send
+- [x] Add targeted unit/storage/UI/provider tests
 
 ## References
 - Avalonia `NativeWebView` docs: https://docs.avaloniaui.net/controls/web/nativewebview
