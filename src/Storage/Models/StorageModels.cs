@@ -320,3 +320,102 @@ public class MailMessageQueryResult
     public bool MessageIsDraft => IsDraft == 1;
     public AccountType AccountTypeEnum => Enum.TryParse<AccountType>(AccountType, ignoreCase: true, out var result) ? result : perinma.Models.AccountType.Google;
 }
+
+public class MailComposeDraftDbo
+{
+    public required string DraftId { get; set; }
+    public required string AccountId { get; set; }
+    public string ComposeKind { get; set; } = MailComposeKind.New.ToString();
+    public string? SourceMessageId { get; set; }
+    public string? SourceMessageExternalId { get; set; }
+    public string? SourceThreadId { get; set; }
+    public string? SourceThreadExternalId { get; set; }
+    public string? SourceInternetMessageId { get; set; }
+    public string? RemoteDraftReferenceJson { get; set; }
+    public string? SelectedIdentityId { get; set; }
+    public string? SelectedIdentityDisplayName { get; set; }
+    public string? SelectedIdentityAddress { get; set; }
+    public string Subject { get; set; } = string.Empty;
+    public string HtmlBody { get; set; } = string.Empty;
+    public string PlainTextBody { get; set; } = string.Empty;
+    public string Status { get; set; } = MailComposeDraftStatus.LocalOnly.ToString();
+    public long? LastLocalSaveAt { get; set; }
+    public long? LastRemoteSaveAt { get; set; }
+    public long UpdatedAt { get; set; }
+
+    public MailComposeKind ComposeKindEnum => Enum.TryParse<MailComposeKind>(ComposeKind, ignoreCase: true, out var result)
+        ? result
+        : MailComposeKind.New;
+
+    public MailComposeDraftStatus StatusEnum => Enum.TryParse<MailComposeDraftStatus>(Status, ignoreCase: true, out var result)
+        ? result
+        : MailComposeDraftStatus.LocalOnly;
+}
+
+public class MailComposeRecipientDbo
+{
+    public required string DraftId { get; set; }
+    public required string RecipientId { get; set; }
+    public string RecipientKind { get; set; } = MailRecipientKind.To.ToString();
+    public string? DisplayName { get; set; }
+    public required string Address { get; set; }
+    public int SortOrder { get; set; }
+
+    public MailRecipientKind RecipientKindEnum => Enum.TryParse<MailRecipientKind>(RecipientKind, ignoreCase: true, out var result)
+        ? result
+        : MailRecipientKind.To;
+}
+
+public class MailComposeAttachmentDbo
+{
+    public required string DraftId { get; set; }
+    public required string AttachmentId { get; set; }
+    public required string FileName { get; set; }
+    public required string MimeType { get; set; }
+    public long Size { get; set; }
+    public int IsInline { get; set; }
+    public string? ContentId { get; set; }
+    public required string StagedFilePath { get; set; }
+    public string? ContentHash { get; set; }
+    public string? ProviderAttachmentReferenceJson { get; set; }
+    public int SortOrder { get; set; }
+
+    public bool Inline => IsInline == 1;
+}
+
+public class MailComposeDraftQueryResult
+{
+    public required string DraftId { get; init; }
+    public required string AccountId { get; init; }
+    public required string AccountName { get; init; }
+    public required string AccountType { get; init; }
+    public required string ComposeKind { get; init; }
+    public string? SourceMessageId { get; init; }
+    public string? SourceMessageExternalId { get; init; }
+    public string? SourceThreadId { get; init; }
+    public string? SourceThreadExternalId { get; init; }
+    public string? SourceInternetMessageId { get; init; }
+    public string? RemoteDraftReferenceJson { get; init; }
+    public string? SelectedIdentityId { get; init; }
+    public string? SelectedIdentityDisplayName { get; init; }
+    public string? SelectedIdentityAddress { get; init; }
+    public string Subject { get; init; } = string.Empty;
+    public string HtmlBody { get; init; } = string.Empty;
+    public string PlainTextBody { get; init; } = string.Empty;
+    public required string Status { get; init; }
+    public long? LastLocalSaveAt { get; init; }
+    public long? LastRemoteSaveAt { get; init; }
+    public long UpdatedAt { get; init; }
+
+    public MailComposeKind ComposeKindEnum => Enum.TryParse<MailComposeKind>(ComposeKind, ignoreCase: true, out var result)
+        ? result
+        : MailComposeKind.New;
+
+    public MailComposeDraftStatus StatusEnum => Enum.TryParse<MailComposeDraftStatus>(Status, ignoreCase: true, out var result)
+        ? result
+        : MailComposeDraftStatus.LocalOnly;
+
+    public AccountType AccountTypeEnum => Enum.TryParse<AccountType>(AccountType, ignoreCase: true, out var result)
+        ? result
+        : perinma.Models.AccountType.Google;
+}

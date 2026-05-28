@@ -2887,6 +2887,298 @@ public class SqliteStorage : IDisposable
 
     #endregion
 
+    #region Mail Compose Methods
+
+    public async Task<IEnumerable<MailComposeDraftQueryResult>> GetMailComposeDraftsAsync(string? accountId = null)
+    {
+        const string baseQuery = """
+            SELECT
+                d.draft_id AS DraftId,
+                d.account_id AS AccountId,
+                a.name AS AccountName,
+                a.type AS AccountType,
+                d.compose_kind AS ComposeKind,
+                d.source_message_id AS SourceMessageId,
+                d.source_message_external_id AS SourceMessageExternalId,
+                d.source_thread_id AS SourceThreadId,
+                d.source_thread_external_id AS SourceThreadExternalId,
+                d.source_internet_message_id AS SourceInternetMessageId,
+                d.remote_draft_reference_json AS RemoteDraftReferenceJson,
+                d.selected_identity_id AS SelectedIdentityId,
+                d.selected_identity_display_name AS SelectedIdentityDisplayName,
+                d.selected_identity_address AS SelectedIdentityAddress,
+                d.subject AS Subject,
+                d.html_body AS HtmlBody,
+                d.plain_text_body AS PlainTextBody,
+                d.status AS Status,
+                d.last_local_save_at AS LastLocalSaveAt,
+                d.last_remote_save_at AS LastRemoteSaveAt,
+                d.updated_at AS UpdatedAt
+            FROM mail_compose_draft d
+            INNER JOIN account a ON d.account_id = a.account_id
+            """;
+
+        var query = string.IsNullOrWhiteSpace(accountId)
+            ? baseQuery + " ORDER BY d.updated_at DESC, d.draft_id"
+            : baseQuery + " WHERE d.account_id = @AccountId ORDER BY d.updated_at DESC, d.draft_id";
+
+        return await _connection.QueryAsync<MailComposeDraftQueryResult>(
+            query,
+            new { AccountId = accountId },
+            commandTimeout: 30);
+    }
+
+    public async Task<MailComposeDraftQueryResult?> GetMailComposeDraftByIdAsync(string draftId)
+    {
+        return await _connection.QuerySingleOrDefaultAsync<MailComposeDraftQueryResult>(
+            """
+            SELECT
+                d.draft_id AS DraftId,
+                d.account_id AS AccountId,
+                a.name AS AccountName,
+                a.type AS AccountType,
+                d.compose_kind AS ComposeKind,
+                d.source_message_id AS SourceMessageId,
+                d.source_message_external_id AS SourceMessageExternalId,
+                d.source_thread_id AS SourceThreadId,
+                d.source_thread_external_id AS SourceThreadExternalId,
+                d.source_internet_message_id AS SourceInternetMessageId,
+                d.remote_draft_reference_json AS RemoteDraftReferenceJson,
+                d.selected_identity_id AS SelectedIdentityId,
+                d.selected_identity_display_name AS SelectedIdentityDisplayName,
+                d.selected_identity_address AS SelectedIdentityAddress,
+                d.subject AS Subject,
+                d.html_body AS HtmlBody,
+                d.plain_text_body AS PlainTextBody,
+                d.status AS Status,
+                d.last_local_save_at AS LastLocalSaveAt,
+                d.last_remote_save_at AS LastRemoteSaveAt,
+                d.updated_at AS UpdatedAt
+            FROM mail_compose_draft d
+            INNER JOIN account a ON d.account_id = a.account_id
+            WHERE d.draft_id = @DraftId
+            LIMIT 1
+            """,
+            new { DraftId = draftId },
+            commandTimeout: 30);
+    }
+
+    public async Task<IEnumerable<MailComposeRecipientDbo>> GetMailComposeRecipientsAsync(string draftId)
+    {
+        return await _connection.QueryAsync<MailComposeRecipientDbo>(
+            "SELECT draft_id AS DraftId, recipient_id AS RecipientId, recipient_kind AS RecipientKind, display_name AS DisplayName, address AS Address, sort_order AS SortOrder FROM mail_compose_recipient WHERE draft_id = @DraftId ORDER BY sort_order, recipient_id",
+            new { DraftId = draftId },
+            commandTimeout: 30);
+    }
+
+    public async Task<IEnumerable<MailComposeAttachmentDbo>> GetMailComposeAttachmentsAsync(string draftId)
+    {
+        return await _connection.QueryAsync<MailComposeAttachmentDbo>(
+            "SELECT draft_id AS DraftId, attachment_id AS AttachmentId, file_name AS FileName, mime_type AS MimeType, size AS Size, is_inline AS IsInline, content_id AS ContentId, staged_file_path AS StagedFilePath, content_hash AS ContentHash, provider_attachment_reference_json AS ProviderAttachmentReferenceJson, sort_order AS SortOrder FROM mail_compose_attachment WHERE draft_id = @DraftId ORDER BY sort_order, attachment_id",
+            new { DraftId = draftId },
+            commandTimeout: 30);
+    }
+
+    public async Task<string> CreateOrUpdateMailComposeDraftAsync(
+        MailComposeDraftDbo draft,
+        IEnumerable<MailComposeRecipientDbo> recipients,
+        IEnumerable<MailComposeAttachmentDbo> attachments)
+    {
+        var draftId = !string.IsNullOrWhiteSpace(draft.DraftId) ? draft.DraftId : Guid.NewGuid().ToString();
+        using var transaction = _connection.BeginTransaction();
+
+        await _connection.ExecuteAsync(
+            """
+            INSERT INTO mail_compose_draft (
+                draft_id,
+                account_id,
+                compose_kind,
+                source_message_id,
+                source_message_external_id,
+                source_thread_id,
+                source_thread_external_id,
+                source_internet_message_id,
+                remote_draft_reference_json,
+                selected_identity_id,
+                selected_identity_display_name,
+                selected_identity_address,
+                subject,
+                html_body,
+                plain_text_body,
+                status,
+                last_local_save_at,
+                last_remote_save_at,
+                updated_at)
+            VALUES (
+                @DraftId,
+                @AccountId,
+                @ComposeKind,
+                @SourceMessageId,
+                @SourceMessageExternalId,
+                @SourceThreadId,
+                @SourceThreadExternalId,
+                @SourceInternetMessageId,
+                @RemoteDraftReferenceJson,
+                @SelectedIdentityId,
+                @SelectedIdentityDisplayName,
+                @SelectedIdentityAddress,
+                @Subject,
+                @HtmlBody,
+                @PlainTextBody,
+                @Status,
+                @LastLocalSaveAt,
+                @LastRemoteSaveAt,
+                @UpdatedAt)
+            ON CONFLICT(draft_id) DO UPDATE SET
+                account_id = excluded.account_id,
+                compose_kind = excluded.compose_kind,
+                source_message_id = excluded.source_message_id,
+                source_message_external_id = excluded.source_message_external_id,
+                source_thread_id = excluded.source_thread_id,
+                source_thread_external_id = excluded.source_thread_external_id,
+                source_internet_message_id = excluded.source_internet_message_id,
+                remote_draft_reference_json = excluded.remote_draft_reference_json,
+                selected_identity_id = excluded.selected_identity_id,
+                selected_identity_display_name = excluded.selected_identity_display_name,
+                selected_identity_address = excluded.selected_identity_address,
+                subject = excluded.subject,
+                html_body = excluded.html_body,
+                plain_text_body = excluded.plain_text_body,
+                status = excluded.status,
+                last_local_save_at = excluded.last_local_save_at,
+                last_remote_save_at = excluded.last_remote_save_at,
+                updated_at = excluded.updated_at
+            """,
+            new
+            {
+                DraftId = draftId,
+                draft.AccountId,
+                draft.ComposeKind,
+                draft.SourceMessageId,
+                draft.SourceMessageExternalId,
+                draft.SourceThreadId,
+                draft.SourceThreadExternalId,
+                draft.SourceInternetMessageId,
+                draft.RemoteDraftReferenceJson,
+                draft.SelectedIdentityId,
+                draft.SelectedIdentityDisplayName,
+                draft.SelectedIdentityAddress,
+                draft.Subject,
+                draft.HtmlBody,
+                draft.PlainTextBody,
+                draft.Status,
+                draft.LastLocalSaveAt,
+                draft.LastRemoteSaveAt,
+                draft.UpdatedAt
+            },
+            transaction: transaction,
+            commandTimeout: 30);
+
+        await ReplaceMailComposeRecipientsAsync(draftId, recipients, transaction);
+        await ReplaceMailComposeAttachmentsAsync(draftId, attachments, transaction);
+        transaction.Commit();
+
+        draft.DraftId = draftId;
+        return draftId;
+    }
+
+    public async Task ReplaceMailComposeRecipientsAsync(string draftId, IEnumerable<MailComposeRecipientDbo> recipients)
+    {
+        using var transaction = _connection.BeginTransaction();
+        await ReplaceMailComposeRecipientsAsync(draftId, recipients, transaction);
+        transaction.Commit();
+    }
+
+    public async Task ReplaceMailComposeAttachmentsAsync(string draftId, IEnumerable<MailComposeAttachmentDbo> attachments)
+    {
+        using var transaction = _connection.BeginTransaction();
+        await ReplaceMailComposeAttachmentsAsync(draftId, attachments, transaction);
+        transaction.Commit();
+    }
+
+    public async Task<bool> DeleteMailComposeDraftAsync(string draftId)
+    {
+        var rowsAffected = await _connection.ExecuteAsync(
+            "DELETE FROM mail_compose_draft WHERE draft_id = @DraftId",
+            new { DraftId = draftId },
+            commandTimeout: 30);
+
+        return rowsAffected > 0;
+    }
+
+    private async Task ReplaceMailComposeRecipientsAsync(string draftId, IEnumerable<MailComposeRecipientDbo> recipients, SqliteTransaction transaction)
+    {
+        await _connection.ExecuteAsync(
+            "DELETE FROM mail_compose_recipient WHERE draft_id = @DraftId",
+            new { DraftId = draftId },
+            transaction: transaction,
+            commandTimeout: 30);
+
+        foreach (var recipient in recipients
+                     .Where(recipient => !string.IsNullOrWhiteSpace(recipient.Address))
+                     .OrderBy(recipient => recipient.SortOrder)
+                     .ThenBy(recipient => recipient.RecipientId, StringComparer.Ordinal))
+        {
+            var recipientId = !string.IsNullOrWhiteSpace(recipient.RecipientId) ? recipient.RecipientId : Guid.NewGuid().ToString();
+            recipient.DraftId = draftId;
+            recipient.RecipientId = recipientId;
+
+            await _connection.ExecuteAsync(
+                "INSERT INTO mail_compose_recipient (draft_id, recipient_id, recipient_kind, display_name, address, sort_order) VALUES (@DraftId, @RecipientId, @RecipientKind, @DisplayName, @Address, @SortOrder)",
+                new
+                {
+                    DraftId = draftId,
+                    RecipientId = recipientId,
+                    recipient.RecipientKind,
+                    recipient.DisplayName,
+                    recipient.Address,
+                    recipient.SortOrder
+                },
+                transaction: transaction,
+                commandTimeout: 30);
+        }
+    }
+
+    private async Task ReplaceMailComposeAttachmentsAsync(string draftId, IEnumerable<MailComposeAttachmentDbo> attachments, SqliteTransaction transaction)
+    {
+        await _connection.ExecuteAsync(
+            "DELETE FROM mail_compose_attachment WHERE draft_id = @DraftId",
+            new { DraftId = draftId },
+            transaction: transaction,
+            commandTimeout: 30);
+
+        foreach (var attachment in attachments
+                     .Where(attachment => !string.IsNullOrWhiteSpace(attachment.StagedFilePath))
+                     .OrderBy(attachment => attachment.SortOrder)
+                     .ThenBy(attachment => attachment.AttachmentId, StringComparer.Ordinal))
+        {
+            var attachmentId = !string.IsNullOrWhiteSpace(attachment.AttachmentId) ? attachment.AttachmentId : Guid.NewGuid().ToString();
+            attachment.DraftId = draftId;
+            attachment.AttachmentId = attachmentId;
+
+            await _connection.ExecuteAsync(
+                "INSERT INTO mail_compose_attachment (draft_id, attachment_id, file_name, mime_type, size, is_inline, content_id, staged_file_path, content_hash, provider_attachment_reference_json, sort_order) VALUES (@DraftId, @AttachmentId, @FileName, @MimeType, @Size, @IsInline, @ContentId, @StagedFilePath, @ContentHash, @ProviderAttachmentReferenceJson, @SortOrder)",
+                new
+                {
+                    DraftId = draftId,
+                    AttachmentId = attachmentId,
+                    attachment.FileName,
+                    attachment.MimeType,
+                    attachment.Size,
+                    attachment.IsInline,
+                    attachment.ContentId,
+                    attachment.StagedFilePath,
+                    attachment.ContentHash,
+                    attachment.ProviderAttachmentReferenceJson,
+                    attachment.SortOrder
+                },
+                transaction: transaction,
+                commandTimeout: 30);
+        }
+    }
+
+    #endregion
+
     private async Task ReplaceMailMessageMailboxesAsync(string messageId, IEnumerable<string> mailboxIds, SqliteTransaction transaction)
     {
         var normalizedMailboxIds = mailboxIds

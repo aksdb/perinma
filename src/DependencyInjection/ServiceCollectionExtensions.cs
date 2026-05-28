@@ -23,6 +23,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ThemeService>();
         services.AddSingleton<SettingsService>();
         services.AddSingleton<DebugFeaturesService>();
+        services.AddSingleton<MailComposeAttachmentService>();
 
 
         // Google services
