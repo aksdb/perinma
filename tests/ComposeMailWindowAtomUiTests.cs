@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using CredentialStore;
@@ -41,6 +42,23 @@ public class ComposeMailWindowAtomUiTests
             AssertAtomControl(window, "AddAttachmentButton", "Button");
             AssertAtomControl(window, "InsertImageButton", "Button");
             Assert.That(window.FindControl<ComposeMailEditorView>("EditorView"), Is.Not.Null);
+        });
+    }
+    [Test]
+    public void ComposeEditorAsset_DefinesVisibleCaretAndFocusCaretPlacement()
+    {
+        var assetPath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "../../../../src/Assets/MailComposeEditor/editor.html"));
+        var html = File.ReadAllText(assetPath);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("caret-color: Highlight;"));
+            Assert.That(html, Does.Contain("function placeCaretAtEnd()"));
+            Assert.That(html, Does.Contain("selection.removeAllRanges();"));
+            Assert.That(html, Does.Contain("selection.addRange(range);"));
+            Assert.That(html, Does.Match(new Regex(@"const hasCaretInEditor = selection && selection\.rangeCount > 0 && editor\.contains\(selection\.anchorNode\);")));
         });
     }
 

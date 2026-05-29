@@ -53,6 +53,7 @@
             overflow: auto;
             line-height: 1.5;
             word-break: break-word;
+            caret-color: Highlight;
         }
 
         #editor p {
@@ -105,6 +106,19 @@
                 }
             }
 
+            function placeCaretAtEnd() {
+                const selection = window.getSelection();
+                if (!selection) {
+                    return;
+                }
+
+                const range = document.createRange();
+                range.selectNodeContents(editor);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+
             function normalizeEmpty() {
                 if (!editor.innerHTML || editor.innerHTML === '<br>') {
                     editor.innerHTML = '<p><br></p>';
@@ -124,6 +138,12 @@
 
             function focusEditor() {
                 editor.focus();
+
+                const selection = window.getSelection();
+                const hasCaretInEditor = selection && selection.rangeCount > 0 && editor.contains(selection.anchorNode);
+                if (!hasCaretInEditor) {
+                    placeCaretAtEnd();
+                }
             }
 
             function exec(command) {
