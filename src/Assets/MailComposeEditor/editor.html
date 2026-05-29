@@ -208,6 +208,14 @@
                 }
             });
 
+            editor.addEventListener('focus', () => {
+                const selection = window.getSelection();
+                const hasCaretInEditor = selection && selection.rangeCount > 0 && editor.contains(selection.anchorNode);
+                if (!hasCaretInEditor) {
+                    placeCaretAtEnd();
+                }
+            });
+
             editor.addEventListener('input', () => {
                 normalizeEmpty();
                 scheduleNotify();

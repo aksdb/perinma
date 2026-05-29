@@ -22,8 +22,8 @@ public partial class ComposeMailEditorView : UserControl
     private NativeWebView? _webView;
     private bool _isReady;
     private bool _isApplyingHtml;
+    private bool _focusPending;
     private string _lastAppliedHtml = string.Empty;
-
     public ComposeMailEditorView()
     {
         InitializeComponent();
@@ -66,12 +66,16 @@ public partial class ComposeMailEditorView : UserControl
             _ = ApplyHtmlAsync(Html ?? string.Empty);
     }
 
-    public Task FocusEditorAsync() => InvokeEditorAsync("focus");
+    public async Task FocusEditorAsync()
+    {
+        _focusPending = true;
+        await FlushPendingFocusAsync();
+    }
 
-    public Task InsertImageAsync(string filePath, string? altText = null)
+    public async Task InsertImageAsync(string filePath, string? altText = null)
     {
         var fileUri = new Uri(Path.GetFullPath(filePath)).AbsoluteUri;
-        return InvokeEditorAsync("insertImage", fileUri, altText ?? string.Empty);
+        await InvokeEditorAsync("insertImage", fileUri, altText ?? string.Empty);
     }
 
     private async Task LoadShellAsync()
@@ -90,7 +94,10 @@ public partial class ComposeMailEditorView : UserControl
     {
         _isReady = e.IsSuccess;
         if (_isReady)
+        {
             await ApplyHtmlAsync(Html ?? string.Empty);
+            await FlushPendingFocusAsync();
+        }
     }
 
     private void OnWebMessageReceived(object? sender, WebMessageReceivedEventArgs e)
@@ -133,6 +140,15 @@ public partial class ComposeMailEditorView : UserControl
 
         _lastAppliedHtml = html;
         await InvokeEditorAsync("setHtml", html);
+    }
+
+    private async Task FlushPendingFocusAsync()
+    {
+        if (!_focusPending || !_isReady || _webView == null)
+            return;
+
+        await InvokeEditorAsync("focus");
+        _focusPending = false;
     }
 
     private async Task InvokeEditorAsync(string methodName, params object?[] arguments)

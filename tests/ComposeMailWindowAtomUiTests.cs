@@ -45,6 +45,23 @@ public class ComposeMailWindowAtomUiTests
         });
     }
     [Test]
+    public void ComposeEditorView_QueuesFocusUntilWebViewIsReady()
+    {
+        var sourcePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "../../../../src/Views/Mail/ComposeMailEditorView.axaml.cs"));
+        var source = File.ReadAllText(sourcePath);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("private bool _focusPending;"));
+            Assert.That(source, Does.Contain("_focusPending = true;"));
+            Assert.That(source, Does.Contain("await FlushPendingFocusAsync();"));
+            Assert.That(source, Does.Contain("if (!_focusPending || !_isReady || _webView == null)"));
+        });
+    }
+
+    [Test]
     public void ComposeEditorAsset_DefinesVisibleCaretAndFocusCaretPlacement()
     {
         var assetPath = Path.GetFullPath(Path.Combine(
@@ -56,6 +73,7 @@ public class ComposeMailWindowAtomUiTests
         {
             Assert.That(html, Does.Contain("caret-color: Highlight;"));
             Assert.That(html, Does.Contain("function placeCaretAtEnd()"));
+            Assert.That(html, Does.Contain("editor.addEventListener('focus', () =>"));
             Assert.That(html, Does.Contain("selection.removeAllRanges();"));
             Assert.That(html, Does.Contain("selection.addRange(range);"));
             Assert.That(html, Does.Match(new Regex(@"const hasCaretInEditor = selection && selection\.rangeCount > 0 && editor\.contains\(selection\.anchorNode\);")));
