@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
@@ -17,6 +18,7 @@ public partial class SecureMailHtmlView : UserControl
     private Border? _placeholderBorder;
     private TextBlock? _placeholderTextBlock;
     private string? _lastRenderedHtml;
+    private string? _pendingHtml;
     private bool _allowNextNavigation;
     private bool _isAttachedToVisualTree;
 
@@ -59,6 +61,7 @@ public partial class SecureMailHtmlView : UserControl
         _allowNextNavigation = false;
         _isAttachedToVisualTree = false;
         _lastRenderedHtml = null;
+        _pendingHtml = null;
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -67,7 +70,13 @@ public partial class SecureMailHtmlView : UserControl
         base.OnPropertyChanged(change);
 
         if (change.Property == HtmlProperty || change.Property == PlaceholderTextProperty)
+        {
             UpdateView(forceReload: change.Property == HtmlProperty);
+            return;
+        }
+
+        if (change.Property == BoundsProperty || change.Property == IsVisibleProperty)
+            _ = TryRenderPendingHtmlAsync();
     }
 
     private void OnNavigationStarted(object? sender, WebViewNavigationStartingEventArgs e)
@@ -100,16 +109,45 @@ public partial class SecureMailHtmlView : UserControl
         _placeholderBorder.IsVisible = !hasHtml && placeholderText.Length > 0;
         _webView.IsVisible = hasHtml;
 
-        if (!_isAttachedToVisualTree || !hasHtml)
+        if (!hasHtml)
+        {
+            _pendingHtml = null;
+            return;
+        }
+
+        if (!_isAttachedToVisualTree)
             return;
 
         if (!forceReload && string.Equals(_lastRenderedHtml, html, StringComparison.Ordinal))
             return;
 
-        _lastRenderedHtml = html;
-        _allowNextNavigation = true;
-        _webView.NavigateToString(html!);
+        _pendingHtml = html;
+        _ = TryRenderPendingHtmlAsync(forceReload);
     }
+
+    private async Task TryRenderPendingHtmlAsync(bool forceReload = false)
+    {
+        if (_webView is null || string.IsNullOrWhiteSpace(_pendingHtml) || !CanActivateWebView())
+            return;
+
+        if (!forceReload && string.Equals(_lastRenderedHtml, _pendingHtml, StringComparison.Ordinal))
+            return;
+
+        await Task.Yield();
+        if (_webView is null || string.IsNullOrWhiteSpace(_pendingHtml) || !CanActivateWebView())
+            return;
+
+        _lastRenderedHtml = _pendingHtml;
+        _allowNextNavigation = true;
+        _webView.NavigateToString(_pendingHtml);
+    }
+
+    private bool CanActivateWebView()
+        => _isAttachedToVisualTree
+           && IsVisible
+           && _webView is { IsVisible: true }
+           && Bounds.Width > 0
+           && Bounds.Height > 0;
 
     private static bool IsPreviewNavigation(Uri requestUri)
     {

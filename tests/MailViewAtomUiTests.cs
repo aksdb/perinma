@@ -1,4 +1,5 @@
 using System.Linq;
+using System.IO;
 using Avalonia.VisualTree;
 
 using Avalonia.Controls;
@@ -47,6 +48,23 @@ public class MailViewAtomUiTests
 
         var scrollViewerAncestor = htmlView!.GetVisualAncestors().OfType<ScrollViewer>().FirstOrDefault();
         Assert.That(scrollViewerAncestor, Is.Null, "Native HTML preview must not be hosted inside a ScrollViewer.");
+    }
+
+    [Test]
+    public void SecureMailHtmlView_QueuesInitialRenderUntilVisible()
+    {
+        var sourcePath = Path.GetFullPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "../../../../src/Views/Mail/SecureMailHtmlView.axaml.cs"));
+        var source = File.ReadAllText(sourcePath);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("private string? _pendingHtml;"));
+            Assert.That(source, Does.Contain("_ = TryRenderPendingHtmlAsync(forceReload);"));
+            Assert.That(source, Does.Contain("if (change.Property == BoundsProperty || change.Property == IsVisibleProperty)"));
+            Assert.That(source, Does.Contain("private bool CanActivateWebView()"));
+        });
     }
 
     private static void AssertAtomControl(Control root, string name, string typeName)

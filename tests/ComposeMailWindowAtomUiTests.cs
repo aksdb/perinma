@@ -54,9 +54,12 @@ public class ComposeMailWindowAtomUiTests
         Assert.Multiple(() =>
         {
             Assert.That(source, Does.Contain("private bool _focusPending;"));
+            Assert.That(source, Does.Contain("private bool _shellNavigationPending;"));
             Assert.That(source, Does.Contain("_focusPending = true;"));
-            Assert.That(source, Does.Contain("await FlushPendingFocusAsync();"));
-            Assert.That(source, Does.Contain("if (!_focusPending || !_isReady || _webView == null)"));
+            Assert.That(source, Does.Contain("_shellNavigationPending = true;"));
+            Assert.That(source, Does.Contain("await ActivatePendingWebViewAsync();"));
+            Assert.That(source, Does.Contain("if (change.Property == BoundsProperty || change.Property == IsVisibleProperty)"));
+            Assert.That(source, Does.Contain("private bool CanActivateWebView()"));
         });
     }
 

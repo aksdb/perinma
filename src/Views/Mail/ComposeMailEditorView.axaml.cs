@@ -4,8 +4,6 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Controls.Primitives;
 using Avalonia.Platform;
 using Avalonia.VisualTree;
 
@@ -23,7 +21,11 @@ public partial class ComposeMailEditorView : UserControl
     private bool _isReady;
     private bool _isApplyingHtml;
     private bool _focusPending;
+    private bool _isAttachedToVisualTree;
+    private bool _shellNavigationPending;
+    private string? _shellMarkup;
     private string _lastAppliedHtml = string.Empty;
+
     public ComposeMailEditorView()
     {
         InitializeComponent();
@@ -50,20 +52,31 @@ public partial class ComposeMailEditorView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        _isAttachedToVisualTree = true;
         _ = LoadShellAsync();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
+        _isAttachedToVisualTree = false;
         _isReady = false;
+        _shellNavigationPending = !string.IsNullOrWhiteSpace(_shellMarkup);
+        _lastAppliedHtml = string.Empty;
         base.OnDetachedFromVisualTree(e);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
+
         if (change.Property == HtmlProperty && !_isApplyingHtml)
+        {
             _ = ApplyHtmlAsync(Html ?? string.Empty);
+            return;
+        }
+
+        if (change.Property == BoundsProperty || change.Property == IsVisibleProperty)
+            _ = ActivatePendingWebViewAsync();
     }
 
     public async Task FocusEditorAsync()
@@ -83,11 +96,30 @@ public partial class ComposeMailEditorView : UserControl
         if (_webView == null)
             return;
 
-        var assetUri = new Uri("avares://perinma/Assets/MailComposeEditor/editor.html");
-        await using var assetStream = AssetLoader.Open(assetUri);
-        using var reader = new StreamReader(assetStream);
-        var html = await reader.ReadToEndAsync();
-        _webView.NavigateToString(html);
+        if (_shellMarkup == null)
+        {
+            var assetUri = new Uri("avares://perinma/Assets/MailComposeEditor/editor.html");
+            await using var assetStream = AssetLoader.Open(assetUri);
+            using var reader = new StreamReader(assetStream);
+            _shellMarkup = await reader.ReadToEndAsync();
+        }
+
+        _shellNavigationPending = true;
+        await ActivatePendingWebViewAsync();
+    }
+
+    private async Task ActivatePendingWebViewAsync()
+    {
+        if (_webView == null || !_shellNavigationPending || string.IsNullOrWhiteSpace(_shellMarkup) || !CanActivateWebView())
+            return;
+
+        await Task.Yield();
+        if (_webView == null || !_shellNavigationPending || string.IsNullOrWhiteSpace(_shellMarkup) || !CanActivateWebView())
+            return;
+
+        _isReady = false;
+        _shellNavigationPending = false;
+        _webView.NavigateToString(_shellMarkup);
     }
 
     private async void OnNavigationCompleted(object? sender, WebViewNavigationCompletedEventArgs e)
@@ -150,6 +182,12 @@ public partial class ComposeMailEditorView : UserControl
         await InvokeEditorAsync("focus");
         _focusPending = false;
     }
+
+    private bool CanActivateWebView()
+        => _isAttachedToVisualTree
+           && IsVisible
+           && Bounds.Width > 0
+           && Bounds.Height > 0;
 
     private async Task InvokeEditorAsync(string methodName, params object?[] arguments)
     {
