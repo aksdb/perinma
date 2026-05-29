@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.RegularExpressions;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using CredentialStore;
@@ -71,12 +70,12 @@ public class ComposeMailWindowAtomUiTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(html, Does.Contain("caret-color: Highlight;"));
-            Assert.That(html, Does.Contain("function placeCaretAtEnd()"));
+            Assert.That(html, Does.Contain("caret-color: transparent;"));
+            Assert.That(html, Does.Contain("id=\"caretOverlay\""));
+            Assert.That(html, Does.Contain("function updateCaret()"));
+            Assert.That(html, Does.Contain("function requestCaretUpdate()"));
             Assert.That(html, Does.Contain("editor.addEventListener('focus', () =>"));
-            Assert.That(html, Does.Contain("selection.removeAllRanges();"));
-            Assert.That(html, Does.Contain("selection.addRange(range);"));
-            Assert.That(html, Does.Match(new Regex(@"const hasCaretInEditor = selection && selection\.rangeCount > 0 && editor\.contains\(selection\.anchorNode\);")));
+            Assert.That(html, Does.Contain("document.addEventListener('selectionchange', () =>"));
         });
     }
 
