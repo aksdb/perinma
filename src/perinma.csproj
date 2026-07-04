@@ -32,14 +32,14 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="AtomUI.Core" Version="6.0.0-rc1" />
-        <PackageReference Include="AtomUI.Desktop.Controls" Version="6.0.0-rc1" />
-        <PackageReference Include="AtomUI.Fonts.AlibabaSans" Version="6.0.0-rc1" />
-        <PackageReference Include="AtomUI.Icons.AntDesign" Version="6.0.0-rc1" />
-        <PackageReference Include="Avalonia" Version="12.0.3" />
-        <PackageReference Include="Avalonia.Desktop" Version="12.0.3" />
+        <PackageReference Include="AtomUI.Core" Version="6.0.7" />
+        <PackageReference Include="AtomUI.Desktop.Controls" Version="6.0.7" />
+        <PackageReference Include="AtomUI.Fonts.AlibabaSans" Version="6.0.7" />
+        <PackageReference Include="AtomUI.Icons.AntDesign" Version="6.0.7" />
+        <PackageReference Include="Avalonia" Version="12.0.5" />
+        <PackageReference Include="Avalonia.Desktop" Version="12.0.5" />
         <PackageReference Include="Avalonia.HtmlRenderer" Version="12.0.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Include="AvaSourceGenerators" Version="0.2.0" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
@@ -47,9 +47,9 @@
         <PackageReference Include="Dapper.Extensions.SQLite" Version="5.4.2" />
         <PackageReference Include="dbup-core" Version="6.1.1" />
         <PackageReference Include="dbup-sqlite" Version="6.0.4" />
-        <PackageReference Include="Google.Apis.Calendar.v3" Version="1.74.0.4073" />
+        <PackageReference Include="Google.Apis.Calendar.v3" Version="1.75.0.4182" />
         <PackageReference Include="Google.Apis.PeopleService.v1" Version="1.74.0.3973" />
-        <PackageReference Include="Ical.Net" Version="5.2.2" />
+        <PackageReference Include="Ical.Net" Version="5.2.3" />
         <PackageReference Include="NodaTime" Version="3.3.2" />
         <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
     </ItemGroup>
