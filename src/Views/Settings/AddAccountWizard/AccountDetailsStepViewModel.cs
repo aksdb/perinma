@@ -25,16 +25,99 @@ public partial class AccountDetailsStepViewModel : ObservableValidator
     private FormValidateStatus _accountNameValidateStatus;
 
     [ObservableProperty]
+    private string? _capabilityValidationError;
+
+    [ObservableProperty]
+    private FormValidateStatus _capabilityValidateStatus;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEditCapabilities))]
+    [NotifyPropertyChangedFor(nameof(SelectedCapabilities))]
     private AccountType _selectedAccountType = AccountType.Google;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedCapabilities))]
+    private bool _includeCalendar = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedCapabilities))]
+    private bool _includeContacts = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedCapabilities))]
+    private bool _includeMail = true;
 
     public AccountDetailsStepViewModel(SqliteStorage storage)
     {
         _storage = storage;
+        ApplyDefaultCapabilities(SelectedAccountType);
+    }
+
+    public bool CanEditCapabilities => SelectedAccountType == AccountType.Google;
+
+    public AccountCapability SelectedCapabilities
+    {
+        get
+        {
+            var capabilities = AccountCapability.None;
+            if (IncludeCalendar)
+            {
+                capabilities |= AccountCapability.Calendar;
+            }
+
+            if (IncludeContacts)
+            {
+                capabilities |= AccountCapability.Contacts;
+            }
+
+            if (IncludeMail)
+            {
+                capabilities |= AccountCapability.Mail;
+            }
+
+            return capabilities;
+        }
     }
 
     partial void OnAccountNameChanged(string value)
     {
         ClearAccountNameValidation();
+    }
+
+    partial void OnSelectedAccountTypeChanged(AccountType value)
+    {
+        ApplyDefaultCapabilities(value);
+        ClearCapabilityValidation();
+    }
+
+    partial void OnIncludeCalendarChanged(bool value)
+    {
+        if (!CanEditCapabilities)
+        {
+            return;
+        }
+
+        ClearCapabilityValidation();
+    }
+
+    partial void OnIncludeContactsChanged(bool value)
+    {
+        if (!CanEditCapabilities)
+        {
+            return;
+        }
+
+        ClearCapabilityValidation();
+    }
+
+    partial void OnIncludeMailChanged(bool value)
+    {
+        if (!CanEditCapabilities)
+        {
+            return;
+        }
+
+        ClearCapabilityValidation();
     }
 
     public async Task<bool> ValidateAsync()
@@ -49,6 +132,12 @@ public partial class AccountDetailsStepViewModel : ObservableValidator
             return false;
         }
 
+        if (SelectedCapabilities == AccountCapability.None)
+        {
+            SetCapabilityValidationError("Select at least one capability for this account");
+            return false;
+        }
+
         var isUnique = await _storage.IsAccountNameUniqueAsync(AccountName);
         if (!isUnique)
         {
@@ -58,7 +147,36 @@ public partial class AccountDetailsStepViewModel : ObservableValidator
 
         NameValidationError = null;
         AccountNameValidateStatus = FormValidateStatus.Success;
+        ClearCapabilityValidation();
+        CapabilityValidateStatus = FormValidateStatus.Success;
         return true;
+    }
+
+    private void ApplyDefaultCapabilities(AccountType accountType)
+    {
+        switch (accountType)
+        {
+            case AccountType.Google:
+                IncludeCalendar = true;
+                IncludeContacts = true;
+                IncludeMail = true;
+                break;
+            case AccountType.CalDav:
+                IncludeCalendar = true;
+                IncludeContacts = false;
+                IncludeMail = false;
+                break;
+            case AccountType.CardDav:
+                IncludeCalendar = false;
+                IncludeContacts = true;
+                IncludeMail = false;
+                break;
+            case AccountType.Jmap:
+                IncludeCalendar = false;
+                IncludeContacts = false;
+                IncludeMail = true;
+                break;
+        }
     }
 
     private void ClearAccountNameValidation()
@@ -71,5 +189,17 @@ public partial class AccountDetailsStepViewModel : ObservableValidator
     {
         NameValidationError = message;
         AccountNameValidateStatus = FormValidateStatus.Error;
+    }
+
+    private void ClearCapabilityValidation()
+    {
+        CapabilityValidationError = null;
+        CapabilityValidateStatus = FormValidateStatus.Default;
+    }
+
+    private void SetCapabilityValidationError(string message)
+    {
+        CapabilityValidationError = message;
+        CapabilityValidateStatus = FormValidateStatus.Error;
     }
 }

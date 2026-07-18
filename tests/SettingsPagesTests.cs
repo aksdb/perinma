@@ -60,6 +60,7 @@ public class SettingsPagesTests
             new CardDavServiceStub(),
             new SyncService(storage, credentialManager, new Dictionary<AccountType, ICalendarProvider>(), null!),
             new ContactSyncService(storage, new Dictionary<AccountType, IContactProvider>()),
+            new MailSyncService(storage, new Dictionary<AccountType, IMailProvider>()),
             new AtomUI.Desktop.Controls.Window());
 
         viewModel.Accounts =
@@ -69,6 +70,7 @@ public class SettingsPagesTests
                 Id = System.Guid.NewGuid(),
                 Name = "Work",
                 Type = AccountType.Google,
+                Capabilities = AccountCapability.Calendar | AccountCapability.Contacts | AccountCapability.Mail,
                 CanReauthenticate = true,
                 ForceResyncCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(() => Task.CompletedTask),
                 ReauthenticateCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(() => Task.CompletedTask),
@@ -92,33 +94,14 @@ public class SettingsPagesTests
         try
         {
             var actionsButton = host.GetVisualDescendants()
-                .OfType<AtomUI.Desktop.Controls.Button>()
+                .OfType<AtomUI.Desktop.Controls.DropdownButton>()
                 .FirstOrDefault(control => control.Name == "AccountActionsButton");
 
             Assert.That(actionsButton, Is.Not.Null, "Missing account actions dropdown button.");
-            Assert.That(actionsButton!.Flyout, Is.InstanceOf<AtomUI.Desktop.Controls.Flyout>());
-
-            var flyoutContent = ((AtomUI.Desktop.Controls.Flyout)actionsButton.Flyout!).Content as Control;
-            Assert.That(flyoutContent, Is.Not.Null, "Missing account actions flyout content.");
-
-            var flyoutControls = new[] { flyoutContent! }
-                .Concat(flyoutContent!.GetVisualDescendants().OfType<Control>())
-                .ToList();
-            var forceResyncButton = flyoutControls.OfType<AtomUI.Desktop.Controls.Button>()
-                .FirstOrDefault(control => control.Name == "ForceResyncActionButton");
-            var reauthenticateButton = flyoutControls.OfType<AtomUI.Desktop.Controls.Button>()
-                .FirstOrDefault(control => control.Name == "ReauthenticateActionButton");
-            var deleteButton = flyoutControls.OfType<AtomUI.Desktop.Controls.Button>()
-                .FirstOrDefault(control => control.Name == "DeleteActionButton");
-
             Assert.Multiple(() =>
             {
-                Assert.That(forceResyncButton, Is.Not.Null);
-                Assert.That(reauthenticateButton, Is.Not.Null);
-                Assert.That(deleteButton, Is.Not.Null);
-                Assert.That(reauthenticateButton!.IsDanger, Is.True);
-                Assert.That(deleteButton!.IsDanger, Is.True);
-                Assert.That(reauthenticateButton.IsVisible, Is.True);
+                Assert.That(actionsButton, Is.InstanceOf<AtomUI.Desktop.Controls.DropdownButton>());
+                Assert.That(actionsButton!.Content?.ToString(), Is.EqualTo("Actions"));
             });
         }
         finally
@@ -134,6 +117,9 @@ public class SettingsPagesTests
         AssertAtomControl(new AccountDetailsStepView(), "AccountNameFormItem", "FormItem");
         AssertAtomControl(new AccountDetailsStepView(), "AccountNameInput", "LineEdit");
         AssertAtomControl(new AccountDetailsStepView(), "AccountTypeComboBox", "ComboBox");
+        AssertAtomControl(new AccountDetailsStepView(), "CalendarCapabilityCheckBox", "CheckBox");
+        AssertAtomControl(new AccountDetailsStepView(), "ContactsCapabilityCheckBox", "CheckBox");
+        AssertAtomControl(new AccountDetailsStepView(), "MailCapabilityCheckBox", "CheckBox");
         AssertAtomControl(new CalDavConnectionStepView(), "ServerUrlInput", "LineEdit");
         AssertAtomControl(new CalDavConnectionStepView(), "UsernameInput", "LineEdit");
         AssertAtomControl(new CalDavConnectionStepView(), "PasswordInput", "LineEdit");
@@ -144,6 +130,12 @@ public class SettingsPagesTests
         AssertAtomControl(new CardDavConnectionStepView(), "ConnectionProgressBar", "ProgressBar");
         AssertAtomControl(new GoogleConnectionStepView(), "ConnectButton", "Button");
         AssertAtomControl(new GoogleConnectionStepView(), "ConnectProgressBar", "ProgressBar");
+        AssertAtomControl(new JmapConnectionStepView(), "SessionUrlInput", "LineEdit");
+        AssertAtomControl(new JmapConnectionStepView(), "AuthenticationModeComboBox", "ComboBox");
+        AssertAtomControl(new JmapConnectionStepView(), "UsernameInput", "LineEdit");
+        AssertAtomControl(new JmapConnectionStepView(), "PasswordInput", "LineEdit");
+        AssertAtomControl(new JmapConnectionStepView(), "BearerTokenInput", "LineEdit");
+
     }
 
     [Test]

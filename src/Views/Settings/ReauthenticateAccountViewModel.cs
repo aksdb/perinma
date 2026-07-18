@@ -12,15 +12,14 @@ namespace perinma.Views.Settings;
 public partial class ReauthenticateAccountViewModel : ViewModelBase
 {
     private readonly string _accountId;
-    private readonly string _accountName;
     private readonly CredentialManagerService _credentialManager;
     private readonly GoogleOAuthService _oauthService;
 
     [ObservableProperty]
-    private string _statusMessage = "Click 'Reauthenticate' to start the authentication process";
+    private string _statusMessage;
 
     [ObservableProperty]
-    private bool _isConnecting = false;
+    private bool _isConnecting;
 
     public event EventHandler? ReauthenticationCompleted;
     public event EventHandler? CloseRequested;
@@ -29,38 +28,56 @@ public partial class ReauthenticateAccountViewModel : ViewModelBase
         string accountId,
         string accountName,
         CredentialManagerService credentialManager,
-        GoogleOAuthService oauthService)
+        GoogleOAuthService oauthService,
+        bool needsMailUpgrade)
     {
         _accountId = accountId;
-        _accountName = accountName;
+        AccountName = accountName;
         _credentialManager = credentialManager;
         _oauthService = oauthService;
+        NeedsMailUpgrade = needsMailUpgrade;
+        StatusMessage = needsMailUpgrade
+            ? "Click 'Grant Mail Access' to reconnect your Google account and add Gmail permissions."
+            : "Click 'Reauthenticate' to start the authentication process.";
     }
+
+    public string AccountName { get; }
+    public bool NeedsMailUpgrade { get; }
+    public string WindowTitle => NeedsMailUpgrade ? "Enable Mail Access" : "Reauthenticate Account";
+    public string ActionLabel => NeedsMailUpgrade ? "Grant Mail Access" : "Reauthenticate";
+    public string IntroText => NeedsMailUpgrade
+        ? "This Google account needs Gmail permissions before it can be used in Mail."
+        : "You need to reauthenticate your Google account.";
+    public string DetailText => NeedsMailUpgrade
+        ? "This updates the OAuth grant so the same Google account can sync calendar, contacts, and mail."
+        : "This may be necessary if your access token expired or if you need to adjust permissions.";
 
     [RelayCommand(IncludeCancelCommand = true)]
     public async Task Reauthenticate(CancellationToken ct)
     {
         IsConnecting = true;
-        StatusMessage = "Starting authentication...";
+        StatusMessage = NeedsMailUpgrade
+            ? "Opening browser to grant Gmail permissions..."
+            : "Opening browser for authentication...";
 
         try
         {
-            StatusMessage = "Opening browser for authentication...\nIf the browser didn't open, you may need to manually navigate to the OAuth URL.";
-
-            // Authenticate with Google via the OAuth service
             var newCredentials = await _oauthService.AuthenticateAsync(ct);
             _credentialManager.StoreGoogleCredentials(_accountId, newCredentials);
 
-            StatusMessage = "Successfully reauthenticated! Credentials have been updated.";
+            StatusMessage = NeedsMailUpgrade
+                ? "Mail access enabled. Credentials have been updated."
+                : "Successfully reauthenticated! Credentials have been updated.";
             ReauthenticationCompleted?.Invoke(this, EventArgs.Empty);
 
-            // Close the window after a short delay
             await Task.Delay(1500, ct);
             CloseRequested?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Reauthentication cancelled";
+            StatusMessage = NeedsMailUpgrade
+                ? "Mail access update cancelled"
+                : "Reauthentication cancelled";
         }
         catch (Exception ex)
         {

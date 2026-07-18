@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using CredentialStore;
 using perinma.Storage.Models;
 
@@ -6,91 +7,34 @@ namespace perinma.Services;
 
 public class CredentialManagerService(ICredentialStore store)
 {
-    public void StoreGoogleCredentials(string accountId, GoogleCredentials credentials)
-    {
-        var service = GetServiceName(accountId);
-        var json = JsonSerializer.Serialize(credentials, CredentialsContext.Default.GoogleCredentials);
-        store.AddOrUpdate(service, accountId, json);
-    }
+    public void StoreGoogleCredentials(string accountId, GoogleCredentials credentials) =>
+        StoreCredentials(accountId, credentials, CredentialsContext.Default.GoogleCredentials);
 
-    public GoogleCredentials? GetGoogleCredentials(string accountId)
-    {
-        var service = GetServiceName(accountId);
-        var credential = store.Get(service, accountId);
+    public GoogleCredentials? GetGoogleCredentials(string accountId) =>
+        GetCredentials(accountId, CredentialsContext.Default.GoogleCredentials);
 
-        if (credential == null)
-        {
-            return null;
-        }
+    public void StoreCalDavCredentials(string accountId, CalDavCredentials credentials) =>
+        StoreCredentials(accountId, credentials, CredentialsContext.Default.CalDavCredentials);
 
-        try
-        {
-            return JsonSerializer.Deserialize(credential.Password, CredentialsContext.Default.GoogleCredentials);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
+    public CalDavCredentials? GetCalDavCredentials(string accountId) =>
+        GetCredentials(accountId, CredentialsContext.Default.CalDavCredentials);
 
-    public void StoreCalDavCredentials(string accountId, CalDavCredentials credentials)
-    {
-        var service = GetServiceName(accountId);
-        var json = JsonSerializer.Serialize(credentials, CredentialsContext.Default.CalDavCredentials);
-        store.AddOrUpdate(service, accountId, json);
-    }
+    public void StoreCardDavCredentials(string accountId, CardDavCredentials credentials) =>
+        StoreCredentials(accountId, credentials, CredentialsContext.Default.CardDavCredentials);
 
-    public CalDavCredentials? GetCalDavCredentials(string accountId)
-    {
-        var service = GetServiceName(accountId);
-        var credential = store.Get(service, accountId);
+    public CardDavCredentials? GetCardDavCredentials(string accountId) =>
+        GetCredentials(accountId, CredentialsContext.Default.CardDavCredentials);
 
-        if (credential == null)
-        {
-            return null;
-        }
+    public void StoreJmapCredentials(string accountId, JmapCredentials credentials) =>
+        StoreCredentials(accountId, credentials, CredentialsContext.Default.JmapCredentials);
 
-        try
-        {
-            return JsonSerializer.Deserialize(credential.Password, CredentialsContext.Default.CalDavCredentials);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
+    public JmapCredentials? GetJmapCredentials(string accountId) =>
+        GetCredentials(accountId, CredentialsContext.Default.JmapCredentials);
 
     public bool DeleteCredentials(string accountId)
     {
         var service = GetServiceName(accountId);
         return store.Remove(service, accountId);
-    }
-
-    public void StoreCardDavCredentials(string accountId, CardDavCredentials credentials)
-    {
-        var service = GetServiceName(accountId);
-        var json = JsonSerializer.Serialize(credentials, CredentialsContext.Default.CardDavCredentials);
-        store.AddOrUpdate(service, accountId, json);
-    }
-
-    public CardDavCredentials? GetCardDavCredentials(string accountId)
-    {
-        var service = GetServiceName(accountId);
-        var credential = store.Get(service, accountId);
-
-        if (credential == null)
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize(credential.Password, CredentialsContext.Default.CardDavCredentials);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
     }
 
     public bool HasCredentials(string accountId)
@@ -100,9 +44,34 @@ public class CredentialManagerService(ICredentialStore store)
         return credential != null;
     }
 
+    private void StoreCredentials<T>(string accountId, T credentials, JsonTypeInfo<T> typeInfo)
+    {
+        var service = GetServiceName(accountId);
+        var json = JsonSerializer.Serialize(credentials, typeInfo);
+        store.AddOrUpdate(service, accountId, json);
+    }
+
+    private T? GetCredentials<T>(string accountId, JsonTypeInfo<T> typeInfo) where T : class
+    {
+        var service = GetServiceName(accountId);
+        var credential = store.Get(service, accountId);
+        if (credential == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize(credential.Password, typeInfo);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     private static string GetServiceName(string accountId)
     {
-        // Use a URL-like format for the service name to match GCM conventions
         return $"account:{accountId}";
     }
 }

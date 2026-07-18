@@ -94,9 +94,11 @@ public class MainMenuTests
 
         var calendarItem = window.FindControl<AtomUI.Desktop.Controls.SegmentedItem>("CalendarModeItem");
         var contactsItem = window.FindControl<AtomUI.Desktop.Controls.SegmentedItem>("ContactsModeItem");
+        var mailItem = window.FindControl<AtomUI.Desktop.Controls.SegmentedItem>("MailModeItem");
         Assert.That(calendarItem, Is.Not.Null);
         Assert.That(contactsItem, Is.Not.Null);
-        Assert.That(segmented!.Items.Count, Is.EqualTo(2));
+        Assert.That(mailItem, Is.Not.Null);
+        Assert.That(segmented!.Items.Count, Is.EqualTo(3));
     }
 
     [AvaloniaTest]
@@ -130,10 +132,20 @@ public class MainMenuTests
         var reminderService = new ReminderService(storage, calendarSource, providers);
         var syncService = new SyncService(storage, credentialManager, providers, reminderService);
         var contactSyncService = new ContactSyncService(storage, new Dictionary<AccountType, IContactProvider>());
+        var mailSyncService = new MailSyncService(storage, new Dictionary<AccountType, IMailProvider>());
+        var mailComposeService = new MailComposeService(
+            storage,
+            new MailComposeAttachmentService(Path.Combine(Path.GetTempPath(), "perinma-compose-tests", Guid.NewGuid().ToString("N"))),
+            new MailComposerService(),
+            new Dictionary<AccountType, IMailComposeProvider>(),
+            new Dictionary<AccountType, IMailProvider>());
+
 
         perinma.App.Services = new ServiceCollection()
             .AddSingleton(storage)
             .AddSingleton(syncService)
+            .AddSingleton(contactSyncService)
+            .AddSingleton(mailSyncService)
             .AddSingleton(reminderService)
             .AddSingleton(debugFeatures)
             .BuildServiceProvider();
@@ -145,6 +157,8 @@ public class MainMenuTests
                 credentialManager,
                 syncService,
                 contactSyncService,
+                mailSyncService,
+                mailComposeService,
                 reminderService,
                 new CalDavServiceStub(),
                 new CardDavServiceStub(),

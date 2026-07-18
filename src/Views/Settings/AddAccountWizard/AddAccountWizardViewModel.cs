@@ -24,29 +24,33 @@ public partial class AddAccountWizardViewModel : ViewModelBase
     private readonly ICardDavService _cardDavService;
 
     [ObservableProperty]
-    private int _currentStepIndex = 0;
+    private int _currentStepIndex;
 
     [ObservableProperty]
     private object? _currentStepView;
 
-    // Step 1 data
     private AccountDetailsStepViewModel? _accountDetailsStep;
-    public string? AccountName { get; private set; }
-    public AccountType? SelectedAccountType { get; private set; }
-
-    // Step 2 data
     private GoogleConnectionStepViewModel? _googleConnectionStep;
     private CalDavConnectionStepViewModel? _calDavConnectionStep;
     private CardDavConnectionStepViewModel? _cardDavConnectionStep;
+    private JmapConnectionStepViewModel? _jmapConnectionStep;
 
-    // Computed properties
+    public string? AccountName { get; private set; }
+    public AccountType? SelectedAccountType { get; private set; }
+    public AccountCapability SelectedCapabilities { get; private set; }
+
     public bool CanGoBack => CurrentStepIndex > 0;
     public bool IsLastStep => CurrentStepIndex == 1;
 
-    // Event raised when account is successfully added
     public event EventHandler? AccountAdded;
+    public event EventHandler? CloseRequested;
 
-    public AddAccountWizardViewModel(SqliteStorage storage, CredentialManagerService credentialManager, GoogleOAuthService oauthService, ICalDavService calDavService, ICardDavService cardDavService)
+    public AddAccountWizardViewModel(
+        SqliteStorage storage,
+        CredentialManagerService credentialManager,
+        GoogleOAuthService oauthService,
+        ICalDavService calDavService,
+        ICardDavService cardDavService)
     {
         _storage = storage;
         _credentialManager = credentialManager;
@@ -54,7 +58,6 @@ public partial class AddAccountWizardViewModel : ViewModelBase
         _calDavService = calDavService;
         _cardDavService = cardDavService;
 
-        // Initialize first step
         _accountDetailsStep = new AccountDetailsStepViewModel(storage);
         CurrentStepView = new AccountDetailsStepView
         {
@@ -65,143 +68,82 @@ public partial class AddAccountWizardViewModel : ViewModelBase
     [RelayCommand]
     private async Task Next()
     {
-        if (CurrentStepIndex == 0)
+        if (CurrentStepIndex != 0)
         {
-            // Validate step 1
-            if (_accountDetailsStep == null || !await _accountDetailsStep.ValidateAsync())
-                return;
-
-            // Save data from step 1
-            AccountName = _accountDetailsStep.AccountName;
-            SelectedAccountType = _accountDetailsStep.SelectedAccountType;
-
-            // Create step 2 based on account type
-            if (SelectedAccountType == AccountType.Google)
-            {
-                _googleConnectionStep = new GoogleConnectionStepViewModel(_oauthService);
-                CurrentStepView = new GoogleConnectionStepView
-                {
-                    DataContext = _googleConnectionStep
-                };
-            }
-            else if (SelectedAccountType == AccountType.CalDav)
-            {
-                _calDavConnectionStep = new CalDavConnectionStepViewModel(_calDavService);
-                CurrentStepView = new CalDavConnectionStepView
-                {
-                    DataContext = _calDavConnectionStep
-                };
-            }
-            else if (SelectedAccountType == AccountType.CardDav)
-            {
-                _cardDavConnectionStep = new CardDavConnectionStepViewModel(_cardDavService);
-                CurrentStepView = new CardDavConnectionStepView
-                {
-                    DataContext = _cardDavConnectionStep
-                };
-            }
-
-            CurrentStepIndex = 1;
-            OnPropertyChanged(nameof(CanGoBack));
-            OnPropertyChanged(nameof(IsLastStep));
+            return;
         }
+
+        if (_accountDetailsStep == null || !await _accountDetailsStep.ValidateAsync())
+        {
+            return;
+        }
+
+        AccountName = _accountDetailsStep.AccountName;
+        SelectedAccountType = _accountDetailsStep.SelectedAccountType;
+        SelectedCapabilities = _accountDetailsStep.SelectedCapabilities;
+        CurrentStepView = CreateConnectionStepView(SelectedAccountType.Value);
+        CurrentStepIndex = 1;
+        OnPropertyChanged(nameof(CanGoBack));
+        OnPropertyChanged(nameof(IsLastStep));
     }
 
     [RelayCommand]
     private void Back()
     {
-        if (CurrentStepIndex > 0)
+        if (CurrentStepIndex == 0)
         {
-            CurrentStepIndex = 0;
-
-            // Return to step 1
-            if (_accountDetailsStep != null)
-            {
-                CurrentStepView = new AccountDetailsStepView
-                {
-                    DataContext = _accountDetailsStep
-                };
-            }
-
-            OnPropertyChanged(nameof(CanGoBack));
-            OnPropertyChanged(nameof(IsLastStep));
+            return;
         }
+
+        CurrentStepIndex = 0;
+        if (_accountDetailsStep != null)
+        {
+            CurrentStepView = new AccountDetailsStepView
+            {
+                DataContext = _accountDetailsStep
+            };
+        }
+
+        OnPropertyChanged(nameof(CanGoBack));
+        OnPropertyChanged(nameof(IsLastStep));
     }
 
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task Finish(CancellationToken ct)
     {
-        // Validate step 2
-        if (SelectedAccountType == AccountType.Google)
+        if (SelectedAccountType == null || !ValidateConnectionStep())
         {
-            if (_googleConnectionStep == null || !_googleConnectionStep.IsValid())
-                return;
+            return;
         }
-        else if (SelectedAccountType == AccountType.CalDav)
-        {
-            if (_calDavConnectionStep == null || !_calDavConnectionStep.Validate())
-                return;
-        }
-        else if (SelectedAccountType == AccountType.CardDav)
-        {
-            if (_cardDavConnectionStep == null || !_cardDavConnectionStep.Validate())
-                return;
-        }
+
+        var accountId = Guid.NewGuid().ToString();
 
         try
         {
-            var accountId = Guid.NewGuid().ToString();
+            StoreCredentials(accountId);
 
-            // Store credentials in platform keyring
-            if (SelectedAccountType == AccountType.Google && _googleConnectionStep != null)
-            {
-                var credentials = _googleConnectionStep.GetCredentials();
-                if (credentials != null)
-                {
-                    _credentialManager.StoreGoogleCredentials(accountId, credentials);
-                }
-            }
-            else if (SelectedAccountType == AccountType.CalDav && _calDavConnectionStep != null)
-            {
-                var credentials = _calDavConnectionStep.GetCredentials();
-                _credentialManager.StoreCalDavCredentials(accountId, credentials);
-            }
-            else if (SelectedAccountType == AccountType.CardDav && _cardDavConnectionStep != null)
-            {
-                var credentials = _cardDavConnectionStep.GetCredentials();
-                _credentialManager.StoreCardDavCredentials(accountId, credentials);
-            }
-
-            // Create account in database (without credentials)
             var accountDbo = new AccountDbo
             {
                 AccountId = accountId,
                 Name = AccountName ?? "Unnamed Account",
-                Type = SelectedAccountType?.ToString() ?? "Google",
+                Type = SelectedAccountType.Value.ToString(),
+                Capabilities = (int)SelectedCapabilities,
             };
 
             var success = await _storage.CreateAccountAsync(accountDbo);
-
-            if (success)
+            if (!success)
             {
-                // Raise event to notify AccountListViewModel
-                AccountAdded?.Invoke(this, EventArgs.Empty);
-                
-                // Send message to notify CalendarListViewModel and other subscribers
-                WeakReferenceMessenger.Default.Send(new AccountsChangedMessage());
-
-                // Close window (will be handled by window code-behind)
-                CloseRequested?.Invoke(this, EventArgs.Empty);
-            }
-            else
-            {
-                // If account creation failed, clean up credentials
                 _credentialManager.DeleteCredentials(accountId);
+                return;
             }
+
+            AccountAdded?.Invoke(this, EventArgs.Empty);
+            WeakReferenceMessenger.Default.Send(new AccountsChangedMessage());
+            CloseRequested?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
-            // TODO: Show error dialog
+            _credentialManager.DeleteCredentials(accountId);
             Console.WriteLine($"Error creating account: {ex.Message}");
         }
     }
@@ -212,6 +154,67 @@ public partial class AddAccountWizardViewModel : ViewModelBase
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    // Event for window to subscribe to
-    public event EventHandler? CloseRequested;
+    private object CreateConnectionStepView(AccountType accountType)
+    {
+        switch (accountType)
+        {
+            case AccountType.Google:
+                _googleConnectionStep = new GoogleConnectionStepViewModel(_oauthService);
+                return new GoogleConnectionStepView
+                {
+                    DataContext = _googleConnectionStep
+                };
+            case AccountType.CalDav:
+                _calDavConnectionStep = new CalDavConnectionStepViewModel(_calDavService);
+                return new CalDavConnectionStepView
+                {
+                    DataContext = _calDavConnectionStep
+                };
+            case AccountType.CardDav:
+                _cardDavConnectionStep = new CardDavConnectionStepViewModel(_cardDavService);
+                return new CardDavConnectionStepView
+                {
+                    DataContext = _cardDavConnectionStep
+                };
+            case AccountType.Jmap:
+                _jmapConnectionStep = new JmapConnectionStepViewModel();
+                return new JmapConnectionStepView
+                {
+                    DataContext = _jmapConnectionStep
+                };
+            default:
+                throw new InvalidOperationException($"Unsupported account type: {accountType}");
+        }
+    }
+
+    private bool ValidateConnectionStep()
+    {
+        return SelectedAccountType switch
+        {
+            AccountType.Google => _googleConnectionStep != null && _googleConnectionStep.IsValid(),
+            AccountType.CalDav => _calDavConnectionStep != null && _calDavConnectionStep.Validate(),
+            AccountType.CardDav => _cardDavConnectionStep != null && _cardDavConnectionStep.Validate(),
+            AccountType.Jmap => _jmapConnectionStep != null && _jmapConnectionStep.Validate(),
+            _ => false,
+        };
+    }
+
+    private void StoreCredentials(string accountId)
+    {
+        switch (SelectedAccountType)
+        {
+            case AccountType.Google when _googleConnectionStep?.GetCredentials() is { } googleCredentials:
+                _credentialManager.StoreGoogleCredentials(accountId, googleCredentials);
+                break;
+            case AccountType.CalDav when _calDavConnectionStep != null:
+                _credentialManager.StoreCalDavCredentials(accountId, _calDavConnectionStep.GetCredentials());
+                break;
+            case AccountType.CardDav when _cardDavConnectionStep != null:
+                _credentialManager.StoreCardDavCredentials(accountId, _cardDavConnectionStep.GetCredentials());
+                break;
+            case AccountType.Jmap when _jmapConnectionStep != null:
+                _credentialManager.StoreJmapCredentials(accountId, _jmapConnectionStep.GetCredentials());
+                break;
+        }
+    }
 }

@@ -1,4 +1,5 @@
 using System;
+using Avalonia.Threading;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -57,7 +58,7 @@ public class SyncService
         CancellationToken cancellationToken = default)
     {
         var result = new SyncResult();
-        WeakReferenceMessenger.Default.Send(new SyncStartedMessage());
+        await SendMessageAsync(new SyncStartedMessage());
 
         try
         {
@@ -99,8 +100,8 @@ public class SyncService
         }
         finally
         {
-            WeakReferenceMessenger.Default.Send(new SyncEndedMessage());
-            WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
+            await SendMessageAsync(new SyncEndedMessage());
+            await SendMessageAsync(new EventsChangedMessage());
         }
 
         return result;
@@ -112,7 +113,7 @@ public class SyncService
     public async Task<SyncResult> SyncAllAccountsAsync(CancellationToken cancellationToken = default)
     {
         var result = new SyncResult();
-        WeakReferenceMessenger.Default.Send(new SyncStartedMessage());
+        await SendMessageAsync(new SyncStartedMessage());
 
         try
         {
@@ -126,7 +127,7 @@ public class SyncService
                 var account = accounts[i];
                 try
                 {
-                    WeakReferenceMessenger.Default.Send(new SyncAccountProgressMessage
+                    await SendMessageAsync(new SyncAccountProgressMessage
                     {
                         AccountName = account.Name,
                         AccountIndex = i,
@@ -153,8 +154,8 @@ public class SyncService
         }
         finally
         {
-            WeakReferenceMessenger.Default.Send(new SyncEndedMessage());
-            WeakReferenceMessenger.Default.Send(new EventsChangedMessage());
+            await SendMessageAsync(new SyncEndedMessage());
+            await SendMessageAsync(new EventsChangedMessage());
         }
 
         return result;
@@ -189,7 +190,7 @@ public class SyncService
                 var calendar = enabledCalendars[i];
                 try
                 {
-                    WeakReferenceMessenger.Default.Send(new SyncCalendarProgressMessage
+                    await SendMessageAsync(new SyncCalendarProgressMessage
                     {
                         CalendarName = calendar.Name,
                         CalendarIndex = i,
@@ -208,7 +209,7 @@ public class SyncService
         {
             // Account requires re-authentication - send message and continue with next account
             Console.WriteLine($"Account {account.Name} requires re-authentication: {ex}");
-            WeakReferenceMessenger.Default.Send(new ReAuthenticationRequiredMessage(ex.AccountId, ex.ProviderType));
+            await SendMessageAsync(new ReAuthenticationRequiredMessage(ex.AccountId, ex.ProviderType));
         }
     }
 
@@ -438,7 +439,7 @@ public class SyncService
                 {
                     await _storage.AddEventRelationToBacklogAsync(calendar.CalendarId, evt.RecurringEventId!,
                         evt.ExternalId!);
-                    
+
                     unresolvedAffectedEventIds.Add(evt.RecurringEventId!);
                 }
             }
@@ -446,7 +447,7 @@ public class SyncService
 
         // Process backlog - check if any parents now exist
         await _storage.ProcessEventRelationBacklogAsync(calendar.CalendarId);
-        
+
         affectedEventIds.UnionWith(unresolvedAffectedEventIds.Select(id =>
             _storage.GetEventIdByExternalIdAsync(calendar.CalendarId, id))
             .Select(t => t.Result)
@@ -482,7 +483,7 @@ public class SyncService
         }
 
         Console.WriteLine($"Synced {result.Events.Count} events for calendar {calendar.Name}");
-        WeakReferenceMessenger.Default.Send(new SyncEventsProgressMessage
+        await SendMessageAsync(new SyncEventsProgressMessage
         {
             CalendarName = calendar.Name,
             EventCount = result.Events.Count
@@ -497,6 +498,21 @@ public class SyncService
         // Providers now manage credentials internally
         // Google provider will store updated access tokens automatically
         // CalDAV credentials don't change during sync
+    }
+
+    private static Task SendMessageAsync<TMessage>(TMessage message)
+        where TMessage : class
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            WeakReferenceMessenger.Default.Send(message);
+        }
+        else
+        {
+            Dispatcher.UIThread.Post(() => WeakReferenceMessenger.Default.Send(message));
+        }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>

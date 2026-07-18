@@ -30,3 +30,11 @@ public class CardDavCredentials : AccountCredentials
     public required string Username { get; set; }
     public required string Password { get; set; }
 }
+
+public class JmapCredentials : AccountCredentials
+{
+    public required string SessionUrl { get; set; }
+    public string? Username { get; set; }
+    public string? Password { get; set; }
+    public string? BearerToken { get; set; }
+}

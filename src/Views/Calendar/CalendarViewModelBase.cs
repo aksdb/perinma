@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Avalonia.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -186,6 +187,17 @@ public abstract partial class CalendarViewModelBase : ViewModelBase
             )
         };
         editor.Show();
+    }
+
+    protected static void RunOnUiThread(Action action)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        Dispatcher.UIThread.Post(action);
     }
 
     private async Task<EventEditScope?> ChooseEditScopeAsync(CalendarEvent calendarEvent)

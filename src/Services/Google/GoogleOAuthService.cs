@@ -14,7 +14,8 @@ public class GoogleOAuthService
         CalendarService.Scope.Calendar,
         CalendarService.Scope.CalendarEvents,
         PeopleServiceService.Scope.Contacts,
-        PeopleServiceService.Scope.DirectoryReadonly
+        PeopleServiceService.Scope.DirectoryReadonly,
+        "https://www.googleapis.com/auth/gmail.modify"
     );
 
     private readonly GoogleCalendarService _googleCalendarService;

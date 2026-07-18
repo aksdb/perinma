@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using AtomUI.Controls;
@@ -62,13 +63,15 @@ public partial class SettingsViewModel : ObservableRecipient,
         var settingsService = new SettingsService(_storage);
         var contactSyncService = App.Services?.GetRequiredService<ContactSyncService>()
             ?? throw new InvalidOperationException("ContactSyncService not available");
+        var mailSyncService = App.Services?.GetRequiredService<MailSyncService>()
+            ?? throw new InvalidOperationException("MailSyncService not available");
 
         // Define available settings pages
         Pages = new List<SettingsPage>
         {
             new SettingsPage { Name = "General", ViewModel = new GeneralSettingsViewModel(settingsService) },
             new SettingsPage { Name = "Calendar", ViewModel = new CalendarSettingsViewModel(settingsService) },
-            new SettingsPage { Name = "Accounts", ViewModel = new AccountListViewModel(_storage, credentialManager, oauthService, calDavService, cardDavService, syncService, contactSyncService, parentWindow) }
+            new SettingsPage { Name = "Accounts", ViewModel = new AccountListViewModel(_storage, credentialManager, oauthService, calDavService, cardDavService, syncService, contactSyncService, mailSyncService, parentWindow) }
         };
 
         // Select first page by default
@@ -108,27 +111,58 @@ public partial class SettingsViewModel : ObservableRecipient,
 
     public void Receive(SyncAccountProgressMessage message)
     {
-        SyncStatusText = $"Syncing account {message.AccountIndex + 1} of {message.TotalAccounts}: {message.AccountName}";
+        RunOnUiThread(() =>
+            SyncStatusText = $"Syncing account {message.AccountIndex + 1} of {message.TotalAccounts}: {message.AccountName}");
     }
 
     public void Receive(SyncCalendarProgressMessage message)
     {
-        SyncStatusText = $"  Syncing calendar {message.CalendarIndex + 1} of {message.TotalCalendars}: {message.CalendarName}";
+        RunOnUiThread(() =>
+            SyncStatusText = $"  Syncing calendar {message.CalendarIndex + 1} of {message.TotalCalendars}: {message.CalendarName}");
     }
 
     public void Receive(SyncEventsProgressMessage message)
     {
-        SyncStatusText = $"  Syncing events for {message.CalendarName} ({message.EventCount} events)...";
+        RunOnUiThread(() =>
+            SyncStatusText = $"  Syncing events for {message.CalendarName} ({message.EventCount} events)...");
     }
 
     public void Receive(SyncCompletedMessage message)
     {
-        SyncStatusText = $"Sync completed successfully. Synced {message.SyncedAccounts} accounts.";
+        RunOnUiThread(() =>
+            SyncStatusText = $"Sync completed successfully. Synced {message.SyncedAccounts} accounts.");
     }
 
     public void Receive(SyncFailedMessage message)
     {
-        SyncStatusText = $"Sync completed with {message.FailedAccounts} error(s).";
+        RunOnUiThread(() =>
+            SyncStatusText = $"Sync completed with {message.FailedAccounts} error(s).");
     }
+
+    private void RunOnUiThread(Action action)
+    {
+        void Execute()
+        {
+            try
+            {
+                action();
+            }
+            catch (InvalidOperationException ex) when (IsThreadOwnershipViolation(ex))
+            {
+                WeakReferenceMessenger.Default.UnregisterAll(this);
+            }
+        }
+
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            Execute();
+            return;
+        }
+
+        Dispatcher.UIThread.Post(Execute);
+    }
+
+    private static bool IsThreadOwnershipViolation(InvalidOperationException exception)
+        => exception.Message.Contains("different thread owns it", StringComparison.OrdinalIgnoreCase);
 
 }
