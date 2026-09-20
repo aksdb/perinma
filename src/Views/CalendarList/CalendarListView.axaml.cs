@@ -1,4 +1,5 @@
 using System;
+using AtomUI.Desktop.Controls;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
@@ -82,7 +83,7 @@ public partial class CalendarListView : UserControl
 
     private void SyncSidebarCalendarSelection()
     {
-        SidebarCalendar.SelectedDates.Clear();
+        SidebarCalendar.RangeBars.Clear();
 
         if (_activeCalendarViewModel == null)
         {
@@ -96,7 +97,11 @@ public partial class CalendarListView : UserControl
             (selectionStart, selectionEnd) = (selectionEnd, selectionStart);
         }
 
-        SidebarCalendar.SelectedDates.AddRange(selectionStart, selectionEnd);
+        SidebarCalendar.RangeBars.Add(new CalendarRangeBar
+        {
+            StartDate = selectionStart,
+            EndDate = selectionEnd,
+        });
     }
 
     private void AccountGroup_PointerPressed(object? sender, PointerPressedEventArgs e)

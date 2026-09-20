@@ -80,15 +80,13 @@ public class CalendarListViewTests
             var sidebarCalendar = view.FindControl<AtomUI.Desktop.Controls.Calendar>("SidebarCalendar");
             Assert.That(sidebarCalendar, Is.Not.Null);
 
-            var selectedDates = sidebarCalendar!.SelectedDates.ToList();
+            var rangeBar = sidebarCalendar!.RangeBars.SingleOrDefault();
             Assert.Multiple(() =>
             {
-                Assert.That(selectedDates, Has.Count.EqualTo(5));
-                Assert.That(selectedDates.First(), Is.EqualTo(new DateTime(2026, 6, 8)));
-                Assert.That(selectedDates.Last(), Is.EqualTo(new DateTime(2026, 6, 12)));
-                Assert.That(sidebarCalendar.SelectionMode, Is.EqualTo(AtomUI.Desktop.Controls.CalendarSelectionMode.SingleRange));
-                Assert.That(sidebarCalendar.DisplayDate, Is.EqualTo(new DateTime(2026, 6, 8)));
-                Assert.That(sidebarCalendar.SelectedDate, Is.EqualTo(new DateTime(2026, 6, 8)));
+                Assert.That(sidebarCalendar.RangeBars, Has.Count.EqualTo(1));
+                Assert.That(rangeBar, Is.Not.Null);
+                Assert.That(rangeBar!.StartDate, Is.EqualTo(new DateTime(2026, 6, 8)));
+                Assert.That(rangeBar.EndDate, Is.EqualTo(new DateTime(2026, 6, 12)));
             });
         }
         finally

@@ -435,16 +435,16 @@ public partial class MainWindowViewModel : ObservableRecipient,
     public partial bool IsDarkTheme { get; set; }
 
     [RelayCommand]
-    private void SetLightTheme()
+    private async Task SetLightTheme()
     {
-        _themeService.SetLightTheme();
+        await _themeService.SetLightThemeAsync();
         UpdateThemeFlags();
     }
 
     [RelayCommand]
-    private void SetDarkTheme()
+    private async Task SetDarkTheme()
     {
-        _themeService.SetDarkTheme();
+        await _themeService.SetDarkThemeAsync();
         UpdateThemeFlags();
     }
 

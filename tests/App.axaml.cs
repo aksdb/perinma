@@ -14,7 +14,7 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
         this.UseAtomUI(builder =>
         {
-            builder.WithDefaultTheme(IThemeManager.DEFAULT_THEME_ID);
+            builder.WithInitialTheme(IThemeManager.DEFAULT_THEME_ID);
             builder.UseDesktopControls();
         });
     }

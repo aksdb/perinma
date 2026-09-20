@@ -1,9 +1,10 @@
-using System.Reflection;
 using System.Threading.Tasks;
+using AtomUI;
 using AtomUI.Theme;
+using AtomUI.Theme.Algorithms;
+using AtomUI.Theme.Configuration;
 using Avalonia;
 using Avalonia.Headless.NUnit;
-using Avalonia.Media;
 using Avalonia.Styling;
 using CredentialStore;
 using perinma.Services;
@@ -15,53 +16,49 @@ namespace tests;
 public class ThemeServiceTests
 {
     [AvaloniaTest]
-    public void SetDarkTheme_UpdatesAvaloniaAndAtomUiThemeState()
+    public async Task SetDarkThemeAsync_UpdatesAtomUiThemeState()
     {
-        ResetThemeState();
+        await ResetThemeState();
         var application = Application.Current!;
-        var themeManager = GetThemeManager();
+        var themeManager = application.GetThemeManager()!;
 
         using var database = new DatabaseService(inMemory: true);
         using var storage = new SqliteStorage(database, new CredentialManagerService(new InMemoryCredentialStore()));
         var settings = new SettingsService(storage);
         var service = new ThemeService(settings);
 
-        service.SetDarkTheme();
+        await service.SetDarkThemeAsync();
 
         Assert.Multiple(() =>
         {
             Assert.That(service.CurrentTheme, Is.EqualTo(ThemeVariant.Dark));
-            Assert.That(themeManager.IsDarkThemeMode, Is.True);
-            Assert.That(GetBrushColor(application, GetThemeVariant(themeManager), "AppShellSurfaceBrush"),
-                Is.EqualTo(Color.Parse("#FF141414")));
-            Assert.That(application.GetValue(IThemeManager.IsDarkThemeModeProperty), Is.True);
+            Assert.That(themeManager.CurrentTheme.Appearance, Is.EqualTo(ThemeAppearance.Dark));
+            Assert.That(application.ActualThemeVariant, Is.EqualTo(ThemeVariant.Dark));
             Assert.That(service.IsDarkTheme, Is.True);
             Assert.That(service.IsLightTheme, Is.False);
         });
     }
 
     [AvaloniaTest]
-    public void SetLightTheme_AfterDarkTheme_UpdatesAvaloniaAndAtomUiThemeState()
+    public async Task SetLightThemeAsync_AfterDarkTheme_UpdatesAtomUiThemeState()
     {
-        ResetThemeState();
+        await ResetThemeState();
         var application = Application.Current!;
-        var themeManager = GetThemeManager();
+        var themeManager = application.GetThemeManager()!;
 
         using var database = new DatabaseService(inMemory: true);
         using var storage = new SqliteStorage(database, new CredentialManagerService(new InMemoryCredentialStore()));
         var settings = new SettingsService(storage);
         var service = new ThemeService(settings);
 
-        service.SetDarkTheme();
-        service.SetLightTheme();
+        await service.SetDarkThemeAsync();
+        await service.SetLightThemeAsync();
 
         Assert.Multiple(() =>
         {
             Assert.That(service.CurrentTheme, Is.EqualTo(ThemeVariant.Light));
-            Assert.That(themeManager.IsDarkThemeMode, Is.False);
-            Assert.That(GetBrushColor(application, GetThemeVariant(themeManager), "AppShellSurfaceBrush"),
-                Is.EqualTo(Color.Parse("#FFFFFFFF")));
-            Assert.That(application.GetValue(IThemeManager.IsDarkThemeModeProperty), Is.False);
+            Assert.That(themeManager.CurrentTheme.Appearance, Is.EqualTo(ThemeAppearance.Light));
+            Assert.That(application.ActualThemeVariant, Is.EqualTo(ThemeVariant.Light));
             Assert.That(service.IsDarkTheme, Is.False);
             Assert.That(service.IsLightTheme, Is.True);
         });
@@ -70,9 +67,9 @@ public class ThemeServiceTests
     [AvaloniaTest]
     public async Task LoadThemeAsync_AppliesPersistedThemeMode()
     {
-        ResetThemeState();
+        await ResetThemeState();
         var application = Application.Current!;
-        var themeManager = GetThemeManager();
+        var themeManager = application.GetThemeManager()!;
 
         using var database = new DatabaseService(inMemory: true);
         using var storage = new SqliteStorage(database, new CredentialManagerService(new InMemoryCredentialStore()));
@@ -85,28 +82,26 @@ public class ThemeServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(service.CurrentTheme, Is.EqualTo(ThemeVariant.Dark));
-            Assert.That(themeManager.IsDarkThemeMode, Is.True);
-            Assert.That(GetBrushColor(application, GetThemeVariant(themeManager), "AppShellSurfaceBrush"),
-                Is.EqualTo(Color.Parse("#FF141414")));
-            Assert.That(application.GetValue(IThemeManager.IsDarkThemeModeProperty), Is.True);
+            Assert.That(themeManager.CurrentTheme.Appearance, Is.EqualTo(ThemeAppearance.Dark));
+            Assert.That(application.ActualThemeVariant, Is.EqualTo(ThemeVariant.Dark));
         });
     }
 
     [AvaloniaTest]
     public async Task SaveThemeAsync_PersistsCurrentThemeSelection()
     {
-        ResetThemeState();
+        await ResetThemeState();
 
         using var database = new DatabaseService(inMemory: true);
         using var storage = new SqliteStorage(database, new CredentialManagerService(new InMemoryCredentialStore()));
         var settings = new SettingsService(storage);
         var service = new ThemeService(settings);
 
-        service.SetDarkTheme();
+        await service.SetDarkThemeAsync();
         await service.SaveThemeAsync();
         var savedDarkTheme = await settings.GetThemeAsync();
 
-        service.SetLightTheme();
+        await service.SetLightThemeAsync();
         await service.SaveThemeAsync();
         var savedLightTheme = await settings.GetThemeAsync();
 
@@ -117,31 +112,19 @@ public class ThemeServiceTests
         });
     }
 
-    private static void ResetThemeState()
+    private static async Task ResetThemeState()
     {
-        var themeManager = GetThemeManager();
-        themeManager.IsDarkThemeMode = false;
-        Application.Current!.SetValue(IThemeManager.IsDarkThemeModeProperty, false);
-    }
+        var themeManager = Application.Current!.GetThemeManager();
+        if (themeManager is null)
+        {
+            Assert.Fail("Theme manager is not available in the headless application.");
+            return;
+        }
 
-    private static IThemeManager GetThemeManager()
-    {
-        var themeManagerType = typeof(IThemeManager).Assembly.GetType("AtomUI.Theme.ThemeManager");
-        var currentProperty = themeManagerType!.GetProperty("Current", BindingFlags.Public | BindingFlags.Static);
-        return (IThemeManager)currentProperty!.GetValue(null)!;
-    }
-
-    private static Color GetBrushColor(Application application, ThemeVariant themeVariant, string resourceKey)
-    {
-        var found = application.TryGetResource(resourceKey, themeVariant, out var resource);
-        Assert.That(found, Is.True, $"Missing resource '{resourceKey}' for theme '{themeVariant}'.");
-        Assert.That(resource, Is.InstanceOf<SolidColorBrush>(), $"Resource '{resourceKey}' should be a SolidColorBrush.");
-        return ((SolidColorBrush)resource!).Color;
-    }
-
-    private static ThemeVariant GetThemeVariant(IThemeManager themeManager)
-    {
-        var themeVariantProperty = themeManager.GetType().GetProperty("ThemeVariant", BindingFlags.Public | BindingFlags.Instance);
-        return (ThemeVariant)themeVariantProperty!.GetValue(themeManager)!;
+        var lightConfig = new ThemeConfigBuilder()
+            .WithAlgorithms(ThemeAlgorithm.Default)
+            .Build();
+        await themeManager.ApplyThemeAsync(
+            new ThemeRequest(IThemeManager.DEFAULT_THEME_ID, lightConfig, ThemeTransitionReason.UserRequest));
     }
 }

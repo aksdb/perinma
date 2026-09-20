@@ -16,7 +16,7 @@
         <atom:Steps x:Name="AddAccountSteps"
                     DockPanel.Dock="Top"
                     Margin="20,20,20,10"
-                    CurrentStep="{Binding CurrentStepIndex}"
+                    Current="{Binding CurrentStepIndex}"
                     IsItemClickable="False">
             <x:String>Account Details</x:String>
             <x:String>Connection</x:String>

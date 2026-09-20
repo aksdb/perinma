@@ -13,10 +13,7 @@
         <StackPanel DockPanel.Dock="Top">
             <Viewbox MaxHeight="250" Stretch="Uniform" HorizontalAlignment="Center" Margin="0, 0, 0, 10">
                 <atom:Calendar x:Name="SidebarCalendar"
-                               SelectionMode="SingleRange"
-                               FirstDayOfWeek="Monday"
-                               DisplayDate="{Binding Mode=OneWay, Path=ActiveCalendarViewModel.ViewStart}"
-                               SelectedDate="{Binding ActiveCalendarViewModel.ViewStart}" />
+                               Value="{Binding ActiveCalendarViewModel.ViewStart}" />
             </Viewbox>
 
             <TextBlock Text="Calendars"

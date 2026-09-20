@@ -1,6 +1,9 @@
 using System;
+using AtomUI;
 using System.Threading.Tasks;
 using AtomUI.Theme;
+using AtomUI.Theme.Algorithms;
+using AtomUI.Theme.Configuration;
 using Avalonia;
 using Avalonia.Styling;
 
@@ -10,27 +13,33 @@ public class ThemeService
 {
     private readonly SettingsService _settingsService;
 
+    private static readonly ThemeConfig LightThemeConfig =
+        new ThemeConfigBuilder().WithAlgorithms(ThemeAlgorithm.Default).Build();
+
+    private static readonly ThemeConfig DarkThemeConfig =
+        new ThemeConfigBuilder().WithAlgorithms(ThemeAlgorithm.Default, ThemeAlgorithm.Dark).Build();
+
     public ThemeService(SettingsService settingsService)
     {
         _settingsService = settingsService;
     }
 
-    public ThemeVariant CurrentTheme => GetThemeManager()?.IsDarkThemeMode == true ? ThemeVariant.Dark : ThemeVariant.Light;
+    public ThemeVariant CurrentTheme =>
+        GetThemeManager()?.CurrentTheme.Appearance == ThemeAppearance.Dark
+            ? ThemeVariant.Dark
+            : ThemeVariant.Light;
 
-    public void SetTheme(ThemeVariant theme)
+    public async Task SetThemeAsync(ThemeVariant theme)
     {
-        var isDarkTheme = theme == ThemeVariant.Dark;
-        var application = Application.Current;
-        if (application == null)
-            return;
-
         var themeManager = GetThemeManager();
-        if (themeManager != null)
+        if (themeManager is null)
         {
-            themeManager.IsDarkThemeMode = isDarkTheme;
+            return;
         }
 
-        application.SetValue(IThemeManager.IsDarkThemeModeProperty, isDarkTheme);
+        var config = theme == ThemeVariant.Dark ? DarkThemeConfig : LightThemeConfig;
+        await themeManager.ApplyThemeAsync(
+            new ThemeRequest(IThemeManager.DEFAULT_THEME_ID, config, ThemeTransitionReason.UserRequest));
     }
 
     public async Task LoadThemeAsync()
@@ -39,25 +48,19 @@ public class ThemeService
         var themeVariant = savedTheme.Equals("Dark", StringComparison.OrdinalIgnoreCase)
             ? ThemeVariant.Dark
             : ThemeVariant.Light;
-        SetTheme(themeVariant);
+        await SetThemeAsync(themeVariant);
     }
 
-    public Task SaveThemeAsync() => _settingsService.SetThemeAsync(CurrentTheme == ThemeVariant.Dark ? "Dark" : "Light");
+    public Task SaveThemeAsync() =>
+        _settingsService.SetThemeAsync(CurrentTheme == ThemeVariant.Dark ? "Dark" : "Light");
 
-    public void SetLightTheme() => SetTheme(ThemeVariant.Light);
+    public Task SetLightThemeAsync() => SetThemeAsync(ThemeVariant.Light);
 
-    public void SetDarkTheme() => SetTheme(ThemeVariant.Dark);
+    public Task SetDarkThemeAsync() => SetThemeAsync(ThemeVariant.Dark);
 
     public bool IsLightTheme => CurrentTheme == ThemeVariant.Light;
 
     public bool IsDarkTheme => CurrentTheme == ThemeVariant.Dark;
 
-    private static IThemeManager? GetThemeManager()
-    {
-        var themeManagerType = typeof(IThemeManager).Assembly.GetType("AtomUI.Theme.ThemeManager");
-        var currentProperty = themeManagerType?.GetProperty(
-            "Current",
-            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-        return currentProperty?.GetValue(null) as IThemeManager;
-    }
+    private static IThemeManager? GetThemeManager() => Application.Current?.GetThemeManager();
 }
