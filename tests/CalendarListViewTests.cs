@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 using Avalonia.Headless.NUnit;
 using CredentialStore;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,11 +39,13 @@ public class CalendarListViewTests
             DataContext = viewModel
         };
 
-        AssertAtomControl(view, "SidebarCalendar", "Calendar");
+        var sidebarCalendar = view.FindControl<AtomUI.Desktop.Controls.Calendar>("SidebarCalendar");
+        Assert.That(sidebarCalendar, Is.Not.Null);
+        Assert.That(sidebarCalendar!.Fullscreen, Is.False, "sidebar calendar should use the compact month layout");
     }
 
     [AvaloniaTest]
-    public void CalendarListView_SyncsActiveViewRangeIntoSidebarCalendarSelection()
+    public void CalendarListView_HighlightsVisiblePeriodInSidebarCalendar()
     {
         using var database = new DatabaseService(inMemory: true);
         var credentialManager = new CredentialManagerService(new InMemoryCredentialStore());
@@ -76,31 +79,31 @@ public class CalendarListViewTests
                 viewStart: new DateTime(2026, 6, 8),
                 highlightStart: new DateTime(2026, 6, 8),
                 highlightEnd: new DateTime(2026, 6, 12));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
             var sidebarCalendar = view.FindControl<AtomUI.Desktop.Controls.Calendar>("SidebarCalendar");
             Assert.That(sidebarCalendar, Is.Not.Null);
+            Assert.That(sidebarCalendar!.Fullscreen, Is.False, "sidebar calendar should use the compact month layout");
+            Assert.That(sidebarCalendar.Value, Is.EqualTo(new DateTime(2026, 6, 8)));
 
-            var rangeBar = sidebarCalendar!.RangeBars.SingleOrDefault();
-            Assert.Multiple(() =>
-            {
-                Assert.That(sidebarCalendar.RangeBars, Has.Count.EqualTo(1));
-                Assert.That(rangeBar, Is.Not.Null);
-                Assert.That(rangeBar!.StartDate, Is.EqualTo(new DateTime(2026, 6, 8)));
-                Assert.That(rangeBar.EndDate, Is.EqualTo(new DateTime(2026, 6, 12)));
-            });
+            var highlights = sidebarCalendar.GetVisualDescendants()
+                .OfType<Border>()
+                .Where(b => b.Name == "VisibleRangeHighlight")
+                .ToList();
+            Assert.That(highlights, Is.Not.Empty, "day cells with highlight badge should exist");
+            var visibleDays = highlights
+                .Where(b => b.IsVisible && b.Bounds.Width > 0 && b.Bounds.Height > 0)
+                .Select(b => ((Grid)b.Parent!).Children.OfType<TextBlock>().Single().Text)
+                .ToList();
+            Assert.That(visibleDays, Is.EqualTo(new[] { "08", "09", "10", "11", "12" }));
+            Assert.That(highlights.Where(b => b.IsVisible), Has.All.Property("Bounds").Property("Width").GreaterThan(0),
+                "highlight badges must have non-zero rendered size");
         }
         finally
         {
             host.Close();
         }
-    }
-
-    private static void AssertAtomControl(Control root, string name, string typeName)
-    {
-        var control = root.FindControl<Control>(name);
-        Assert.That(control, Is.Not.Null, $"Missing control '{name}'.");
-        Assert.That(control!.GetType().Name, Is.EqualTo(typeName), $"Control '{name}' should use AtomUI {typeName}.");
-        Assert.That(control.GetType().Namespace, Does.StartWith("AtomUI."));
     }
 
     private sealed class SidebarRangeCalendarViewModel : CalendarViewModelBase

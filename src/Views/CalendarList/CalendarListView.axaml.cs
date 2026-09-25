@@ -1,6 +1,4 @@
 using System;
-using AtomUI.Desktop.Controls;
-using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -15,93 +13,13 @@ public partial class CalendarListView : UserControl
     private int _draggedItemIndex = -1;
     private bool _isDragging;
     private PointerPressedEventArgs? _dragPressedEventArgs;
-    private CalendarListViewModel? _calendarListViewModel;
-    private CalendarViewModelBase? _activeCalendarViewModel;
 
     public CalendarListView()
     {
         InitializeComponent();
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
-        DataContextChanged += OnDataContextChanged;
-    }
-
-    private void OnDataContextChanged(object? sender, EventArgs e)
-    {
-        if (_calendarListViewModel != null)
-        {
-            _calendarListViewModel.PropertyChanged -= OnViewModelPropertyChanged;
-        }
-
-        SetActiveCalendarViewModel(null);
-
-        _calendarListViewModel = DataContext as CalendarListViewModel;
-        if (_calendarListViewModel != null)
-        {
-            _calendarListViewModel.PropertyChanged += OnViewModelPropertyChanged;
-            SetActiveCalendarViewModel(_calendarListViewModel.ActiveCalendarViewModel);
-        }
-
-        SyncSidebarCalendarSelection();
-    }
-
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(CalendarListViewModel.ActiveCalendarViewModel) || sender is not CalendarListViewModel viewModel)
-        {
-            return;
-        }
-
-        SetActiveCalendarViewModel(viewModel.ActiveCalendarViewModel);
-        SyncSidebarCalendarSelection();
-    }
-
-    private void SetActiveCalendarViewModel(CalendarViewModelBase? activeCalendarViewModel)
-    {
-        if (_activeCalendarViewModel != null)
-        {
-            _activeCalendarViewModel.PropertyChanged -= OnActiveCalendarPropertyChanged;
-        }
-
-        _activeCalendarViewModel = activeCalendarViewModel;
-
-        if (_activeCalendarViewModel != null)
-        {
-            _activeCalendarViewModel.PropertyChanged += OnActiveCalendarPropertyChanged;
-        }
-    }
-
-    private void OnActiveCalendarPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName is nameof(CalendarViewModelBase.ViewStart)
-            or nameof(CalendarViewModelBase.HighlightStart)
-            or nameof(CalendarViewModelBase.HighlightEnd))
-        {
-            SyncSidebarCalendarSelection();
-        }
-    }
-
-    private void SyncSidebarCalendarSelection()
-    {
-        SidebarCalendar.RangeBars.Clear();
-
-        if (_activeCalendarViewModel == null)
-        {
-            return;
-        }
-
-        var selectionStart = (_activeCalendarViewModel.HighlightStart ?? _activeCalendarViewModel.ViewStart).Date;
-        var selectionEnd = (_activeCalendarViewModel.HighlightEnd ?? _activeCalendarViewModel.HighlightStart ?? _activeCalendarViewModel.ViewStart).Date;
-        if (selectionEnd < selectionStart)
-        {
-            (selectionStart, selectionEnd) = (selectionEnd, selectionStart);
-        }
-
-        SidebarCalendar.RangeBars.Add(new CalendarRangeBar
-        {
-            StartDate = selectionStart,
-            EndDate = selectionEnd,
-        });
+        MondayWeekStart.Attach(SidebarCalendar);
     }
 
     private void AccountGroup_PointerPressed(object? sender, PointerPressedEventArgs e)

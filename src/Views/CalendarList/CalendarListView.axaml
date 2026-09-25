@@ -13,7 +13,32 @@
         <StackPanel DockPanel.Dock="Top">
             <Viewbox MaxHeight="250" Stretch="Uniform" HorizontalAlignment="Center" Margin="0, 0, 0, 10">
                 <atom:Calendar x:Name="SidebarCalendar"
-                               Value="{Binding ActiveCalendarViewModel.ViewStart}" />
+                               Fullscreen="False"
+                               Value="{Binding ActiveCalendarViewModel.ViewStart}">
+                    <atom:Calendar.FullCellTemplate>
+                        <DataTemplate x:DataType="atom:CalendarCellContext">
+                            <Grid>
+                                <Border x:Name="VisibleRangeHighlight"
+                                        CornerRadius="4"
+                                        Background="{atom:SharedTokenResource ColorPrimaryBg}"
+                                        IsVisible="False">
+                                    <Border.IsVisible>
+                                        <MultiBinding Converter="{x:Static callist:IsDateInVisibleRangeConverter.Instance}">
+                                            <Binding Path="Value" />
+                                            <Binding Path="$parent[UserControl].((callist:CalendarListViewModel)DataContext).ActiveCalendarViewModel.HighlightStart" />
+                                            <Binding Path="$parent[UserControl].((callist:CalendarListViewModel)DataContext).ActiveCalendarViewModel.HighlightEnd" />
+                                            <Binding Path="$parent[UserControl].((callist:CalendarListViewModel)DataContext).ActiveCalendarViewModel.ViewStart" />
+                                            <Binding Path="CellType" />
+                                        </MultiBinding>
+                                    </Border.IsVisible>
+                                </Border>
+                                <TextBlock Text="{Binding DisplayValue}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </atom:Calendar.FullCellTemplate>
+                </atom:Calendar>
             </Viewbox>
 
             <TextBlock Text="Calendars"
