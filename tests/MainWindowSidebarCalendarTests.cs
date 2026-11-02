@@ -81,9 +81,6 @@ public class MainWindowSidebarCalendarTests
             }
             var listView = window.GetVisualDescendants().OfType<CalendarListView>().Single();
             var sidebar = listView.FindControl<AtomUI.Desktop.Controls.Calendar>("SidebarCalendar")!;
-            var calView = sidebar.GetVisualDescendants().FirstOrDefault(v => v.GetType().Name == "CalendarView");
-            var cultureProp = (Avalonia.AvaloniaProperty)calView!.GetType().GetField("CultureProperty")!.GetValue(null)!;
-            var finalCulture = (System.Globalization.CultureInfo?)calView.GetValue(cultureProp);
 
 
             var monday = Today().AddDays(-(((int)Today().DayOfWeek + 6) % 7));

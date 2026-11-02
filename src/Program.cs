@@ -1,4 +1,5 @@
 using AtomUI;
+using AtomUI.Theme;
 using Avalonia;
 using System;
 
@@ -18,5 +19,11 @@ sealed class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithAtomUIDefaultOptions()
+            .UseAtomUI(builder =>
+            {
+                builder.WithInitialTheme(IThemeManager.DEFAULT_THEME_ID);
+                AtomUI.Desktop.Controls.ThemeManagerBuilderExtensions.UseDesktopControls(builder);
+                AlibabaSansThemeManagerBuilderExtensions.UseAlibabaSansFont(builder);
+            })
             .LogToTrace();
 }

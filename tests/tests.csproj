@@ -9,8 +9,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Avalonia.Headless" Version="12.1.2" />
-        <PackageReference Include="Avalonia.Headless.NUnit" Version="12.1.2" />
+        <PackageReference Include="Avalonia.Headless" Version="12.1.5" />
+        <PackageReference Include="Avalonia.Headless.NUnit" Version="12.1.5" />
         <PackageReference Include="coverlet.collector" Version="10.0.1">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -19,8 +19,8 @@ public class IsDateInVisibleRangeConverter : IMultiValueConverter
         if (values is not { Count: 5 }
             || values[0] is not DateTime date
             || values[3] is not DateTime viewStart
-            || values[4] is not CalendarCellType { } cellType
-            || cellType != CalendarCellType.Date)
+            || values[4] is not DateViewerCellType { } cellType
+            || cellType != DateViewerCellType.Date)
         {
             return false;
         }
