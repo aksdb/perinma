@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Build an AppImage for Linux"
-#MISE tools={ "github:AppImage/AppImageKit" = "continuous" }
+#MISE tools={ "github:AppImage/appimagetool" = {version = "continuous", format = "raw", bin = "appimagetool.AppImage", asset_pattern = "appimagetool-*.AppImage"} }
 
 set -e
 
@@ -13,6 +13,9 @@ OUTPUT_DIR="build/AppImage"
 # Clean previous builds
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
+
+# Canary check for appimagetool
+appimagetool.AppImage --version
 
 # Step 1: Publish .NET application (self-contained for .NET 9)
 echo "Publishing .NET application..."
