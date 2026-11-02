@@ -216,12 +216,16 @@ public partial class AccountListViewModel : ViewModelBase
         }
 
         var needsMailUpgrade = account.NeedsMailUpgrade;
+        var requestedCapabilities = needsMailUpgrade
+            ? account.Capabilities | AccountCapability.Mail
+            : account.Capabilities;
         var reauthVm = new ReauthenticateAccountViewModel(
             accountId.ToString(),
             account.Name,
             _credentialManager,
             _oauthService,
-            needsMailUpgrade);
+            needsMailUpgrade,
+            requestedCapabilities);
         EventHandler onReauthenticateFinished = async (_, _) =>
         {
             Console.WriteLine($"Account {account.Name} has been reauthenticated");

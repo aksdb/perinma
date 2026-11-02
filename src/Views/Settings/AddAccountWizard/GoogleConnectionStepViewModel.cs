@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using perinma.Models;
 using perinma.Services;
 using perinma.Services.Google;
 using perinma.Storage.Models;
@@ -12,6 +13,7 @@ namespace perinma.Views.Settings.AddAccountWizard;
 public partial class GoogleConnectionStepViewModel : ViewModelBase
 {
     private readonly GoogleOAuthService _oauthService;
+    private readonly AccountCapability _capabilities;
     private GoogleCredentials? _credentials;
     private Task<GoogleCredentials>? _credentialsTask;
 
@@ -27,9 +29,10 @@ public partial class GoogleConnectionStepViewModel : ViewModelBase
     [ObservableProperty]
     private string? _oAuthUrl = null;
 
-    public GoogleConnectionStepViewModel(GoogleOAuthService oauthService)
+    public GoogleConnectionStepViewModel(GoogleOAuthService oauthService, AccountCapability capabilities)
     {
         _oauthService = oauthService;
+        _capabilities = capabilities;
     }
 
     [RelayCommand(IncludeCancelCommand = true)]
@@ -41,7 +44,7 @@ public partial class GoogleConnectionStepViewModel : ViewModelBase
         try
         {
             // Start authentication process to get the OAuth URL
-            var (oauthUrl, credentialsTask) = await _oauthService.StartAuthenticationAsync(ct);
+            var (oauthUrl, credentialsTask) = await _oauthService.StartAuthenticationAsync(_capabilities, ct);
             OAuthUrl = oauthUrl;
             _credentialsTask = credentialsTask;
 

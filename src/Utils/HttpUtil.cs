@@ -36,7 +36,12 @@ public static class HttpUtil
                     await using (cancellationToken.Register(() => listener.Stop()))
                     {
                         var result = await WaitForHttpCallbackInternalAsync(listener, cancellationToken);
-                        if (!cancellationToken.IsCancellationRequested)
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            callback(Result<NameValueCollection?>.Failure(
+                                new OperationCanceledException(cancellationToken)));
+                        }
+                        else
                         {
                             callback(Result<NameValueCollection?>.Success(result));
                         }

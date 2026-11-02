@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using perinma.Models;
 using perinma.Services;
 using perinma.Services.Google;
 using perinma.Storage.Models;
@@ -16,6 +17,7 @@ public partial class ReauthenticationDialogViewModel : ViewModelBase
     private readonly CredentialManagerService _credentialManager;
     private readonly GoogleOAuthService _oauthService;
     private readonly GoogleCalendarService _googleCalendarService;
+    private readonly AccountCapability _capabilities;
     private Task<GoogleCredentials>? _credentialsTask;
 
     [ObservableProperty]
@@ -39,13 +41,15 @@ public partial class ReauthenticationDialogViewModel : ViewModelBase
         string accountName,
         CredentialManagerService credentialManager,
         GoogleOAuthService oauthService,
-        GoogleCalendarService googleCalendarService)
+        GoogleCalendarService googleCalendarService,
+        AccountCapability capabilities)
     {
         _accountId = accountId;
         _accountName = accountName;
         _credentialManager = credentialManager;
         _oauthService = oauthService;
         _googleCalendarService = googleCalendarService;
+        _capabilities = capabilities;
 
         InitializeAsync();
     }
@@ -54,7 +58,7 @@ public partial class ReauthenticationDialogViewModel : ViewModelBase
     {
         try
         {
-            var (oauthUrl, credentialsTask) = await _oauthService.StartAuthenticationAsync();
+            var (oauthUrl, credentialsTask) = await _oauthService.StartAuthenticationAsync(_capabilities);
             OAuthUrl = oauthUrl;
             _credentialsTask = credentialsTask;
             StatusMessage = "Click the link below to authenticate with your Google account.\nAfter authorizing, the window will close automatically.";

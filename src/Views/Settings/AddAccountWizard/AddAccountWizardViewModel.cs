@@ -159,7 +159,7 @@ public partial class AddAccountWizardViewModel : ViewModelBase
         switch (accountType)
         {
             case AccountType.Google:
-                _googleConnectionStep = new GoogleConnectionStepViewModel(_oauthService);
+                _googleConnectionStep = new GoogleConnectionStepViewModel(_oauthService, SelectedCapabilities);
                 return new GoogleConnectionStepView
                 {
                     DataContext = _googleConnectionStep

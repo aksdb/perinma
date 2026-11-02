@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using perinma.Models;
 using perinma.Services;
 using perinma.Services.Google;
 using perinma.Storage.Models;
@@ -14,6 +15,7 @@ public partial class ReauthenticateAccountViewModel : ViewModelBase
     private readonly string _accountId;
     private readonly CredentialManagerService _credentialManager;
     private readonly GoogleOAuthService _oauthService;
+    private readonly AccountCapability _capabilities;
 
     [ObservableProperty]
     private string _statusMessage;
@@ -29,13 +31,15 @@ public partial class ReauthenticateAccountViewModel : ViewModelBase
         string accountName,
         CredentialManagerService credentialManager,
         GoogleOAuthService oauthService,
-        bool needsMailUpgrade)
+        bool needsMailUpgrade,
+        AccountCapability capabilities)
     {
         _accountId = accountId;
         AccountName = accountName;
         _credentialManager = credentialManager;
         _oauthService = oauthService;
         NeedsMailUpgrade = needsMailUpgrade;
+        _capabilities = capabilities;
         StatusMessage = needsMailUpgrade
             ? "Click 'Grant Mail Access' to reconnect your Google account and add Gmail permissions."
             : "Click 'Reauthenticate' to start the authentication process.";
@@ -62,7 +66,7 @@ public partial class ReauthenticateAccountViewModel : ViewModelBase
 
         try
         {
-            var newCredentials = await _oauthService.AuthenticateAsync(ct);
+            var newCredentials = await _oauthService.AuthenticateAsync(_capabilities, ct);
             _credentialManager.StoreGoogleCredentials(_accountId, newCredentials);
 
             StatusMessage = NeedsMailUpgrade

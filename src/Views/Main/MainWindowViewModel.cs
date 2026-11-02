@@ -662,7 +662,8 @@ public partial class MainWindowViewModel : ObservableRecipient,
                         account.Name,
                         _credentialManager,
                         _googleOAuthService,
-                        _googleCalendarService);
+                        _googleCalendarService,
+                        account.AccountCapabilities);
 
                     var dialog = new ReauthenticationDialogWindow();
                     dialog.SetViewModel(viewModel);

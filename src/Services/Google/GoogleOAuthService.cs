@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Calendar.v3;
 using Google.Apis.PeopleService.v1;
+using perinma.Models;
 using perinma.Storage.Models;
 using perinma.Utils;
 
@@ -10,13 +12,36 @@ namespace perinma.Services.Google;
 
 public class GoogleOAuthService
 {
-    private static readonly string RequiredScopes = string.Join(separator: " ",
-        CalendarService.Scope.Calendar,
-        CalendarService.Scope.CalendarEvents,
-        PeopleServiceService.Scope.Contacts,
-        PeopleServiceService.Scope.DirectoryReadonly,
-        "https://www.googleapis.com/auth/gmail.modify"
-    );
+    public const AccountCapability AllCapabilities =
+        AccountCapability.Calendar | AccountCapability.Contacts | AccountCapability.Mail;
+
+    private static string GetScopes(AccountCapability capabilities)
+    {
+        var scopes = new List<string>();
+        if (capabilities.HasFlag(AccountCapability.Calendar))
+        {
+            scopes.Add(CalendarService.Scope.Calendar);
+            scopes.Add(CalendarService.Scope.CalendarEvents);
+        }
+
+        if (capabilities.HasFlag(AccountCapability.Contacts))
+        {
+            scopes.Add(PeopleServiceService.Scope.Contacts);
+            scopes.Add(PeopleServiceService.Scope.DirectoryReadonly);
+        }
+
+        if (capabilities.HasFlag(AccountCapability.Mail))
+        {
+            scopes.Add("https://www.googleapis.com/auth/gmail.modify");
+        }
+
+        if (scopes.Count == 0)
+        {
+            return GetScopes(AllCapabilities);
+        }
+
+        return string.Join(separator: " ", scopes);
+    }
 
     private readonly GoogleCalendarService _googleCalendarService;
 
@@ -25,9 +50,11 @@ public class GoogleOAuthService
         _googleCalendarService = googleCalendarService;
     }
 
-    public async Task<GoogleCredentials> AuthenticateAsync(CancellationToken cancellationToken = default)
+    public async Task<GoogleCredentials> AuthenticateAsync(
+        AccountCapability capabilities = AllCapabilities,
+        CancellationToken cancellationToken = default)
     {
-        var (_, credentialsTask) = await StartAuthenticationAsync(cancellationToken);
+        var (_, credentialsTask) = await StartAuthenticationAsync(capabilities, cancellationToken);
 
         // Build and open OAuth URL
         var oauthUrl = _oauthUrl!;
@@ -36,7 +63,9 @@ public class GoogleOAuthService
         return await credentialsTask;
     }
 
-    public async Task<(string oauthUrl, Task<GoogleCredentials> credentialsTask)> StartAuthenticationAsync(CancellationToken cancellationToken = default)
+    public async Task<(string oauthUrl, Task<GoogleCredentials> credentialsTask)> StartAuthenticationAsync(
+        AccountCapability capabilities = AllCapabilities,
+        CancellationToken cancellationToken = default)
     {
         var tcs = new TaskCompletionSource<GoogleCredentials>();
         await using var registration = cancellationToken.Register(() => tcs.TrySetCanceled());
@@ -75,7 +104,7 @@ public class GoogleOAuthService
                     {
                         Type = "Google",
                         AuthorizationCode = code,
-                        Scope = RequiredScopes,
+                        Scope = GetScopes(capabilities),
                     };
 
                     // Exchange authorization code for tokens
@@ -98,7 +127,7 @@ public class GoogleOAuthService
         redirectUri = callbackUrl;
 
         // Build OAuth URL
-        var oauthUrl = BuildOAuthUrl(callbackUrl, expectedState);
+        var oauthUrl = BuildOAuthUrl(callbackUrl, expectedState, GetScopes(capabilities));
 
         _oauthUrl = oauthUrl;
         return (oauthUrl, tcs.Task);
@@ -106,13 +135,13 @@ public class GoogleOAuthService
 
     private string? _oauthUrl;
 
-    private static string BuildOAuthUrl(string redirectUri, string state)
+    private static string BuildOAuthUrl(string redirectUri, string state, string scopes)
     {
         return $"https://accounts.google.com/o/oauth2/v2/auth?" +
                $"client_id={Uri.EscapeDataString(BuildSecrets.GoogleClientId)}&" +
                $"redirect_uri={Uri.EscapeDataString(redirectUri)}&" +
                $"response_type=code&" +
-               $"scope={Uri.EscapeDataString(RequiredScopes)}&" +
+               $"scope={Uri.EscapeDataString(scopes)}&" +
                $"state={Uri.EscapeDataString(state)}&" +
                $"access_type=offline&" +
                $"prompt=consent";
