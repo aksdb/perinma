@@ -61,6 +61,10 @@ public class ReminderWindowTests
             Assert.That(dismissButton, Is.Not.Null);
             Assert.That(snoozeButton, Is.InstanceOf<AtomUI.Desktop.Controls.DropdownButton>());
             Assert.That(snoozeButton!.DropdownFlyout, Is.Not.Null);
+            // AtomUI's DropdownButton relays its own ShouldUseOverlayPopup value over the flyout's;
+            // the overlay popup is clipped to the (short) reminder window, so the native
+            // window-type popup is required for the snooze list to stay fully visible.
+            Assert.That(snoozeButton.ShouldUseOverlayPopup, Is.False);
             Assert.That(dismissButton!.IsDanger, Is.True);
         }
         finally

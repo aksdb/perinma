@@ -71,9 +71,14 @@
                     Padding="12"
                     CornerRadius="0,0,8,8">
                 <Grid ColumnDefinitions="1*,Auto">
+                    <!-- ShouldUseOverlayPopup has to be set on the button: DropdownButton relays its
+                         own value over the flyout's. Native (window-type) popup: the default overlay
+                         popup is clipped to this window, which is too short for the interval list
+                         when only one reminder is shown. -->
                     <atom:DropdownButton x:Name="SnoozeButton"
                                          Grid.Column="0"
                                          Content="Snooze"
+                                         ShouldUseOverlayPopup="False"
                                          HorizontalAlignment="Stretch"
                                          HorizontalContentAlignment="Center">
                         <atom:DropdownButton.DropdownFlyout>
